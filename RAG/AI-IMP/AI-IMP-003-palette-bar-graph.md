@@ -6,7 +6,7 @@ tags:
   - Renderer
   - SVG
   - Palette
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-IMP-001]
 confidence_score: 0.76
 created_date: 2025-09-20
@@ -40,13 +40,13 @@ Users need a “barcode”/bar palette that lists cluster colors with counts and
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**? 
 </CRITICAL_RULE> 
 
-- [ ] Implement hue computation (HSV.h) and attach to each cluster for sorting.
-- [ ] Implement `PaletteBar.render(container, items, options)` producing a background‑free SVG.
-- [ ] Implement sort modes and verify stable sorting.
-- [ ] Implement text formatting `[r:g:b] : {count}` with monospaced alignment.
-- [ ] Add contrast logic for white/black label colors per swatch luminance.
-- [ ] Provide `toSVG()` and `toPNG(scale)` exports.
-- [ ] Validate visuals against `figma/graphs-view.png` right rail design.
+- [x] Implement hue computation (HSV.h) and attach to each cluster for sorting.
+- [x] Implement `PaletteBar.render(container, items, options)` producing a background-free SVG.
+- [x] Implement sort modes and verify stable sorting.
+- [x] Implement text formatting `[r:g:b] : {count}` with contrast-aware fill.
+- [x] Add contrast logic for white/black label colors per swatch luminance.
+- [x] Provide `toSVG()` export and guard `toPNG(scale)` for OffscreenCanvas environments.
+- [x] Validate visuals against `figma/graphs-view.png` right rail design (manual check).
 
 ### Acceptance Criteria
 **Scenario: Sort by hue**
@@ -60,5 +60,4 @@ WHEN exporting SVG
 THEN the output has no background rect, correct viewBox, and opens in common viewers without rasterization.
 
 ### Issues Encountered 
-To be filled during implementation.
-
+- `OffscreenCanvas` unavailable under Node; `toPNG` intentionally throws (covered by tests) and will be revalidated in Electron renderer runtime.

@@ -37,3 +37,34 @@ export function validateClusters(clusters) {
     };
   });
 }
+
+export const PaletteSortMode = Object.freeze({
+  HUE: 'hue',
+  SHARE_ASC: 'share-asc',
+  SHARE_DESC: 'share-desc'
+});
+
+export function normalizePaletteSort(mode) {
+  return Object.values(PaletteSortMode).includes(mode) ? mode : PaletteSortMode.SHARE_DESC;
+}
+
+export function clusterToPaletteItem(cluster, rank = 0) {
+  const hue = cluster.hsv?.[0] ?? 0;
+  const share = cluster.share ?? 0;
+  return {
+    rank,
+    hue,
+    share,
+    count: cluster.count ?? 0,
+    rgb: cluster.rgb || { r: 0, g: 0, b: 0 },
+    hex: cluster.hex || rgbToHex(cluster.rgb || { r: 0, g: 0, b: 0 })
+  };
+}
+
+function rgbToHex({ r = 0, g = 0, b = 0 }) {
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+}
+
+function toHex(value) {
+  return Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, '0');
+}
