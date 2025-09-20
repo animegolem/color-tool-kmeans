@@ -1,0 +1,12 @@
+{
+  "name": "color-abstract-electron",
+  "version": "0.1.0",
+  "description": "Local color abstraction app (compute pipeline prototype)",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18.20.8"
+  }
+}

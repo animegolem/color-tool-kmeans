@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build artifacts
+dist/
+build/
+out/
+*.asar
+
+# Logs & caches
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+.eslintcache
+.tsbuildinfo
+
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Generated assets
+figma_curl.txt
+*.AppImage
+pkgs/proportions-et-relations-colorees/

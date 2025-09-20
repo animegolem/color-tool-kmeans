@@ -1,0 +1,14 @@
+{
+  "name": "d667831ab373aa6e",
+  "main": "d667831ab373aa6e@938.js",
+  "version": "938.0.0",
+  "homepage": "https://observablehq.com/d/d667831ab373aa6e",
+  "author": {
+    "name": "golem",
+    "url": "https://observablehq.com/@golem"
+  },
+  "type": "module",
+  "peerDependencies": {
+    "@observablehq/runtime": "4 - 5"
+  }
+}
