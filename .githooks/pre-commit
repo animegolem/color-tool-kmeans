@@ -9,7 +9,7 @@ echo "[pre-commit] running checks..."
 run_if_npm_script() {
   local dir=$1
   local script=$2
-  if [ -f "$dir/package.json" ] && jq -e ".scripts['$script']" < "$dir/package.json" >/dev/null 2>&1; then
+  if [ -f "$dir/package.json" ] && [ -d "$dir/node_modules" ] && jq -e ".scripts['$script']" < "$dir/package.json" >/dev/null 2>&1; then
     echo "[pre-commit] $dir -> npm run $script"
     (cd "$dir" && npm run -s "$script") || {
       echo "[pre-commit] $script failed in $dir" >&2

@@ -1,0 +1,22 @@
+[package]
+name = "tauri-app"
+version = "0.0.1"
+edition = "2021"
+authors = ["color-tool"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+anyhow = "1.0"
+rand = "0.8"
+rayon = "1.8"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+fast_image_resize = "1.0"
+
+[dependencies.tauri]
+version = "1.5"
+features = ["shell-open", "dialog-open"]
+
+[build-dependencies]
+tauri-build = { version = "1.5", features = [] }

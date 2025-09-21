@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Color Tool",
+  "version": "0.0.1",
+  "identifier": "com.color.tool",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "http://localhost:5175",
+    "distDir": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Color Tool",
+        "width": 1280,
+        "height": 860,
+        "decorations": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": false,
+    "targets": ["deb", "appimage", "msi"],
+    "icon": []
+  }
+}

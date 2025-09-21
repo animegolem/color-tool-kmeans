@@ -1,0 +1,8 @@
+/node_modules
+/dist
+/.svelte-kit
+/.turbo
+/src-tauri/target
+/src-tauri/.fingerprint
+/src-tauri/**/Cargo.lock
+.DS_Store
