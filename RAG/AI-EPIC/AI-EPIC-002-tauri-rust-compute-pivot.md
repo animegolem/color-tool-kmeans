@@ -19,7 +19,7 @@ tags:
 date_created: 2025-09-21
 date_completed:
 kanban-status: Planned
-AI_IMP_spawned: 0
+AI_IMP_spawned: 5
 ---
 
 # AI-EPIC-002-tauri_rust_compute_pivot
@@ -75,4 +75,3 @@ Build a Tauri desktop app with a Rust compute core and a Svelte UI. The Rust cor
 - IMP-018: Packaging for Linux AppImage and Windows portable; app icons.
 - IMP-019: Perf/QA pass with synthetic + real images; benchmark report.
 - IMP-020: macOS DMG follow‑up (optional after parity).
-
