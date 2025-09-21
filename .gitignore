@@ -26,3 +26,7 @@ Thumbs.db
 figma_curl.txt
 *.AppImage
 pkgs/proportions-et-relations-colorees/
+
+# Other
+archive/
+tauri-app/src-tauri/gen/

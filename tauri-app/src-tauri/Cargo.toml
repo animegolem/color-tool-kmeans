@@ -9,14 +9,15 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
 anyhow = "1.0"
-rand = "0.8"
+rand = { version = "0.8", features = ["small_rng"] }
 rayon = "1.8"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
-fast_image_resize = "1.0"
+tauri = { version = "2.0", features = [] }
+tauri-plugin-shell = "2.0"
+tauri-plugin-dialog = "2.0"
 
-[dependencies.tauri]
-version = "1.5"
-features = ["shell-open", "dialog-open"]
+[dev-dependencies]
+tempfile = "3.10"
 
 [build-dependencies]
-tauri-build = { version = "1.5", features = [] }
+tauri-build = { version = "2.0", features = [] }
