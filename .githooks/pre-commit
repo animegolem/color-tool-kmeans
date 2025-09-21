@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR=$(git rev-parse --show-toplevel)
+cd "$ROOT_DIR"
+
+echo "[pre-commit] running checks..."
+
+run_if_npm_script() {
+  local dir=$1
+  local script=$2
+  if [ -f "$dir/package.json" ] && jq -e ".scripts['$script']" < "$dir/package.json" >/dev/null 2>&1; then
+    echo "[pre-commit] $dir -> npm run $script"
+    (cd "$dir" && npm run -s "$script") || {
+      echo "[pre-commit] $script failed in $dir" >&2
+      exit 1
+    }
+  else
+    echo "[pre-commit] $dir -> no $script script; skipping"
+  fi
+}
+
+# JS/TS formatting & lint (if available)
+run_if_npm_script electron-app format:check || true
+run_if_npm_script electron-app lint || true
+
+# Future tauri-app workspace
+if [ -d tauri-app ]; then
+  run_if_npm_script tauri-app format:check || true
+  run_if_npm_script tauri-app lint || true
+fi
+
+# Rust checks if present
+if [ -d src-tauri ] || [ -d tauri-app/src-tauri ]; then
+  echo "[pre-commit] rust fmt/clippy"
+  (cd ${ROOT_DIR}/tauri-app/src-tauri 2>/dev/null || cd ${ROOT_DIR}/src-tauri 2>/dev/null || true; \
+    command -v cargo >/dev/null 2>&1 && {
+      cargo fmt --all -- --check || exit 1
+      cargo clippy --workspace -- -D warnings || exit 1
+    } || echo "[pre-commit] cargo not found; skipping rust checks")
+fi
+
+# LOC warning
+bash scripts/loc-check.sh || true
+
+echo "[pre-commit] done"

@@ -15,6 +15,11 @@
 - New app (once present): `cd electron-app && npm ci && npm start`.
 - Packaging (new app): `npm run build` → platform artifacts. Node: 18.20.8.
 
+## CI/DI & Git Hooks
+- Enable hooks once: `git config core.hooksPath .githooks`.
+- Pre‑commit runs format/lint if defined (per workspace) and a LOC warning (default 350 lines/file). It never edits code.
+- CI (GitHub Actions) runs tests and a strict LOC check. To intentionally exceed the limit, include `[loc-bypass]` in the commit message or set `LOC_BYPASS=1` in the workflow step.
+
 ## Coding Style & Naming Conventions
 - Language: TypeScript/JavaScript, 2‑space indent, semicolons, single quotes.
 - Names: functions `camelCase`, classes `PascalCase`, constants `UPPER_SNAKE`, files `kebab-case.ts`.

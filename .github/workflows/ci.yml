@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: LOC enforcement
+        run: node scripts/ci/loc-enforce.js
+        env:
+          LOC_MAX: 350
+
+      - name: Electron app tests
+        if: ${{ hashFiles('electron-app/package.json') != '' }}
+        run: |
+          cd electron-app
+          npm test
+
+      - name: Rust fmt/clippy
+        if: ${{ hashFiles('src-tauri/Cargo.toml') != '' || hashFiles('tauri-app/src-tauri/Cargo.toml') != '' }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y libgtk-3-dev webkit2gtk-4.1 libayatana-appindicator3-dev librsvg2-dev || true
+          rustup update stable
+          (cd tauri-app/src-tauri 2>/dev/null || cd src-tauri 2>/dev/null; cargo fmt --all -- --check && cargo clippy --workspace -- -D warnings)
+
