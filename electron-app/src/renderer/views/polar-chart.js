@@ -1,5 +1,6 @@
 import { AxisType, defaultChartOptions, normalizeAxisType, validateClusters } from '../../shared/types.js';
 import { clearCanvas, drawCircle, computeContrastStroke } from './canvas-utils.js';
+import { svgToPngBlob } from './exporters.js';
 
 const DEG_TO_RAD = Math.PI / 180;
 
@@ -136,17 +137,6 @@ export class PolarChart {
     }
   }
 
-  toPNG(scale = 1) {
-    if (typeof OffscreenCanvas === 'undefined') {
-      throw new Error('OffscreenCanvas is not available in this environment');
-    }
-    const canvas = new OffscreenCanvas(this.width * scale, this.height * scale);
-    const ctx = canvas.getContext('2d');
-    ctx.scale(scale, scale);
-    this.render(ctx);
-    return canvas.convertToBlob({ type: 'image/png' });
-  }
-
   toSVG() {
     const opts = this.options;
     const svgParts = [];
@@ -173,6 +163,21 @@ export class PolarChart {
 
     svgParts.push(`</svg>`);
     return svgParts.join('');
+  }
+
+  toPNG(scale = 1) {
+    return svgToPngBlob(this.toSVG(), this.width, this.height, scale);
+  }
+
+  exportAs({ format = 'svg', scale = 1 } = {}) {
+    const normalized = String(format).toLowerCase();
+    if (normalized === 'svg') {
+      return this.toSVG();
+    }
+    if (normalized === 'png') {
+      return this.toPNG(scale);
+    }
+    throw new Error(`Unsupported export format: ${format}`);
   }
 
   getLayout() {

@@ -13,6 +13,50 @@ function makeCluster(hue, share, count, rgb) {
   };
 }
 
+async function withFakeCanvas(callback) {
+  const originalCanvas = globalThis.OffscreenCanvas;
+  const originalCreateImageBitmap = globalThis.createImageBitmap;
+  const recorded = {};
+  class FakeCanvas {
+    constructor(width, height) {
+      recorded.width = width;
+      recorded.height = height;
+      this.ctx = {
+        scale: (x, y) => {
+          recorded.scaleX = x;
+          recorded.scaleY = y;
+        },
+        drawImage: () => {
+          recorded.drawImageCalled = true;
+        }
+      };
+    }
+
+    getContext() {
+      return this.ctx;
+    }
+
+    convertToBlob(options = { type: 'image/png' }) {
+      recorded.convertType = options.type;
+      return Promise.resolve(new Blob([''], { type: options.type }));
+    }
+  }
+
+  globalThis.OffscreenCanvas = FakeCanvas;
+  globalThis.createImageBitmap = async (blob) => {
+    recorded.bitmapType = blob.type;
+    return {};
+  };
+
+  try {
+    const value = await callback(recorded);
+    return { value, recorded };
+  } finally {
+    globalThis.OffscreenCanvas = originalCanvas;
+    globalThis.createImageBitmap = originalCreateImageBitmap;
+  }
+}
+
 test('PaletteBar sorts by share descending by default', () => {
   const bar = new PaletteBar();
   const clusters = [
@@ -50,8 +94,29 @@ test('PaletteBar toSVG has no background and uses Fira Sans', () => {
   assert.ok(!svg.includes('background'));
 });
 
-test('PaletteBar toPNG throws without OffscreenCanvas', () => {
+test('PaletteBar toPNG throws without OffscreenCanvas', async () => {
   const bar = new PaletteBar();
   bar.setData([makeCluster(120, 0.2, 10, { r: 30, g: 200, b: 30 })]);
-  assert.throws(() => bar.toPNG(), /OffscreenCanvas/);
+  await assert.rejects(bar.toPNG(), /OffscreenCanvas/);
+});
+
+test('PaletteBar toPNG renders via OffscreenCanvas when available', async () => {
+  const bar = new PaletteBar();
+  bar.setData([makeCluster(60, 0.4, 20, { r: 230, g: 180, b: 60 })]);
+  const { value, recorded } = await withFakeCanvas(() => bar.toPNG(3));
+  assert.ok(value instanceof Blob);
+  assert.equal(recorded.width, bar.width * 3);
+  assert.equal(recorded.height, bar.height * 3);
+  assert.equal(recorded.scaleX, 3);
+  assert.equal(recorded.bitmapType, 'image/svg+xml');
+  assert.equal(recorded.convertType, 'image/png');
+});
+
+test('PaletteBar exportAs respects format', async () => {
+  const bar = new PaletteBar();
+  bar.setData([makeCluster(200, 0.5, 15, { r: 60, g: 90, b: 220 })]);
+  const svg = bar.toSVG();
+  assert.equal(bar.exportAs({ format: 'svg' }), svg);
+  await assert.rejects(bar.exportAs({ format: 'png' }), /OffscreenCanvas/);
+  assert.throws(() => bar.exportAs({ format: 'gif' }), /Unsupported export format/);
 });

@@ -21,7 +21,7 @@ tags:
 date_created: 2025-09-20
 date_completed:
 kanban-status: Planned
-AI_IMP_spawned: 4
+AI_IMP_spawned: 5
 ---
 
 # AI-EPIC-001-electron_port_color_abstract_kmeans
@@ -93,7 +93,7 @@ If JS performance is insufficient for extreme cases, replace the worker’s core
 - AI-IMP-002: Polar chart renderer (canvas) with axes/labels/stroke. See RAG/AI-IMP/AI-IMP-002-polar-chart-renderer.md
 - AI-IMP-003: Palette bar graph with sorting + interactions. See RAG/AI-IMP/AI-IMP-003-palette-bar-graph.md
 - AI-IMP-004: CSV export (schema and generation) + copy helpers. See RAG/AI-IMP/AI-IMP-004-palette-csv-export.md
-- AI-IMP-005: PNG/SVG export for charts (scaling, DPR, fonts).
+- AI-IMP-005: PNG/SVG export for charts (scaling, DPR, fonts). See RAG/AI-IMP/AI-IMP-005-png-svg-exports.md
 - AI-IMP-006: Overview composite export (layout + rendering pipeline).
 - AI-IMP-007: Electron shell (menus, dialogs, drag‑drop, IPC, prefs via electron‑store).
 - AI-IMP-008: Packaging for Linux AppImage and Windows portable.

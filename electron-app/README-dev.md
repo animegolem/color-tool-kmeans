@@ -21,5 +21,10 @@
 
 Warm-starting subsequent runs with unchanged stride/minLum/space typically halves recompute time in manual tests. Further optimization (mini-batch updates, SIMD) earmarked for AI-IMP-009.
 
+## Renderer Exports
+- `PolarChart` now exposes `toSVG()`, `toPNG(scale)` (requires `OffscreenCanvas`), and `exportAs({format, scale})`. SVG embeds Fira Sans and axis labels; PNG path defers to `svgToPngBlob` for DPR-aware rendering.
+- `PaletteBar` mirrors the API (`toSVG`, `toPNG`, `exportAs`) producing background-free outputs. Both components reuse the same `svgToPngBlob` helper in `views/exporters.js`.
+- Tests mock `svgToPngBlob` to avoid OffscreenCanvas requirements under Node; expect runtime PNG conversions to occur only inside the Electron renderer.
+
 ## Testing
 - `npm test` runs Node built-in tests covering colorspace roundtrips, k-means behavior (including cancellation), and pipeline integration on synthetic image data.

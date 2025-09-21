@@ -12,6 +12,50 @@ function makeCluster({ hue, sat, val, share, rgb, count }) {
   };
 }
 
+async function withFakeCanvas(callback) {
+  const originalCanvas = globalThis.OffscreenCanvas;
+  const originalCreateImageBitmap = globalThis.createImageBitmap;
+  const recorded = {};
+  class FakeCanvas {
+    constructor(width, height) {
+      recorded.width = width;
+      recorded.height = height;
+      this.ctx = {
+        scale: (x, y) => {
+          recorded.scaleX = x;
+          recorded.scaleY = y;
+        },
+        drawImage: () => {
+          recorded.drawImageCalled = true;
+        }
+      };
+    }
+
+    getContext() {
+      return this.ctx;
+    }
+
+    convertToBlob(options = { type: 'image/png' }) {
+      recorded.convertType = options.type;
+      return Promise.resolve(new Blob([''], { type: options.type }));
+    }
+  }
+
+  globalThis.OffscreenCanvas = FakeCanvas;
+  globalThis.createImageBitmap = async (blob) => {
+    recorded.bitmapType = blob.type;
+    return {};
+  };
+
+  try {
+    const value = await callback(recorded);
+    return { value, recorded };
+  } finally {
+    globalThis.OffscreenCanvas = originalCanvas;
+    globalThis.createImageBitmap = originalCreateImageBitmap;
+  }
+}
+
 test('PolarChart layout respects axis type', () => {
   const clusters = [
     makeCluster({ hue: 0, sat: 1, val: 0.2, share: 0.1, rgb: { r: 255, g: 0, b: 0 }, count: 100 }),
@@ -39,10 +83,35 @@ test('PolarChart toSVG outputs circles', () => {
   assert.ok(svg.includes('Fira Sans'));
 });
 
-test('PolarChart toPNG throws when OffscreenCanvas unavailable', () => {
+test('PolarChart toPNG throws when OffscreenCanvas unavailable', async () => {
   const chart = new PolarChart();
   chart.setData([
     makeCluster({ hue: 220, sat: 0.6, val: 0.4, share: 0.2, rgb: { r: 80, g: 120, b: 200 }, count: 80 })
   ]);
-  assert.throws(() => chart.toPNG(), /OffscreenCanvas/);
+  await assert.rejects(chart.toPNG(), /OffscreenCanvas/);
+});
+
+test('PolarChart toPNG renders via OffscreenCanvas when available', async () => {
+  const chart = new PolarChart();
+  chart.setData([
+    makeCluster({ hue: 45, sat: 0.6, val: 0.8, share: 0.3, rgb: { r: 220, g: 180, b: 120 }, count: 200 })
+  ]);
+  const { value, recorded } = await withFakeCanvas(() => chart.toPNG(2));
+  assert.ok(value instanceof Blob);
+  assert.equal(recorded.width, chart.width * 2);
+  assert.equal(recorded.height, chart.height * 2);
+  assert.equal(recorded.scaleX, 2);
+  assert.equal(recorded.bitmapType, 'image/svg+xml');
+  assert.equal(recorded.convertType, 'image/png');
+});
+
+test('PolarChart exportAs handles formats', async () => {
+  const chart = new PolarChart();
+  chart.setData([
+    makeCluster({ hue: 10, sat: 0.7, val: 0.6, share: 0.4, rgb: { r: 200, g: 100, b: 80 }, count: 100 })
+  ]);
+  const svg = chart.toSVG();
+  assert.equal(chart.exportAs({ format: 'svg' }), svg);
+  await assert.rejects(chart.exportAs({ format: 'png' }), /OffscreenCanvas/);
+  assert.throws(() => chart.exportAs({ format: 'pdf' }), /Unsupported export format/);
 });

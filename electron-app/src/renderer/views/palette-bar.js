@@ -1,6 +1,7 @@
 import { PaletteSortMode, normalizePaletteSort, clusterToPaletteItem } from '../../shared/types.js';
 import { svgDocument, svgRect, svgText, svgGroup } from './svg-utils.js';
 import { computeContrastStroke } from './canvas-utils.js';
+import { svgToPngBlob } from './exporters.js';
 
 const ROW_HEIGHT = 32;
 const SWATCH_WIDTH = 56;
@@ -100,18 +101,18 @@ export class PaletteBar {
   }
 
   toPNG(scale = 1) {
-    if (typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined') {
-      throw new Error('OffscreenCanvas is not available in this environment');
+    return svgToPngBlob(this.toSVG(), this.width, this.height, scale);
+  }
+
+  exportAs({ format = 'svg', scale = 1 } = {}) {
+    const normalized = String(format).toLowerCase();
+    if (normalized === 'svg') {
+      return this.toSVG();
     }
-    const svg = this.toSVG();
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
-    const canvas = new OffscreenCanvas(this.width * scale, this.height * scale);
-    const ctx = canvas.getContext('2d');
-    return createImageBitmap(blob).then((bitmap) => {
-      ctx.scale(scale, scale);
-      ctx.drawImage(bitmap, 0, 0);
-      return canvas.convertToBlob({ type: 'image/png' });
-    });
+    if (normalized === 'png') {
+      return this.toPNG(scale);
+    }
+    throw new Error(`Unsupported export format: ${format}`);
   }
 
   getRows() {
