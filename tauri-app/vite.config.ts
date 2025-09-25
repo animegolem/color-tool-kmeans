@@ -6,5 +6,11 @@ export default defineConfig(() => ({
   server: {
     port: 5175,
     strictPort: true
+  },
+  optimizeDeps: {
+    exclude: ['@tauri-apps/api']
+  },
+  build: {
+    target: 'esnext'
   }
 }));
