@@ -10,6 +10,7 @@
   const title = $derived(props.title ?? null);
   const dismissable = $derived(props.dismissable ?? false);
   const onDismiss = $derived(props.onDismiss);
+  const slots = $slots();
 </script>
 
 <div class:visible={visible()} class="overlay-root">
@@ -17,15 +18,15 @@
     {#if title()}
       <h3 style="margin-top:0">{title()}</h3>
     {/if}
-    <slot />
+    {@render slots.default?.()}
     {#if dismissable()}
       <div class="overlay-actions" style="margin-top:16px">
         <button class="close-btn" onclick={() => onDismiss()?.()}>Close</button>
       </div>
     {/if}
   </div>
-  <slot name="backdrop" />
-  <slot name="decoration" />
+  {@render slots.backdrop?.()}
+  {@render slots.decoration?.()}
 </div>
 
 <style>

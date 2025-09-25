@@ -5,7 +5,7 @@ export function isTauri(): boolean {
 
 export async function openFileDialog(): Promise<string | null> {
   if (isTauri()) {
-    const { open } = await import('@tauri-apps/api/dialog');
+    const { open } = await import('@tauri-apps/plugin-dialog');
     const selection = await open({ multiple: false, title: 'Select image' });
     if (typeof selection === 'string') return selection;
     if (Array.isArray(selection) && selection.length > 0) return selection[0];
@@ -102,6 +102,6 @@ export async function invokeAnalyzeImage(
     });
   }
 
-  const { invoke } = await import('@tauri-apps/api/tauri');
+  const { invoke } = await import('@tauri-apps/api/core');
   return invoke<AnalyzeImageResponse>('analyze_image', payload);
 }
