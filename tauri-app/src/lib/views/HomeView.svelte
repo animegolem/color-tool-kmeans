@@ -1,11 +1,37 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { selectedFile, params, setFile, clearFile } from '../stores/ui';
-  import { openFileDialog, isTauri } from '../tauri';
+  import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
+  import FadeOverlay from '../components/FadeOverlay.svelte';
+  import type { AnalysisParams } from '../stores/ui';
+  import {
+    selectedFile,
+    params,
+    setFile,
+    clearFile,
+    analysisState,
+    analysisResult,
+    analysisError,
+    topClusters,
+    setAnalysisPending,
+    setAnalysisSuccess,
+    setAnalysisError,
+    clearAnalysisError
+  } from '../stores/ui';
+  import { openFileDialog, isTauri, invokeAnalyzeImage } from '../tauri';
 
-  let dragging = false;
+  const ANALYZE_DEBOUNCE_MS = 200;
+  const SPINNER_THRESHOLD_MS = 150;
+
+  let dragging = false; // dropzone highlight
+  let draggingWindow = false; // full-window overlay
   let dropRef: HTMLElement;
+  let errorMessage: string | null = null;
+  let showSpinner = false;
+
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let spinnerTimer: ReturnType<typeof setTimeout> | null = null;
+  let currentToken = 0;
+  let lastRequestKey: string | null = null;
 
   async function chooseFile() {
     const path = await openFileDialog();
@@ -29,9 +55,13 @@
   function handleDrop(event: DragEvent) {
     event.preventDefault();
     dragging = false;
+    draggingWindow = false;
     const files = event.dataTransfer?.files;
     if (!files || files.length === 0) return;
     const file = files[0];
+    if (files.length > 1) {
+      errorMessage = 'Multiple files dropped — using the first file; others skipped.';
+    }
     const path = (file as unknown as { path?: string }).path ?? file.name;
     const name = file.name ?? path;
     setFile(path, name);
@@ -39,13 +69,135 @@
 
   function clearSelection() {
     clearFile();
+    cancelPending();
+  }
+
+  function cancelPending() {
+    currentToken += 1; // invalidate inflight
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
+    if (spinnerTimer) {
+      clearTimeout(spinnerTimer);
+      spinnerTimer = null;
+    }
+    showSpinner = false;
+    lastRequestKey = null;
+  }
+
+  function scheduleAnalysisWith(file: { path: string }, p: AnalysisParams) {
+    const keyObj = {
+      path: file.path,
+      clusters: p.clusters,
+      stride: p.stride,
+      minLum: p.minLum,
+      space: p.colorSpace,
+      tol: 1e-3,
+      maxIter: 40,
+      seed: 1,
+      maxSamples: 300_000
+    };
+    const key = JSON.stringify(keyObj);
+    if (key === lastRequestKey && get(analysisState) === 'ready') {
+      return;
+    }
+    lastRequestKey = key;
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    const snapshot: AnalysisParams = { ...p };
+    debounceTimer = setTimeout(() => runAnalysis(file.path, snapshot), ANALYZE_DEBOUNCE_MS);
+  }
+
+  async function runAnalysis(path: string, p: AnalysisParams) {
+    currentToken += 1;
+    const token = currentToken;
+    setAnalysisPending();
+    showSpinner = false;
+    if (spinnerTimer) {
+      clearTimeout(spinnerTimer);
+    }
+    spinnerTimer = setTimeout(() => {
+      if (token === currentToken && get(analysisState) === 'pending') {
+        showSpinner = true;
+      }
+    }, SPINNER_THRESHOLD_MS);
+
+    try {
+      const response = await invokeAnalyzeImage({
+        path,
+        clusters: p.clusters,
+        stride: p.stride,
+        minLum: p.minLum,
+        colorSpace: p.colorSpace,
+        tol: 1e-3,
+        maxIter: 40,
+        seed: 1,
+        maxSamples: 300_000
+      });
+      if (token !== currentToken) {
+        return;
+      }
+      setAnalysisSuccess(response);
+    } catch (err) {
+      if (token !== currentToken) {
+        return;
+      }
+      const message = err instanceof Error ? err.message : String(err);
+      setAnalysisError(message);
+    } finally {
+      if (token === currentToken) {
+        if (spinnerTimer) {
+          clearTimeout(spinnerTimer);
+          spinnerTimer = null;
+        }
+        showSpinner = false;
+      }
+    }
+  }
+
+  function retryAnalysis() {
+    clearAnalysisError();
+    const file = get(selectedFile);
+    if (file) {
+      scheduleAnalysisWith(file, get(params));
+    }
+  }
+
+  function dismissBanner() {
+    errorMessage = null;
   }
 
   onMount(() => {
     if (!isTauri()) {
-      console.info('[home] Running without Tauri backend; drag/drop limited to browser capabilities.');
+      console.info('[home] Running without Tauri backend; using mock analyze_image responses.');
     }
+    const onDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      draggingWindow = true;
+    };
+    const onDragEnd = () => {
+      draggingWindow = false;
+      dragging = false;
+    };
+    window.addEventListener('dragenter', onDragEnter);
+    window.addEventListener('dragleave', onDragEnd);
+    window.addEventListener('drop', onDragEnd);
+    return () => {
+      window.removeEventListener('dragenter', onDragEnter);
+      window.removeEventListener('dragleave', onDragEnd);
+      window.removeEventListener('drop', onDragEnd);
+    };
   });
+
+  onDestroy(() => {
+    cancelPending();
+  });
+
+  $: if ($selectedFile) {
+    scheduleAnalysisWith($selectedFile, $params);
+  }
 </script>
 
 <section class="home">
@@ -71,6 +223,39 @@
     </div>
   </div>
 
+  <!-- Full-window drag overlay -->
+  <FadeOverlay visible={draggingWindow} title={null}>
+    <div style="display:grid;place-items:center;gap:8px;min-width:280px">
+      <div class="spinner" aria-hidden="true" style="display:none"></div>
+      <div style="font-size:20px;font-weight:500">Drop Anywhere</div>
+      <div style="font-size:12px;opacity:.8">PNG · JPEG · WebP</div>
+    </div>
+  </FadeOverlay>
+
+  <!-- Loading overlay -->
+  <FadeOverlay visible={$analysisState === 'pending' && showSpinner} title="Analyzing…">
+    <div style="display:grid;place-items:center;gap:12px">
+      <div class="spinner" aria-label="loading" />
+      <div style="font-size:12px;opacity:.8">This may take a moment</div>
+    </div>
+  </FadeOverlay>
+
+  <!-- Drag/drop notice overlay -->
+  <FadeOverlay visible={!!errorMessage} title="Notice" dismissable onDismiss={dismissBanner}>
+    <p style="margin:0">{errorMessage}</p>
+  </FadeOverlay>
+
+  <!-- Analysis error overlay -->
+  <FadeOverlay
+    visible={$analysisState === 'error'}
+    title="Analysis failed"
+    dismissable
+    onDismiss={clearAnalysisError}
+  >
+    <p style="margin:0 0 12px 0">{$analysisError ?? 'Unknown issue while analyzing the image.'}</p>
+    <button class="retry" on:click={retryAnalysis}>Retry</button>
+  </FadeOverlay>
+
   {#if $selectedFile}
     <div class="selection">
       <div>
@@ -83,6 +268,36 @@
     <div class="selection empty">
       <span>No file selected yet.</span>
     </div>
+  {/if}
+
+  {#if $analysisState === 'ready' && $analysisResult}
+    <section class="preview">
+      <header class="preview-header">
+        <h2>Cluster Preview</h2>
+        <span class="metrics">
+          {Math.round($analysisResult.durationMs)} ms · {$analysisResult.iterations} iterations ·
+          {$analysisResult.totalSamples.toLocaleString()} samples
+        </span>
+      </header>
+      <ul class="cluster-list">
+        {#if $topClusters.length === 0}
+          <li class="placeholder">No clusters returned</li>
+        {:else}
+          {#each $topClusters as cluster, idx}
+            <li>
+              <span class="rank">#{idx + 1}</span>
+              <span
+                class="swatch"
+                style={`background: rgb(${cluster.rgb.r}, ${cluster.rgb.g}, ${cluster.rgb.b})`}
+                aria-hidden="true"
+              />
+              <span class="share">{(cluster.share * 100).toFixed(1)}%</span>
+              <span class="count">{cluster.count.toLocaleString()} px</span>
+            </li>
+          {/each}
+        {/if}
+      </ul>
+    </section>
   {/if}
 
   <section class="controls">
@@ -213,5 +428,90 @@
     border-radius: 6px;
     font: inherit;
     background: #fff;
+  }
+
+  .preview {
+    margin-top: 28px;
+    padding: 20px;
+    border-radius: 12px;
+    background: var(--color-surface);
+    box-shadow: var(--elev-1);
+  }
+
+  .preview-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .preview-header h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .preview-header .metrics {
+    font-size: 13px;
+    color: var(--color-ink-muted);
+  }
+
+  .cluster-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 10px;
+  }
+
+  .cluster-list li {
+    display: grid;
+    grid-template-columns: 32px 32px 80px 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border-muted);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.02);
+  }
+
+  .cluster-list li.placeholder {
+    text-align: center;
+    color: var(--color-ink-muted);
+  }
+
+  .rank {
+    font-weight: 600;
+    color: var(--color-ink-strong);
+  }
+
+  .swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  }
+
+  .share {
+    font-weight: 600;
+  }
+
+  .count {
+    justify-self: end;
+    font-size: 13px;
+    color: var(--color-ink-muted);
+  }
+
+  .retry {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border-strong);
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
   }
 </style>
