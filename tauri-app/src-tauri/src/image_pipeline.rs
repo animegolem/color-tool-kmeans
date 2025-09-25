@@ -44,6 +44,7 @@ impl SampleParams {
 #[derive(Debug, Serialize)]
 pub struct SampleResult {
     pub samples: Vec<[u8; 3]>,
+    pub samples_lab: Option<Vec<[f32; 3]>>,
     pub width: u32,
     pub height: u32,
     pub total_pixels: u64,
@@ -61,10 +62,15 @@ pub fn prepare_samples(params: &SampleParams) -> Result<SampleResult> {
     let rgb = to_rgb_with_downscale(img, params.max_dimension);
     let (width, height) = rgb.dimensions();
     let samples = sample_pixels(&rgb, params);
+    let samples_lab = samples
+        .iter()
+        .map(|rgb| crate::color::rgb8_to_lab(*rgb))
+        .collect::<Vec<_>>();
     let sampled_pixels = samples.len();
 
     Ok(SampleResult {
         samples,
+        samples_lab: Some(samples_lab),
         width,
         height,
         total_pixels: width as u64 * height as u64,
@@ -134,10 +140,7 @@ mod tests {
     use tempfile::{Builder, NamedTempFile};
 
     fn write_temp_image(img: &RgbImage) -> NamedTempFile {
-        let file = Builder::new()
-            .suffix(".png")
-            .tempfile()
-            .expect("temp file");
+        let file = Builder::new().suffix(".png").tempfile().expect("temp file");
         img.save(file.path()).expect("save image");
         file
     }

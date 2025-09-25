@@ -1,0 +1,42 @@
+/* Semantic tokens — mapped to Figma snapshot (2025-09-21) */
+:root {
+  /* Figma refs → tokens
+     fill_XLSUB8 (#F5EFE1) → --color-bg-page
+     fill_UNRGKT (#FFFFFF) → --color-surface
+     fill_76DH2Y (#262626) → --color-ink-strong
+     stroke_44UO0T (#000000) → --color-border-strong
+     stroke_07A2AO (#928B8B) → --color-border-muted
+  */
+
+  /* Colors */
+  --color-bg-page: #F5EFE1;
+  --color-surface: #FFFFFF;
+  --color-ink-strong: #262626;
+  --color-ink-muted: #5f5b5b;
+  --color-border-strong: #000000;
+  --color-border-muted: #928B8B;
+
+  /* Controls */
+  --control-track: #d7d0c4;
+  --control-thumb: #6b4f3b;
+  --focus: #2a5adf;
+
+  /* Typography */
+  --font-sans: 'Fira Sans', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --font-mono: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px; /* matches TNUFXK */
+  --text-lg: 20px;
+  --text-xl: 24px;
+
+  /* Spacing & radii */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --radius-1: 4px;
+  --radius-2: 8px;
+  --elev-1: 0 1px 1px rgba(0,0,0,.06);
+}

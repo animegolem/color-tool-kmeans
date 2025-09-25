@@ -1,12 +1,16 @@
 @import './styles/fonts.css';
+@import './lib/styles/tokens.css';
+@import './lib/styles/inputs.css';
 
 :root {
-  --bg: #f8f2e3;
-  --panel: #fff7e8;
-  --ink: #21211f;
-  --accent: #824c32;
-  --line: rgba(33, 33, 32, 0.16);
+  /* Bridge legacy variables to semantic tokens sourced from Figma */
+  --bg: var(--color-bg-page, #f8f2e3);
+  --panel: var(--color-surface, #ffffff);
+  --ink: var(--color-ink-strong, #262626);
+  --line: var(--color-border-muted, rgba(33, 33, 32, 0.16));
   --shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  /* Accent from style guide */
+  --accent: #866051;
 }
 
 * {
@@ -64,6 +68,64 @@ main {
   padding: 32px 56px;
   overflow-y: auto;
 }
+
+/* Scrollbar style (per Style Guide) */
+.view-container::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.view-container::-webkit-scrollbar-thumb {
+  background: #2b2b2b;
+  border-radius: 6px;
+}
+.view-container { /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #2b2b2b transparent;
+}
+
+/* Generic overlay + spinner (used by Home/Exports) */
+.overlay-root {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(217, 217, 217, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease-out;
+}
+.overlay-root.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.overlay-panel {
+  background: rgba(245, 239, 225, 0.8);
+  border: 1px solid #3a3737;
+  border-radius: 10px;
+  padding: 24px 28px;
+  color: var(--ink);
+  max-width: 520px;
+}
+.overlay-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.close-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.spinner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 4px solid rgba(0,0,0,0.12);
+  border-top-color: var(--ink);
+  animation: spin 900ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 h1 {
   font-size: 24px;
