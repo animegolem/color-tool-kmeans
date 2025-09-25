@@ -4,28 +4,26 @@
   import GraphsView from './lib/views/GraphsView.svelte';
   import ExportsView from './lib/views/ExportsView.svelte';
 
-  const navItems = $derived([
+  const navItems = [
     { key: 'home', label: 'Home' },
     { key: 'graphs', label: 'Graphs' },
     { key: 'exports', label: 'Exports' }
-  ] as const);
-
-  const activeView = $derived.by(() => $store(currentView));
+  ] as const;
 </script>
 
 <main>
   <nav class="nav">
     {#each navItems as item}
-      <button class:active={activeView === item.key} onclick={() => setView(item.key)}>
+      <button class:active={$currentView === item.key} onclick={() => setView(item.key)}>
         {item.label}
       </button>
     {/each}
   </nav>
 
   <section class="view-container">
-    {#if activeView === 'home'}
+    {#if $currentView === 'home'}
       <HomeView />
-    {:else if activeView === 'graphs'}
+    {:else if $currentView === 'graphs'}
       <GraphsView />
     {:else}
       <ExportsView />

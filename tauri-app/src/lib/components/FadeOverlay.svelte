@@ -12,15 +12,15 @@
   const onDismiss = $derived(props.onDismiss);
 </script>
 
-<div class:visible={visible} class="overlay-root">
+<div class:visible={visible()} class="overlay-root">
   <div class="overlay-panel">
-    {#if title}
-      <h3 style="margin-top:0">{title}</h3>
+    {#if title()}
+      <h3 style="margin-top:0">{title()}</h3>
     {/if}
     <slot />
-    {#if dismissable}
+    {#if dismissable()}
       <div class="overlay-actions" style="margin-top:16px">
-        <button class="close-btn" onclick={onDismiss}>Close</button>
+        <button class="close-btn" onclick={() => onDismiss()?.()}>Close</button>
       </div>
     {/if}
   </div>

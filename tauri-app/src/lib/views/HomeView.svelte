@@ -44,32 +44,32 @@
     const path = await openFileDialog();
     if (path) {
       const name = path.split(/[\\/]/).pop() ?? path;
-      bannerMessage = null;
+      bannerMessage.set(null);
       setFile(path, name);
     }
   }
 
   function handleDragOver(event: DragEvent) {
     event.preventDefault();
-    dragging = true;
+    dragging.set(true);
   }
 
   function handleDragLeave(event: DragEvent) {
     if (!dropRef) return;
     if (!event.relatedTarget || !dropRef.contains(event.relatedTarget as Node)) {
-      dragging = false;
+      dragging.set(false);
     }
   }
 
   function handleDrop(event: DragEvent) {
     event.preventDefault();
-    dragging = false;
-    draggingWindow = false;
+    dragging.set(false);
+    draggingWindow.set(false);
     const files = event.dataTransfer?.files;
     if (!files || files.length === 0) return;
     const fileHandle = files[0];
     if (files.length > 1) {
-      bannerMessage = 'Multiple files dropped — using the first file; others skipped.';
+      bannerMessage.set('Multiple files dropped — using the first file; others skipped.');
     }
     const path = (fileHandle as unknown as { path?: string }).path ?? fileHandle.name;
     const name = fileHandle.name ?? path;
@@ -91,7 +91,7 @@
       clearTimeout(spinnerTimer);
       spinnerTimer = null;
     }
-    spinnerVisible = false;
+    spinnerVisible.set(false);
     lastRequestKey = null;
   }
 
@@ -108,7 +108,7 @@
       maxSamples: 300_000
     };
     const key = JSON.stringify(keyObj);
-    if (key === lastRequestKey && status === 'ready') {
+    if (key === lastRequestKey && status() === 'ready') {
       return;
     }
     lastRequestKey = key;
@@ -123,13 +123,13 @@
     currentToken += 1;
     const token = currentToken;
     setAnalysisPending();
-    spinnerVisible = false;
+    spinnerVisible.set(false);
     if (spinnerTimer) {
       clearTimeout(spinnerTimer);
     }
     spinnerTimer = setTimeout(() => {
-      if (token === currentToken && status === 'pending') {
-        spinnerVisible = true;
+      if (token === currentToken && status() === 'pending') {
+        spinnerVisible.set(true);
       }
     }, SPINNER_THRESHOLD_MS);
 
@@ -161,20 +161,21 @@
           clearTimeout(spinnerTimer);
           spinnerTimer = null;
         }
-        spinnerVisible = false;
+        spinnerVisible.set(false);
       }
     }
   }
 
   function retryAnalysis() {
     clearAnalysisError();
-    if (file) {
-      scheduleAnalysisWith(file, currentParams);
+    const currentFile = file();
+    if (currentFile) {
+      scheduleAnalysisWith(currentFile, currentParams());
     }
   }
 
   function dismissBanner() {
-    bannerMessage = null;
+    bannerMessage.set(null);
   }
 
   onMount(() => {
@@ -183,11 +184,11 @@
     }
     const onDragEnter = (event: DragEvent) => {
       event.preventDefault();
-      draggingWindow = true;
+      draggingWindow.set(true);
     };
     const onDragEnd = () => {
-      draggingWindow = false;
-      dragging = false;
+      draggingWindow.set(false);
+      dragging.set(false);
     };
     window.addEventListener('dragenter', onDragEnter);
     window.addEventListener('dragleave', onDragEnd);
@@ -204,8 +205,8 @@
   });
 
   $effect(() => {
-    const activeFile = file;
-    const paramSnapshot = currentParams;
+    const activeFile = file();
+    const paramSnapshot = currentParams();
     if (!activeFile) {
       cancelPending();
       return;
@@ -224,7 +225,7 @@
 
   <div
     bind:this={dropRef}
-    class:dragging
+    class:dragging={dragging()}
     class="dropzone"
     ondragover={handleDragOver}
     ondragleave={handleDragLeave}
@@ -238,7 +239,7 @@
   </div>
 
   <!-- Full-window drag overlay -->
-  <FadeOverlay visible={draggingWindow} title={null}>
+  <FadeOverlay visible={draggingWindow()} title={null}>
     <div style="display:grid;place-items:center;gap:8px;min-width:280px">
       <div class="spinner" aria-hidden="true" style="display:none"></div>
       <div style="font-size:20px;font-weight:500">Drop Anywhere</div>
@@ -247,7 +248,7 @@
   </FadeOverlay>
 
   <!-- Loading overlay -->
-  <FadeOverlay visible={status === 'pending' && spinnerVisible} title="Analyzing…">
+  <FadeOverlay visible={status() === 'pending' && spinnerVisible()} title="Analyzing…">
     <div style="display:grid;place-items:center;gap:12px">
       <div class="spinner" aria-label="loading" />
       <div style="font-size:12px;opacity:.8">This may take a moment</div>
@@ -255,26 +256,26 @@
   </FadeOverlay>
 
   <!-- Drag/drop notice overlay -->
-  <FadeOverlay visible={!!bannerMessage} title="Notice" dismissable onDismiss={dismissBanner}>
-    <p style="margin:0">{bannerMessage}</p>
+  <FadeOverlay visible={!!bannerMessage()} title="Notice" dismissable onDismiss={dismissBanner}>
+    <p style="margin:0">{bannerMessage()}</p>
   </FadeOverlay>
 
   <!-- Analysis error overlay -->
   <FadeOverlay
-    visible={status === 'error'}
+    visible={status() === 'error'}
     title="Analysis failed"
     dismissable
     onDismiss={clearAnalysisError}
   >
-    <p style="margin:0 0 12px 0">{analysisErr ?? 'Unknown issue while analyzing the image.'}</p>
+    <p style="margin:0 0 12px 0">{analysisErr() ?? 'Unknown issue while analyzing the image.'}</p>
     <button class="retry" onclick={retryAnalysis}>Retry</button>
   </FadeOverlay>
 
-  {#if file}
+  {#if file()}
     <div class="selection">
       <div>
         <strong>Selected file:</strong>
-        <span>{file.name}</span>
+        <span>{file()?.name}</span>
       </div>
       <button onclick={clearSelection}>Clear</button>
     </div>
@@ -284,20 +285,22 @@
     </div>
   {/if}
 
-  {#if status === 'ready' && result}
+  {#if status() === 'ready' && result()}
     <section class="preview">
       <header class="preview-header">
         <h2>Cluster Preview</h2>
+        {@const preview = result()}
         <span class="metrics">
-          {Math.round(result.durationMs)} ms · {result.iterations} iterations ·
-          {result.totalSamples.toLocaleString()} samples
+          {Math.round(preview.durationMs)} ms · {preview.iterations} iterations ·
+          {preview.totalSamples.toLocaleString()} samples
         </span>
       </header>
       <ul class="cluster-list">
-        {#if clusters.length === 0}
+        {@const previewClusters = clusters()}
+        {#if previewClusters.length === 0}
           <li class="placeholder">No clusters returned</li>
         {:else}
-          {#each clusters as cluster, idx}
+          {#each previewClusters as cluster, idx}
             <li>
               <span class="rank">#{idx + 1}</span>
               <span

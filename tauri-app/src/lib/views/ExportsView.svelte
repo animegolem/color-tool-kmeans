@@ -10,7 +10,7 @@
     <p class="note">Generate PNG/SVG graphs and palette CSV once analysis is available.</p>
   </header>
 
-  {#if file}
+  {#if file()}
     <div class="cards">
       <article>
         <h2>Circle Graph</h2>
