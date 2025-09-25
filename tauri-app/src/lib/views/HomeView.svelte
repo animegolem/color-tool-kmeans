@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
   import FadeOverlay from '../components/FadeOverlay.svelte';
   import type { AnalysisParams } from '../stores/ui';
   import {
@@ -21,10 +22,10 @@
   const ANALYZE_DEBOUNCE_MS = 200;
   const SPINNER_THRESHOLD_MS = 150;
 
-  const dragging = $state(false);
-  const draggingWindow = $state(false);
-  const bannerMessage = $state<string | null>(null);
-  const spinnerVisible = $state(false);
+  let dragging = $state(false);
+  let draggingWindow = $state(false);
+  let bannerMessage = $state<string | null>(null);
+  let spinnerVisible = $state(false);
 
   let dropRef: HTMLElement;
 
@@ -33,43 +34,43 @@
   let currentToken = 0;
   let lastRequestKey: string | null = null;
 
-  const file = $derived.by(() => $store(selectedFile));
-  const currentParams = $derived.by(() => $store(params));
-  const status = $derived.by(() => $store(analysisState));
-  const result = $derived.by(() => $store(analysisResult));
-  const analysisErr = $derived.by(() => $store(analysisError));
-  const clusters = $derived.by(() => $store(topClusters));
+  const file = $derived.by(() => get(selectedFile));
+  const currentParams = $derived.by(() => get(params));
+  const status = $derived.by(() => get(analysisState));
+  const result = $derived.by(() => get(analysisResult));
+  const analysisErr = $derived.by(() => get(analysisError));
+  const clusters = $derived.by(() => get(topClusters));
 
   async function chooseFile() {
     const path = await openFileDialog();
     if (path) {
       const name = path.split(/[\\/]/).pop() ?? path;
-      bannerMessage.set(null);
+      bannerMessage = null;
       setFile(path, name);
     }
   }
 
   function handleDragOver(event: DragEvent) {
     event.preventDefault();
-    dragging.set(true);
+    dragging = true;
   }
 
   function handleDragLeave(event: DragEvent) {
     if (!dropRef) return;
     if (!event.relatedTarget || !dropRef.contains(event.relatedTarget as Node)) {
-      dragging.set(false);
+      dragging = false;
     }
   }
 
   function handleDrop(event: DragEvent) {
     event.preventDefault();
-    dragging.set(false);
-    draggingWindow.set(false);
+    dragging = false;
+    draggingWindow = false;
     const files = event.dataTransfer?.files;
     if (!files || files.length === 0) return;
     const fileHandle = files[0];
     if (files.length > 1) {
-      bannerMessage.set('Multiple files dropped — using the first file; others skipped.');
+      bannerMessage = 'Multiple files dropped — using the first file; others skipped.';
     }
     const path = (fileHandle as unknown as { path?: string }).path ?? fileHandle.name;
     const name = fileHandle.name ?? path;
@@ -91,7 +92,7 @@
       clearTimeout(spinnerTimer);
       spinnerTimer = null;
     }
-    spinnerVisible.set(false);
+    spinnerVisible = false;
     lastRequestKey = null;
   }
 
@@ -108,7 +109,7 @@
       maxSamples: 300_000
     };
     const key = JSON.stringify(keyObj);
-    if (key === lastRequestKey && status() === 'ready') {
+    if (key === lastRequestKey && status === 'ready') {
       return;
     }
     lastRequestKey = key;
@@ -123,13 +124,13 @@
     currentToken += 1;
     const token = currentToken;
     setAnalysisPending();
-    spinnerVisible.set(false);
+    spinnerVisible = false;
     if (spinnerTimer) {
       clearTimeout(spinnerTimer);
     }
     spinnerTimer = setTimeout(() => {
-      if (token === currentToken && status() === 'pending') {
-        spinnerVisible.set(true);
+      if (token === currentToken && status === 'pending') {
+        spinnerVisible = true;
       }
     }, SPINNER_THRESHOLD_MS);
 
@@ -161,21 +162,21 @@
           clearTimeout(spinnerTimer);
           spinnerTimer = null;
         }
-        spinnerVisible.set(false);
+        spinnerVisible = false;
       }
     }
   }
 
   function retryAnalysis() {
     clearAnalysisError();
-    const currentFile = file();
+    const currentFile = file;
     if (currentFile) {
-      scheduleAnalysisWith(currentFile, currentParams());
+      scheduleAnalysisWith(currentFile, currentParams);
     }
   }
 
   function dismissBanner() {
-    bannerMessage.set(null);
+    bannerMessage = null;
   }
 
   onMount(() => {
@@ -184,11 +185,11 @@
     }
     const onDragEnter = (event: DragEvent) => {
       event.preventDefault();
-      draggingWindow.set(true);
+      draggingWindow = true;
     };
     const onDragEnd = () => {
-      draggingWindow.set(false);
-      dragging.set(false);
+      draggingWindow = false;
+      dragging = false;
     };
     window.addEventListener('dragenter', onDragEnter);
     window.addEventListener('dragleave', onDragEnd);
@@ -205,8 +206,8 @@
   });
 
   $effect(() => {
-    const activeFile = file();
-    const paramSnapshot = currentParams();
+    const activeFile = file;
+    const paramSnapshot = currentParams;
     if (!activeFile) {
       cancelPending();
       return;
@@ -225,7 +226,7 @@
 
   <div
     bind:this={dropRef}
-    class:dragging={dragging()}
+    class:dragging={dragging}
     class="dropzone"
     ondragover={handleDragOver}
     ondragleave={handleDragLeave}
@@ -239,7 +240,7 @@
   </div>
 
   <!-- Full-window drag overlay -->
-  <FadeOverlay visible={draggingWindow()} title={null}>
+  <FadeOverlay visible={draggingWindow} title={null}>
     <div style="display:grid;place-items:center;gap:8px;min-width:280px">
       <div class="spinner" aria-hidden="true" style="display:none"></div>
       <div style="font-size:20px;font-weight:500">Drop Anywhere</div>
@@ -248,7 +249,7 @@
   </FadeOverlay>
 
   <!-- Loading overlay -->
-  <FadeOverlay visible={status() === 'pending' && spinnerVisible()} title="Analyzing…">
+  <FadeOverlay visible={status === 'pending' && spinnerVisible} title="Analyzing…">
     <div style="display:grid;place-items:center;gap:12px">
       <div class="spinner" aria-label="loading" />
       <div style="font-size:12px;opacity:.8">This may take a moment</div>
@@ -256,26 +257,26 @@
   </FadeOverlay>
 
   <!-- Drag/drop notice overlay -->
-  <FadeOverlay visible={!!bannerMessage()} title="Notice" dismissable onDismiss={dismissBanner}>
-    <p style="margin:0">{bannerMessage()}</p>
+  <FadeOverlay visible={!!bannerMessage} title="Notice" dismissable onDismiss={dismissBanner}>
+    <p style="margin:0">{bannerMessage}</p>
   </FadeOverlay>
 
   <!-- Analysis error overlay -->
   <FadeOverlay
-    visible={status() === 'error'}
+    visible={status === 'error'}
     title="Analysis failed"
     dismissable
     onDismiss={clearAnalysisError}
   >
-    <p style="margin:0 0 12px 0">{analysisErr() ?? 'Unknown issue while analyzing the image.'}</p>
+    <p style="margin:0 0 12px 0">{analysisErr ?? 'Unknown issue while analyzing the image.'}</p>
     <button class="retry" onclick={retryAnalysis}>Retry</button>
   </FadeOverlay>
 
-  {#if file()}
+  {#if file}
     <div class="selection">
       <div>
         <strong>Selected file:</strong>
-        <span>{file()?.name}</span>
+        <span>{file?.name}</span>
       </div>
       <button onclick={clearSelection}>Clear</button>
     </div>
@@ -285,22 +286,20 @@
     </div>
   {/if}
 
-  {#if status() === 'ready' && result()}
+  {#if status === 'ready' && result}
     <section class="preview">
       <header class="preview-header">
         <h2>Cluster Preview</h2>
-        {@const preview = result()}
         <span class="metrics">
-          {Math.round(preview.durationMs)} ms · {preview.iterations} iterations ·
-          {preview.totalSamples.toLocaleString()} samples
+          {Math.round(result.durationMs)} ms · {result.iterations} iterations ·
+          {result.totalSamples.toLocaleString()} samples
         </span>
       </header>
       <ul class="cluster-list">
-        {@const previewClusters = clusters()}
-        {#if previewClusters.length === 0}
+        {#if clusters.length === 0}
           <li class="placeholder">No clusters returned</li>
         {:else}
-          {#each previewClusters as cluster, idx}
+          {#each clusters as cluster, idx}
             <li>
               <span class="rank">#{idx + 1}</span>
               <span

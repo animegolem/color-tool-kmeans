@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { get } from 'svelte/store';
   import { selectedFile, params } from '../stores/ui';
 
-  const file = $derived.by(() => $store(selectedFile));
-  const analysisParams = $derived.by(() => $store(params));
+  const file = $derived.by(() => get(selectedFile));
+  const analysisParams = $derived.by(() => get(params));
 </script>
 
 <section class="graphs">
@@ -11,11 +12,11 @@
     <p class="note">Polar chart and palette visualizations will appear here once analysis runs.</p>
   </header>
 
-  {#if file()}
+  {#if file}
     <div class="summary">
-      <p><strong>File:</strong> {file()?.name}</p>
-      <p><strong>Clusters:</strong> {analysisParams()?.clusters}</p>
-      <p><strong>Color space:</strong> {analysisParams()?.colorSpace}</p>
+      <p><strong>File:</strong> {file?.name}</p>
+      <p><strong>Clusters:</strong> {analysisParams?.clusters}</p>
+      <p><strong>Color space:</strong> {analysisParams?.colorSpace}</p>
     </div>
   {:else}
     <div class="empty">Select an image to enable charts.</div>

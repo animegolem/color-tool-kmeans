@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { get } from 'svelte/store';
   import { selectedFile } from '../stores/ui';
 
-  const file = $derived.by(() => $store(selectedFile));
+  const file = $derived.by(() => get(selectedFile));
 </script>
 
 <section class="exports">
@@ -10,7 +11,7 @@
     <p class="note">Generate PNG/SVG graphs and palette CSV once analysis is available.</p>
   </header>
 
-  {#if file()}
+  {#if file}
     <div class="cards">
       <article>
         <h2>Circle Graph</h2>
