@@ -1,5 +1,7 @@
 <script lang="ts">
   import { selectedFile } from '../stores/ui';
+
+  const file = $derived.by(() => $store(selectedFile));
 </script>
 
 <section class="exports">
@@ -8,7 +10,7 @@
     <p class="note">Generate PNG/SVG graphs and palette CSV once analysis is available.</p>
   </header>
 
-  {#if $selectedFile}
+  {#if file}
     <div class="cards">
       <article>
         <h2>Circle Graph</h2>

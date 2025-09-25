@@ -6,6 +6,12 @@ cd "$ROOT_DIR"
 
 echo "[pre-commit] running checks..."
 
+if rg --files-with-matches --glob '*.svelte' 'on:[a-zA-Z]' tauri-app/src >/dev/null 2>&1; then
+  echo "[pre-commit] blocked: use runes DOM events (onclick/oninput) instead of on: syntax in Svelte components" >&2
+  echo "Add a TODO if a custom component event is required." >&2
+  exit 1
+fi
+
 run_if_npm_script() {
   local dir=$1
   local script=$2

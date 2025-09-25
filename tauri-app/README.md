@@ -36,3 +36,4 @@ npm run tauri dev
 
 - Drag-and-drop + File→Open are stubbed; the Rust backend returns placeholder messages until analysis is implemented.
 - Fonts must be local. The helper script downloads the open-source Fira Sans variants we use in the UI. If offline, add the WOFF2 files manually to `src/assets/fonts/` and re-run.
+- Renderer now targets Svelte 5 runes. DOM events use `onclick`/`oninput`, and components manage state via `$state`, `$derived`, `$effect`, `$props`. See `src/App.svelte` and `src/lib/views/HomeView.svelte` for reference patterns.

@@ -39,7 +39,7 @@ Deliver a Svelte 5–based UI using semantic tokens sourced from Figma snapshots
 ### Functional Requirements
 - [x] FR-1: Lock design via Figma snapshot + manifest with node IDs, sizes, checksums.
 - [x] FR-2: Provide semantic tokens CSS and adopt in app shell, sliders, scrollbars.
-- [ ] FR-3: Enforce Svelte 5 runes and event syntax; add guard for `on:` DOM events.
+- [x] FR-3: Enforce Svelte 5 runes and event syntax; add guard for `on:` DOM events.
 - [ ] FR-4: Home overlays: drag fade overlay (drop anywhere), thresholded loading spinner (>150 ms), blocking error (decode/unsupported), multi‑file notice.
 - [ ] FR-5: IPC `analyze_image(params)`; unify UI state transitions; debounce rapid param changes.
 - [ ] FR-6: Graphs view placeholder -> real data: polar chart + palette rail; eyedropper active across image/graph; wheel zoom + drag pan.
@@ -56,11 +56,11 @@ Deliver a Svelte 5–based UI using semantic tokens sourced from Figma snapshots
 - Footprint: small binaries; local fonts only; no heavy deps without value.
 
 ## Implementation Breakdown 
-- AI-IMP-021-svelte5-upgrade-ui-runes-and-tooling — planned (this epic).
+- AI-IMP-021-svelte5-upgrade-ui-runes-and-tooling — completed (toolchain + guards in place).
 - AI-IMP-022-figma-snapshot-and-icons-inventory — completed (manifest + inventory + refreshed frames).
 - AI-IMP-023-home-overlays-and-states — in‑progress (drag fade, loading threshold, notice/error overlays).
 - AI-IMP-024-exports-states-wiring — planned (invalid dir, saving, saved, failure).
-- AI-IMP-025-ipc-analyze-image-and-ui-integration — planned (threshold spinner, debounced recompute).
+- AI-IMP-025-ipc-analyze-image-and-ui-integration — completed (IPC + preview wiring).
 - AI-IMP-026-graphs-polar-and-palette-integration — planned (data wiring + basic interactions, eyedropper hook).
 - AI-IMP-027-rust-color-conversions-and-tests — planned (depends on EPIC‑002 IMP‑013; integration here).
 - AI-IMP-028-kmeans-core-or-crate-adoption — planned (compare in‑house vs `kmeans`/`kmeans_colors`; add warm‑start; optional rayon).

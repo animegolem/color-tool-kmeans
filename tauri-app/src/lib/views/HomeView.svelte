@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { get } from 'svelte/store';
   import FadeOverlay from '../components/FadeOverlay.svelte';
   import type { AnalysisParams } from '../stores/ui';
   import {
@@ -22,21 +21,30 @@
   const ANALYZE_DEBOUNCE_MS = 200;
   const SPINNER_THRESHOLD_MS = 150;
 
-  let dragging = false; // dropzone highlight
-  let draggingWindow = false; // full-window overlay
+  const dragging = $state(false);
+  const draggingWindow = $state(false);
+  const bannerMessage = $state<string | null>(null);
+  const spinnerVisible = $state(false);
+
   let dropRef: HTMLElement;
-  let errorMessage: string | null = null;
-  let showSpinner = false;
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let spinnerTimer: ReturnType<typeof setTimeout> | null = null;
   let currentToken = 0;
   let lastRequestKey: string | null = null;
 
+  const file = $derived.by(() => $store(selectedFile));
+  const currentParams = $derived.by(() => $store(params));
+  const status = $derived.by(() => $store(analysisState));
+  const result = $derived.by(() => $store(analysisResult));
+  const analysisErr = $derived.by(() => $store(analysisError));
+  const clusters = $derived.by(() => $store(topClusters));
+
   async function chooseFile() {
     const path = await openFileDialog();
     if (path) {
       const name = path.split(/[\\/]/).pop() ?? path;
+      bannerMessage = null;
       setFile(path, name);
     }
   }
@@ -47,7 +55,8 @@
   }
 
   function handleDragLeave(event: DragEvent) {
-    if (!dropRef.contains(event.relatedTarget as Node)) {
+    if (!dropRef) return;
+    if (!event.relatedTarget || !dropRef.contains(event.relatedTarget as Node)) {
       dragging = false;
     }
   }
@@ -58,12 +67,12 @@
     draggingWindow = false;
     const files = event.dataTransfer?.files;
     if (!files || files.length === 0) return;
-    const file = files[0];
+    const fileHandle = files[0];
     if (files.length > 1) {
-      errorMessage = 'Multiple files dropped — using the first file; others skipped.';
+      bannerMessage = 'Multiple files dropped — using the first file; others skipped.';
     }
-    const path = (file as unknown as { path?: string }).path ?? file.name;
-    const name = file.name ?? path;
+    const path = (fileHandle as unknown as { path?: string }).path ?? fileHandle.name;
+    const name = fileHandle.name ?? path;
     setFile(path, name);
   }
 
@@ -73,7 +82,7 @@
   }
 
   function cancelPending() {
-    currentToken += 1; // invalidate inflight
+    currentToken += 1;
     if (debounceTimer) {
       clearTimeout(debounceTimer);
       debounceTimer = null;
@@ -82,55 +91,55 @@
       clearTimeout(spinnerTimer);
       spinnerTimer = null;
     }
-    showSpinner = false;
+    spinnerVisible = false;
     lastRequestKey = null;
   }
 
-  function scheduleAnalysisWith(file: { path: string }, p: AnalysisParams) {
+  function scheduleAnalysisWith(fileHandle: { path: string }, paramSnapshot: AnalysisParams) {
     const keyObj = {
-      path: file.path,
-      clusters: p.clusters,
-      stride: p.stride,
-      minLum: p.minLum,
-      space: p.colorSpace,
+      path: fileHandle.path,
+      clusters: paramSnapshot.clusters,
+      stride: paramSnapshot.stride,
+      minLum: paramSnapshot.minLum,
+      space: paramSnapshot.colorSpace,
       tol: 1e-3,
       maxIter: 40,
       seed: 1,
       maxSamples: 300_000
     };
     const key = JSON.stringify(keyObj);
-    if (key === lastRequestKey && get(analysisState) === 'ready') {
+    if (key === lastRequestKey && status === 'ready') {
       return;
     }
     lastRequestKey = key;
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
-    const snapshot: AnalysisParams = { ...p };
-    debounceTimer = setTimeout(() => runAnalysis(file.path, snapshot), ANALYZE_DEBOUNCE_MS);
+    const snapshot: AnalysisParams = { ...paramSnapshot };
+    debounceTimer = setTimeout(() => runAnalysis(fileHandle.path, snapshot), ANALYZE_DEBOUNCE_MS);
   }
 
-  async function runAnalysis(path: string, p: AnalysisParams) {
+  async function runAnalysis(path: string, paramSnapshot: AnalysisParams) {
     currentToken += 1;
     const token = currentToken;
     setAnalysisPending();
-    showSpinner = false;
+    spinnerVisible = false;
     if (spinnerTimer) {
       clearTimeout(spinnerTimer);
     }
     spinnerTimer = setTimeout(() => {
-      if (token === currentToken && get(analysisState) === 'pending') {
-        showSpinner = true;
+      if (token === currentToken && status === 'pending') {
+        spinnerVisible = true;
       }
     }, SPINNER_THRESHOLD_MS);
 
     try {
       const response = await invokeAnalyzeImage({
         path,
-        clusters: p.clusters,
-        stride: p.stride,
-        minLum: p.minLum,
-        colorSpace: p.colorSpace,
+        clusters: paramSnapshot.clusters,
+        stride: paramSnapshot.stride,
+        minLum: paramSnapshot.minLum,
+        colorSpace: paramSnapshot.colorSpace,
         tol: 1e-3,
         maxIter: 40,
         seed: 1,
@@ -152,29 +161,28 @@
           clearTimeout(spinnerTimer);
           spinnerTimer = null;
         }
-        showSpinner = false;
+        spinnerVisible = false;
       }
     }
   }
 
   function retryAnalysis() {
     clearAnalysisError();
-    const file = get(selectedFile);
     if (file) {
-      scheduleAnalysisWith(file, get(params));
+      scheduleAnalysisWith(file, currentParams);
     }
   }
 
   function dismissBanner() {
-    errorMessage = null;
+    bannerMessage = null;
   }
 
   onMount(() => {
     if (!isTauri()) {
       console.info('[home] Running without Tauri backend; using mock analyze_image responses.');
     }
-    const onDragEnter = (e: DragEvent) => {
-      e.preventDefault();
+    const onDragEnter = (event: DragEvent) => {
+      event.preventDefault();
       draggingWindow = true;
     };
     const onDragEnd = () => {
@@ -195,9 +203,15 @@
     cancelPending();
   });
 
-  $: if ($selectedFile) {
-    scheduleAnalysisWith($selectedFile, $params);
-  }
+  $effect(() => {
+    const activeFile = file;
+    const paramSnapshot = currentParams;
+    if (!activeFile) {
+      cancelPending();
+      return;
+    }
+    scheduleAnalysisWith(activeFile, paramSnapshot);
+  });
 </script>
 
 <section class="home">
@@ -212,14 +226,14 @@
     bind:this={dropRef}
     class:dragging
     class="dropzone"
-    on:dragover={handleDragOver}
-    on:dragleave={handleDragLeave}
-    on:drop={handleDrop}
+    ondragover={handleDragOver}
+    ondragleave={handleDragLeave}
+    ondrop={handleDrop}
   >
     <div class="inner">
       <p class="title">Drop anywhere</p>
       <p class="note">or</p>
-      <button class="upload" on:click={chooseFile}>Upload</button>
+      <button class="upload" onclick={chooseFile}>Upload</button>
     </div>
   </div>
 
@@ -233,7 +247,7 @@
   </FadeOverlay>
 
   <!-- Loading overlay -->
-  <FadeOverlay visible={$analysisState === 'pending' && showSpinner} title="Analyzing…">
+  <FadeOverlay visible={status === 'pending' && spinnerVisible} title="Analyzing…">
     <div style="display:grid;place-items:center;gap:12px">
       <div class="spinner" aria-label="loading" />
       <div style="font-size:12px;opacity:.8">This may take a moment</div>
@@ -241,28 +255,28 @@
   </FadeOverlay>
 
   <!-- Drag/drop notice overlay -->
-  <FadeOverlay visible={!!errorMessage} title="Notice" dismissable onDismiss={dismissBanner}>
-    <p style="margin:0">{errorMessage}</p>
+  <FadeOverlay visible={!!bannerMessage} title="Notice" dismissable onDismiss={dismissBanner}>
+    <p style="margin:0">{bannerMessage}</p>
   </FadeOverlay>
 
   <!-- Analysis error overlay -->
   <FadeOverlay
-    visible={$analysisState === 'error'}
+    visible={status === 'error'}
     title="Analysis failed"
     dismissable
     onDismiss={clearAnalysisError}
   >
-    <p style="margin:0 0 12px 0">{$analysisError ?? 'Unknown issue while analyzing the image.'}</p>
-    <button class="retry" on:click={retryAnalysis}>Retry</button>
+    <p style="margin:0 0 12px 0">{analysisErr ?? 'Unknown issue while analyzing the image.'}</p>
+    <button class="retry" onclick={retryAnalysis}>Retry</button>
   </FadeOverlay>
 
-  {#if $selectedFile}
+  {#if file}
     <div class="selection">
       <div>
         <strong>Selected file:</strong>
-        <span>{$selectedFile.name}</span>
+        <span>{file.name}</span>
       </div>
-      <button on:click={clearSelection}>Clear</button>
+      <button onclick={clearSelection}>Clear</button>
     </div>
   {:else}
     <div class="selection empty">
@@ -270,20 +284,20 @@
     </div>
   {/if}
 
-  {#if $analysisState === 'ready' && $analysisResult}
+  {#if status === 'ready' && result}
     <section class="preview">
       <header class="preview-header">
         <h2>Cluster Preview</h2>
         <span class="metrics">
-          {Math.round($analysisResult.durationMs)} ms · {$analysisResult.iterations} iterations ·
-          {$analysisResult.totalSamples.toLocaleString()} samples
+          {Math.round(result.durationMs)} ms · {result.iterations} iterations ·
+          {result.totalSamples.toLocaleString()} samples
         </span>
       </header>
       <ul class="cluster-list">
-        {#if $topClusters.length === 0}
+        {#if clusters.length === 0}
           <li class="placeholder">No clusters returned</li>
         {:else}
-          {#each $topClusters as cluster, idx}
+          {#each clusters as cluster, idx}
             <li>
               <span class="rank">#{idx + 1}</span>
               <span

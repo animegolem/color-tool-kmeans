@@ -1,38 +1,31 @@
 <script lang="ts">
   import { currentView, setView } from './lib/stores/ui';
-  import { onMount } from 'svelte';
-  import { tick } from 'svelte';
   import HomeView from './lib/views/HomeView.svelte';
   import GraphsView from './lib/views/GraphsView.svelte';
   import ExportsView from './lib/views/ExportsView.svelte';
 
-  const NAV_ITEMS: { key: typeof $currentView; label: string }[] = [
+  const navItems = $derived([
     { key: 'home', label: 'Home' },
     { key: 'graphs', label: 'Graphs' },
     { key: 'exports', label: 'Exports' }
-  ];
+  ] as const);
 
-  onMount(async () => {
-    await tick();
-  });
+  const activeView = $derived.by(() => $store(currentView));
 </script>
 
 <main>
   <nav class="nav">
-    {#each NAV_ITEMS as item}
-      <button
-        class:active={$currentView === item.key}
-        on:click={() => setView(item.key)}
-      >
+    {#each navItems as item}
+      <button class:active={activeView === item.key} onclick={() => setView(item.key)}>
         {item.label}
       </button>
     {/each}
   </nav>
 
   <section class="view-container">
-    {#if $currentView === 'home'}
+    {#if activeView === 'home'}
       <HomeView />
-    {:else if $currentView === 'graphs'}
+    {:else if activeView === 'graphs'}
       <GraphsView />
     {:else}
       <ExportsView />
