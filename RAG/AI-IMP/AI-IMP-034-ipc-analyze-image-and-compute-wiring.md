@@ -7,6 +7,7 @@ tags:
   - IPC
   - Rust
   - UI
+  - deprecated
 kanban_status: completed
 depends_on: [AI-EPIC-002, AI-EPIC-003, AI-IMP-012, AI-IMP-013, AI-IMP-014, AI-IMP-031, AI-IMP-032, AI-IMP-033]
 confidence_score: 0.9

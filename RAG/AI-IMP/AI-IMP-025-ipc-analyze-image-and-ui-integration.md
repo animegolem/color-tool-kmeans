@@ -7,6 +7,7 @@ tags:
   - UI
   - Tauri
   - Svelte
+  - deprecated
 kanban_status: completed
 depends_on: [AI-EPIC-002, AI-EPIC-003, AI-IMP-012, AI-IMP-013, AI-IMP-014, AI-IMP-034]
 confidence_score: 0.92

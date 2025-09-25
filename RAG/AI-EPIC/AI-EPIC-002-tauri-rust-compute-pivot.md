@@ -17,8 +17,8 @@ tags:
   - Performance
   - Offline
 date_created: 2025-09-21
-date_completed:
-kanban-status: In-Progress
+date_completed: 2025-09-25
+kanban-status: Cancelled
 AI_IMP_spawned: 5
 ---
 

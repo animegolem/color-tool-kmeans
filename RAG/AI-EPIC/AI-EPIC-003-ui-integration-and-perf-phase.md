@@ -10,8 +10,8 @@ tags:
   - Performance
   - Figma
 date_created: 2025-09-22
-date_completed:
-kanban-status: In-Progress
+date_completed: 2025-09-25
+kanban-status: Cancelled
 AI_IMP_spawned: 10
 ---
 
