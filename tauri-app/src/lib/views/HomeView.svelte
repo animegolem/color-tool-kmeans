@@ -231,6 +231,8 @@
     ondragover={handleDragOver}
     ondragleave={handleDragLeave}
     ondrop={handleDrop}
+    role="presentation"
+    aria-label="Image dropzone"
   >
     <div class="inner">
       <p class="title">Drop anywhere</p>
@@ -251,7 +253,7 @@
   <!-- Loading overlay -->
   <FadeOverlay visible={status === 'pending' && spinnerVisible} title="Analyzing…">
     <div style="display:grid;place-items:center;gap:12px">
-      <div class="spinner" aria-label="loading" />
+      <div class="spinner" aria-label="loading"></div>
       <div style="font-size:12px;opacity:.8">This may take a moment</div>
     </div>
   </FadeOverlay>
@@ -306,7 +308,7 @@
                 class="swatch"
                 style={`background: rgb(${cluster.rgb.r}, ${cluster.rgb.g}, ${cluster.rgb.b})`}
                 aria-hidden="true"
-              />
+              ></span>
               <span class="share">{(cluster.share * 100).toFixed(1)}%</span>
               <span class="count">{cluster.count.toLocaleString()} px</span>
             </li>
