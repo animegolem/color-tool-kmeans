@@ -27,7 +27,9 @@ impl ColorSpace {
             "YUV" => Ok(Self::Yuv),
             "CIELAB" | "LAB" => Ok(Self::Cielab),
             "CIELUV" | "LUV" => Ok(Self::Cieluv),
-            other => Err(format!("Unsupported color space '{other}' (RGB|HSL|YUV|CIELAB|CIELUV)")),
+            other => Err(format!(
+                "Unsupported color space '{other}' (RGB|HSL|YUV|CIELAB|CIELUV)"
+            )),
         }
     }
 }

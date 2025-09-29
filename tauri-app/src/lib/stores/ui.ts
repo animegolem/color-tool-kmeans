@@ -1,4 +1,5 @@
 import { writable, derived } from 'svelte/store';
+import type { ImageDataset } from '../compute/image-loader';
 
 export type View = 'home' | 'graphs' | 'exports';
 
@@ -13,7 +14,15 @@ export interface AnalysisParams {
 
 export const currentView = writable<View>('home');
 
-export const selectedFile = writable<{ path: string; name: string } | null>(null);
+export interface SelectedImage {
+  id: string;
+  name: string;
+  path?: string;
+  size: number;
+  dataset: ImageDataset;
+}
+
+export const selectedFile = writable<SelectedImage | null>(null);
 
 export const params = writable<AnalysisParams>({
   colorSpace: 'HSL',
@@ -84,8 +93,9 @@ export function setView(view: View) {
   currentView.set(view);
 }
 
-export function setFile(path: string, name: string) {
-  selectedFile.set({ path, name });
+export function setFile(image: SelectedImage) {
+  selectedFile.set(image);
+  resetAnalysis();
 }
 
 export function clearFile() {

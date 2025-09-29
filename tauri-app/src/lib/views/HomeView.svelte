@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
   import FadeOverlay from '../components/FadeOverlay.svelte';
-  import type { AnalysisParams } from '../stores/ui';
+  import type { AnalysisParams, SelectedImage } from '../stores/ui';
   import {
     selectedFile,
     params,
@@ -17,7 +17,8 @@
     setAnalysisError,
     clearAnalysisError
   } from '../stores/ui';
-  import { openFileDialog, isTauri, invokeAnalyzeImage } from '../tauri';
+  import { analyzeImage } from '../compute/bridge';
+  import { loadImageDataset } from '../compute/image-loader';
 
   const ANALYZE_DEBOUNCE_MS = 200;
   const SPINNER_THRESHOLD_MS = 150;
@@ -33,6 +34,7 @@
   let spinnerTimer: ReturnType<typeof setTimeout> | null = null;
   let currentToken = 0;
   let lastRequestKey: string | null = null;
+  let loadToken = 0;
 
   const file = $derived.by(() => get(selectedFile));
   const currentParams = $derived.by(() => get(params));
@@ -41,13 +43,23 @@
   const analysisErr = $derived.by(() => get(analysisError));
   const clusters = $derived.by(() => get(topClusters));
 
+  function pickImageFile(): Promise<File | null> {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/png,image/jpeg,image/webp';
+      input.onchange = () => {
+        const file = input.files?.[0] ?? null;
+        resolve(file);
+      };
+      input.click();
+    });
+  }
+
   async function chooseFile() {
-    const path = await openFileDialog();
-    if (path) {
-      const name = path.split(/[\\/]/).pop() ?? path;
-      bannerMessage = null;
-      setFile(path, name);
-    }
+    const selection = await pickImageFile();
+    if (!selection) return;
+    await ingestFile(selection, selection.name);
   }
 
   function handleDragOver(event: DragEvent) {
@@ -73,13 +85,36 @@
       bannerMessage = 'Multiple files dropped — using the first file; others skipped.';
     }
     const path = (fileHandle as unknown as { path?: string }).path ?? fileHandle.name;
-    const name = fileHandle.name ?? path;
-    setFile(path, name);
+    void ingestFile(fileHandle, path);
   }
 
   function clearSelection() {
     clearFile();
     cancelPending();
+  }
+
+  async function ingestFile(blob: File, pathHint?: string) {
+    loadToken += 1;
+    const token = loadToken;
+    cancelPending();
+    try {
+      const dataset = await loadImageDataset(blob);
+      if (token !== loadToken) return;
+      const selected: SelectedImage = {
+        id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+        name: blob.name || pathHint || 'image',
+        path: pathHint,
+        size: blob.size,
+        dataset
+      };
+      bannerMessage = null;
+      setFile(selected);
+    } catch (error) {
+      console.error('[home] Failed to decode image', error);
+      if (token === loadToken) {
+        setAnalysisError('Failed to decode the selected image. Please try another file.');
+      }
+    }
   }
 
   function cancelPending() {
@@ -96,9 +131,9 @@
     lastRequestKey = null;
   }
 
-  function scheduleAnalysisWith(fileHandle: { path: string }, paramSnapshot: AnalysisParams) {
+  function scheduleAnalysisWith(fileHandle: SelectedImage, paramSnapshot: AnalysisParams) {
     const keyObj = {
-      path: fileHandle.path,
+      id: fileHandle.id,
       clusters: paramSnapshot.clusters,
       stride: paramSnapshot.stride,
       minLum: paramSnapshot.minLum,
@@ -117,10 +152,10 @@
       clearTimeout(debounceTimer);
     }
     const snapshot: AnalysisParams = { ...paramSnapshot };
-    debounceTimer = setTimeout(() => runAnalysis(fileHandle.path, snapshot), ANALYZE_DEBOUNCE_MS);
+    debounceTimer = setTimeout(() => runAnalysis(fileHandle, snapshot), ANALYZE_DEBOUNCE_MS);
   }
 
-  async function runAnalysis(path: string, paramSnapshot: AnalysisParams) {
+  async function runAnalysis(image: SelectedImage, paramSnapshot: AnalysisParams) {
     currentToken += 1;
     const token = currentToken;
     setAnalysisPending();
@@ -135,12 +170,8 @@
     }, SPINNER_THRESHOLD_MS);
 
     try {
-      const response = await invokeAnalyzeImage({
-        path,
-        clusters: paramSnapshot.clusters,
-        stride: paramSnapshot.stride,
-        minLum: paramSnapshot.minLum,
-        colorSpace: paramSnapshot.colorSpace,
+      const response = await analyzeImage(image.dataset, {
+        ...paramSnapshot,
         tol: 1e-3,
         maxIter: 40,
         seed: 1,
@@ -149,6 +180,11 @@
       if (token !== currentToken) {
         return;
       }
+      console.info('[home] wasm analysis complete', {
+        clusters: response.clusters.length,
+        durationMs: Math.round(response.durationMs),
+        totalSamples: response.totalSamples
+      });
       setAnalysisSuccess(response);
     } catch (err) {
       if (token !== currentToken) {
@@ -180,9 +216,6 @@
   }
 
   onMount(() => {
-    if (!isTauri()) {
-      console.info('[home] Running without Tauri backend; using mock analyze_image responses.');
-    }
     const onDragEnter = (event: DragEvent) => {
       event.preventDefault();
       draggingWindow = true;
