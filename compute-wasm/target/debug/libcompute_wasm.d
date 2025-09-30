@@ -1,0 +1,1 @@
+/home/golem/git/color-abstract-via-multidim-KMeans/compute-wasm/target/debug/libcompute_wasm.so: /home/golem/git/color-abstract-via-multidim-KMeans/compute-wasm/src/color.rs /home/golem/git/color-abstract-via-multidim-KMeans/compute-wasm/src/kmeans.rs /home/golem/git/color-abstract-via-multidim-KMeans/compute-wasm/src/lib.rs

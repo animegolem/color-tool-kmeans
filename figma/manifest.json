@@ -1,0 +1,20 @@
+{
+  "fileKey": "My07xcwuyW4N03cbwWHjM5",
+  "snapshot_date": "2025-09-22",
+  "frames": [
+    { "name": "home_onboot", "nodeId": "2:5054", "file": "home_onboot.png", "pixelSize": "1614x1551", "sha256": "987aa1a34f1b5913cad74a8d9d9005d95c5f784e8eb1d202cba43ab173f9c661" },
+    { "name": "home_dragdrop", "nodeId": "2:4910", "file": "home_dragdrop.png", "pixelSize": "1614x1550", "sha256": "71da27ab527b222676bd83bf33a20aafcd68bf41b705ae06524091b5170871dc" },
+    { "name": "home_loading", "nodeId": "26:170", "file": "home_loading.png", "pixelSize": "1614x1550", "sha256": "c483d9d69234250596456bfe9cf21b3ac4a9d6d6d491cadf64849fbb86a2d1e7" },
+    { "name": "home_loaded", "nodeId": "2:4664", "file": "home_loaded.png", "pixelSize": "1614x1550", "sha256": "ddca1a9591315aafbb5d89a8ad61b95b8d6ec561afe144639b41eda7108b5c1f" },
+    { "name": "home_graph_zoom", "nodeId": "26:302", "file": "home_graph_zoom.png", "pixelSize": "1614x1550", "sha256": "8a774d3e2f695b2c54af4049a9993961a714c4bc434cf5bb784a204ea22640ab" },
+    { "name": "graphs", "nodeId": "3:298", "file": "graphs.png", "pixelSize": "1614x1550", "sha256": "95c4465ded046eb83874d7b3b22a90beece4b50c5fdb9269fabec038c80a5386" },
+    { "name": "exports_invalid_directory", "nodeId": "34:619", "file": "exports_invalid_directory.png", "pixelSize": "1612x1550", "sha256": "420c117f98a892c11c16509bcfdff3befb24d4c571e75519744da085156cf8af" },
+    { "name": "exports_saving", "nodeId": "34:418", "file": "exports_saving.png", "pixelSize": "1612x1550", "sha256": "55555c404afa67d1f05e39834342e15e1bd3f57e77ad0940b50dc97539bd13cc" },
+    { "name": "exports_saved_confirmation", "nodeId": "34:745", "file": "exports_saved_confirmation.png", "pixelSize": "1612x1550", "sha256": "22dedb106641b5c2f0c3ce5944467d8da79507a28b17536599869095a6e53532" },
+    { "name": "exports_write_failure", "nodeId": "34:696", "file": "exports_write_failure.png", "pixelSize": "1612x1550", "sha256": "baa304e19a84ae9ff3716b2b0cf27f6f8bea2d9c48f351a2fec4246161a87860" },
+    { "name": "system_failure", "nodeId": "33:1161", "file": "system_failure.png", "pixelSize": "1614x1550", "sha256": "b78748afab1904dae3e905932db08ff66236ed9198fa4921df74a3f2a2bb61b4" },
+    { "name": "ui_walkthrough", "nodeId": "35:556", "file": "ui-walkthrough.png", "pixelSize": "6324x5305", "sha256": "01bc73ea2fbbf72aefa39dbefd5d108595a60610d306eb0e98f6af6d6990af04" },
+    { "name": "style_guide", "nodeId": "35:470", "file": "style-guide.png", "pixelSize": "6940x4834", "sha256": "4740ad2d39323badf371d903a3d14471c63192581fecfe798d5bea020b259e2f" }
+  ]
+}
+

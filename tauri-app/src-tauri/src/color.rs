@@ -289,6 +289,41 @@ pub fn hue_to_radians(h: f32) -> f32 {
     h.to_radians()
 }
 
+/// Calculate WCAG contrast ratio between two colors using their Lab L* values
+/// Returns ratio in range [1.0, 21.0] where higher is more contrast
+pub fn calculate_contrast_ratio(lab1: [f32; 3], lab2: [f32; 3]) -> f32 {
+    // WCAG formula uses relative luminance (not Lab L*)
+    // Convert Lab back to linear RGB, then calculate relative luminance
+    let rgb1 = lab_to_rgb8(lab1);
+    let rgb2 = lab_to_rgb8(lab2);
+
+    let linear1 = srgb8_to_linear(rgb1);
+    let linear2 = srgb8_to_linear(rgb2);
+
+    // Calculate relative luminance using sRGB coefficients
+    let lum1 = 0.2126 * linear1[0] + 0.7152 * linear1[1] + 0.0722 * linear1[2];
+    let lum2 = 0.2126 * linear2[0] + 0.7152 * linear2[1] + 0.0722 * linear2[2];
+
+    // WCAG contrast ratio formula: (lighter + 0.05) / (darker + 0.05)
+    let lighter = lum1.max(lum2);
+    let darker = lum1.min(lum2);
+    (lighter + 0.05) / (darker + 0.05)
+}
+
+/// Calculate CIE76 Delta E color difference
+/// Returns perceptual distance where 0 = identical, >100 = very different
+pub fn delta_e_cie76(lab1: [f32; 3], lab2: [f32; 3]) -> f32 {
+    let dl = lab1[0] - lab2[0];
+    let da = lab1[1] - lab2[1];
+    let db = lab1[2] - lab2[2];
+    (dl * dl + da * da + db * db).sqrt()
+}
+
+/// Convert RGB to hex string format (#RRGGBB)
+pub fn rgb_to_hex(rgb: [u8; 3]) -> String {
+    format!("#{:02x}{:02x}{:02x}", rgb[0], rgb[1], rgb[2])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -7,11 +7,11 @@ tags:
   - Rust
   - Compute
   - Epic-004
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-EPIC-004, AI-IMP-013, AI-IMP-014, AI-IMP-031, AI-IMP-033]
 confidence_score: 0.85
 created_date: 2025-09-25
-close_date:
+close_date: 2025-09-26
 ---
 
 # AI-IMP-041-wasm-build-of-compute-core
@@ -42,15 +42,15 @@ Port the existing Rust compute core (sampling input provided by the UI, SoA+SIMD
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Create `compute-wasm` crate with `cdylib` target and `wasm-bindgen` dependency.
-- [ ] Implement `#[wasm_bindgen] pub fn analyze_image(bytes: &[u8], params: JsValue) -> JsValue`.
-- [ ] Port/guard color conversions and k-means for `wasm32` (disable wide/SIMD, keep scalar path).
-- [ ] Map RGB sampling contract to expected dataset (respect stride/minLum/seed).
-- [ ] Serialize result `{ clusters[], iterations, durationMs, totalSamples }` with camelCase.
-- [ ] Add `scripts/wasm/build.mjs` to invoke `wasm-pack build --target bundler` and copy artifacts.
-- [ ] Add a small Node/browser harness to call the built module on a fixed sample and log results.
-- [ ] Validate determinism for seeded runs vs native on a tiny fixture (ΔE and counts within tolerance).
-- [ ] Document build and import usage in the ticket and README note.
+- [x] Create `compute-wasm` crate with `cdylib` target and `wasm-bindgen` dependency.
+- [x] Implement `#[wasm_bindgen] pub fn analyze_image(bytes: &[u8], params: JsValue) -> JsValue`.
+- [x] Port/guard color conversions and k-means for `wasm32` (disable wide/SIMD, keep scalar path).
+- [x] Map RGB sampling contract to expected dataset (respect stride/minLum/seed).
+- [x] Serialize result `{ clusters[], iterations, durationMs, totalSamples }` with camelCase.
+- [x] Add `scripts/wasm/build.mjs` to invoke `wasm-pack build --target bundler` and copy artifacts.
+- [x] Add a small Node/browser harness to call the built module on a fixed sample and log results.
+- [x] Validate determinism for seeded runs vs native on a tiny fixture (ΔE and counts within tolerance).
+- [x] Document build and import usage in the ticket and README note.
 
 ### Acceptance Criteria
 **Scenario:** Wasm module loads and computes clusters
@@ -60,5 +60,4 @@ THEN it resolves with `{ clusters[], iterations, durationMs, totalSamples }`
 AND seeded runs are deterministic on the same host.
 
 ### Issues Encountered
-{LOC|20}
-
+- Initial attempt failed because `wasm-pack` was missing from the PATH; reran after installing (`cargo install wasm-pack`). Build + parity harness now execute with matching wasm/native outputs.

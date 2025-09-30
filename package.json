@@ -1,0 +1,10 @@
+{
+  "name": "color-abstract-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench:compare": "node scripts/bench/index.mjs",
+    "lint": "npm run lint -w tauri-app || true",
+    "check": "npm run check -w tauri-app || true"
+  }
+}

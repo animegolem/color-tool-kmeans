@@ -1,30 +1,51 @@
-# Compute Pipeline Notes
+# Electron Shell Scaffold
 
-## Worker Contract
-- Entry: `processCompute({ id, pixels, width, height, stride, minLum, space, k, maxIter, tol, maxSamples, warmStart, seed })`.
-- Returns `{ id, totalSamples, durationMs, iterations, converged, centroids, counts, clusters[] }` wrapped in worker response.
-- `clusters[]` rows: `{ count, share, centroidSpace(Float32Array), rgb({r,g,b}), hsv(Float32Array) }` sorted by count desc.
-- Warm starts: pass a `Float32Array(k*3)`; reuse across calls when K/space/stride/minLum unchanged.
-- Cancellation: worker checks token via `shouldCancel` and emits `cancelled` result. Renderer should replay latest control change only.
+## Overview
+This package hosts the Electron wrapper for the color abstraction desktop app. It uses `electron-vite` to bundle the main, preload, and renderer processes and `electron-builder` to produce distributable artifacts (Linux AppImage, Windows portable). The renderer is a Svelte 5 app that will be wired to the wasm compute bridge in follow-up tickets.
 
-## Dataset & Sampling
-- RGBA buffers sampled via `buildDatasetFromRgbBuffer(buffer, stride, minLum, maxSamples, seed)`.
-- Applies BT.709 luma filter (`minLum`), stride skipping, and reservoir sampling capped at `maxSamples` (default 300k).
-- Guarantees deterministic sampling via seeded RNG.
+## Prerequisites
+- Node.js ≥ 18.20.8
+- npm ≥ 9 (pnpm/yarn also work if aligned with the repo tooling)
+- `wasm-pack` (only required when working on the wasm compute layer)
 
-## Performance Smoke Tests (4000x3000 synthetic image)
-| K | Stride | maxSamples | Duration (ms) |
-|---|--------|------------|---------------|
-| 10 | 2 | 400k | 262 |
-| 100 | 2 | 400k | 889 |
-| 300 | 2 | 400k | 2,379 |
+Install dependencies:
 
-Warm-starting subsequent runs with unchanged stride/minLum/space typically halves recompute time in manual tests. Further optimization (mini-batch updates, SIMD) earmarked for AI-IMP-009.
+```bash
+cd electron-app
+npm install
+```
 
-## Renderer Exports
-- `PolarChart` now exposes `toSVG()`, `toPNG(scale)` (requires `OffscreenCanvas`), and `exportAs({format, scale})`. SVG embeds Fira Sans and axis labels; PNG path defers to `svgToPngBlob` for DPR-aware rendering.
-- `PaletteBar` mirrors the API (`toSVG`, `toPNG`, `exportAs`) producing background-free outputs. Both components reuse the same `svgToPngBlob` helper in `views/exporters.js`.
-- Tests mock `svgToPngBlob` to avoid OffscreenCanvas requirements under Node; expect runtime PNG conversions to occur only inside the Electron renderer.
+## Development
 
-## Testing
-- `npm test` runs Node built-in tests covering colorspace roundtrips, k-means behavior (including cancellation), and pipeline integration on synthetic image data.
+The dev command compiles main/preload bundles, starts the Svelte renderer with Vite HMR, and launches Electron in dev mode with `contextIsolation` enabled.
+
+```bash
+npm run electron:dev
+```
+
+- Renderer dev server: http://127.0.0.1:5175 (same port enforced in production build)
+- Dev tools: automatically opened; use the **View → Toggle Developer Tools** menu to close
+
+## Production Build
+
+Bundle and package release artifacts:
+
+```bash
+npm run electron:build
+```
+
+Outputs land in `electron-app/release/`:
+- Linux: `.AppImage`
+- Windows: portable `.exe`
+
+The intermediate bundles (`dist/`) are retained for inspection.
+
+## Security Defaults
+- `contextIsolation: true`, `nodeIntegration: false`, no remote modules.
+- Preload exposes only `openFile()` / `saveFile()` via `contextBridge`.
+- CSP is inherited from the generated `index.html`; update before shipping to production.
+- All compute happens in-process; network access remains disabled unless explicitly added.
+
+## Next Steps
+- IMP-043 wires the renderer to the wasm compute bridge (`analyzeImage` contract).
+- IMP-044 adds export surfaces (PNG/SVG/CSV) using Chromium canvas and renderer helpers.

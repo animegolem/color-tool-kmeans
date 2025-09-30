@@ -36,12 +36,12 @@ We need a high‑performance k‑means implementation for 3‑dim vectors with k
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**? 
 </CRITICAL_RULE> 
 
-- [ ] Implement k‑means++ init with seeded RNG.
-- [ ] Implement iterative assign/update with early stop by `tol` or `max_iter`.
-- [ ] Add warm‑start support.
-- [ ] Add mini‑batch option behind a flag.
-- [ ] Unit tests: synthetic clustered datasets converge, counts near ground truth.
-- [ ] Benchmarks on 100k samples @ K=300; record timings.
+- [x] Implement k‑means++ init with seeded RNG.
+- [x] Implement iterative assign/update with early stop by `tol` or `max_iter`.
+- [x] Add warm‑start support.
+- [x] Add mini‑batch option behind a flag.
+- [x] Unit tests: synthetic clustered datasets converge, counts near ground truth.
+- [x] Benchmarks on 100k samples @ K=300; record timings.
 
 ### Acceptance Criteria
 **Scenario: Convergence and timing**
@@ -51,4 +51,6 @@ THEN algorithm converges ≤20 iterations and returns non‑zero counts; benchma
 
 ### Issues Encountered 
 To be filled during implementation.
+
+- Sequential baseline (~9.3 s at K=300) improved to ~5.9 s with rayon parallelization and configurable warm-start/mini-batch, but further optimization is needed to beat the 2.6 s JS target.
 

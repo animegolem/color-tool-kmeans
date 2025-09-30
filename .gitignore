@@ -4,6 +4,8 @@ node_modules/
 
 # Build artifacts
 dist/
+electron-app/dist/
+electron-app/release/
 build/
 out/
 *.asar
@@ -30,3 +32,6 @@ pkgs/proportions-et-relations-colorees/
 # Other
 archive/
 tauri-app/src-tauri/gen/
+bench-assets/
+bench-reports/*
+!bench-reports/README.md

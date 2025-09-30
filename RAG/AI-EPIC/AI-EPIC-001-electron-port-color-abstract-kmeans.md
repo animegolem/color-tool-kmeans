@@ -20,7 +20,7 @@ tags:
   - Performance
 date_created: 2025-09-20
 date_completed:
-kanban-status: Planned
+kanban-status: canceled
 AI_IMP_spawned: 5
 ---
 

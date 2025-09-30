@@ -36,11 +36,11 @@ We must convert between RGB and HSL/YUV/CIELAB/CIELUV accurately and efficiently
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**? 
 </CRITICAL_RULE> 
 
-- [ ] Implement sRGB↔linear helpers; RGB↔XYZ (D65).
-- [ ] Implement RGB↔CIELAB, RGB↔CIELUV with documented formulas.
-- [ ] Implement RGB↔YUV (BT.601) and RGB↔HSL/HSV.
+- [x] Implement sRGB↔linear helpers; RGB↔XYZ (D65).
+- [x] Implement RGB↔CIELAB, RGB↔CIELUV with documented formulas.
+- [x] Implement RGB↔YUV (BT.601) and RGB↔HSL/HSV.
 - [ ] Add benches for hot paths (optional) and property tests for ranges.
-- [ ] Document assumptions (white point, matrix, gamma).
+- [x] Document assumptions (white point, matrix, gamma).
 
 ### Acceptance Criteria
 **Scenario: Round‑trip accuracy**
@@ -51,3 +51,4 @@ THEN per‑channel error ≤2 for typical colors; ≤4 for extremes.
 ### Issues Encountered 
 To be filled during implementation.
 
+- Sequential baseline k-means with the new conversions is ~9.3 s for K=300 on a synthetic 120k‑sample dataset (no parallelization or warm start yet), so we must optimize further (rayon, warm starts, crate eval) to beat the prior ~2.6 s JS run.

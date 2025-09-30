@@ -6,11 +6,11 @@ tags:
   - Benchmark
   - Wasm
   - Epic-004
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-IMP-041]
 confidence_score: 0.8
 created_date: 2025-09-25
-close_date:
+close_date: 2025-09-26
 ---
 
 # AI-IMP-046-bench-wasm-variant
@@ -35,9 +35,9 @@ Add a minimal bench to compare wasm compute vs native on small fixtures to monit
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Implement wasm bench runner; load the module and run on sample datasets.
-- [ ] Compare against native JSON outputs for ΔE and iterations.
-- [ ] Log a short markdown summary.
+- [x] Implement wasm bench runner; load the module and run on sample datasets.
+- [x] Compare against native JSON outputs for ΔE and iterations.
+- [x] Log a short markdown summary.
 
 ### Acceptance Criteria
 **Scenario:** Wasm vs native summary appears
@@ -46,5 +46,4 @@ WHEN the script runs
 THEN it prints duration comparison and parity metrics and writes a JSON file under `bench-reports/`.
 
 ### Issues Encountered
-{LOC|20}
-
+- Wasm bench reuses the sampled RGB datasets (`*.rgb32`); reconstructed them as `Uint8Array` rows before invoking `analyze_image`. The wasm build expects a full image buffer, so we treat sampled pixels as a 1×N image. Timings confirm wasm is significantly slower than native (lack of SIMD/threads) but iterations/samples align. Future work: richer fidelity metrics if desired.

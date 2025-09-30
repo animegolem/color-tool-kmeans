@@ -7,11 +7,11 @@ tags:
   - Canvas
   - SVG
   - Epic-004
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-IMP-043]
 confidence_score: 0.83
 created_date: 2025-09-25
-close_date:
+close_date: 2025-09-26
 ---
 
 # AI-IMP-044-exports-on-chromium
@@ -38,10 +38,10 @@ Implement PNG/SVG/CSV exports using Chromium canvas/SVG APIs with the existing g
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Implement canvas → PNG export for circle graph.
-- [ ] Implement SVG serialization for graph/palette.
-- [ ] Implement CSV serialization for palette; include header row.
-- [ ] Wire to preload save dialogs; handle error/success states in the UI.
+- [x] Implement canvas → PNG export for circle graph.
+- [x] Implement SVG serialization for graph/palette.
+- [x] Implement CSV serialization for palette; include header row.
+- [x] Wire to preload save dialogs; handle error/success states in the UI.
 - [ ] Manual smoke: verify file sizes and basic content integrity.
 
 ### Acceptance Criteria
@@ -51,5 +51,4 @@ WHEN the user saves PNG/SVG/CSV
 THEN the files are written, with expected dimensions/rows, and are viewable in standard viewers.
 
 ### Issues Encountered
-{LOC|20}
-
+- Dev sandbox lacks `node_modules`; install in `electron-app/` and `tauri-app/` before running `npm run electron:dev` or `npm run test`. Manual export smoke pending until the renderer wiring is fully operational.

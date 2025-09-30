@@ -11,8 +11,8 @@ tags:
   - Performance
   - Offline
 date_created: 2025-09-25
-date_completed:
-kanban-status: Planned
+date_completed: 2025-09-29
+kanban-status: completed 
 AI_IMP_spawned: 6
 ---
 
@@ -38,11 +38,11 @@ Electron (Chromium) provides a stable GPU stack on Wayland/X11 and Windows. We e
 ## Requirements
 
 ### Functional Requirements
-- [ ] FR-1: Build Rust compute core to wasm module with JS wrappers for `analyzeImage(params)` → `{ clusters[], iterations, durationMs, totalSamples }`.
-- [ ] FR-2: Electron shell hosting the existing Svelte renderer; preload isolates access to fs only for file open/save dialogs.
-- [ ] FR-3: File open dialog + drag/drop wiring to feed wasm pipeline.
-- [ ] FR-4: Graphs/palette views driven by wasm results; exports (PNG/SVG/CSV) implemented in Chromium canvas/SVG.
-- [ ] FR-5: Preferences stored locally (no telemetry).
+- [x] FR-1: Build Rust compute core to wasm module with JS wrappers for `analyzeImage(params)` → `{ clusters[], iterations, durationMs, totalSamples }`.
+- [x] FR-2: Electron shell hosting the existing Svelte renderer; preload isolates access to fs only for file open/save dialogs.
+- [x] FR-3: File open dialog + drag/drop wiring to feed wasm pipeline.
+- [x] FR-4: Graphs/palette views driven by wasm results; exports (PNG/SVG/CSV) implemented in Chromium canvas/SVG.
+- [x] FR-5: Preferences stored locally (no telemetry).
 
 ### Non-Functional Requirements
 - Cross‑platform: Linux AppImage, Windows portable first; macOS later.

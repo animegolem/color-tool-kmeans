@@ -58,7 +58,13 @@ const LUMA_B: f32 = 0.0722;
 
 pub fn prepare_samples(params: &SampleParams) -> Result<SampleResult> {
     let start = Instant::now();
-    let img = ImageReader::open(&params.path)?.decode()?;
+
+    // Use with_guessed_format() to handle files without extensions
+    // This reads the file header to detect the format automatically
+    let img = ImageReader::open(&params.path)?
+        .with_guessed_format()?
+        .decode()?;
+
     let rgb = to_rgb_with_downscale(img, params.max_dimension);
     let (width, height) = rgb.dimensions();
     let samples = sample_pixels(&rgb, params);
