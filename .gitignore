@@ -9,6 +9,7 @@ electron-app/release/
 build/
 out/
 *.asar
+compute-wasm/target/
 
 # Logs & caches
 *.log
