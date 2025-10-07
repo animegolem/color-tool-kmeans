@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
-  import FadeOverlay from '../components/FadeOverlay.svelte';
+  // NOTE: Temporary inline overlays to bypass slot/runtime issue in container
   import type { AnalysisParams, SelectedImage } from '../stores/ui';
   import {
     selectedFile,
@@ -19,9 +19,11 @@
   } from '../stores/ui';
   import { analyzeImage } from '../compute/bridge';
   import { loadImageDataset } from '../compute/image-loader';
+  import { fsBridge, type FileSelection } from '../bridges/fs';
 
   const ANALYZE_DEBOUNCE_MS = 200;
   const SPINNER_THRESHOLD_MS = 150;
+  const isDev = import.meta.env.DEV ?? false;
 
   let dragging = $state(false);
   let draggingWindow = $state(false);
@@ -43,23 +45,18 @@
   const analysisErr = $derived.by(() => get(analysisError));
   const clusters = $derived.by(() => get(topClusters));
 
-  function pickImageFile(): Promise<File | null> {
-    return new Promise((resolve) => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/png,image/jpeg,image/webp';
-      input.onchange = () => {
-        const file = input.files?.[0] ?? null;
-        resolve(file);
-      };
-      input.click();
-    });
+  async function chooseFile() {
+    const selection = await fsBridge.openImageFile();
+    if (!selection) return;
+    await ingestSelection(selection);
   }
 
-  async function chooseFile() {
-    const selection = await pickImageFile();
-    if (!selection) return;
-    await ingestFile(selection, selection.name);
+  function handleDropzoneKeydown(event: KeyboardEvent) {
+    if (event.defaultPrevented) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      void chooseFile();
+    }
   }
 
   function handleDragOver(event: DragEvent) {
@@ -84,8 +81,15 @@
     if (files.length > 1) {
       bannerMessage = 'Multiple files dropped — using the first file; others skipped.';
     }
-    const path = (fileHandle as unknown as { path?: string }).path ?? fileHandle.name;
-    void ingestFile(fileHandle, path);
+    const selection: FileSelection = {
+      name: fileHandle.name,
+      blob: fileHandle,
+      size: fileHandle.size,
+      path: (fileHandle as unknown as { path?: string }).path ?? fileHandle.name,
+      lastModified: fileHandle.lastModified,
+      mimeType: fileHandle.type || undefined
+    };
+    void ingestSelection(selection);
   }
 
   function clearSelection() {
@@ -93,18 +97,26 @@
     cancelPending();
   }
 
-  async function ingestFile(blob: File, pathHint?: string) {
+  async function ingestSelection(fileSelection: FileSelection) {
     loadToken += 1;
     const token = loadToken;
     cancelPending();
     try {
-      const dataset = await loadImageDataset(blob);
+      let dataset;
+      const isTauri = typeof (globalThis as any).__TAURI__?.invoke === 'function';
+      if (isTauri && fileSelection.path) {
+        // Defer decoding to native; use a placeholder dataset
+        (globalThis as any).__ACTIVE_IMAGE_PATH__ = fileSelection.path;
+        dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
+      } else {
+        dataset = await loadImageDataset(fileSelection.blob);
+      }
       if (token !== loadToken) return;
       const selected: SelectedImage = {
         id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
-        name: blob.name || pathHint || 'image',
-        path: pathHint,
-        size: blob.size,
+        name: fileSelection.name || fileSelection.path || 'image',
+        path: fileSelection.path,
+        size: fileSelection.size,
         dataset
       };
       bannerMessage = null;
@@ -180,11 +192,14 @@
       if (token !== currentToken) {
         return;
       }
-      console.info('[home] wasm analysis complete', {
-        clusters: response.clusters.length,
-        durationMs: Math.round(response.durationMs),
-        totalSamples: response.totalSamples
-      });
+      if (isDev) {
+        console.info('[home] analysis complete', {
+          variant: response.variant,
+          clusters: response.clusters.length,
+          durationMs: Math.round(response.durationMs),
+          totalSamples: response.totalSamples
+        });
+      }
       setAnalysisSuccess(response);
     } catch (err) {
       if (token !== currentToken) {
@@ -216,21 +231,56 @@
   }
 
   onMount(() => {
-    const onDragEnter = (event: DragEvent) => {
-      event.preventDefault();
+    let dragDepth = 0;
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const showOverlay = () => {
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+      }
       draggingWindow = true;
     };
-    const onDragEnd = () => {
+    const hideOverlay = () => {
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+      }
+      hideTimer = setTimeout(() => {
+        if (dragDepth <= 0) {
+          draggingWindow = false;
+          dragging = false;
+        }
+        hideTimer = null;
+      }, 60);
+    };
+
+    const onDragEnter = (event: DragEvent) => {
+      event.preventDefault();
+      dragDepth += 1;
+      showOverlay();
+    };
+    const onDragLeave = (event: DragEvent) => {
+      event.preventDefault();
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) hideOverlay();
+    };
+    const onDrop = (event: DragEvent) => {
+      dragDepth = 0;
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+      }
       draggingWindow = false;
       dragging = false;
     };
+
     window.addEventListener('dragenter', onDragEnter);
-    window.addEventListener('dragleave', onDragEnd);
-    window.addEventListener('drop', onDragEnd);
+    window.addEventListener('dragleave', onDragLeave);
+    window.addEventListener('drop', onDrop);
     return () => {
       window.removeEventListener('dragenter', onDragEnter);
-      window.removeEventListener('dragleave', onDragEnd);
-      window.removeEventListener('drop', onDragEnd);
+      window.removeEventListener('dragleave', onDragLeave);
+      window.removeEventListener('drop', onDrop);
     };
   });
 
@@ -261,11 +311,14 @@
     bind:this={dropRef}
     class:dragging={dragging}
     class="dropzone"
+    tabindex="0"
+    role="button"
+    aria-label="Image dropzone"
+    aria-busy={status === 'pending'}
     ondragover={handleDragOver}
     ondragleave={handleDragLeave}
     ondrop={handleDrop}
-    role="presentation"
-    aria-label="Image dropzone"
+    onkeydown={handleDropzoneKeydown}
   >
     <div class="inner">
       <p class="title">Drop anywhere</p>
@@ -275,37 +328,54 @@
   </div>
 
   <!-- Full-window drag overlay -->
-  <FadeOverlay visible={draggingWindow} title={null}>
-    <div style="display:grid;place-items:center;gap:8px;min-width:280px">
-      <div class="spinner" aria-hidden="true" style="display:none"></div>
-      <div style="font-size:20px;font-weight:500">Drop Anywhere</div>
-      <div style="font-size:12px;opacity:.8">PNG · JPEG · WebP</div>
+  {#if draggingWindow}
+    <div class="overlay-root visible" aria-hidden="true">
+      <div class="overlay-panel">
+        <div style="display:grid;place-items:center;gap:8px;min-width:280px">
+          <div class="spinner" aria-hidden="true" style="display:none"></div>
+          <div style="font-size:20px;font-weight:500">Drop Anywhere</div>
+          <div style="font-size:12px;opacity:.8">PNG · JPEG · WebP</div>
+        </div>
+      </div>
     </div>
-  </FadeOverlay>
+  {/if}
 
   <!-- Loading overlay -->
-  <FadeOverlay visible={status === 'pending' && spinnerVisible} title="Analyzing…">
-    <div style="display:grid;place-items:center;gap:12px">
-      <div class="spinner" aria-label="loading"></div>
-      <div style="font-size:12px;opacity:.8">This may take a moment</div>
+  {#if status === 'pending' && spinnerVisible}
+    <div class="overlay-root visible" role="dialog" aria-label="Analyzing…">
+      <div class="overlay-panel">
+        <div style="display:grid;place-items:center;gap:12px">
+          <div class="spinner" aria-label="loading"></div>
+          <div style="font-size:12px;opacity:.8">This may take a moment</div>
+        </div>
+      </div>
     </div>
-  </FadeOverlay>
+  {/if}
 
   <!-- Drag/drop notice overlay -->
-  <FadeOverlay visible={!!bannerMessage} title="Notice" dismissable onDismiss={dismissBanner}>
-    <p style="margin:0">{bannerMessage}</p>
-  </FadeOverlay>
+  {#if bannerMessage}
+    <div class="overlay-root visible" role="dialog" aria-label="Notice">
+      <div class="overlay-panel">
+        <p style="margin:0">{bannerMessage}</p>
+        <div class="overlay-actions" style="margin-top:16px">
+          <button class="close-btn" onclick={dismissBanner}>Close</button>
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <!-- Analysis error overlay -->
-  <FadeOverlay
-    visible={status === 'error'}
-    title="Analysis failed"
-    dismissable
-    onDismiss={clearAnalysisError}
-  >
-    <p style="margin:0 0 12px 0">{analysisErr ?? 'Unknown issue while analyzing the image.'}</p>
-    <button class="retry" onclick={retryAnalysis}>Retry</button>
-  </FadeOverlay>
+  {#if status === 'error'}
+    <div class="overlay-root visible" role="dialog" aria-label="Analysis failed">
+      <div class="overlay-panel">
+        <p style="margin:0 0 12px 0">{analysisErr ?? 'Unknown issue while analyzing the image.'}</p>
+        <div class="overlay-actions" style="margin-top:16px">
+          <button class="retry" onclick={retryAnalysis}>Retry</button>
+          <button class="close-btn" onclick={clearAnalysisError}>Close</button>
+        </div>
+      </div>
+    </div>
+  {/if}
 
   {#if file}
     <div class="selection">
@@ -403,6 +473,11 @@
     text-align: center;
     background: rgba(130, 76, 50, 0.06);
     transition: background 0.2s ease, border-color 0.2s ease;
+  }
+
+  .dropzone:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 4px;
   }
 
   .dropzone.dragging {

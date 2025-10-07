@@ -225,11 +225,32 @@ fn clamp_channel(value: f32) -> u8 {
     value.round().clamp(0.0, 255.0) as u8
 }
 
+#[tauri::command]
+async fn open_image_dialog(app: AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::{DialogExt, FilePath};
+    let (tx, rx) = std::sync::mpsc::channel::<Option<String>>();
+    app.dialog()
+        .file()
+        .add_filter(
+            "Images",
+            &["png", "jpg", "jpeg", "webp", "bmp", "gif", "tiff"],
+        )
+        .pick_file(move |p| {
+            let mapped = p.map(|fp| match fp {
+                FilePath::Path(pb) => pb.display().to_string(),
+                FilePath::Url(u) => u.to_string(),
+            });
+            let _ = tx.send(mapped);
+        });
+    let path = rx.recv().map_err(|_| String::from("dialog channel closed"))?;
+    Ok(path)
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![analyze_image])
+        .invoke_handler(tauri::generate_handler![analyze_image, open_image_dialog])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

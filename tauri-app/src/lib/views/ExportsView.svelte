@@ -3,8 +3,10 @@
   import { analysisResult, params, selectedFile } from '../stores/ui';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
   import { generatePaletteCsv } from '../exports/palette';
-  import { saveBlob, saveTextFile } from '../exports/save';
+  import { fsBridge } from '../bridges/fs';
   import { svgToPngBlob } from '../exports/png';
+
+  const { saveBlob, saveTextFile } = fsBridge;
 
   const file = $derived.by(() => get(selectedFile));
   const result = $derived.by(() => get(analysisResult));

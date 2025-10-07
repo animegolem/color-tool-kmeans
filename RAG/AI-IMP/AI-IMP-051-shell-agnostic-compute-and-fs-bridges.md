@@ -39,10 +39,10 @@ Define shell-agnostic bridges for compute and file I/O so Svelte views do not im
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add `ComputeBridge`/`FsBridge` interfaces and factories.
-- [ ] Implement Electron adapter (uses `window.electronAPI`).
-- [ ] Implement wasm+browser adapter (current wasm wrapper + DOM file input + download fallback).
-- [ ] Swap Home/Exports/Graphs to call bridges only.
+- [x] Add `ComputeBridge`/`FsBridge` interfaces and factories.
+- [x] Implement Electron adapter (uses `window.electronAPI`).
+- [x] Implement wasm+browser adapter (current wasm wrapper + DOM file input + download fallback).
+- [x] Swap Home/Exports/Graphs to call bridges only.
 - [ ] Smoke test in Electron and browser dev; log adapter choice.
 
 ### Acceptance Criteria
@@ -51,5 +51,4 @@ WHEN the user loads an image and exports files
 THEN analysis succeeds and exports are written using the active bridge implementation with identical result shapes.
 
 ### Issues Encountered 
-{LOC|20}
-
+- None yet — plan includes wiring Zod-based schema validation alongside the bridges to harden cross-shell payloads.

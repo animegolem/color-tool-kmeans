@@ -37,9 +37,9 @@ Finalize the Home view with robust drag/drop + picker flows, debounce/spinner th
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Ensure bridge usage for analyze + file open.
+- [x] Ensure bridge usage for analyze + file open.
 - [ ] Confirm debounce/cancel logic; no spinner “stuck” states.
-- [ ] Add keyboard focus handling for dropzone and buttons.
+- [x] Add keyboard focus handling for dropzone and buttons.
 - [ ] Smoke test with bench assets; capture timings.
 
 ### Acceptance Criteria
@@ -49,4 +49,3 @@ THEN metrics render and the UI remains responsive; no dangling spinners or stale
 
 ### Issues Encountered 
 {LOC|20}
-
