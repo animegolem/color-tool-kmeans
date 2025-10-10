@@ -3,10 +3,8 @@
   import { analysisResult, params, selectedFile } from '../stores/ui';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
   import { generatePaletteCsv } from '../exports/palette';
-  import { fsBridge } from '../bridges/fs';
+  import { getFsBridge } from '../bridges/fs';
   import { svgToPngBlob } from '../exports/png';
-
-  const { saveBlob, saveTextFile } = fsBridge;
 
   const file = $derived.by(() => get(selectedFile));
   const result = $derived.by(() => get(analysisResult));
@@ -33,7 +31,8 @@
         showAxisLabels: true
       });
       const blob = new Blob([svg], { type: 'image/svg+xml' });
-      const { canceled } = await saveBlob(blob, `${baseName()}-circle.svg`);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-circle.svg`);
       if (canceled) {
         setStatus('Export canceled.', 'info');
       } else {
@@ -51,7 +50,8 @@
         showAxisLabels: true
       });
       const blob = await svgToPngBlob(svg, width, height, Math.max(1, Math.min(4, graphScale)));
-      const { canceled } = await saveBlob(blob, `${baseName()}-circle.png`);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-circle.png`);
       if (canceled) {
         setStatus('Export canceled.', 'info');
       } else {
@@ -64,7 +64,8 @@
     if (!result) return;
     await performSave(async () => {
       const csv = generatePaletteCsv(result.clusters);
-      const { canceled } = await saveTextFile(csv, `${baseName()}-palette.csv`);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveTextFile(csv, `${baseName()}-palette.csv`);
       if (canceled) {
         setStatus('Export canceled.', 'info');
       } else {

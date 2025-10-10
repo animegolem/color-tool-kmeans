@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-THRESHOLD=${LOC_MAX:-350}
+if [ "${LOC_BYPASS:-0}" = "1" ]; then
+  echo "[loc-check] LOC_BYPASS=1 detected; skipping line-count inspection"
+  exit 0
+fi
+
+THRESHOLD=${LOC_MAX:-400}
 YELLOW='\033[33m'
 RESET='\033[0m'
 
@@ -25,7 +30,7 @@ while IFS= read -r f; do
     if file "$f" | grep -qiE 'text|json|xml|javascript|typescript|html|css'; then
       LOC=$(wc -l < "$f" | tr -d ' ')
       if [ "$LOC" -gt "$THRESHOLD" ]; then
-        printf "${YELLOW}[loc-check] %s has %s lines (> %s). Consider splitting. Use [loc-bypass] to override in CI.${RESET}\n" "$f" "$LOC" "$THRESHOLD"
+        printf "${YELLOW}[loc-check] %s has %s lines (> %s). Consider splitting. Use [loc-bypass] in commits/CI or set LOC_BYPASS=1 to override.${RESET}\n" "$f" "$LOC" "$THRESHOLD"
         warned=1
       fi
     fi

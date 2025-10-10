@@ -1,7 +1,23 @@
+export function getBridgeOverride(): string | null {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem('bridge.force') : null;
+  } catch {
+    return null;
+  }
+}
+
 export function isTauriEnv(): boolean {
   try {
+    const override = getBridgeOverride();
+    if (override === 'tauri') return true;
     const w = globalThis as any;
-    return !!(w && w.__TAURI__ && (w.__TAURI__.invoke || w.__TAURI__.core?.invoke));
+    const ua = (globalThis as any).navigator?.userAgent || '';
+    return !!(
+      (w && (w.__TAURI__?.invoke || w.__TAURI__?.core?.invoke)) ||
+      w?.__TAURI_INTERNALS__ ||
+      w?.__TAURI_IPC__ ||
+      /Tauri/i.test(ua)
+    );
   } catch {
     return false;
   }
@@ -10,21 +26,71 @@ export function isTauriEnv(): boolean {
 type InvokeFn = (cmd: string, args?: Record<string, unknown>) => Promise<any>;
 
 export async function tauriInvoke(cmd: string, args?: Record<string, unknown>): Promise<any> {
+  const argKeys = args ? Object.keys(args) : [];
+  const argsPreview = argKeys.length > 0 ? `(${argKeys.join(', ')})` : '()';
+  console.info(`[tauri-invoke] command: ${cmd} args: ${argsPreview}`);
+
   const w = globalThis as any;
-  const direct: InvokeFn | undefined = w?.__TAURI__?.invoke || w?.__TAURI__?.core?.invoke;
-  if (typeof direct === 'function') {
-    return direct(cmd, args);
+
+  const coreInvoke: InvokeFn | undefined = w?.__TAURI__?.core?.invoke;
+  if (typeof coreInvoke === 'function') {
+    console.info('[tauri-invoke] success via: globals.__TAURI__.core.invoke');
+    return coreInvoke(cmd, args);
   }
+  console.info('[tauri-invoke] globals.__TAURI__.core.invoke -> not found');
+
+  const globalInvoke: InvokeFn | undefined = w?.__TAURI__?.invoke;
+  if (typeof globalInvoke === 'function') {
+    console.info('[tauri-invoke] success via: globals.__TAURI__.invoke');
+    return globalInvoke(cmd, args);
+  }
+  console.info('[tauri-invoke] globals.__TAURI__.invoke -> not found');
+
   try {
-    // Fallback to dynamic import if globals not present
-    // Some dev setups inject @tauri-apps/api at runtime
     const mod: any = await import('@tauri-apps/api');
-    if (mod && typeof mod.invoke === 'function') {
-      return mod.invoke(cmd, args);
+    if (mod) {
+      if (typeof mod?.core?.invoke === 'function') {
+        console.info('[tauri-invoke] success via: @tauri-apps/api core.invoke');
+        return mod.core.invoke(cmd, args);
+      }
+      if (typeof mod?.invoke === 'function') {
+        console.info('[tauri-invoke] success via: @tauri-apps/api invoke');
+        return mod.invoke(cmd, args);
+      }
+      console.warn('[tauri-invoke] @tauri-apps/api imported but no invoke found', { mod });
+    } else {
+      console.warn('[tauri-invoke] dynamic import @tauri-apps/api returned falsy module');
     }
-  } catch {
-    // ignore and throw below
+  } catch (err) {
+    console.warn('[tauri-invoke] dynamic import @tauri-apps/api failed', err);
   }
-  throw new Error('Tauri API unavailable: unable to resolve invoke');
+
+  try {
+    const core: any = await import('@tauri-apps/api/core');
+    if (core && typeof core.invoke === 'function') {
+      console.info('[tauri-invoke] success via: @tauri-apps/api/core invoke');
+      return core.invoke(cmd, args);
+    }
+    console.warn('[tauri-invoke] @tauri-apps/api/core imported but no invoke', { core });
+  } catch (err) {
+    console.warn('[tauri-invoke] dynamic import @tauri-apps/api/core failed', err);
+  }
+
+  const errorMsg = `Tauri API unavailable: unable to resolve invoke for command '${cmd}'`;
+  console.error('[tauri-invoke] all paths failed:', errorMsg);
+  throw new Error(errorMsg);
 }
 
+export function tauriDetectionInfo() {
+  const w = globalThis as any;
+  const ua = (globalThis as any).navigator?.userAgent || '';
+  return {
+    override: getBridgeOverride(),
+    hasGlobal: !!w?.__TAURI__,
+    hasInvoke: typeof w?.__TAURI__?.invoke === 'function',
+    hasCoreInvoke: typeof w?.__TAURI__?.core?.invoke === 'function',
+    hasInternals: !!w?.__TAURI_INTERNALS__,
+    hasIpc: !!w?.__TAURI_IPC__,
+    uaIncludesTauri: /Tauri/i.test(ua)
+  };
+}

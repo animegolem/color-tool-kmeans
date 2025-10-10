@@ -1,6 +1,7 @@
 import { z } from 'zod';
-const ELECTRON_ID = 'electron';
+import { isTauriEnv, tauriInvoke, getBridgeOverride } from './tauri';
 const BROWSER_ID = 'browser';
+const TAURI_ID = 'tauri';
 const electronFileSchema = z.object({
     name: z.string().min(1),
     path: z.string().optional(),
@@ -35,57 +36,35 @@ function normalizeBinary(data) {
     }
     return new Uint8Array();
 }
-function createElectronFsBridge() {
-    if (typeof window === 'undefined' || typeof window.electronAPI === 'undefined') {
+// Electron FS bridge removed: Tauri-only baseline.
+function createTauriFsBridge() {
+    if (!isTauriEnv())
         return null;
-    }
-    const api = window.electronAPI;
-    const hasOpen = typeof api.openImageFile === 'function';
-    const hasSaveBinary = typeof api.saveBinaryFile === 'function';
-    const hasSaveText = typeof api.saveTextFile === 'function';
-    if (!hasOpen && !hasSaveBinary && !hasSaveText) {
-        return null;
-    }
     return {
-        id: ELECTRON_ID,
+        id: TAURI_ID,
         async openImageFile() {
-            if (typeof api.openImageFile !== 'function') {
+            try {
+                const path = await tauriInvoke('open_image_dialog');
+                if (!path)
+                    return null;
+                const name = String(path).split(/[\\/]/).pop() ?? 'image';
+                return {
+                    name,
+                    path: String(path),
+                    size: 0,
+                    blob: new Blob([], { type: inferMimeType(name) }),
+                    mimeType: inferMimeType(name)
+                };
+            }
+            catch {
                 return null;
             }
-            const raw = await api.openImageFile();
-            const parsed = electronOpenResponseSchema.parse(raw);
-            if (parsed.canceled || !parsed.file) {
-                return null;
-            }
-            const bytes = normalizeBinary(parsed.file.data);
-            const mimeType = parsed.file.mimeType ?? inferMimeType(parsed.file.name);
-            const copy = bytes.slice();
-            const blob = copy.length > 0 ? new Blob([copy.buffer], { type: mimeType }) : new Blob([], { type: mimeType });
-            return {
-                name: parsed.file.name,
-                blob,
-                size: parsed.file.size ?? copy.byteLength,
-                path: parsed.file.path,
-                lastModified: parsed.file.lastModified,
-                mimeType
-            };
         },
         async saveBlob(blob, defaultName) {
-            if (typeof api.saveBinaryFile !== 'function') {
-                return browserSaveBlob(blob, defaultName);
-            }
-            const uint8 = new Uint8Array(await blob.arrayBuffer());
-            const response = await api.saveBinaryFile(uint8, { defaultPath: defaultName });
-            const parsed = electronSaveResponseSchema.parse(response);
-            return { canceled: parsed.canceled, path: parsed.filePath };
+            return browserSaveBlob(blob, defaultName);
         },
         async saveTextFile(text, defaultName) {
-            if (typeof api.saveTextFile !== 'function') {
-                return browserSaveText(text, defaultName);
-            }
-            const response = await api.saveTextFile(text, { defaultPath: defaultName });
-            const parsed = electronSaveResponseSchema.parse(response);
-            return { canceled: parsed.canceled, path: parsed.filePath };
+            return browserSaveText(text, defaultName);
         }
     };
 }
@@ -172,33 +151,43 @@ export function selectFsBridge() {
     if (typeof window === 'undefined') {
         throw new Error('fsBridge requires a browser environment');
     }
-    const electron = createElectronFsBridge();
-    if (electron) {
-        logSelection('fs', electron.id);
-        return electron;
+    const tauri = createTauriFsBridge();
+    if (tauri) {
+        logSelection('fs', tauri.id);
+        return tauri;
     }
     const browser = createBrowserFsBridge();
     logSelection('fs', browser.id);
     return browser;
 }
 let cachedFsBridge = null;
-export function getFsBridge() {
+let fsBridgeReadyPromise = null;
+async function ensureFsBridgeReady() {
+    if (fsBridgeReadyPromise)
+        return fsBridgeReadyPromise;
+    fsBridgeReadyPromise = (async () => {
+        const forced = getBridgeOverride() === 'tauri';
+        if (!forced && !isTauriEnv()) {
+            const start = Date.now();
+            while (Date.now() - start < 300) {
+                if (isTauriEnv())
+                    break;
+                await new Promise((r) => setTimeout(r, 20));
+            }
+        }
+        console.info('[bridges] ensureFsBridgeReady complete; proceeding to bridge selection');
+    })();
+    return fsBridgeReadyPromise;
+}
+export async function getFsBridge() {
+    console.info('[bridges] getFsBridge called, awaiting ready...');
+    await ensureFsBridgeReady();
     if (!cachedFsBridge) {
+        console.info('[bridges] cache miss, selecting fs bridge now');
         cachedFsBridge = selectFsBridge();
+    }
+    else {
+        console.info('[bridges] cache hit, returning existing fs bridge:', cachedFsBridge.id);
     }
     return cachedFsBridge;
 }
-export const fsBridge = typeof window === 'undefined'
-    ? {
-        id: BROWSER_ID,
-        async openImageFile() {
-            throw new Error('fsBridge unavailable in non-browser context');
-        },
-        async saveBlob() {
-            throw new Error('fsBridge unavailable in non-browser context');
-        },
-        async saveTextFile() {
-            throw new Error('fsBridge unavailable in non-browser context');
-        }
-    }
-    : getFsBridge();

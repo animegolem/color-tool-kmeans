@@ -1,8 +1,6 @@
-import { computeBridge } from '../bridges/compute';
+import { getComputeBridge } from '../bridges/compute';
 export async function analyzeImage(dataset, params) {
-    const merged = {
-        ...params
-    };
-    return computeBridge.analyze(dataset, merged);
+    const merged = { ...params };
+    const bridge = await getComputeBridge();
+    return bridge.analyze(dataset, merged);
 }
-export { computeBridge };

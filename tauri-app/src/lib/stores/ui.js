@@ -50,4 +50,13 @@ export function setFile(image) {
 export function clearFile() {
     selectedFile.set(null);
     resetAnalysis();
+    try {
+        // Clear native path used by Tauri compute bridge to avoid stale state
+        if (globalThis.__ACTIVE_IMAGE_PATH__) {
+            delete globalThis.__ACTIVE_IMAGE_PATH__;
+        }
+    }
+    catch {
+        // ignore
+    }
 }

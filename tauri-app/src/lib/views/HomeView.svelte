@@ -2,7 +2,13 @@
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
   // NOTE: Temporary inline overlays to bypass slot/runtime issue in container
-  import type { AnalysisParams, SelectedImage } from '../stores/ui';
+  import type {
+    AnalysisParams,
+    SelectedImage,
+    AnalysisResult,
+    AnalysisCluster,
+    AnalysisState
+  } from '../stores/ui';
   import {
     selectedFile,
     params,
@@ -18,17 +24,27 @@
     clearAnalysisError
   } from '../stores/ui';
   import { analyzeImage } from '../compute/bridge';
+  import { TauriComputeError } from '../bridges/compute';
   import { loadImageDataset } from '../compute/image-loader';
-  import { fsBridge, type FileSelection } from '../bridges/fs';
+  import { getFsBridge, type FileSelection } from '../bridges/fs';
+  import { isTauriEnv, getBridgeOverride, tauriDetectionInfo } from '../bridges/tauri';
 
   const ANALYZE_DEBOUNCE_MS = 200;
   const SPINNER_THRESHOLD_MS = 150;
   const isDev = import.meta.env.DEV ?? false;
+  const devEnabled = isDev;
+
+  const nativeDragCopy = 'Native mode uses file paths. Use Upload to pick files.';
 
   let dragging = $state(false);
   let draggingWindow = $state(false);
   let bannerMessage = $state<string | null>(null);
   let spinnerVisible = $state(false);
+  let nativeMode = $state(isNativeModeActive());
+  let devBannerVisible = $state(false);
+  let devBannerData = $state<DevBannerDetails | null>(null);
+  let devBannerFileLogged = false;
+  let devBannerAnalysisLogged = false;
 
   let dropRef: HTMLElement;
 
@@ -38,17 +54,130 @@
   let lastRequestKey: string | null = null;
   let loadToken = 0;
 
-  const file = $derived.by(() => get(selectedFile));
-  const currentParams = $derived.by(() => get(params));
-  const status = $derived.by(() => get(analysisState));
-  const result = $derived.by(() => get(analysisResult));
-  const analysisErr = $derived.by(() => get(analysisError));
-  const clusters = $derived.by(() => get(topClusters));
+  let file = $state<SelectedImage | null>(null);
+  let currentParams = $state<AnalysisParams>(get(params));
+  let status = $state<AnalysisState>('idle');
+  let result = $state<AnalysisResult | null>(null);
+  let analysisErr = $state<string | null>(null);
+  let clusters = $state<AnalysisCluster[]>([]);
+
+  interface DevBannerDetails {
+    detection: ReturnType<typeof tauriDetectionInfo>;
+    override: string | null;
+    fsBridge?: string;
+    computeVariant?: string;
+  }
+
+  function isNativeModeActive(): boolean {
+    return isTauriEnv() || getBridgeOverride() === 'tauri';
+  }
+
+  function updateNativeMode() {
+    nativeMode = isNativeModeActive();
+  }
+
+  function mapErrorToMessage(error: unknown): string {
+    if (error instanceof TauriComputeError) {
+      switch (error.code) {
+        case 'missing-path':
+          return 'Native analysis could not find the original file. Please reselect the image.';
+        case 'invalid-response':
+          return 'Native analysis returned unexpected data. Review the Tauri console for details.';
+        case 'invoke-failed':
+          return 'Native analysis failed to start. Restart the app or check the console output.';
+        default:
+          return 'Native analysis reported an unexpected error.';
+      }
+    }
+    if (error instanceof Error) {
+      return error.message || 'Unexpected error. Check console output for details.';
+    }
+    return 'Unexpected error. Check console output for details.';
+  }
+
+  function ensureDevBannerDetails(): DevBannerDetails {
+    const base = devBannerData ?? {
+      detection: tauriDetectionInfo(),
+      override: getBridgeOverride()
+    };
+    return {
+      ...base,
+      detection: tauriDetectionInfo(),
+      override: getBridgeOverride()
+    };
+  }
+
+  function recordDevEvent(update: Partial<DevBannerDetails>, type: 'file' | 'analysis') {
+    if (!devEnabled) return;
+    const details = { ...ensureDevBannerDetails(), ...update };
+    devBannerData = details;
+
+    const shouldShow =
+      (type === 'file' && !devBannerFileLogged) || (type === 'analysis' && !devBannerAnalysisLogged);
+    if (shouldShow) {
+      devBannerVisible = true;
+      console.info('[dev] tauri detection', {
+        detection: details.detection,
+        override: details.override,
+        fsBridge: details.fsBridge ?? 'pending',
+        computeBridge: details.computeVariant ?? 'pending'
+      });
+    }
+
+    if (type === 'file') {
+      devBannerFileLogged = true;
+    } else {
+      devBannerAnalysisLogged = true;
+    }
+  }
+
+  function dismissDevBanner() {
+    devBannerVisible = false;
+  }
+
+  $effect(() => {
+    const unsubFile = selectedFile.subscribe((value) => {
+      file = value;
+    });
+    const unsubParams = params.subscribe((value) => {
+      currentParams = value;
+    });
+    const unsubStatus = analysisState.subscribe((value) => {
+      status = value;
+    });
+    const unsubResult = analysisResult.subscribe((value) => {
+      result = value;
+    });
+    const unsubError = analysisError.subscribe((value) => {
+      analysisErr = value;
+    });
+    const unsubClusters = topClusters.subscribe((value) => {
+      clusters = value;
+    });
+    return () => {
+      unsubFile();
+      unsubParams();
+      unsubStatus();
+      unsubResult();
+      unsubError();
+      unsubClusters();
+    };
+  });
 
   async function chooseFile() {
-    const selection = await fsBridge.openImageFile();
-    if (!selection) return;
-    await ingestSelection(selection);
+    try {
+      const bridge = await getFsBridge();
+      updateNativeMode();
+      const selection = await bridge.openImageFile();
+      if (!selection) {
+        return;
+      }
+      recordDevEvent({ fsBridge: bridge.id }, 'file');
+      await ingestSelection(selection);
+    } catch (error) {
+      console.error('[home] Failed to open native dialog', error);
+      bannerMessage = 'Could not open the native file dialog. Restart the app or verify Tauri is running.';
+    }
   }
 
   function handleDropzoneKeydown(event: KeyboardEvent) {
@@ -75,6 +204,10 @@
     event.preventDefault();
     dragging = false;
     draggingWindow = false;
+    updateNativeMode();
+    if (isTauriEnv() || getBridgeOverride() === 'tauri') {
+      return;
+    }
     const files = event.dataTransfer?.files;
     if (!files || files.length === 0) return;
     const fileHandle = files[0];
@@ -95,6 +228,7 @@
   function clearSelection() {
     clearFile();
     cancelPending();
+    updateNativeMode();
   }
 
   async function ingestSelection(fileSelection: FileSelection) {
@@ -102,9 +236,10 @@
     const token = loadToken;
     cancelPending();
     try {
+      updateNativeMode();
       let dataset;
-      const isTauri = typeof (globalThis as any).__TAURI__?.invoke === 'function';
-      if (isTauri && fileSelection.path) {
+      const nativeMode = (isTauriEnv() || getBridgeOverride() === 'tauri') && !!fileSelection.path;
+      if (nativeMode) {
         // Defer decoding to native; use a placeholder dataset
         (globalThis as any).__ACTIVE_IMAGE_PATH__ = fileSelection.path;
         dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
@@ -121,6 +256,8 @@
       };
       bannerMessage = null;
       setFile(selected);
+      const snapshot = get(params);
+      scheduleAnalysisWith(selected, snapshot);
     } catch (error) {
       console.error('[home] Failed to decode image', error);
       if (token === loadToken) {
@@ -192,20 +329,15 @@
       if (token !== currentToken) {
         return;
       }
-      if (isDev) {
-        console.info('[home] analysis complete', {
-          variant: response.variant,
-          clusters: response.clusters.length,
-          durationMs: Math.round(response.durationMs),
-          totalSamples: response.totalSamples
-        });
-      }
+      recordDevEvent({ computeVariant: response.variant }, 'analysis');
       setAnalysisSuccess(response);
     } catch (err) {
       if (token !== currentToken) {
         return;
       }
-      const message = err instanceof Error ? err.message : String(err);
+      recordDevEvent({ computeVariant: 'error' }, 'analysis');
+      console.error('[home] analysis failed', err);
+      const message = mapErrorToMessage(err);
       setAnalysisError(message);
     } finally {
       if (token === currentToken) {
@@ -231,8 +363,15 @@
   }
 
   onMount(() => {
+    updateNativeMode();
     let dragDepth = 0;
     let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === 'bridge.force') {
+        updateNativeMode();
+      }
+    };
 
     const showOverlay = () => {
       if (hideTimer) {
@@ -274,10 +413,12 @@
       dragging = false;
     };
 
+    window.addEventListener('storage', onStorage);
     window.addEventListener('dragenter', onDragEnter);
     window.addEventListener('dragleave', onDragLeave);
     window.addEventListener('drop', onDrop);
     return () => {
+      window.removeEventListener('storage', onStorage);
       window.removeEventListener('dragenter', onDragEnter);
       window.removeEventListener('dragleave', onDragLeave);
       window.removeEventListener('drop', onDrop);
@@ -306,6 +447,40 @@
       Drop a file anywhere or use the upload button. Supported formats: PNG, JPEG, WebP.
     </p>
   </header>
+
+  {#if devEnabled && devBannerVisible && devBannerData}
+    <aside class="dev-banner" role="status" aria-label="Tauri detection summary">
+      <div class="dev-banner__header">
+        <strong>Dev detection</strong>
+        <button class="dev-banner__close" type="button" onclick={dismissDevBanner}>
+          Dismiss
+        </button>
+      </div>
+      <div class="dev-banner__grid">
+        <div>
+          <span class="dev-banner__label">Override</span>
+          <span>{devBannerData.override ?? 'none'}</span>
+        </div>
+        <div>
+          <span class="dev-banner__label">FS bridge</span>
+          <span>{devBannerData.fsBridge ?? 'pending'}</span>
+        </div>
+        <div>
+          <span class="dev-banner__label">Compute</span>
+          <span>{devBannerData.computeVariant ?? 'pending'}</span>
+        </div>
+      </div>
+      <details>
+        <summary>Detection info</summary>
+        <pre>{JSON.stringify(devBannerData.detection, null, 2)}</pre>
+      </details>
+    </aside>
+  {/if}
+
+  {#if nativeMode}
+    <div class="native-chip" role="status">Native mode</div>
+    <p class="native-copy">{nativeDragCopy}</p>
+  {/if}
 
   <div
     bind:this={dropRef}
@@ -464,6 +639,78 @@
 <style>
   .home {
     max-width: 720px;
+  }
+
+  .dev-banner {
+    margin: 12px 0 20px 0;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: rgba(33, 33, 32, 0.08);
+    border: 1px solid rgba(33, 33, 32, 0.12);
+  }
+
+  .dev-banner__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .dev-banner__close {
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .dev-banner__grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+
+  .dev-banner__label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.6;
+  }
+
+  .dev-banner details {
+    margin-top: 4px;
+    font-size: 12px;
+  }
+
+  .dev-banner pre {
+    margin: 6px 0 0 0;
+    padding: 8px;
+    border-radius: 6px;
+    background: rgba(33, 33, 32, 0.08);
+    max-height: 200px;
+    overflow: auto;
+  }
+
+  .native-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .native-copy {
+    margin: 0 0 16px 0;
+    font-size: 13px;
+    color: rgba(33, 33, 32, 0.75);
   }
 
   .dropzone {
