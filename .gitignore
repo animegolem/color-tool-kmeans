@@ -31,6 +31,7 @@ figma_curl.txt
 pkgs/proportions-et-relations-colorees/
 
 # Other
+pkgs/
 archive/
 tauri-app/src-tauri/gen/
 bench-assets/
