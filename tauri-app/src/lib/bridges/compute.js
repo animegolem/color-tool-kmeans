@@ -187,6 +187,7 @@ function createTauriComputeBridge() {
         }
     };
 }
+
 function logSelection(label, id) {
     console.info(`[bridges] ${label} bridge selected: ${id}`);
 }
@@ -202,6 +203,7 @@ export function selectComputeBridge() {
     logSelection('compute', fallback.id);
     return fallback;
 }
+
 let cachedComputeBridge = null;
 let bridgeReadyPromise = null;
 async function ensureBridgeReady() {

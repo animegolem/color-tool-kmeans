@@ -7,6 +7,7 @@ export function getBridgeOverride(): string | null {
 }
 
 export function isTauriEnv(): boolean {
+  if (typeof window === 'undefined') return false;
   try {
     const override = getBridgeOverride();
     if (override === 'tauri') return true;
