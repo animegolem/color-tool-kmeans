@@ -247,7 +247,7 @@ fn process_job(
         k: effective_k,
         max_iters: job.options.max_iter as usize,
         tol: job.options.tol as f32,
-        seed: job.options.seed as u64,
+        seed: job.options.seed,
         warm_start: None,
         mini_batch: None,
     };
@@ -1786,7 +1786,7 @@ fn build_markdown_summary(
             comps.max_rgb_delta
         ));
     }
-    md.push_str("\n");
+    md.push('\n');
     md.push_str(&format!(
         "Average Δms: {:+.2} — Max Δms: {:+.2} — Max ΔE: {:.2}\n",
         report.totals.mean_duration_delta_ms,
