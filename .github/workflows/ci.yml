@@ -82,7 +82,6 @@ jobs:
         shell: bash
 
       - name: Build Tauri app
-        shell: bash
         run: |
           case "${{ runner.os }}" in
             macOS)
