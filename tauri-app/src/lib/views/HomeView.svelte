@@ -34,7 +34,7 @@
   import { createDevBannerController } from './home/dev-banner-controller';
 
   const devEnabled = import.meta.env.DEV ?? false;
-
+  const isNativeModeActive = () => isTauriEnv() || getBridgeOverride() === 'tauri';
   const nativeDragCopy = 'Native mode uses file paths. Use Upload to pick files.';
 
   let dragging = $state(false);
@@ -62,7 +62,6 @@
   let analysisErr = $state<string | null>(null);
   let clusters = $state<AnalysisCluster[]>([]);
 
-  const isNativeModeActive = () => isTauriEnv() || getBridgeOverride() === 'tauri';
   const updateNativeMode = () => {
     nativeMode = isNativeModeActive();
   };

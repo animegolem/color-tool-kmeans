@@ -5,7 +5,7 @@ import { isTauriEnv } from './lib/bridges/tauri';
 import { getComputeBridge } from './lib/bridges/compute';
 import { getFsBridge } from './lib/bridges/fs';
 
-function logRuntimeBanner() {
+async function logRuntimeBanner() {
   try {
     const w = globalThis as any;
     const ua = typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
@@ -15,14 +15,15 @@ function logRuntimeBanner() {
     console.info('[runtime] isTauriEnv():', isTauriEnv());
     console.info('[runtime] __TAURI__ keys:', tauriKeys);
     console.info('[runtime] has __TAURI_INTERNALS__:', hasInternals);
-    console.info('[runtime] compute bridge:', getComputeBridge().id);
-    console.info('[runtime] fs bridge:', getFsBridge().id);
+    const [computeBridge, fsBridge] = await Promise.all([getComputeBridge(), getFsBridge()]);
+    console.info('[runtime] compute bridge:', computeBridge.id);
+    console.info('[runtime] fs bridge:', fsBridge.id);
   } catch (error) {
     console.warn('[runtime] banner failed:', error);
   }
 }
 
-logRuntimeBanner();
+void logRuntimeBanner();
 
 // Preload Tauri API (best-effort) to help dev setups resolve the module
 try {
