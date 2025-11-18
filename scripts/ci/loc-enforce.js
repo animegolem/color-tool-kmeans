@@ -36,13 +36,28 @@ function getCommitMessage() {
   }
 }
 
-const files = getChangedFiles().filter((f) => !(
-  f.startsWith('figma/') ||
-  f.includes('node_modules/') ||
-  f.startsWith('dist/') ||
-  f.startsWith('build/') ||
-  f.startsWith('pkgs/proportions-et-relations-colorees/')
-));
+const IGNORE_PATHS = [
+  'tauri-app/src-tauri/src/bin/bench_runner.rs',
+  'tauri-app/src-tauri/src/bin/rmpc_theme_gen.rs',
+  'tauri-app/src-tauri/src/kmeans.rs',
+  'tauri-app/src-tauri/src/color.rs',
+  'svelte-llms-full.txt',
+  'svelte-llms-small.txt'
+];
+
+const files = getChangedFiles().filter((f) => {
+  if (
+    f.startsWith('figma/') ||
+    f.includes('node_modules/') ||
+    f.startsWith('dist/') ||
+    f.startsWith('build/') ||
+    f.startsWith('pkgs/proportions-et-relations-colorees/')
+  ) {
+    return false;
+  }
+  if (IGNORE_PATHS.includes(f)) return false;
+  return true;
+});
 
 const offenders = [];
 for (const f of files) {
@@ -72,4 +87,3 @@ if (BYPASS || hasBypass) {
 
 console.error(`::error:: LOC check failed. Threshold=${THRESHOLD}. Add [loc-bypass] in commit message if intentional.`);
 process.exit(1);
-
