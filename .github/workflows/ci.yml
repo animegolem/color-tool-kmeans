@@ -81,7 +81,23 @@ jobs:
         working-directory: tauri-app
         shell: bash
 
-      - name: Build Tauri app (app bundle)
-        run: npm run tauri build -- --bundles app
+      - name: Build Tauri app
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            macOS)
+              npm run tauri build -- --bundles app
+              ;;
+            Linux)
+              npm run tauri build -- --bundles appimage
+              ;;
+            Windows)
+              npm run tauri build -- --bundles nsis
+              ;;
+            *)
+              echo "Unsupported OS: ${{ runner.os }}" >&2
+              exit 1
+              ;;
+          esac
         working-directory: tauri-app
         shell: bash
