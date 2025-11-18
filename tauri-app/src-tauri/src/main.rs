@@ -242,7 +242,9 @@ async fn open_image_dialog(app: AppHandle) -> Result<Option<String>, String> {
             });
             let _ = tx.send(mapped);
         });
-    let path = rx.recv().map_err(|_| String::from("dialog channel closed"))?;
+    let path = rx
+        .recv()
+        .map_err(|_| String::from("dialog channel closed"))?;
     Ok(path)
 }
 
