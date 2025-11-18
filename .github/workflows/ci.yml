@@ -81,7 +81,7 @@ jobs:
         working-directory: tauri-app
         shell: bash
 
-      - name: Build Tauri app (no bundles)
-        run: npm run tauri build -- --bundles none
+      - name: Build Tauri app (app bundle)
+        run: npm run tauri build -- --bundles app
         working-directory: tauri-app
         shell: bash
