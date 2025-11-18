@@ -7,8 +7,6 @@ use tauri::AppHandle;
 use tauri_app::color;
 use tauri_app::image_pipeline::{prepare_samples, SampleParams};
 use tauri_app::kmeans::{run_kmeans, KMeansConfig};
-use tauri_plugin_dialog;
-use tauri_plugin_shell;
 
 #[derive(Debug, Clone, Copy)]
 enum ColorSpace {

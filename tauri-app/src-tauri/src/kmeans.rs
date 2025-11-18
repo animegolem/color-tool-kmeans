@@ -58,6 +58,10 @@ impl PointsSoa {
         self.px.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.px.is_empty()
+    }
+
     pub fn to_vec(&self) -> Vec<[f32; 3]> {
         self.px
             .iter()
@@ -148,14 +152,14 @@ pub fn run_kmeans_soa(dataset: &PointsSoa, cfg: &KMeansConfig) -> KMeansResult {
     while iterations < cfg.max_iters {
         let mini_batch_storage = if let Some(batch_size) = cfg.mini_batch {
             if batch_size > 0 && batch_size < dataset.len() {
-                Some(sample_batch(&dataset, batch_size, &mut rng))
+                Some(sample_batch(dataset, batch_size, &mut rng))
             } else {
                 None
             }
         } else {
             None
         };
-        let working = mini_batch_storage.as_ref().unwrap_or(&dataset);
+        let working = mini_batch_storage.as_ref().unwrap_or(dataset);
 
         let (partials, step_inertia) = assignment_step(working, &centroids);
         inertia = step_inertia;
@@ -165,7 +169,7 @@ pub fn run_kmeans_soa(dataset: &PointsSoa, cfg: &KMeansConfig) -> KMeansResult {
         for (idx, part) in partials.into_iter().enumerate() {
             if part.count == 0 {
                 let rand_idx = rng.gen_range(0..dataset.len());
-                centroids.set_from_soa(idx, &dataset, rand_idx);
+                centroids.set_from_soa(idx, dataset, rand_idx);
                 continue;
             }
             let inv = 1.0 / part.count as f32;
@@ -206,7 +210,7 @@ fn assignment_step(points: &PointsSoa, centroids: &CentroidsSoa) -> (Vec<Cluster
     let k = centroids.len();
     let chunk_size = 1024usize.max(k);
     let total_len = points.len();
-    let chunk_count = (total_len + chunk_size - 1) / chunk_size;
+    let chunk_count = total_len.div_ceil(chunk_size);
 
     let chunk_partials: Vec<(Vec<ClusterPartial>, f32)> = (0..chunk_count)
         .into_par_iter()
@@ -259,11 +263,11 @@ fn assignment_step(points: &PointsSoa, centroids: &CentroidsSoa) -> (Vec<Cluster
 fn best_centroid(px: f32, py: f32, pz: f32, centroids: &CentroidsSoa) -> (usize, f32) {
     #[cfg(feature = "simd")]
     {
-        return best_centroid_simd(px, py, pz, centroids);
+        best_centroid_simd(px, py, pz, centroids)
     }
     #[cfg(not(feature = "simd"))]
     {
-        return best_centroid_scalar(px, py, pz, centroids);
+        best_centroid_scalar(px, py, pz, centroids)
     }
 }
 
@@ -303,8 +307,7 @@ fn best_centroid_simd(px: f32, py: f32, pz: f32, centroids: &CentroidsSoa) -> (u
         let dz = pz_v - cz;
         let dist = dx * dx + dy * dy + dz * dz;
         let dist_arr: [f32; LANES] = dist.into();
-        for lane in 0..LANES {
-            let d = dist_arr[lane];
+        for (lane, &d) in dist_arr.iter().enumerate().take(LANES) {
             if d < best_dist {
                 best_dist = d;
                 best_idx = idx + lane;
@@ -335,18 +338,16 @@ fn best_centroid_simd(px: f32, py: f32, pz: f32, centroids: &CentroidsSoa) -> (u
 fn best_centroid_scalar(px: f32, py: f32, pz: f32, centroids: &CentroidsSoa) -> (usize, f32) {
     let mut best_idx = 0usize;
     let mut best_dist = f32::MAX;
-    for i in 0..centroids.len() {
-        let d = squared_distance_components(
-            px,
-            py,
-            pz,
-            centroids.cx[i],
-            centroids.cy[i],
-            centroids.cz[i],
-        );
+    for (idx, (&cx, (&cy, &cz))) in centroids
+        .cx
+        .iter()
+        .zip(centroids.cy.iter().zip(centroids.cz.iter()))
+        .enumerate()
+    {
+        let d = squared_distance_components(px, py, pz, cx, cy, cz);
         if d < best_dist {
             best_dist = d;
-            best_idx = i;
+            best_idx = idx;
         }
     }
     (best_idx, best_dist)
@@ -361,11 +362,16 @@ fn kmeans_plus_plus(points: &PointsSoa, k: usize, rng: &mut SmallRng) -> Centroi
     chosen_flags[first_idx] = true;
 
     let mut distances = vec![0.0f32; n];
-    for i in 0..n {
-        distances[i] = squared_distance_components(
-            points.px[i],
-            points.py[i],
-            points.pz[i],
+    for ((px, (py, pz)), dist) in points
+        .px
+        .iter()
+        .zip(points.py.iter().zip(points.pz.iter()))
+        .zip(distances.iter_mut())
+    {
+        *dist = squared_distance_components(
+            *px,
+            *py,
+            *pz,
             centroids.cx[0],
             centroids.cy[0],
             centroids.cz[0],
@@ -409,12 +415,12 @@ fn kmeans_plus_plus(points: &PointsSoa, k: usize, rng: &mut SmallRng) -> Centroi
         centroids.set_from_soa(centroid_idx, points, chosen_idx);
         chosen_flags[chosen_idx] = true;
 
-        for i in 0..n {
+        for (i, dist) in distances.iter_mut().enumerate() {
             if chosen_flags[i] {
-                distances[i] = 0.0;
+                *dist = 0.0;
                 continue;
             }
-            let dist = squared_distance_components(
+            let val = squared_distance_components(
                 points.px[i],
                 points.py[i],
                 points.pz[i],
@@ -422,8 +428,8 @@ fn kmeans_plus_plus(points: &PointsSoa, k: usize, rng: &mut SmallRng) -> Centroi
                 centroids.cy[centroid_idx],
                 centroids.cz[centroid_idx],
             );
-            if dist < distances[i] {
-                distances[i] = dist;
+            if val < *dist {
+                *dist = val;
             }
         }
     }

@@ -69,5 +69,5 @@ fn generate_dataset() -> Vec<[f32; 3]> {
 }
 
 fn clamp01(v: f32) -> f32 {
-    v.max(0.0).min(1.0)
+    v.clamp(0.0, 1.0)
 }
