@@ -20,8 +20,17 @@
     ]
   },
   "bundle": {
-    "active": false,
-    "targets": ["deb", "appimage", "msi"],
-    "icon": []
+    "active": true,
+    "targets": ["app", "appimage", "nsis"],
+    "icon": [
+      "icons/icon.png",
+      "icons/icon-square.png",
+      "icons/icon-256.png",
+      "icons/icon-128.png",
+      "icons/icon-64.png",
+      "icons/icon-32.png",
+      "icons/icon-16.png",
+      "icons/icon.ico"
+    ]
   }
 }
