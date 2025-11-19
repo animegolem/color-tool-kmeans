@@ -25,6 +25,8 @@
     "icon": [
       "icons/icon.png",
       "icons/icon-square.png",
+      "icons/icon-1024.png",
+      "icons/icon-512.png",
       "icons/icon-256.png",
       "icons/icon-128.png",
       "icons/icon-64.png",
