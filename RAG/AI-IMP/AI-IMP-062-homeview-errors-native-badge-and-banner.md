@@ -5,14 +5,14 @@ tags:
   - tauri
   - ui
   - diagnostics
-kanban_status: in_review
+kanban_status: completed
 depends_on:
   - ADR-002
   - AI-EPIC-006
   - AI-EPIC-007
 confidence_score: 0.85
 created_date: 2025-10-10
-close_date:
+close_date: 2025-11-20
 ---
 
 ## HomeView: Error Propagation, Native Badge, and Dev Detection Banner

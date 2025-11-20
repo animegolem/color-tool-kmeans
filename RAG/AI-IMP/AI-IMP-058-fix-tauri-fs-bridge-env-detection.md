@@ -6,11 +6,11 @@ tags:
   - tauri
   - bridge-architecture
   - critical-bug
-kanban_status: backlog
+kanban_status: completed
 depends_on: AI-EPIC-006
 confidence_score: 0.95
 created_date: 2025-10-08
-close_date:
+close_date: 2025-11-20
 ---
 
 # AI-IMP-058-fix-tauri-fs-bridge-env-detection
