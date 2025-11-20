@@ -70,20 +70,16 @@ function createTauriFsBridge(): FsBridge | null {
   return {
     id: TAURI_ID,
     async openImageFile() {
-      try {
-        const path = await tauriInvoke('open_image_dialog');
-        if (!path) return null;
-        const name = String(path).split(/[\\/]/).pop() ?? 'image';
-        return {
-          name,
-          path: String(path),
-          size: 0,
-          blob: new Blob([], { type: inferMimeType(name) }),
-          mimeType: inferMimeType(name)
-        } satisfies FileSelection;
-      } catch {
-        return null;
-      }
+      const path = await tauriInvoke('open_image_dialog');
+      if (!path) return null;
+      const name = String(path).split(/[\\/]/).pop() ?? 'image';
+      return {
+        name,
+        path: String(path),
+        size: 0,
+        blob: new Blob([], { type: inferMimeType(name) }),
+        mimeType: inferMimeType(name)
+      } satisfies FileSelection;
     },
     async saveBlob(blob, defaultName) {
       return browserSaveBlob(blob, defaultName);

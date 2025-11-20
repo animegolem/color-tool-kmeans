@@ -33,8 +33,11 @@ export function createFileIngestionHandlers(deps: FileIngestionDeps) {
       await ingestSelection(selection);
     } catch (error) {
       console.error('[home] Failed to open native dialog', error);
+      const reason = error instanceof Error ? error.message : null;
       deps.setBannerMessage(
-        'Could not open the native file dialog. Restart the app or verify Tauri is running.'
+        reason
+          ? `Could not open the native file dialog: ${reason}`
+          : 'Could not open the native file dialog. Restart the app or verify Tauri is running.'
       );
     }
   }

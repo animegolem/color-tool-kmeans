@@ -1,9 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::{Deserialize, Serialize};
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::time::Instant;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tauri_app::color;
 use tauri_app::image_pipeline::{prepare_samples, SampleParams};
 use tauri_app::kmeans::{run_kmeans, KMeansConfig};
@@ -106,12 +107,21 @@ async fn analyze_image(req: AnalyzeRequest, _app: AppHandle) -> Result<AnalyzeRe
     if req.path.is_empty() {
         return Err("No file selected".into());
     }
+    let image_path = PathBuf::from(&req.path);
+    let metadata = std::fs::metadata(&image_path).map_err(|err| match err.kind() {
+        ErrorKind::NotFound => "Selected file was not found".into(),
+        ErrorKind::PermissionDenied => "Permission denied while reading selected file".into(),
+        other => format!("Unable to access selected file: {}", other),
+    })?;
+    if !metadata.is_file() {
+        return Err("Selected path is not a file".into());
+    }
     let k = if req.k == 0 { 16 } else { req.k };
     let space = ColorSpace::parse(&req.space)?;
 
     // 1) Sampling
     let sample_params = SampleParams {
-        path: PathBuf::from(&req.path),
+        path: image_path.clone(),
         stride: req.stride.max(1),
         min_lum: req.min_lum,
         max_samples: req.max_samples.max(1),
@@ -224,6 +234,14 @@ fn clamp_channel(value: f32) -> u8 {
 }
 
 #[tauri::command]
+async fn toggle_devtools(app: AppHandle) -> Result<(), String> {
+    let webview = app
+        .get_webview_window("main")
+        .ok_or_else(|| "Main window not found".to_string())?;
+    webview.toggle_devtools().map_err(|err| err.to_string())
+}
+
+#[tauri::command]
 async fn open_image_dialog(app: AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::{DialogExt, FilePath};
     let (tx, rx) = std::sync::mpsc::channel::<Option<String>>();
@@ -250,7 +268,11 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![analyze_image, open_image_dialog])
+        .invoke_handler(tauri::generate_handler![
+            analyze_image,
+            open_image_dialog,
+            toggle_devtools
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

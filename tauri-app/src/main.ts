@@ -24,6 +24,7 @@ async function logRuntimeBanner() {
 }
 
 void logRuntimeBanner();
+setupDevHotkeys();
 
 // Preload Tauri API (best-effort) to help dev setups resolve the module
 try {
@@ -43,3 +44,20 @@ if (!target) {
 const app = mount(App, { target });
 
 export default app;
+
+function setupDevHotkeys() {
+  if (!import.meta.env.DEV) return;
+  const handler = async (event: KeyboardEvent) => {
+    const isF12 = event.key === 'F12';
+    const isDevtoolsCombo = (event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'i';
+    if (!isF12 && !isDevtoolsCombo) return;
+    event.preventDefault();
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('toggle_devtools');
+    } catch (error) {
+      console.warn('[dev] Failed to toggle devtools', error);
+    }
+  };
+  window.addEventListener('keydown', handler);
+}

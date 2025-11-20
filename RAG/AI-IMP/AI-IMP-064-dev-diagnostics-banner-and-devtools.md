@@ -4,13 +4,13 @@ tags:
   - Implementation
   - tauri
   - diagnostics
-kanban_status: backlog
+kanban_status: completed
 depends_on:
   - ADR-002
   - AI-EPIC-006
 confidence_score: 0.9
 created_date: 2025-10-10
-close_date:
+close_date: 2025-11-20
 ---
 
 ## Dev Diagnostics: Detection Banner, Force‑Override Warning, DevTools Hotkey
@@ -56,4 +56,3 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 
 ### Issues Encountered 
 {LOC|20}
-
