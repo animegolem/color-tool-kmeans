@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::time::Instant;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use tauri_app::color;
 use tauri_app::image_pipeline::{prepare_samples, SampleParams};
 use tauri_app::kmeans::{run_kmeans, KMeansConfig};
@@ -234,20 +234,6 @@ fn clamp_channel(value: f32) -> u8 {
 }
 
 #[tauri::command]
-async fn toggle_devtools(app: AppHandle) -> Result<(), String> {
-    let webview = app
-        .get_webview_window("main")
-        .ok_or_else(|| "Main window not found".to_string())?;
-    let is_open = webview.is_devtools_open();
-    if is_open {
-        webview.close_devtools();
-    } else {
-        webview.open_devtools();
-    }
-    Ok(())
-}
-
-#[tauri::command]
 async fn open_image_dialog(app: AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::{DialogExt, FilePath};
     let (tx, rx) = std::sync::mpsc::channel::<Option<String>>();
@@ -274,11 +260,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![
-            analyze_image,
-            open_image_dialog,
-            toggle_devtools
-        ])
+        .invoke_handler(tauri::generate_handler![analyze_image, open_image_dialog])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
