@@ -10,6 +10,7 @@ export interface CircleGraphOptions {
   showAxisLabels?: boolean;
   showStroke?: boolean;
   size?: number;
+  fontCss?: string | string[];
 }
 
 export interface CircleGraphResult {
@@ -84,7 +85,7 @@ export function generateCircleGraphSvg(
   }
 
   return {
-    svg: svgDocument({ width: size, height: size, content: svgParts.join('') }),
+    svg: svgDocument({ width: size, height: size, content: svgParts.join(''), styles: options.fontCss }),
     width: size,
     height: size
   };
