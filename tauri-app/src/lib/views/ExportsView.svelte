@@ -5,6 +5,7 @@
   import { generatePaletteCsv } from '../exports/palette';
   import { getFsBridge } from '../bridges/fs';
   import { svgToPngBlob } from '../exports/png';
+  import { getEmbeddedFiraSansCss } from '../exports/font-embed';
 
   const file = $derived.by(() => get(selectedFile));
   const result = $derived.by(() => get(analysisResult));
@@ -25,11 +26,7 @@
   async function saveCircleGraphSvg() {
     if (!result) return;
     await performSave(async () => {
-      const { svg } = generateCircleGraphSvg(result.clusters, {
-        axisType: paramSnapshot.axis,
-        symbolScale: paramSnapshot.symbolScale,
-        showAxisLabels: true
-      });
+      const { svg } = await buildCircleGraphSvg();
       const blob = new Blob([svg], { type: 'image/svg+xml' });
       const bridge = await getFsBridge();
       const { canceled } = await bridge.saveBlob(blob, `${baseName()}-circle.svg`);
@@ -44,11 +41,7 @@
   async function saveCircleGraphPng() {
     if (!result) return;
     await performSave(async () => {
-      const { svg, width, height } = generateCircleGraphSvg(result.clusters, {
-        axisType: paramSnapshot.axis,
-        symbolScale: paramSnapshot.symbolScale,
-        showAxisLabels: true
-      });
+      const { svg, width, height } = await buildCircleGraphSvg();
       const blob = await svgToPngBlob(svg, width, height, Math.max(1, Math.min(4, graphScale)));
       const bridge = await getFsBridge();
       const { canceled } = await bridge.saveBlob(blob, `${baseName()}-circle.png`);
@@ -92,6 +85,17 @@
   function setStatus(value: string | null, variant: 'info' | 'error') {
     message = value;
     messageVariant = variant;
+  }
+
+  async function buildCircleGraphSvg() {
+    if (!result) throw new Error('Analysis not ready');
+    const fontCss = await getEmbeddedFiraSansCss();
+    return generateCircleGraphSvg(result.clusters, {
+      axisType: paramSnapshot.axis,
+      symbolScale: paramSnapshot.symbolScale,
+      showAxisLabels: true,
+      fontCss: fontCss
+    });
   }
 </script>
 
