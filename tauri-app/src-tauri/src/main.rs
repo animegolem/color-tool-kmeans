@@ -238,7 +238,13 @@ async fn toggle_devtools(app: AppHandle) -> Result<(), String> {
     let webview = app
         .get_webview_window("main")
         .ok_or_else(|| "Main window not found".to_string())?;
-    webview.toggle_devtools().map_err(|err| err.to_string())
+    let is_open = webview.is_devtools_open();
+    if is_open {
+        webview.close_devtools();
+    } else {
+        webview.open_devtools();
+    }
+    Ok(())
 }
 
 #[tauri::command]
