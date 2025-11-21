@@ -54,7 +54,7 @@ function setupDevHotkeys() {
     event.preventDefault();
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('toggle_devtools');
+      await invoke('internal_toggle_devtools');
     } catch (error) {
       console.warn('[dev] Failed to toggle devtools', error);
     }
