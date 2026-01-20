@@ -130,6 +130,12 @@ fn parse_delta(value: &str) -> Result<DeltaMetric> {
 }
 
 fn run() -> Result<()> {
+    if std::env::var("ALLOW_LEGACY_BENCH").is_err() {
+        eprintln!("bench_runner is deprecated and no longer aligned with the OKLab pipeline.");
+        eprintln!("Set ALLOW_LEGACY_BENCH=1 to run anyway.");
+        return Ok(());
+    }
+
     let args = parse_args()?;
     let variant = args.variant;
     let delta_metric = args.delta;

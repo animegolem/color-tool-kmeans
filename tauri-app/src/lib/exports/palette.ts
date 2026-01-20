@@ -73,11 +73,41 @@ export async function generatePalettePng(clusters: AnalysisCluster[], options: P
 }
 
 export function generatePaletteCsv(clusters: AnalysisCluster[]): string {
-  const header = ['rank', 'share', 'count', 'r', 'g', 'b', 'hex'];
+  const header = [
+    'rank',
+    'share',
+    'count',
+    'r',
+    'g',
+    'b',
+    'hex',
+    'oklab_l',
+    'oklab_a',
+    'oklab_b',
+    'oklch_l',
+    'oklch_c',
+    'oklch_h'
+  ];
   const rows = clusters.map((cluster, index) => {
     const { r, g, b } = cluster.rgb;
     const hex = rgbToHex(cluster.rgb);
-    return [index + 1, cluster.share.toFixed(6), cluster.count, r, g, b, hex];
+    const oklab = cluster.oklab ?? [0, 0, 0];
+    const oklch = cluster.oklch ?? [0, 0, 0];
+    return [
+      index + 1,
+      cluster.share.toFixed(6),
+      cluster.count,
+      r,
+      g,
+      b,
+      hex,
+      oklab[0].toFixed(6),
+      oklab[1].toFixed(6),
+      oklab[2].toFixed(6),
+      oklch[0].toFixed(6),
+      oklch[1].toFixed(6),
+      oklch[2].toFixed(6)
+    ];
   });
   return [header, ...rows].map((row) => row.join(',')).join('\n');
 }

@@ -23,6 +23,8 @@ declare global {
         params: {
           k: number;
           stride: number;
+          quality?: number;
+          ignoreTopN?: number;
           minLum: number;
           space: string;
           tol: number;
@@ -35,6 +37,8 @@ declare global {
           count: number;
           share: number;
           centroidSpace: Float32Array | number[];
+          oklab: Float32Array | number[];
+          oklch: Float32Array | number[];
           rgb: { r: number; g: number; b: number };
           hsv: Float32Array | number[];
         }>;

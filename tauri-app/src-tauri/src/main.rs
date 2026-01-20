@@ -1,37 +1,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::{Deserialize, Serialize};
-use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::time::Instant;
 use tauri::AppHandle;
 use tauri_app::color;
-use tauri_app::image_pipeline::{prepare_samples, SampleParams};
+use tauri_app::image_pipeline::{prepare_samples, quality_preset, SampleParams};
 use tauri_app::kmeans::{run_kmeans, KMeansConfig};
-
-#[derive(Debug, Clone, Copy)]
-enum ColorSpace {
-    Rgb,
-    Hsl,
-    Yuv,
-    Cielab,
-    Cieluv,
-}
-
-impl ColorSpace {
-    fn parse(s: &str) -> Result<Self, String> {
-        match s.to_ascii_uppercase().as_str() {
-            "RGB" => Ok(Self::Rgb),
-            "HSL" => Ok(Self::Hsl),
-            "YUV" => Ok(Self::Yuv),
-            "CIELAB" | "LAB" => Ok(Self::Cielab),
-            "CIELUV" | "LUV" => Ok(Self::Cieluv),
-            other => Err(format!(
-                "Unsupported color space '{other}' (RGB|HSL|YUV|CIELAB|CIELUV)"
-            )),
-        }
-    }
-}
+use tauri_plugin_dialog;
+use tauri_plugin_shell;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,11 +20,12 @@ struct AnalyzeRequest {
     k: usize,
     #[serde(default)]
     stride: u32,
+    #[serde(default)]
+    quality: Option<i8>,
+    #[serde(default, alias = "ignoreTopN", alias = "ignore_top_n")]
+    ignore_top_n: usize,
     #[serde(default, alias = "min_lum")]
     min_lum: u8,
-    // Accept aliases: space|color_space
-    #[serde(default = "default_space", alias = "color_space")]
-    space: String,
     #[serde(default = "default_tol")]
     tol: f32,
     #[serde(default = "default_max_iters", alias = "max_iters")]
@@ -58,9 +36,6 @@ struct AnalyzeRequest {
     max_samples: usize,
 }
 
-fn default_space() -> String {
-    "CIELAB".into()
-}
 fn default_tol() -> f32 {
     1e-3
 }
@@ -88,6 +63,8 @@ struct ClusterOut {
     count: usize,
     share: f64,
     centroid_space: [f32; 3],
+    oklab: [f32; 3],
+    oklch: [f32; 3],
     rgb: RgbValue,
     hsv: [f32; 3],
 }
@@ -107,25 +84,21 @@ async fn analyze_image(req: AnalyzeRequest, _app: AppHandle) -> Result<AnalyzeRe
     if req.path.is_empty() {
         return Err("No file selected".into());
     }
-    let image_path = PathBuf::from(&req.path);
-    let metadata = std::fs::metadata(&image_path).map_err(|err| match err.kind() {
-        ErrorKind::NotFound => "Selected file was not found".into(),
-        ErrorKind::PermissionDenied => "Permission denied while reading selected file".into(),
-        other => format!("Unable to access selected file: {}", other),
-    })?;
-    if !metadata.is_file() {
-        return Err("Selected path is not a file".into());
-    }
     let k = if req.k == 0 { 16 } else { req.k };
-    let space = ColorSpace::parse(&req.space)?;
 
     // 1) Sampling
+    let (stride, max_samples, max_dimension) = if let Some(quality) = req.quality {
+        let preset = quality_preset(quality);
+        (preset.stride, preset.max_samples, preset.max_dimension)
+    } else {
+        (req.stride.max(1), req.max_samples.max(1), Some(3200))
+    };
     let sample_params = SampleParams {
-        path: image_path.clone(),
-        stride: req.stride.max(1),
+        path: PathBuf::from(&req.path),
+        stride,
         min_lum: req.min_lum,
-        max_samples: req.max_samples.max(1),
-        max_dimension: Some(3200),
+        max_samples,
+        max_dimension,
         seed: req.seed,
     };
     let samples = prepare_samples(&sample_params).map_err(|e| format!("Sampling failed: {e}"))?;
@@ -133,39 +106,15 @@ async fn analyze_image(req: AnalyzeRequest, _app: AppHandle) -> Result<AnalyzeRe
         return Err("No pixels met sampling criteria (check stride/minLum)".into());
     }
 
-    // 2) Build working dataset in requested space
-    let dataset: Vec<[f32; 3]> = match space {
-        ColorSpace::Cielab => {
-            if let Some(lab) = &samples.samples_lab {
-                lab.clone()
-            } else {
-                samples
-                    .samples
-                    .iter()
-                    .map(|&rgb| color::rgb8_to_lab(rgb))
-                    .collect()
-            }
-        }
-        ColorSpace::Rgb => samples
+    // 2) Build working dataset in OKLab (perceptual)
+    let dataset: Vec<[f32; 3]> = if let Some(lab) = &samples.samples_oklab {
+        lab.clone()
+    } else {
+        samples
             .samples
             .iter()
-            .map(|&rgb| [rgb[0] as f32, rgb[1] as f32, rgb[2] as f32])
-            .collect(),
-        ColorSpace::Hsl => samples
-            .samples
-            .iter()
-            .map(|&rgb| color::rgb8_to_hsl(rgb))
-            .collect(),
-        ColorSpace::Yuv => samples
-            .samples
-            .iter()
-            .map(|&rgb| color::rgb8_to_yuv(rgb))
-            .collect(),
-        ColorSpace::Cieluv => samples
-            .samples
-            .iter()
-            .map(|&rgb| color::rgb8_to_luv(rgb))
-            .collect(),
+            .map(|&rgb| color::rgb8_to_oklab(rgb))
+            .collect()
     };
 
     let effective_k = k.min(dataset.len().max(1));
@@ -192,33 +141,31 @@ async fn analyze_image(req: AnalyzeRequest, _app: AppHandle) -> Result<AnalyzeRe
             if count == 0 {
                 return None;
             }
-            let rgb_u8 = match space {
-                ColorSpace::Rgb => [
-                    clamp_channel(centroid[0]),
-                    clamp_channel(centroid[1]),
-                    clamp_channel(centroid[2]),
-                ],
-                ColorSpace::Hsl => color::hsl_to_rgb8(*centroid),
-                ColorSpace::Yuv => color::yuv_to_rgb8(*centroid),
-                ColorSpace::Cielab => color::lab_to_rgb8(*centroid),
-                ColorSpace::Cieluv => color::luv_to_rgb8(*centroid),
-            };
+            let rgb_u8 = color::oklab_to_srgb8_gamut_mapped(*centroid);
             let rgb = RgbValue {
                 r: rgb_u8[0],
                 g: rgb_u8[1],
                 b: rgb_u8[2],
             };
+            let oklab = *centroid;
+            let oklch = color::oklab_to_oklch(*centroid);
             let hsv = color::rgb8_to_hsv(rgb_u8);
             Some(ClusterOut {
                 count,
                 share: (count as f64) / (samples.sampled_pixels as f64),
                 centroid_space: *centroid,
+                oklab,
+                oklch,
                 rgb,
                 hsv,
             })
         })
         .collect();
     clusters.sort_by(|a, b| b.count.cmp(&a.count));
+    let ignore_top_n = req.ignore_top_n.min(clusters.len().saturating_sub(1));
+    if ignore_top_n > 0 {
+        clusters = clusters.into_iter().skip(ignore_top_n).collect();
+    }
 
     Ok(AnalyzeResponse {
         clusters,
@@ -227,10 +174,6 @@ async fn analyze_image(req: AnalyzeRequest, _app: AppHandle) -> Result<AnalyzeRe
         total_samples: samples.sampled_pixels,
         variant: "inhouse".into(),
     })
-}
-
-fn clamp_channel(value: f32) -> u8 {
-    value.round().clamp(0.0, 255.0) as u8
 }
 
 #[tauri::command]
@@ -250,9 +193,7 @@ async fn open_image_dialog(app: AppHandle) -> Result<Option<String>, String> {
             });
             let _ = tx.send(mapped);
         });
-    let path = rx
-        .recv()
-        .map_err(|_| String::from("dialog channel closed"))?;
+    let path = rx.recv().map_err(|_| String::from("dialog channel closed"))?;
     Ok(path)
 }
 

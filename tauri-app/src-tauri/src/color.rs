@@ -70,6 +70,120 @@ pub fn xyz_to_rgb(xyz: [f32; 3]) -> [f32; 3] {
     ]
 }
 
+fn normalize_degrees(deg: f32) -> f32 {
+    let mut value = deg % 360.0;
+    if value < 0.0 {
+        value += 360.0;
+    }
+    value
+}
+
+fn linear_rgb_to_oklab(rgb: [f32; 3]) -> [f32; 3] {
+    let r = rgb[0];
+    let g = rgb[1];
+    let b = rgb[2];
+    let l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+    let m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+    let s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+    let l_ = l.cbrt();
+    let m_ = m.cbrt();
+    let s_ = s.cbrt();
+    [
+        0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
+        1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
+        0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_,
+    ]
+}
+
+fn oklab_to_linear_rgb(lab: [f32; 3]) -> [f32; 3] {
+    let l = lab[0];
+    let a = lab[1];
+    let b = lab[2];
+    let l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+    let m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+    let s_ = l - 0.0894841775 * a - 1.2914855480 * b;
+    let l = l_ * l_ * l_;
+    let m = m_ * m_ * m_;
+    let s = s_ * s_ * s_;
+    [
+        4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+        -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+        -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+    ]
+}
+
+fn is_in_gamut_rgb(rgb: [f32; 3]) -> bool {
+    rgb.iter()
+        .all(|&c| c >= -EPSILON && c <= 1.0 + EPSILON)
+}
+
+/// Convert sRGB bytes to OKLab (L in 0..1, a/b in OKLab units).
+pub fn rgb8_to_oklab(rgb: [u8; 3]) -> [f32; 3] {
+    let linear = srgb8_to_linear(rgb);
+    linear_rgb_to_oklab(linear)
+}
+
+/// Convert OKLab (L in 0..1) to sRGB bytes with simple RGB clamping.
+pub fn oklab_to_rgb8(lab: [f32; 3]) -> [u8; 3] {
+    let linear = oklab_to_linear_rgb(lab).map(clamp01);
+    linear_to_srgb8(linear)
+}
+
+/// Convert OKLab to OKLCH (h in degrees, C in OKLab units).
+pub fn oklab_to_oklch(lab: [f32; 3]) -> [f32; 3] {
+    let l = lab[0];
+    let a = lab[1];
+    let b = lab[2];
+    let c = (a * a + b * b).sqrt();
+    let h = if c < EPSILON {
+        0.0
+    } else {
+        normalize_degrees(b.atan2(a).to_degrees())
+    };
+    [l, c, h]
+}
+
+/// Convert OKLCH (h in degrees, C in OKLab units) to OKLab.
+pub fn oklch_to_oklab(lch: [f32; 3]) -> [f32; 3] {
+    let l = lch[0];
+    let c = lch[1].max(0.0);
+    let h = normalize_degrees(lch[2]).to_radians();
+    let a = c * h.cos();
+    let b = c * h.sin();
+    [l, a, b]
+}
+
+/// Convert OKLab to sRGB bytes using chroma compression to keep L/h stable.
+pub fn oklab_to_srgb8_gamut_mapped(lab: [f32; 3]) -> [u8; 3] {
+    let linear = oklab_to_linear_rgb(lab);
+    if is_in_gamut_rgb(linear) {
+        return linear_to_srgb8(linear);
+    }
+    let lch = oklab_to_oklch(lab);
+    let l = lch[0];
+    let c = lch[1];
+    let h = lch[2];
+    if c <= 0.0 {
+        let neutral = oklab_to_linear_rgb([l, 0.0, 0.0]).map(clamp01);
+        return linear_to_srgb8(neutral);
+    }
+    let mut low = 0.0;
+    let mut high = c;
+    let mut best = [l, 0.0, 0.0];
+    for _ in 0..24 {
+        let mid = (low + high) * 0.5;
+        let candidate = oklch_to_oklab([l, mid, h]);
+        let linear = oklab_to_linear_rgb(candidate);
+        if is_in_gamut_rgb(linear) {
+            best = candidate;
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+    linear_to_srgb8(oklab_to_linear_rgb(best).map(clamp01))
+}
+
 #[inline]
 fn f_lab(t: f32) -> f32 {
     const DELTA: f32 = 6.0 / 29.0;
@@ -341,6 +455,143 @@ mod tests {
         }
     }
 
+    fn assert_lab_close(actual: [f32; 3], expected: [f64; 3], tol: f64) {
+        for i in 0..3 {
+            let diff = (actual[i] as f64 - expected[i]).abs();
+            assert!(diff <= tol, "channel {i} diff {diff} exceeds {tol}");
+        }
+    }
+
+    fn srgb_to_linear_ref(c: f64) -> f64 {
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    }
+
+    fn linear_to_srgb_ref(c: f64) -> f64 {
+        if c <= 0.0031308 {
+            c * 12.92
+        } else {
+            1.055 * c.powf(1.0 / 2.4) - 0.055
+        }
+    }
+
+    fn clamp01_ref(v: f64) -> f64 {
+        v.max(0.0).min(1.0)
+    }
+
+    fn to_u8_ref(v: f64) -> u8 {
+        (clamp01_ref(v) * 255.0 + 0.5).floor() as u8
+    }
+
+    fn srgb8_to_linear_ref(rgb: [u8; 3]) -> [f64; 3] {
+        rgb.map(|c| srgb_to_linear_ref((c as f64) / 255.0))
+    }
+
+    fn linear_to_srgb8_ref(rgb: [f64; 3]) -> [u8; 3] {
+        rgb.map(|c| to_u8_ref(linear_to_srgb_ref(c)))
+    }
+
+    fn linear_rgb_to_oklab_ref(rgb: [f64; 3]) -> [f64; 3] {
+        let r = rgb[0];
+        let g = rgb[1];
+        let b = rgb[2];
+        let l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+        let m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+        let s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+        let l_ = l.cbrt();
+        let m_ = m.cbrt();
+        let s_ = s.cbrt();
+        [
+            0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
+            1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
+            0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_,
+        ]
+    }
+
+    fn oklab_to_linear_rgb_ref(lab: [f64; 3]) -> [f64; 3] {
+        let l = lab[0];
+        let a = lab[1];
+        let b = lab[2];
+        let l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+        let m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+        let s_ = l - 0.0894841775 * a - 1.2914855480 * b;
+        let l = l_ * l_ * l_;
+        let m = m_ * m_ * m_;
+        let s = s_ * s_ * s_;
+        [
+            4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+            -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+            -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+        ]
+    }
+
+    fn oklab_to_oklch_ref(lab: [f64; 3]) -> [f64; 3] {
+        let l = lab[0];
+        let a = lab[1];
+        let b = lab[2];
+        let c = (a * a + b * b).sqrt();
+        let h = if c < 1e-12 {
+            0.0
+        } else {
+            let mut deg = b.atan2(a).to_degrees();
+            if deg < 0.0 {
+                deg += 360.0;
+            }
+            deg
+        };
+        [l, c, h]
+    }
+
+    fn oklch_to_oklab_ref(lch: [f64; 3]) -> [f64; 3] {
+        let l = lch[0];
+        let c = lch[1].max(0.0);
+        let h = lch[2].to_radians();
+        let a = c * h.cos();
+        let b = c * h.sin();
+        [l, a, b]
+    }
+
+    fn is_in_gamut_rgb_ref(rgb: [f64; 3]) -> bool {
+        rgb.iter().all(|&c| c >= -1e-9 && c <= 1.0 + 1e-9)
+    }
+
+    fn oklab_to_srgb8_gamut_mapped_ref(lab: [f64; 3]) -> [u8; 3] {
+        let linear = oklab_to_linear_rgb_ref(lab);
+        if is_in_gamut_rgb_ref(linear) {
+            return linear_to_srgb8_ref(linear);
+        }
+        let lch = oklab_to_oklch_ref(lab);
+        let l = lch[0];
+        let c = lch[1];
+        let h = lch[2];
+        if c <= 0.0 {
+            let neutral = oklab_to_linear_rgb_ref([l, 0.0, 0.0]);
+            return linear_to_srgb8_ref(neutral.map(clamp01_ref));
+        }
+        let mut low = 0.0;
+        let mut high = c;
+        let mut best = [l, 0.0, 0.0];
+        for _ in 0..32 {
+            let mid = (low + high) * 0.5;
+            let candidate = oklch_to_oklab_ref([l, mid, h]);
+            let linear = oklab_to_linear_rgb_ref(candidate);
+            if is_in_gamut_rgb_ref(linear) {
+                best = candidate;
+                low = mid;
+            } else {
+                high = mid;
+            }
+        }
+        linear_to_srgb8_ref(oklab_to_linear_rgb_ref(best).map(clamp01_ref))
+    }
+
+    fn srgb8_to_oklab_ref(rgb: [u8; 3]) -> [f64; 3] {
+        linear_rgb_to_oklab_ref(srgb8_to_linear_ref(rgb))
+    }
+
     #[test]
     fn lab_round_trip() {
         let samples = [[255, 0, 0], [12, 200, 64], [240, 240, 240]];
@@ -383,6 +634,63 @@ mod tests {
         let hsv = rgb8_to_hsv(rgb);
         let back = hsv_to_rgb8(hsv);
         assert_rgb_close(rgb, back, 2);
+    }
+
+    #[test]
+    fn oklab_round_trip() {
+        let samples = [[18, 42, 200], [250, 128, 114], [240, 240, 240]];
+        for rgb in samples {
+            let lab = rgb8_to_oklab(rgb);
+            let back = oklab_to_rgb8(lab);
+            assert_rgb_close(rgb, back, 2);
+        }
+    }
+
+    #[test]
+    fn oklch_round_trip() {
+        let lab = rgb8_to_oklab([120, 200, 32]);
+        let lch = oklab_to_oklch(lab);
+        let back = oklch_to_oklab(lch);
+        assert!((lab[0] - back[0]).abs() < 1e-4);
+        assert!((lab[1] - back[1]).abs() < 1e-4);
+        assert!((lab[2] - back[2]).abs() < 1e-4);
+    }
+
+    #[test]
+    fn oklab_gamut_mapping_keeps_hue_stable() {
+        let lab = [0.65, 0.4, 0.2];
+        let lch = oklab_to_oklch(lab);
+        let mapped = oklab_to_srgb8_gamut_mapped(lab);
+        let mapped_lch = oklab_to_oklch(rgb8_to_oklab(mapped));
+        let hue_delta = (lch[2] - mapped_lch[2]).abs();
+        let hue_delta = hue_delta.min(360.0 - hue_delta);
+        let linear = srgb8_to_linear(mapped);
+        assert!(is_in_gamut_rgb(linear));
+        assert!(hue_delta < 5.0, "hue drift too large: {hue_delta}");
+    }
+
+    #[test]
+    fn oklab_reference_matches_high_precision() {
+        let samples = [
+            [255, 0, 0],
+            [0, 255, 0],
+            [0, 0, 255],
+            [128, 128, 128],
+            [255, 255, 255],
+        ];
+        for rgb in samples {
+            let expected = srgb8_to_oklab_ref(rgb);
+            let actual = rgb8_to_oklab(rgb);
+            assert_lab_close(actual, expected, 6e-4);
+
+            let back_expected = oklab_to_srgb8_gamut_mapped_ref(expected);
+            let back_actual = oklab_to_srgb8_gamut_mapped([
+                expected[0] as f32,
+                expected[1] as f32,
+                expected[2] as f32,
+            ]);
+            assert_rgb_close(back_actual, back_expected, 1);
+        }
     }
 
     #[test]

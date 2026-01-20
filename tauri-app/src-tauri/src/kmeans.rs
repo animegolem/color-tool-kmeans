@@ -147,7 +147,6 @@ pub fn run_kmeans_soa(dataset: &PointsSoa, cfg: &KMeansConfig) -> KMeansResult {
 
     let mut counts = vec![0usize; cfg.k];
     let mut iterations = 0;
-    let mut inertia = 0.0;
 
     while iterations < cfg.max_iters {
         let mini_batch_storage = if let Some(batch_size) = cfg.mini_batch {
@@ -161,8 +160,7 @@ pub fn run_kmeans_soa(dataset: &PointsSoa, cfg: &KMeansConfig) -> KMeansResult {
         };
         let working = mini_batch_storage.as_ref().unwrap_or(dataset);
 
-        let (partials, step_inertia) = assignment_step(working, &centroids);
-        inertia = step_inertia;
+        let (partials, _step_inertia) = assignment_step(working, &centroids);
 
         counts.fill(0);
         let mut shift = 0.0;
@@ -189,6 +187,13 @@ pub fn run_kmeans_soa(dataset: &PointsSoa, cfg: &KMeansConfig) -> KMeansResult {
             break;
         }
     }
+
+    let (final_partials, final_inertia) = assignment_step(dataset, &centroids);
+    counts.fill(0);
+    for (idx, part) in final_partials.into_iter().enumerate() {
+        counts[idx] = part.count;
+    }
+    let inertia = final_inertia;
 
     KMeansResult {
         centroids: centroids.to_vec(),
@@ -555,5 +560,25 @@ mod tests {
                 assert!(diff <= 1e-6, "centroid component diff {} > 1e-6", diff);
             }
         }
+    }
+
+    #[test]
+    fn final_assignment_counts_full_dataset() {
+        let mut points = Vec::new();
+        for _ in 0..300 {
+            points.push([0.1, 0.2, 0.3]);
+            points.push([0.9, 0.8, 0.7]);
+        }
+        let cfg = KMeansConfig {
+            k: 2,
+            max_iters: 10,
+            tol: 1e-3,
+            seed: 99,
+            warm_start: None,
+            mini_batch: Some(64),
+        };
+        let result = run_kmeans(&points, &cfg);
+        let total: usize = result.counts.iter().sum();
+        assert_eq!(total, points.len());
     }
 }

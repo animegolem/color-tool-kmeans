@@ -78,6 +78,12 @@ struct AnalyzeResponse {
 }
 
 fn main() -> anyhow::Result<()> {
+    if std::env::var("ALLOW_LEGACY_CLI").is_err() {
+        eprintln!("compute_cli is deprecated and no longer aligned with the OKLab pipeline.");
+        eprintln!("Set ALLOW_LEGACY_CLI=1 to run anyway.");
+        return Ok(());
+    }
+
     let mut buf = String::new();
     io::stdin().read_to_string(&mut buf)?;
     if buf.trim().is_empty() {

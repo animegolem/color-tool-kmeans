@@ -5,7 +5,6 @@
   import { generatePaletteCsv } from '../exports/palette';
   import { getFsBridge } from '../bridges/fs';
   import { svgToPngBlob } from '../exports/png';
-  import { getEmbeddedFiraSansCss } from '../exports/font-embed';
 
   const file = $derived.by(() => get(selectedFile));
   const result = $derived.by(() => get(analysisResult));
@@ -26,7 +25,12 @@
   async function saveCircleGraphSvg() {
     if (!result) return;
     await performSave(async () => {
-      const { svg } = await buildCircleGraphSvg();
+      const { svg } = generateCircleGraphSvg(result.clusters, {
+        symbolScale: paramSnapshot.symbolScale,
+        showAxisLabels: paramSnapshot.showAxisLabels,
+        showStroke: paramSnapshot.showClusterOutline,
+        showGamutBackground: paramSnapshot.showGamutBackground
+      });
       const blob = new Blob([svg], { type: 'image/svg+xml' });
       const bridge = await getFsBridge();
       const { canceled } = await bridge.saveBlob(blob, `${baseName()}-circle.svg`);
@@ -41,7 +45,12 @@
   async function saveCircleGraphPng() {
     if (!result) return;
     await performSave(async () => {
-      const { svg, width, height } = await buildCircleGraphSvg();
+      const { svg, width, height } = generateCircleGraphSvg(result.clusters, {
+        symbolScale: paramSnapshot.symbolScale,
+        showAxisLabels: paramSnapshot.showAxisLabels,
+        showStroke: paramSnapshot.showClusterOutline,
+        showGamutBackground: paramSnapshot.showGamutBackground
+      });
       const blob = await svgToPngBlob(svg, width, height, Math.max(1, Math.min(4, graphScale)));
       const bridge = await getFsBridge();
       const { canceled } = await bridge.saveBlob(blob, `${baseName()}-circle.png`);
@@ -86,17 +95,6 @@
     message = value;
     messageVariant = variant;
   }
-
-  async function buildCircleGraphSvg() {
-    if (!result) throw new Error('Analysis not ready');
-    const fontCss = await getEmbeddedFiraSansCss();
-    return generateCircleGraphSvg(result.clusters, {
-      axisType: paramSnapshot.axis,
-      symbolScale: paramSnapshot.symbolScale,
-      showAxisLabels: true,
-      fontCss: fontCss
-    });
-  }
 </script>
 
 <section class="exports">
@@ -109,7 +107,7 @@
     <div class="cards">
       <article>
         <h2>Circle Graph</h2>
-        <p>PNG or SVG render of the hue distribution.</p>
+        <p>PNG or SVG render of hue + chroma distribution.</p>
         <label class="scale">
           <span>PNG scale</span>
           <input type="number" min="1" max="4" step="1" bind:value={graphScale} />
@@ -122,7 +120,7 @@
       </article>
       <article>
         <h2>Palette CSV</h2>
-        <p>Ranked palette with RGB totals and share.</p>
+        <p>Ranked palette with RGB + OKLab/OKLCH metadata.</p>
         <div class="actions">
           <button onclick={savePaletteCsv} disabled={isSaving}>Save CSV</button>
         </div>

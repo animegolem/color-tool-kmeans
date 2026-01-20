@@ -4,6 +4,8 @@ const DEFAULT_TOLERANCE = 1e-3;
 const DEFAULT_MAX_ITER = 40;
 const DEFAULT_MAX_SAMPLES = 300_000;
 const DEFAULT_SEED = 1;
+const DEFAULT_QUALITY = 2;
+const DEFAULT_IGNORE_TOP_N = 0;
 export class TauriComputeError extends Error {
     code;
     constructor(code, message, options) {
@@ -25,6 +27,10 @@ const tauriClusterSchema = z
     share: finiteNumberSchema,
     centroidSpace: z.any().optional(),
     centroid_space: z.any().optional(),
+    oklab: z.any().optional(),
+    oklch: z.any().optional(),
+    ok_lab: z.any().optional(),
+    ok_lch: z.any().optional(),
     rgb: z
         .object({
         r: finiteNumberSchema,
@@ -36,9 +42,19 @@ const tauriClusterSchema = z
 })
     .transform((data, ctx) => {
     const sourceCentroid = data.centroidSpace ?? data.centroid_space;
+    const oklabSource = data.oklab ?? data.ok_lab ?? sourceCentroid;
+    const oklchSource = data.oklch ?? data.ok_lch;
     const centroid = coerceTriple(sourceCentroid);
+    const oklab = coerceTriple(oklabSource);
+    const oklch = coerceTriple(oklchSource);
     if (!centroid) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['centroidSpace'], message: 'centroidSpace must contain three finite numbers' });
+    }
+    if (!oklab) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['oklab'], message: 'oklab must contain three finite numbers' });
+    }
+    if (!oklch) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['oklch'], message: 'oklch must contain three finite numbers' });
     }
     const hsvTriple = coerceTriple(data.hsv);
     if (!hsvTriple) {
@@ -51,6 +67,8 @@ const tauriClusterSchema = z
         count: data.count,
         share: data.share,
         centroidSpace: centroid,
+        oklab: oklab,
+        oklch: oklch,
         rgb: data.rgb,
         hsv: hsvTriple
     };
@@ -85,12 +103,18 @@ function normalizeTauriCluster(raw) {
     }
     const cluster = raw;
     const centroidSource = cluster.centroidSpace ?? cluster.centroid_space;
+    const oklabSource = cluster.oklab ?? cluster.ok_lab ?? centroidSource;
+    const oklchSource = cluster.oklch ?? cluster.ok_lch;
     const rgb = cluster.rgb;
     return {
         count: Number(cluster.count),
         share: Number(cluster.share),
         centroidSpace: centroidSource,
         centroid_space: centroidSource,
+        oklab: oklabSource,
+        ok_lab: oklabSource,
+        oklch: oklchSource,
+        ok_lch: oklchSource,
         rgb: rgb
             ? {
                 r: Number(rgb.r),
@@ -150,9 +174,9 @@ function createTauriComputeBridge() {
             const req = {
                 path: globalThis.__ACTIVE_IMAGE_PATH__ ?? '',
                 k: params.clusters,
-                stride: params.stride,
-                minLum: params.minLum,
-                space: params.colorSpace,
+                quality: params.quality ?? DEFAULT_QUALITY,
+                ignoreTopN: params.ignoreTopN ?? DEFAULT_IGNORE_TOP_N,
+                minLum: 0,
                 tol: params.tol ?? DEFAULT_TOLERANCE,
                 maxIter: params.maxIter ?? DEFAULT_MAX_ITER,
                 seed: params.seed ?? DEFAULT_SEED,
@@ -174,6 +198,8 @@ function createTauriComputeBridge() {
                 count: cluster.count,
                 share: cluster.share,
                 centroidSpace: cluster.centroidSpace,
+                oklab: cluster.oklab,
+                oklch: cluster.oklch,
                 rgb: cluster.rgb,
                 hsv: cluster.hsv
             }));

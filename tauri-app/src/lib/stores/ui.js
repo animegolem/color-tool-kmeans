@@ -2,12 +2,13 @@ import { writable, derived } from 'svelte/store';
 export const currentView = writable('home');
 export const selectedFile = writable(null);
 export const params = writable({
-    colorSpace: 'HSL',
     clusters: 10,
-    stride: 4,
-    minLum: 10,
-    axis: 'HSL',
-    symbolScale: 1
+    quality: 2,
+    ignoreTopN: 0,
+    symbolScale: 1,
+    showClusterOutline: false,
+    showAxisLabels: true,
+    showGamutBackground: false
 });
 export const hasFile = derived(selectedFile, ($file) => $file !== null);
 export const analysisState = writable('idle');

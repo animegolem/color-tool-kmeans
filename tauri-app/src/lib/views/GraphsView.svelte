@@ -1,328 +1,183 @@
 <script lang="ts">
   import { get } from 'svelte/store';
-  import {
-    analysisResult,
-    analysisState,
-    params,
-    selectedFile,
-    topClusters,
-    type AnalysisCluster
-  } from '../stores/ui';
+  import { analysisError, analysisResult, analysisState, params, selectedFile } from '../stores/ui';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
 
   const file = $derived.by(() => get(selectedFile));
+  const analysisParams = $derived.by(() => get(params));
   const result = $derived.by(() => get(analysisResult));
   const status = $derived.by(() => get(analysisState));
-  const paramSnapshot = $derived.by(() => get(params));
-  const palette = $derived.by(() => get(topClusters));
-  const metrics = $derived.by(() => {
+  const error = $derived.by(() => get(analysisError));
+
+  const circleGraph = $derived.by(() => {
     if (!result) return null;
-    return [
-      { label: 'Duration', value: Number.isFinite(result.durationMs) ? `${result.durationMs.toFixed(0)} ms` : '—' },
-      {
-        label: 'Samples',
-        value: typeof result.totalSamples === 'number' ? result.totalSamples.toLocaleString() : '—'
-      },
-      { label: 'Iterations', value: typeof result.iterations === 'number' ? result.iterations : '—' },
-      { label: 'Variant', value: result.variant ?? 'native' }
-    ];
-  });
-
-  let graphSvg = $state<string | null>(null);
-
-  $effect(() => {
-    if (!result) {
-      graphSvg = null;
-      return;
-    }
-    const { svg } = generateCircleGraphSvg(result.clusters, {
-      axisType: paramSnapshot.axis,
-      symbolScale: paramSnapshot.symbolScale,
-      showAxisLabels: true
+    return generateCircleGraphSvg(result.clusters, {
+      symbolScale: analysisParams.symbolScale,
+      showAxisLabels: analysisParams.showAxisLabels,
+      showStroke: analysisParams.showClusterOutline,
+      showGamutBackground: analysisParams.showGamutBackground,
+      size: 520
     });
-    graphSvg = svg;
   });
 
-  function rgbToHex(rgb: AnalysisCluster['rgb']): string {
-    return `#${toHex(rgb.r)}${toHex(rgb.g)}${toHex(rgb.b)}`.toUpperCase();
-  }
-
-  function toHex(value: number): string {
-    return Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, '0');
-  }
-
-  function percent(value: number): string {
-    if (!Number.isFinite(value)) return '0%';
-    return `${(value * 100).toFixed(2)}%`;
-  }
-
-  function rgbCss(rgb: AnalysisCluster['rgb']): string {
-    return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
-  }
+  const palette = $derived.by(() => (result ? result.clusters.slice(0, 12) : []));
 </script>
 
 <section class="graphs">
   <header>
     <h1>Graphs</h1>
-    <p class="note">Circle graph and palette preview update whenever analysis completes.</p>
+    <p class="note">Polar chart and palette visualizations for the current analysis.</p>
   </header>
 
-  {#if !file}
-    <div class="empty-panel">
-      <p>Select an image on the Home view to enable charts.</p>
-    </div>
-  {:else if status !== 'ready' || !result}
-    <div class="empty-panel">
-      <p>Run analysis on the Home view to populate the graphs.</p>
-    </div>
-  {:else}
+  {#if file && result}
     <div class="summary">
       <p><strong>File:</strong> {file?.name}</p>
-      <p><strong>Clusters:</strong> {result.clusters.length}</p>
-      <p><strong>Axis:</strong> {paramSnapshot.axis}</p>
-      <p><strong>Symbol scale:</strong> {paramSnapshot.symbolScale.toFixed(1)}</p>
+      <p><strong>Clusters:</strong> {analysisParams?.clusters}</p>
+      <p><strong>Quality:</strong> {analysisParams?.quality}</p>
+      <p><strong>Exclude top:</strong> {analysisParams?.ignoreTopN}</p>
+      <p><strong>Samples:</strong> {result.totalSamples.toLocaleString()}</p>
     </div>
-    {#if metrics}
-      <div class="metrics" role="list">
-        {#each metrics as metric}
-          <div role="listitem">
-            <p class="metric-label">{metric.label}</p>
-            <p class="metric-value">{metric.value}</p>
+
+    <div class="grid">
+      <article class="card">
+        <header class="card-header">
+          <h2>Polar Chart</h2>
+          <span>Hue · Chroma</span>
+        </header>
+        {#if circleGraph}
+          <div class="graph" role="img" aria-label="OKLCH polar chart">
+            {@html circleGraph.svg}
           </div>
-        {/each}
-      </div>
-    {/if}
-
-    <div class="graph-layout">
-      <figure class="graph-card" aria-labelledby="circle-graph-title">
-        <div class="graph-frame" role="img" aria-label="Circle graph showing hue distribution">
-          {#if graphSvg}
-            <div class="graph-svg" aria-hidden="true">{@html graphSvg}</div>
-          {:else}
-            <p class="note">Preparing preview…</p>
-          {/if}
-        </div>
-        <figcaption id="circle-graph-title">
-          Native clusters rendered in polar coordinates. Axis and symbol scale mirror the Parameters panel.
-        </figcaption>
-      </figure>
-
-      <section class="palette-card" aria-label="Top palette colors" role="list">
-        <header>
-          <h2>Top Palette</h2>
-          <p class="note">Up to 8 clusters ranked by share.</p>
+        {:else}
+          <div class="empty">Chart unavailable.</div>
+        {/if}
+      </article>
+      <article class="card">
+        <header class="card-header">
+          <h2>Palette</h2>
+          <span>Top clusters</span>
         </header>
         {#if palette.length === 0}
-          <p class="empty-state">Palette preview unavailable.</p>
+          <div class="empty">No clusters available.</div>
         {:else}
-          <div class="palette-grid">
-            {#each palette as cluster, index (cluster.rgb.r + cluster.rgb.g + cluster.rgb.b + index)}
-              <div class="palette-row" role="listitem">
-                <span class="swatch" style={`--swatch-color:${rgbCss(cluster.rgb)}`}></span>
-                <div class="swatch-meta">
-                  <div class="row-header">
-                    <p class="hex">{rgbToHex(cluster.rgb)}</p>
-                    <p class="rank">#{index + 1}</p>
-                  </div>
-                  <p class="details">
-                    {cluster.count.toLocaleString()} px · {percent(cluster.share)}
-                  </p>
-                  <div class="share-bar" aria-hidden="true">
-                    <div class="share-fill" style={`--share:${Math.min(Math.max(cluster.share, 0), 1)}`}></div>
-                  </div>
-                </div>
-              </div>
+          <ol class="palette">
+            {#each palette as cluster, idx}
+              <li>
+                <span class="rank">#{idx + 1}</span>
+                <span
+                  class="swatch"
+                  style={`background: rgb(${cluster.rgb.r}, ${cluster.rgb.g}, ${cluster.rgb.b})`}
+                  aria-hidden="true"
+                ></span>
+                <span class="share">{(cluster.share * 100).toFixed(1)}%</span>
+              </li>
             {/each}
-          </div>
+          </ol>
         {/if}
-      </section>
+      </article>
     </div>
+  {:else if file && status === 'pending'}
+    <div class="empty">Analysis in progress…</div>
+  {:else if status === 'error'}
+    <div class="empty">Analysis failed. {error ?? 'Unknown error.'}</div>
+  {:else}
+    <div class="empty">Select an image to enable charts.</div>
   {/if}
 </section>
 
 <style>
   .graphs {
-    max-width: 1100px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    max-width: 900px;
   }
 
   .summary {
     display: flex;
+    gap: 32px;
+    margin-bottom: 16px;
     flex-wrap: wrap;
-    gap: 18px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .card {
     background: var(--panel);
     border-radius: 12px;
-    padding: 16px 20px;
+    padding: 16px;
     box-shadow: var(--shadow);
   }
 
-  .summary p {
-    margin: 0;
-    font-size: 14px;
-  }
-
-  .graph-layout {
-    display: grid;
-    grid-template-columns: minmax(320px, 620px) minmax(260px, 1fr);
-    gap: 24px;
-  }
-
-  .metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 12px;
-    margin-bottom: 8px;
-  }
-
-  .metrics div {
-    background: rgba(255, 255, 255, 0.7);
-    border-radius: 10px;
-    padding: 12px 14px;
-    border: 1px solid rgba(33, 33, 32, 0.12);
-  }
-
-  .metric-label {
-    margin: 0;
-    font-size: 12px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: rgba(33, 33, 32, 0.6);
-  }
-
-  .metric-value {
-    margin: 4px 0 0 0;
-    font-size: 16px;
-    font-weight: 600;
-  }
-
-  .graph-card {
-    margin: 0;
-    background: var(--panel);
-    border-radius: 16px;
-    padding: 20px;
-    box-shadow: var(--shadow);
+  .card-header {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
+    align-items: baseline;
     gap: 12px;
+    margin-bottom: 12px;
   }
 
-  .graph-frame {
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    padding: 12px;
-    background: #fff;
-    min-height: 360px;
-    display: grid;
-    place-items: center;
-    overflow: hidden;
+  .card-header span {
+    font-size: 12px;
+    opacity: 0.7;
   }
 
-  .graph-svg :global(svg) {
+  .graph {
+    width: 100%;
+  }
+
+  .graph :global(svg) {
     width: 100%;
     height: auto;
-    max-width: 560px;
     display: block;
   }
 
-  figcaption {
+  .palette {
+    list-style: none;
+    padding: 0;
     margin: 0;
-    font-size: 13px;
-    color: rgba(33, 33, 32, 0.65);
-  }
-
-  .palette-card {
-    background: var(--panel);
-    border-radius: 16px;
-    padding: 20px;
-    box-shadow: var(--shadow);
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .palette-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .palette-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    border: 1px solid rgba(33, 33, 32, 0.12);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.6);
-  }
-
-  .swatch {
-    width: 48px;
-    height: 48px;
-    border-radius: 10px;
-    border: 1px solid rgba(33, 33, 32, 0.2);
-    background: var(--swatch-color);
-  }
-
-  .swatch-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .row-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: grid;
     gap: 8px;
   }
 
-  .hex {
-    margin: 0;
-    font-weight: 600;
+  .palette li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(33, 33, 32, 0.06);
   }
 
   .rank {
-    margin: 0;
     font-size: 12px;
-    padding: 2px 8px;
-    border-radius: 999px;
-    border: 1px solid rgba(33, 33, 32, 0.16);
+    opacity: 0.6;
+    width: 28px;
   }
 
-  .details {
-    margin: 0;
-    font-size: 13px;
-    color: rgba(33, 33, 32, 0.7);
+  .swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
   }
 
-  .share-bar {
-    width: 100%;
-    height: 6px;
-    border-radius: 999px;
-    background: rgba(33, 33, 32, 0.08);
-    overflow: hidden;
+  .share {
+    font-variant-numeric: tabular-nums;
+    margin-left: auto;
   }
 
-  .share-fill {
-    height: 100%;
-    width: calc(var(--share, 0) * 100%);
-    background: var(--accent, #866051);
-  }
-
-  .empty-panel,
-  .empty-state {
-    padding: 18px;
-    border-radius: 12px;
+  .empty {
+    padding: 16px;
+    border-radius: 8px;
     background: var(--panel);
-    color: rgba(33, 33, 32, 0.65);
-    border: 1px dashed var(--line);
+    color: rgba(33, 33, 32, 0.6);
   }
 
-  @media (max-width: 980px) {
-    .graph-layout {
+  @media (max-width: 900px) {
+    .grid {
       grid-template-columns: 1fr;
     }
   }
