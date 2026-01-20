@@ -8,6 +8,7 @@
   // NOTE: Temporary inline overlays to bypass slot/runtime issue in container
   import type {
     AnalysisParams,
+    ImageEntry,
     SelectedImage,
     AnalysisResult,
     AnalysisState
@@ -65,8 +66,6 @@
   let status = $state<AnalysisState>(get(analysisState));
   let result = $state<AnalysisResult | null>(null);
   let analysisErr = $state<string | null>(null);
-  let previewUrl = $state<string | null>(null);
-  let previewObjectUrl: string | null = null;
 
   interface DevBannerDetails {
     detection: ReturnType<typeof tauriDetectionInfo>;
@@ -183,24 +182,14 @@
     formatHistogramSortLabel(currentParams.histogramSort)
   );
 
-  function clearPreviewUrl() {
-    if (previewObjectUrl) {
-      URL.revokeObjectURL(previewObjectUrl);
-      previewObjectUrl = null;
-    }
-    previewUrl = null;
-  }
-
-  function setPreviewUrl(selection: FileSelection, nativeMode: boolean) {
-    clearPreviewUrl();
+  function buildPreviewUrl(selection: FileSelection, nativeMode: boolean): string | null {
     if (nativeMode && selection.path) {
-      previewUrl = convertFileSrc(selection.path);
-      return;
+      return convertFileSrc(selection.path);
     }
     if (selection.blob && selection.blob.size > 0) {
-      previewObjectUrl = URL.createObjectURL(selection.blob);
-      previewUrl = previewObjectUrl;
+      return URL.createObjectURL(selection.blob);
     }
+    return null;
   }
 
   function handleScrubStart(_event: PointerEvent) {
@@ -305,7 +294,6 @@
     clearFile();
     cancelPending();
     updateNativeMode();
-    clearPreviewUrl();
   }
 
   async function ingestSelection(fileSelection: FileSelection) {
@@ -316,7 +304,6 @@
       updateNativeMode();
       let dataset;
       const nativeMode = (isTauriEnv() || getBridgeOverride() === 'tauri') && !!fileSelection.path;
-      setPreviewUrl(fileSelection, nativeMode);
       if (nativeMode) {
         // Defer decoding to native; use a placeholder dataset
         (globalThis as any).__ACTIVE_IMAGE_PATH__ = fileSelection.path;
@@ -325,17 +312,22 @@
         dataset = await loadImageDataset(fileSelection.blob);
       }
       if (token !== loadToken) return;
-      const selected: SelectedImage = {
+      const previewUrl = buildPreviewUrl(fileSelection, nativeMode);
+      const source: ImageEntry['source'] = nativeMode && fileSelection.path
+        ? { kind: 'path', path: fileSelection.path }
+        : { kind: 'blob' };
+      const selected: ImageEntry = {
         id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
         name: fileSelection.name || fileSelection.path || 'image',
         path: fileSelection.path,
         size: fileSelection.size,
-        dataset
+        source,
+        previewUrl
       };
       bannerMessage = null;
-      setFile(selected);
+      setFile(selected, dataset);
       const snapshot = get(params);
-      scheduleAnalysisWith(selected, snapshot);
+      scheduleAnalysisWith({ ...selected, dataset }, snapshot);
     } catch (error) {
       console.error('[home] Failed to decode image', error);
       if (token === loadToken) {
@@ -513,7 +505,6 @@
 
   onDestroy(() => {
     cancelPending();
-    clearPreviewUrl();
   });
 
   $effect(() => {
@@ -589,8 +580,8 @@
           onkeydown={handleDropzoneKeydown}
         >
           <div class="image-preview">
-            {#if previewUrl}
-              <img src={previewUrl} alt={file?.name ?? 'Selected image'} />
+            {#if file?.previewUrl}
+              <img src={file.previewUrl} alt={file?.name ?? 'Selected image'} />
             {:else}
               <div class="preview-placeholder">Image preview unavailable.</div>
             {/if}
