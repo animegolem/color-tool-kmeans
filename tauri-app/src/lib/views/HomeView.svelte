@@ -1,4 +1,4 @@
-<script lang="ts" context="module">
+<script lang="ts" module>
   let lastRequestKey: string | null = null;
 </script>
 
@@ -10,7 +10,6 @@
     AnalysisParams,
     SelectedImage,
     AnalysisResult,
-    AnalysisCluster,
     AnalysisState
   } from '../stores/ui';
   import {
@@ -21,7 +20,6 @@
     analysisState,
     analysisResult,
     analysisError,
-    topClusters,
     setAnalysisPending,
     setAnalysisSuccess,
     setAnalysisError,
@@ -32,6 +30,10 @@
   import { loadImageDataset } from '../compute/image-loader';
   import { getFsBridge, type FileSelection } from '../bridges/fs';
   import { isTauriEnv, getBridgeOverride, tauriDetectionInfo } from '../bridges/tauri';
+  import { convertFileSrc } from '@tauri-apps/api/core';
+  import { generateCircleGraphSvg } from '../exports/polar-chart';
+  import { generateHueLightnessSvg } from '../exports/hue-lightness';
+  import { generateHistogramSvg } from '../exports/histogram';
 
   const ANALYZE_DEBOUNCE_MS = 400;
   const SPINNER_THRESHOLD_MS = 150;
@@ -51,7 +53,7 @@
   let devBannerAnalysisLogged = false;
   let isScrubbing = $state(false);
 
-  let dropRef: HTMLElement;
+  let dropRef = $state<HTMLElement | null>(null);
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let spinnerTimer: ReturnType<typeof setTimeout> | null = null;
@@ -63,7 +65,8 @@
   let status = $state<AnalysisState>(get(analysisState));
   let result = $state<AnalysisResult | null>(null);
   let analysisErr = $state<string | null>(null);
-  let clusters = $state<AnalysisCluster[]>([]);
+  let previewUrl = $state<string | null>(null);
+  let previewObjectUrl: string | null = null;
 
   interface DevBannerDetails {
     detection: ReturnType<typeof tauriDetectionInfo>;
@@ -139,6 +142,67 @@
     devBannerVisible = false;
   }
 
+  const polarChart = $derived.by(() => {
+    if (!result) return null;
+    return generateCircleGraphSvg(result.clusters, {
+      symbolScale: currentParams.symbolScale,
+      showAxisLabels: currentParams.showAxisLabels,
+      showStroke: currentParams.showClusterOutline,
+      showGamutBackground: currentParams.showGamutBackground,
+      showPaletteMask: currentParams.showPaletteMask,
+      useHsl: currentParams.useHslPolar,
+      useGradient: currentParams.useGradientOverlay,
+      size: 420
+    });
+  });
+
+  const hueLightnessChart = $derived.by(() => {
+    if (!result) return null;
+    return generateHueLightnessSvg(result.clusters, {
+      symbolScale: currentParams.symbolScale,
+      showAxisLabels: currentParams.showAxisLabels,
+      showStroke: currentParams.showClusterOutline,
+      sizeMode: currentParams.hueLightnessSizeMode,
+      useGradient: currentParams.useGradientOverlay,
+      width: 420,
+      height: 240
+    });
+  });
+
+  const histogram = $derived.by(() => {
+    if (!result) return null;
+    return generateHistogramSvg(result.clusters, {
+      width: 520,
+      height: 180,
+      maxBars: 120,
+      sortBy: currentParams.histogramSort
+    });
+  });
+
+  const histogramSortLabel = $derived.by(() =>
+    formatHistogramSortLabel(currentParams.histogramSort)
+  );
+
+  function clearPreviewUrl() {
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+      previewObjectUrl = null;
+    }
+    previewUrl = null;
+  }
+
+  function setPreviewUrl(selection: FileSelection, nativeMode: boolean) {
+    clearPreviewUrl();
+    if (nativeMode && selection.path) {
+      previewUrl = convertFileSrc(selection.path);
+      return;
+    }
+    if (selection.blob && selection.blob.size > 0) {
+      previewObjectUrl = URL.createObjectURL(selection.blob);
+      previewUrl = previewObjectUrl;
+    }
+  }
+
   function handleScrubStart(_event: PointerEvent) {
     isScrubbing = true;
   }
@@ -152,23 +216,20 @@
   }
 
   $effect(() => {
-    const unsubFile = selectedFile.subscribe((value) => {
-      file = value;
-    });
-    const unsubParams = params.subscribe((value) => {
-      currentParams = value;
-    });
-    const unsubStatus = analysisState.subscribe((value) => {
-      status = value;
-    });
+	    const unsubFile = selectedFile.subscribe((value) => {
+	      file = value;
+	    });
+	    const unsubParams = params.subscribe((value) => {
+	      currentParams = { ...value };
+	    });
+	    const unsubStatus = analysisState.subscribe((value) => {
+	      status = value;
+	    });
     const unsubResult = analysisResult.subscribe((value) => {
       result = value;
     });
     const unsubError = analysisError.subscribe((value) => {
       analysisErr = value;
-    });
-    const unsubClusters = topClusters.subscribe((value) => {
-      clusters = value;
     });
     return () => {
       unsubFile();
@@ -176,7 +237,6 @@
       unsubStatus();
       unsubResult();
       unsubError();
-      unsubClusters();
     };
   });
 
@@ -245,6 +305,7 @@
     clearFile();
     cancelPending();
     updateNativeMode();
+    clearPreviewUrl();
   }
 
   async function ingestSelection(fileSelection: FileSelection) {
@@ -255,6 +316,7 @@
       updateNativeMode();
       let dataset;
       const nativeMode = (isTauriEnv() || getBridgeOverride() === 'tauri') && !!fileSelection.path;
+      setPreviewUrl(fileSelection, nativeMode);
       if (nativeMode) {
         // Defer decoding to native; use a placeholder dataset
         (globalThis as any).__ACTIVE_IMAGE_PATH__ = fileSelection.path;
@@ -376,6 +438,12 @@
     bannerMessage = null;
   }
 
+  function formatHistogramSortLabel(sortBy: AnalysisParams['histogramSort']): string {
+    if (sortBy === 'hue') return 'Top clusters by hue';
+    if (sortBy === 'lightness') return 'Top clusters by lightness';
+    return 'Top clusters by frequency';
+  }
+
   onMount(() => {
     updateNativeMode();
     let dragDepth = 0;
@@ -445,6 +513,7 @@
 
   onDestroy(() => {
     cancelPending();
+    clearPreviewUrl();
   });
 
   $effect(() => {
@@ -503,25 +572,173 @@
     <p class="native-copy">{nativeDragCopy}</p>
   {/if}
 
-  <div
-    bind:this={dropRef}
-    class:dragging={dragging}
-    class="dropzone"
-    tabindex="0"
-    role="button"
-    aria-label="Image dropzone"
-    aria-busy={status === 'pending'}
-    ondragover={handleDragOver}
-    ondragleave={handleDragLeave}
-    ondrop={handleDrop}
-    onkeydown={handleDropzoneKeydown}
-  >
-    <div class="inner">
-      <p class="title">Drop anywhere</p>
-      <p class="note">or</p>
-      <button class="upload" onclick={chooseFile}>Upload</button>
+  {#if file}
+    <section class="analysis-layout">
+      <div class="analysis-column">
+        <div
+          bind:this={dropRef}
+          class:dragging={dragging}
+          class="dropzone dropzone--image"
+          tabindex="0"
+          role="button"
+          aria-label="Image dropzone"
+          aria-busy={status === 'pending'}
+          ondragover={handleDragOver}
+          ondragleave={handleDragLeave}
+          ondrop={handleDrop}
+          onkeydown={handleDropzoneKeydown}
+        >
+          <div class="image-preview">
+            {#if previewUrl}
+              <img src={previewUrl} alt={file?.name ?? 'Selected image'} />
+            {:else}
+              <div class="preview-placeholder">Image preview unavailable.</div>
+            {/if}
+          </div>
+        </div>
+        {#if status === 'ready' && result}
+          <article class="analysis-card">
+            <header class="analysis-header">
+              <div>
+                <h2>Cluster Histogram</h2>
+                <span>{histogramSortLabel}</span>
+              </div>
+              <div class="toggle-group">
+                <button
+                  type="button"
+                  class:active={$params.histogramSort === 'frequency'}
+                  onclick={() => ($params.histogramSort = 'frequency')}
+                >
+                  Frequency
+                </button>
+                <button
+                  type="button"
+                  class:active={$params.histogramSort === 'hue'}
+                  onclick={() => ($params.histogramSort = 'hue')}
+                >
+                  Hue
+                </button>
+                <button
+                  type="button"
+                  class:active={$params.histogramSort === 'lightness'}
+                  onclick={() => ($params.histogramSort = 'lightness')}
+                >
+                  Lightness
+                </button>
+              </div>
+              <span class="metrics">
+                {Math.round(result.durationMs)} ms · {result.iterations} iterations ·
+                {result.totalSamples.toLocaleString()} samples
+              </span>
+            </header>
+            <div class="chart">
+              {#if histogram}
+                {@html histogram.svg}
+              {:else}
+                <div class="placeholder">Histogram unavailable.</div>
+              {/if}
+            </div>
+          </article>
+        {/if}
+      </div>
+      <div class="analysis-column">
+        {#if status === 'ready' && result}
+          <article class="analysis-card">
+            <header class="analysis-header">
+              <div>
+                <h2>Polar Chart</h2>
+                <span>Hue · Chroma</span>
+              </div>
+              <div class="toggle-group">
+                <button
+                  type="button"
+                  class:active={!$params.useHslPolar}
+                  onclick={() => ($params.useHslPolar = false)}
+                >
+                  OKLCH
+                </button>
+                <button
+                  type="button"
+                  class:active={$params.useHslPolar}
+                  onclick={() => ($params.useHslPolar = true)}
+                >
+                  HSL
+                </button>
+              </div>
+            </header>
+            <div class="chart">
+              {#if polarChart}
+                {@html polarChart.svg}
+              {:else}
+                <div class="placeholder">Chart unavailable.</div>
+              {/if}
+            </div>
+          </article>
+          <article class="analysis-card">
+            <header class="analysis-header">
+              <div>
+                <h2>Hue × Lightness</h2>
+                <span>Hue · Lightness</span>
+              </div>
+              <div class="toggle-group">
+                <button
+                  type="button"
+                  class:active={$params.hueLightnessSizeMode === 'chroma'}
+                  onclick={() => ($params.hueLightnessSizeMode = 'chroma')}
+                >
+                  Chroma
+                </button>
+                <button
+                  type="button"
+                  class:active={$params.hueLightnessSizeMode === 'frequency'}
+                  onclick={() => ($params.hueLightnessSizeMode = 'frequency')}
+                >
+                  Frequency
+                </button>
+              </div>
+            </header>
+            <div class="chart">
+              {#if hueLightnessChart}
+                {@html hueLightnessChart.svg}
+              {:else}
+                <div class="placeholder">Chart unavailable.</div>
+              {/if}
+            </div>
+          </article>
+        {/if}
+      </div>
+    </section>
+    <div class="selection selection--compact">
+      <div>
+        <strong>Selected file:</strong>
+        <span>{file?.name}</span>
+      </div>
+      <button onclick={clearSelection}>Clear</button>
     </div>
-  </div>
+  {:else}
+    <div
+      bind:this={dropRef}
+      class:dragging={dragging}
+      class="dropzone"
+      tabindex="0"
+      role="button"
+      aria-label="Image dropzone"
+      aria-busy={status === 'pending'}
+      ondragover={handleDragOver}
+      ondragleave={handleDragLeave}
+      ondrop={handleDrop}
+      onkeydown={handleDropzoneKeydown}
+    >
+      <div class="inner">
+        <p class="title">Drop anywhere</p>
+        <p class="note">or</p>
+        <button class="upload" onclick={chooseFile}>Upload</button>
+      </div>
+    </div>
+    <div class="selection empty">
+      <span>No file selected yet.</span>
+    </div>
+  {/if}
 
   <!-- Full-window drag overlay -->
   {#if draggingWindow}
@@ -573,49 +790,6 @@
     </div>
   {/if}
 
-  {#if file}
-    <div class="selection">
-      <div>
-        <strong>Selected file:</strong>
-        <span>{file?.name}</span>
-      </div>
-      <button onclick={clearSelection}>Clear</button>
-    </div>
-  {:else}
-    <div class="selection empty">
-      <span>No file selected yet.</span>
-    </div>
-  {/if}
-
-  {#if status === 'ready' && result}
-    <section class="preview">
-      <header class="preview-header">
-        <h2>Cluster Preview</h2>
-        <span class="metrics">
-          {Math.round(result.durationMs)} ms · {result.iterations} iterations ·
-          {result.totalSamples.toLocaleString()} samples
-        </span>
-      </header>
-      <ul class="cluster-list">
-        {#if clusters.length === 0}
-          <li class="placeholder">No clusters returned</li>
-        {:else}
-          {#each clusters as cluster, idx}
-            <li>
-              <span class="rank">#{idx + 1}</span>
-              <span
-                class="swatch"
-                style={`background: rgb(${cluster.rgb.r}, ${cluster.rgb.g}, ${cluster.rgb.b})`}
-                aria-hidden="true"
-              ></span>
-              <span class="share">{(cluster.share * 100).toFixed(1)}%</span>
-              <span class="count">{cluster.count.toLocaleString()} px</span>
-            </li>
-          {/each}
-        {/if}
-      </ul>
-    </section>
-  {/if}
 
   <section class="controls">
     <h2>Parameters</h2>
@@ -654,7 +828,7 @@
         <input
           type="range"
           min="0"
-          max="10"
+          max="100"
           step="1"
           bind:value={$params.ignoreTopN}
           onpointerdown={handleScrubStart}
@@ -689,13 +863,22 @@
         <input type="checkbox" bind:checked={$params.showGamutBackground} />
         Gamut background
       </label>
+      <label class="choice">
+        <input type="checkbox" bind:checked={$params.showPaletteMask} />
+        Palette mask
+      </label>
+      <label class="choice">
+        <input type="checkbox" bind:checked={$params.useGradientOverlay} />
+        Blend overlaps (gradient)
+      </label>
     </div>
   </section>
 </section>
 
 <style>
   .home {
-    max-width: 720px;
+    max-width: 1120px;
+    margin: 0 auto;
   }
 
   .dev-banner {
@@ -771,12 +954,18 @@
   }
 
   .dropzone {
+    width: 100%;
     border: 2px dashed var(--accent);
     border-radius: 12px;
     padding: 48px;
     text-align: center;
     background: rgba(130, 76, 50, 0.06);
     transition: background 0.2s ease, border-color 0.2s ease;
+  }
+
+  .dropzone--image {
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.7);
   }
 
   .dropzone:focus-visible {
@@ -787,6 +976,107 @@
   .dropzone.dragging {
     background: rgba(130, 76, 50, 0.12);
     border-color: var(--accent);
+  }
+
+  .image-preview {
+    width: 100%;
+    display: grid;
+    place-items: center;
+  }
+
+  .image-preview img {
+    max-width: 100%;
+    max-height: 320px;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+
+  .preview-placeholder {
+    padding: 24px;
+    color: rgba(33, 33, 32, 0.6);
+  }
+
+  .analysis-layout {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
+    gap: 20px;
+  }
+
+  .analysis-column {
+    display: grid;
+    gap: 20px;
+    align-content: start;
+  }
+
+  .analysis-card {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+
+  .analysis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .analysis-header span {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+
+  .metrics {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+
+  .toggle-group {
+    display: inline-flex;
+    gap: 6px;
+    background: rgba(33, 33, 32, 0.08);
+    border-radius: 999px;
+    padding: 4px;
+  }
+
+  .toggle-group button {
+    border: none;
+    background: transparent;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    cursor: pointer;
+    color: rgba(33, 33, 32, 0.7);
+  }
+
+  .toggle-group button.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .chart :global(svg) {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .placeholder {
+    padding: 16px;
+    color: rgba(33, 33, 32, 0.6);
+  }
+
+  .selection--compact {
+    margin-top: 16px;
+  }
+
+  @media (max-width: 980px) {
+    .analysis-layout {
+      grid-template-columns: 1fr;
+    }
   }
 
   .number-input {
@@ -860,8 +1150,7 @@
     font-size: 14px;
   }
 
-  input,
-  select {
+  input {
     padding: 8px 10px;
     border: 1px solid var(--line);
     border-radius: 6px;
@@ -877,79 +1166,6 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-  }
-
-  .preview {
-    margin-top: 28px;
-    padding: 20px;
-    border-radius: 12px;
-    background: var(--color-surface);
-    box-shadow: var(--elev-1);
-  }
-
-  .preview-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
-  .preview-header h2 {
-    margin: 0;
-    font-size: 18px;
-  }
-
-  .preview-header .metrics {
-    font-size: 13px;
-    color: var(--color-ink-muted);
-  }
-
-  .cluster-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: grid;
-    gap: 10px;
-  }
-
-  .cluster-list li {
-    display: grid;
-    grid-template-columns: 32px 32px 80px 1fr;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 12px;
-    border: 1px solid var(--color-border-muted);
-    border-radius: 10px;
-    background: rgba(0, 0, 0, 0.02);
-  }
-
-  .cluster-list li.placeholder {
-    text-align: center;
-    color: var(--color-ink-muted);
-  }
-
-  .rank {
-    font-weight: 600;
-    color: var(--color-ink-strong);
-  }
-
-  .swatch {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
-  }
-
-  .share {
-    font-weight: 600;
-  }
-
-  .count {
-    justify-self: end;
-    font-size: 13px;
-    color: var(--color-ink-muted);
   }
 
   .retry {

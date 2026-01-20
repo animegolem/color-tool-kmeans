@@ -10,6 +10,14 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: blob: asset: tauri:; font-src 'self' data:; style-src 'self' 'unsafe-inline';",
+      "devCsp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
+    },
     "windows": [
       {
         "title": "Color Tool",

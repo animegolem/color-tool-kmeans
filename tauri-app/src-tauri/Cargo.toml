@@ -18,7 +18,7 @@ anyhow = "1.0"
 rand = { version = "0.8", features = ["small_rng"] }
 rayon = "1.8"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
-tauri = { version = "2.0", features = [] }
+tauri = { version = "2.0", features = ["protocol-asset"] }
 tauri-plugin-shell = "2.0"
 tauri-plugin-dialog = "2.0"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }

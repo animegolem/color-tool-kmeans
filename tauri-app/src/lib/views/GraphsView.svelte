@@ -1,32 +1,72 @@
 <script lang="ts">
-  import { get } from 'svelte/store';
+  import type { AnalysisParams, AnalysisResult, AnalysisState, SelectedImage } from '../stores/ui';
   import { analysisError, analysisResult, analysisState, params, selectedFile } from '../stores/ui';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
+  import { generateHueLightnessSvg } from '../exports/hue-lightness';
 
-  const file = $derived.by(() => get(selectedFile));
-  const analysisParams = $derived.by(() => get(params));
-  const result = $derived.by(() => get(analysisResult));
-  const status = $derived.by(() => get(analysisState));
-  const error = $derived.by(() => get(analysisError));
+  let file = $state<SelectedImage | null>(null);
+  let analysisParams = $state<AnalysisParams | null>(null);
+  let result = $state<AnalysisResult | null>(null);
+  let status = $state<AnalysisState>('idle');
+  let error = $state<string | null>(null);
 
-  const circleGraph = $derived.by(() => {
-    if (!result) return null;
+  let viewMode = $state<'polar' | 'hue-lightness'>('polar');
+
+  const chart = $derived.by(() => {
+    if (!result || !analysisParams) return null;
+    if (viewMode === 'hue-lightness') {
+      return generateHueLightnessSvg(result.clusters, {
+        symbolScale: analysisParams.symbolScale,
+        showAxisLabels: analysisParams.showAxisLabels,
+        showStroke: analysisParams.showClusterOutline,
+        sizeMode: analysisParams.hueLightnessSizeMode,
+        useGradient: analysisParams.useGradientOverlay,
+        width: 520,
+        height: 360
+      });
+    }
     return generateCircleGraphSvg(result.clusters, {
       symbolScale: analysisParams.symbolScale,
       showAxisLabels: analysisParams.showAxisLabels,
       showStroke: analysisParams.showClusterOutline,
       showGamutBackground: analysisParams.showGamutBackground,
+      showPaletteMask: analysisParams.showPaletteMask,
+      useHsl: analysisParams.useHslPolar,
+      useGradient: analysisParams.useGradientOverlay,
       size: 520
     });
   });
 
   const palette = $derived.by(() => (result ? result.clusters.slice(0, 12) : []));
+
+  $effect(() => {
+    const unsubs = [
+      selectedFile.subscribe((value) => {
+        file = value;
+	      }),
+	      params.subscribe((value) => {
+	        analysisParams = { ...value };
+	      }),
+	      analysisResult.subscribe((value) => {
+	        result = value;
+	      }),
+      analysisState.subscribe((value) => {
+        status = value;
+      }),
+      analysisError.subscribe((value) => {
+        error = value;
+      })
+    ];
+    return () => {
+      unsubs.forEach((unsub) => unsub());
+    };
+  });
 </script>
 
 <section class="graphs">
   <header>
     <h1>Graphs</h1>
-    <p class="note">Polar chart and palette visualizations for the current analysis.</p>
+    <p class="note">Polar chart and palette visualizations for the current analysis (experimental).</p>
   </header>
 
   {#if file && result}
@@ -41,12 +81,30 @@
     <div class="grid">
       <article class="card">
         <header class="card-header">
-          <h2>Polar Chart</h2>
-          <span>Hue · Chroma</span>
+          <div>
+            <h2>{viewMode === 'polar' ? 'Polar Chart' : 'Hue × Lightness'}</h2>
+            <span>{viewMode === 'polar' ? 'Hue · Chroma' : 'Hue · Lightness'}</span>
+          </div>
+          <div class="view-toggle">
+            <button
+              type="button"
+              class:active={viewMode === 'polar'}
+              onclick={() => (viewMode = 'polar')}
+            >
+              Polar
+            </button>
+            <button
+              type="button"
+              class:active={viewMode === 'hue-lightness'}
+              onclick={() => (viewMode = 'hue-lightness')}
+            >
+              Hue × Lightness
+            </button>
+          </div>
         </header>
-        {#if circleGraph}
-          <div class="graph" role="img" aria-label="OKLCH polar chart">
-            {@html circleGraph.svg}
+        {#if chart}
+          <div class="graph" role="img" aria-label="OKLCH chart">
+            {@html chart.svg}
           </div>
         {:else}
           <div class="empty">Chart unavailable.</div>
@@ -114,7 +172,7 @@
   .card-header {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
     gap: 12px;
     margin-bottom: 12px;
   }
@@ -122,6 +180,29 @@
   .card-header span {
     font-size: 12px;
     opacity: 0.7;
+  }
+
+  .view-toggle {
+    display: inline-flex;
+    gap: 6px;
+    background: rgba(33, 33, 32, 0.08);
+    border-radius: 999px;
+    padding: 4px;
+  }
+
+  .view-toggle button {
+    border: none;
+    background: transparent;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    cursor: pointer;
+    color: rgba(33, 33, 32, 0.7);
+  }
+
+  .view-toggle button.active {
+    background: var(--accent);
+    color: #fff;
   }
 
   .graph {

@@ -1,6 +1,7 @@
 import type { AnalysisCluster } from '../stores/ui';
 import { svgCircle, svgDocument, svgGroup, svgLine, svgText } from './svg';
 import { svgToPngBlob } from './png';
+import { buildGradientLayer } from './gradient';
 
 const DEG_TO_RAD = Math.PI / 180;
 
@@ -9,6 +10,9 @@ export interface CircleGraphOptions {
   showAxisLabels?: boolean;
   showStroke?: boolean;
   showGamutBackground?: boolean;
+  showPaletteMask?: boolean;
+  useHsl?: boolean;
+  useGradient?: boolean;
   size?: number;
 }
 
@@ -25,23 +29,52 @@ export function generateCircleGraphSvg(
   const size = options.size ?? 620;
   const radius = size / 2 - 12;
   const center = size / 2;
-  const chromaValues = clusters.map((cluster) => getChroma(cluster));
+  const useHsl = options.useHsl === true;
+  const chromaValues = clusters.map((cluster) => getChroma(cluster, useHsl));
   const maxChroma = Math.max(1e-6, ...chromaValues);
-  const layout = clusters.map((cluster) => buildLayoutEntry(cluster, radius, center, options, maxChroma));
+  const layout = clusters.map((cluster) =>
+    buildLayoutEntry(cluster, radius, center, options, maxChroma, useHsl)
+  );
 
   const svgParts: string[] = [];
-  if (options.showGamutBackground) {
+  const axisGroup = svgGroup([
+    svgCircle({ cx: center, cy: center, r: radius, fill: 'none', stroke: 'rgba(16,17,17,0.85)', 'stroke-width': 1 }),
+    svgLine({ x1: center - radius, y1: center, x2: center + radius, y2: center, stroke: 'rgba(16,17,17,0.85)', 'stroke-width': 1 }),
+    svgLine({ x1: center, y1: center - radius, x2: center, y2: center + radius, stroke: 'rgba(16,17,17,0.85)', 'stroke-width': 1 })
+  ]);
+
+  if (options.showGamutBackground && !useHsl) {
     const meanL = computeMeanLightness(clusters);
     svgParts.push(buildGamutBackground(center, radius, meanL));
-  } else {
-    svgParts.push(
-      svgGroup([
-        svgCircle({ cx: center, cy: center, r: radius, fill: 'none', stroke: 'rgba(16,17,17,0.85)', 'stroke-width': 1 }),
-        svgLine({ x1: center - radius, y1: center, x2: center + radius, y2: center, stroke: 'rgba(16,17,17,0.85)', 'stroke-width': 1 }),
-        svgLine({ x1: center, y1: center - radius, x2: center, y2: center + radius, stroke: 'rgba(16,17,17,0.85)', 'stroke-width': 1 })
-      ])
-    );
   }
+
+  if (options.useGradient) {
+    const gradient = buildGradientLayer(
+      size,
+      size,
+      layout.map((entry) => ({
+        x: entry.x,
+        y: entry.y,
+        radius: Math.max(3, entry.symbolRadius * 2),
+        r: entry.rgb.r,
+        g: entry.rgb.g,
+        b: entry.rgb.b
+      })),
+      { alphaScale: 0.12, opacity: 0.9 }
+    );
+    if (gradient) {
+      svgParts.push(gradient);
+    }
+  }
+
+  if (options.showPaletteMask) {
+    const mask = buildPaletteMask(layout);
+    if (mask) {
+      svgParts.push(mask);
+    }
+  }
+
+  svgParts.push(axisGroup);
 
   if (options.showAxisLabels !== false) {
     const axisLabelRadius = radius + 24;
@@ -96,9 +129,11 @@ export function generateCircleGraphSvg(
       height: size,
       content: svgParts.join(''),
       attrs: {
-        'data-color-model': 'oklch',
+        'data-color-model': useHsl ? 'hsl' : 'oklch',
         'data-chroma-normalization': 'per-image',
-        'data-gamut-overlay': options.showGamutBackground ? 'oklch-mean-L' : 'none'
+        'data-gamut-overlay': options.showGamutBackground && !useHsl ? 'oklch-mean-L' : 'none',
+        'data-palette-mask': options.showPaletteMask ? 'convex-hull' : 'none',
+        'data-gradient-overlay': options.useGradient ? 'on' : 'off'
       }
     }),
     width: size,
@@ -126,10 +161,11 @@ function buildLayoutEntry(
   radius: number,
   center: number,
   options: CircleGraphOptions,
-  maxChroma: number
+  maxChroma: number,
+  useHsl: boolean
 ): LayoutEntry {
-  const hue = getHue(cluster);
-  const chroma = getChroma(cluster);
+  const hue = getHue(cluster, useHsl);
+  const chroma = getChroma(cluster, useHsl);
   const maxSymbolRadius = radius * 0.3 * (options.symbolScale || 1);
   const padding = 8;
   const effectiveRadius = Math.max(0, radius - maxSymbolRadius - padding);
@@ -144,14 +180,20 @@ function buildLayoutEntry(
   };
 }
 
-function getHue(cluster: AnalysisCluster): number {
+function getHue(cluster: AnalysisCluster, useHsl: boolean): number {
+  if (useHsl) {
+    return rgbToHsl(cluster.rgb).h;
+  }
   if (cluster.oklch && cluster.oklch.length >= 3) {
     return cluster.oklch[2];
   }
   return cluster.hsv?.[0] ?? 0;
 }
 
-function getChroma(cluster: AnalysisCluster): number {
+function getChroma(cluster: AnalysisCluster, useHsl: boolean): number {
+  if (useHsl) {
+    return rgbToHsl(cluster.rgb).s;
+  }
   if (cluster.oklch && cluster.oklch.length >= 3) {
     return cluster.oklch[1];
   }
@@ -203,12 +245,10 @@ function buildGamutBackground(center: number, radius: number, lightness: number)
   `;
   const hueWedges = wedgeParts.join('');
   const fadeCircle = `<circle cx="${center}" cy="${center}" r="${radius}" fill="url(#gamut-fade)" />`;
-  const ring = `<circle cx="${center}" cy="${center}" r="${radius}" fill="none" stroke="rgba(16,17,17,0.85)" stroke-width="1" />`;
-  const axis = `<line x1="${center - radius}" y1="${center}" x2="${center + radius}" y2="${center}" stroke="rgba(16,17,17,0.45)" stroke-width="1" /><line x1="${center}" y1="${center - radius}" x2="${center}" y2="${center + radius}" stroke="rgba(16,17,17,0.45)" stroke-width="1" />`;
   const boundary = boundaryPath
     ? `<path d="${boundaryPath}" fill="none" stroke="rgba(16,17,17,0.5)" stroke-width="1" />`
     : '';
-  return `${defs}${hueWedges}${fadeCircle}${boundary}${ring}${axis}`;
+  return `${defs}${hueWedges}${fadeCircle}${boundary}`;
 }
 
 function buildBoundaryPath(points: Array<[number, number]>): string {
@@ -288,4 +328,72 @@ function linearToSrgbByte(value: number): number {
   const clamped = Math.min(1, Math.max(0, value));
   const srgb = clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
   return Math.round(Math.min(1, Math.max(0, srgb)) * 255);
+}
+
+function rgbToHsl(rgb: { r: number; g: number; b: number }): { h: number; s: number; l: number } {
+  const r = rgb.r / 255;
+  const g = rgb.g / 255;
+  const b = rgb.b / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  if (delta > 0) {
+    s = delta / (1 - Math.abs(2 * l - 1));
+    if (max === r) {
+      h = ((g - b) / delta) % 6;
+    } else if (max === g) {
+      h = (b - r) / delta + 2;
+    } else {
+      h = (r - g) / delta + 4;
+    }
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s, l };
+}
+
+function buildPaletteMask(layout: LayoutEntry[]): string | null {
+  const points = layout.map((entry) => ({ x: entry.x, y: entry.y }));
+  const hull = convexHull(points);
+  if (hull.length < 3) return null;
+  const path = hullPath(hull);
+  return `<path d="${path}" fill="rgba(16,17,17,0.08)" stroke="rgba(16,17,17,0.35)" stroke-width="1" />`;
+}
+
+function convexHull(points: Array<{ x: number; y: number }>): Array<{ x: number; y: number }> {
+  if (points.length <= 2) return points.slice();
+  const sorted = points
+    .slice()
+    .sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
+  const lower: Array<{ x: number; y: number }> = [];
+  for (const p of sorted) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) {
+      lower.pop();
+    }
+    lower.push(p);
+  }
+  const upper: Array<{ x: number; y: number }> = [];
+  for (let i = sorted.length - 1; i >= 0; i -= 1) {
+    const p = sorted[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) {
+      upper.pop();
+    }
+    upper.push(p);
+  }
+  upper.pop();
+  lower.pop();
+  return lower.concat(upper);
+}
+
+function cross(o: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+}
+
+function hullPath(points: Array<{ x: number; y: number }>): string {
+  const [first, ...rest] = points;
+  const segments = rest.map((p) => `L ${p.x.toFixed(2)} ${p.y.toFixed(2)}`);
+  return `M ${first.x.toFixed(2)} ${first.y.toFixed(2)} ${segments.join(' ')} Z`;
 }

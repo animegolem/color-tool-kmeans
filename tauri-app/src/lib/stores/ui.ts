@@ -11,6 +11,11 @@ export interface AnalysisParams {
   showClusterOutline: boolean;
   showAxisLabels: boolean;
   showGamutBackground: boolean;
+  showPaletteMask: boolean;
+  useHslPolar: boolean;
+  hueLightnessSizeMode: 'frequency' | 'chroma';
+  histogramSort: 'frequency' | 'hue' | 'lightness';
+  useGradientOverlay: boolean;
 }
 
 export const currentView = writable<View>('home');
@@ -26,13 +31,18 @@ export interface SelectedImage {
 export const selectedFile = writable<SelectedImage | null>(null);
 
 export const params = writable<AnalysisParams>({
-  clusters: 10,
+  clusters: 120,
   quality: 2,
   ignoreTopN: 0,
   symbolScale: 1,
   showClusterOutline: false,
   showAxisLabels: true,
-  showGamutBackground: false
+  showGamutBackground: false,
+  showPaletteMask: false,
+  useHslPolar: true,
+  hueLightnessSizeMode: 'chroma',
+  histogramSort: 'frequency',
+  useGradientOverlay: false
 });
 
 export const hasFile = derived(selectedFile, ($file) => $file !== null);
