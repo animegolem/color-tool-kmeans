@@ -4,11 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Color analysis tool using k-means clustering. Multiple implementations:
-- **Tauri app** (`tauri-app/`) — primary native desktop app (Svelte + Rust)
-- **Electron app** (`electron-app/`) — planned desktop implementation (not yet coded)
-- **WASM compute** (`compute-wasm/`) — browser compute fallback
-- **Reference** — Observable notebook (`pkgs/src/`) and prior Electron app (`pkgs/proportions-et-relations-colorees/`)
+Color analysis tool using k-means clustering. Primary implementation:
+- **Tauri app** (`tauri-app/`) — native desktop app (Svelte + Rust)
 
 ## Core Architecture
 
@@ -17,27 +14,23 @@ Color analysis tool using k-means clustering. Multiple implementations:
 **Renderer** (`tauri-app/src/`):
 - **Bridges** (`lib/bridges/`) — platform abstraction layer
   - `tauri.ts` — native Tauri API detection/invocation
-  - `compute.ts` — compute backend selection (native/WASM/worker)
+  - `compute.ts` — compute backend selection (native-only)
   - `fs.ts` — filesystem abstraction
 - **Compute** (`lib/compute/`) — analysis orchestration
-  - `bridge.ts` — routes to native (`analyze_image` command) or WASM
+  - `bridge.ts` — routes to native (`analyze_image` command)
   - `image-loader.ts` — image decode with HTMLImage fallback
-  - `wasm.ts` — WASM module loader
 - **Views** (`lib/views/`) — Svelte UI components
 - **Exports** (`lib/exports/`) — PNG/SVG/CSV export logic
 
 **Native Backend** (`tauri-app/src-tauri/src/`):
 - `lib.rs` — core module exports
 - `kmeans.rs` — k-means clustering (SIMD-enabled via `wide` feature)
-- `color.rs` — Lab/LCh color space conversions
+- `color.rs` — OKLab/OKLch color space conversions (perceptual)
 - `image_pipeline.rs` — image sampling and analysis entry point
 - `main.rs` — Tauri commands: `analyze_image`, `open_image_dialog`
 - **Binaries** (`bin/`) — CLI tools: `compute_cli`, `kmeans_baseline`, `rmpc_theme_gen`
 
-**Key Design Pattern**: Detection-based bridge selection. Native Tauri API preferred; falls back to WASM for browser. Force native with `localStorage.setItem('bridge.force','tauri')`.
-
-### WASM Compute (`compute-wasm/`)
-Scalar k-means implementation (no SIMD/rayon on wasm). Shared color/kmeans logic with Tauri backend.
+**Key Design Pattern**: Detection-based bridge selection. Native Tauri API required. Force native with `localStorage.setItem('bridge.force','tauri')`.
 
 ## Development Commands
 
@@ -87,24 +80,6 @@ cargo run --bin compute_cli -- <args>
 cargo run --bin rmpc-theme-gen -- <args>
 ```
 
-### WASM Build
-
-```bash
-cd compute-wasm
-wasm-pack build --target web
-```
-
-### Reference Apps
-
-```bash
-# Observable notebook preview
-cd pkgs/src && npx http-server
-
-# Prior Electron app
-cd pkgs/proportions-et-relations-colorees/color-analyzer-electron
-npm ci && npm start
-```
-
 ## Git Hooks & CI
 
 Enable hooks once:
@@ -149,7 +124,7 @@ git config core.hooksPath .githooks
 
 ## Project Documentation
 
-- **Epics**: `RAG/AI-EPIC/` — scope & success metrics
+- **Epics**: `RAG/AI-EPIC/` — active epics (006-009); archived in `RAG/AI-EPIC-ARCHIVED/`
 - **Tickets**: `RAG/AI-IMP/` — implementation checklists & acceptance criteria
 - **Design**: `figma/` — exported frames (Figma is visual source of truth; fetch updates before UI work)
 - **Logs**: `RAG/AI-LOG/` — development session notes
@@ -162,10 +137,8 @@ git config core.hooksPath .githooks
 - Dev sessions may not inject Tauri API globals; force with `localStorage.setItem('bridge.force','tauri')`
 - Packaged debug builds default to `devUrl` → run Vite first or use release bundle
 
-### Security (Electron/Tauri)
-- `contextIsolation: true`, `nodeIntegration: false`
+### Security (Tauri)
 - IPC bridge only; load local files via `file://`
-- Preferences: `electron-store` (no telemetry)
 - No secrets in commits; Figma tooling uses `FIGMA_API_KEY` env var
 
 ### Offline-First

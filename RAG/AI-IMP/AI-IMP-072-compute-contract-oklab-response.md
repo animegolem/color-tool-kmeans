@@ -5,7 +5,7 @@ tags:
   - contract
   - tauri
   - compute
-kanban_status: backlog
+kanban_status: completed
 depends_on:
   - AI-EPIC-008
   - AI-IMP-070

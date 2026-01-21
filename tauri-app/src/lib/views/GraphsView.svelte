@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { AnalysisParams, AnalysisResult, AnalysisState, SelectedImage } from '../stores/ui';
-  import { analysisError, analysisResult, analysisState, params, selectedFile } from '../stores/ui';
+  import { analysisError, analysisResult, analysisState, params, selectedFile, openZoomOverlay } from '../stores/ui';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
   import { generateHueLightnessSvg } from '../exports/hue-lightness';
 
@@ -38,6 +38,17 @@
   });
 
   const palette = $derived.by(() => (result ? result.clusters.slice(0, 12) : []));
+
+  function openChartZoom() {
+    if (!chart) return;
+    openZoomOverlay({ kind: 'svg', svg: chart.svg, width: chart.width, height: chart.height });
+  }
+
+  function handleZoomKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    openChartZoom();
+  }
 
   $effect(() => {
     const unsubs = [
@@ -103,7 +114,14 @@
           </div>
         </header>
         {#if chart}
-          <div class="graph" role="img" aria-label="OKLCH chart">
+          <div
+            class="graph zoomable"
+            role="button"
+            tabindex="0"
+            aria-label="Zoom chart"
+            onclick={openChartZoom}
+            onkeydown={handleZoomKeydown}
+          >
             {@html chart.svg}
           </div>
         {:else}

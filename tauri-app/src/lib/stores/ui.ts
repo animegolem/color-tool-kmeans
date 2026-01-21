@@ -1,4 +1,4 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import type { ImageDataset } from '../compute/image-loader';
 
 export type View = 'home' | 'graphs' | 'exports';
@@ -88,7 +88,11 @@ export interface AnalysisResult {
 }
 
 export const analysisState = writable<AnalysisState>('idle');
-export const analysisResult = writable<AnalysisResult | null>(null);
+export const analysisById = writable<Record<string, AnalysisResult>>({});
+export const analysisResult = derived([analysisById, activeImageId], ([$analysisById, $activeId]) => {
+  if (!$activeId) return null;
+  return $analysisById[$activeId] ?? null;
+});
 export const analysisError = writable<string | null>(null);
 
 export function setAnalysisPending() {
@@ -96,8 +100,10 @@ export function setAnalysisPending() {
   analysisError.set(null);
 }
 
-export function setAnalysisSuccess(result: AnalysisResult) {
-  analysisResult.set(result);
+export function setAnalysisSuccess(result: AnalysisResult, imageId: string | null) {
+  if (imageId) {
+    analysisById.update((cache) => ({ ...cache, [imageId]: result }));
+  }
   analysisState.set('ready');
   analysisError.set(null);
 }
@@ -108,9 +114,8 @@ export function setAnalysisError(message: string) {
 }
 
 export function resetAnalysis() {
-  analysisResult.set(null);
-  analysisError.set(null);
   analysisState.set('idle');
+  analysisError.set(null);
 }
 
 export function clearAnalysisError() {
@@ -165,7 +170,13 @@ export function setFile(entry: ImageEntry, dataset: ImageDataset) {
     return next;
   });
   activeImageId.set(entry.id);
-  resetAnalysis();
+  const cached = get(analysisById)[entry.id] ?? null;
+  if (cached) {
+    analysisState.set('ready');
+    analysisError.set(null);
+  } else {
+    resetAnalysis();
+  }
 }
 
 export function clearFile() {
@@ -174,6 +185,7 @@ export function clearFile() {
     return [];
   });
   activeImageId.set(null);
+  analysisById.set({});
   resetAnalysis();
   try {
     // Clear native path used by Tauri compute bridge to avoid stale state
@@ -183,4 +195,22 @@ export function clearFile() {
   } catch {
     // ignore
   }
+}
+
+export type ZoomContent =
+  | { kind: 'image'; src: string; alt?: string; width?: number; height?: number }
+  | { kind: 'svg'; svg: string; width: number; height: number };
+
+export interface ZoomOverlayState {
+  content: ZoomContent;
+}
+
+export const zoomOverlay = writable<ZoomOverlayState | null>(null);
+
+export function openZoomOverlay(content: ZoomContent) {
+  zoomOverlay.set({ content });
+}
+
+export function closeZoomOverlay() {
+  zoomOverlay.set(null);
 }

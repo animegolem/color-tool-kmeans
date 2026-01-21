@@ -24,7 +24,8 @@
     setAnalysisPending,
     setAnalysisSuccess,
     setAnalysisError,
-    clearAnalysisError
+    clearAnalysisError,
+    openZoomOverlay
   } from '../stores/ui';
   import { analyzeImage } from '../compute/bridge';
   import { TauriComputeError } from '../bridges/compute';
@@ -190,6 +191,31 @@
       return URL.createObjectURL(selection.blob);
     }
     return null;
+  }
+
+  function openImageZoom() {
+    if (!file?.previewUrl) return;
+    openZoomOverlay({
+      kind: 'image',
+      src: file.previewUrl,
+      alt: file?.name ?? 'Selected image'
+    });
+  }
+
+  function openSvgZoom(svg: string | undefined, width: number | undefined, height: number | undefined) {
+    if (!svg || !width || !height) return;
+    openZoomOverlay({ kind: 'svg', svg, width, height });
+  }
+
+  function handleZoomKeydown(
+    event: KeyboardEvent,
+    svg: string | undefined,
+    width: number | undefined,
+    height: number | undefined
+  ) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    openSvgZoom(svg, width, height);
   }
 
   function handleScrubStart(_event: PointerEvent) {
@@ -398,7 +424,7 @@
         return;
       }
       recordDevEvent({ computeVariant: response.variant }, 'analysis');
-      setAnalysisSuccess(response);
+      setAnalysisSuccess(response, image.id);
     } catch (err) {
       if (token !== currentToken) {
         return;
@@ -579,7 +605,17 @@
           ondrop={handleDrop}
           onkeydown={handleDropzoneKeydown}
         >
-          <div class="image-preview">
+          <div
+            class="image-preview zoomable"
+            role="button"
+            tabindex="0"
+            onclick={openImageZoom}
+            onkeydown={(event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return;
+              event.preventDefault();
+              openImageZoom();
+            }}
+          >
             {#if file?.previewUrl}
               <img src={file.previewUrl} alt={file?.name ?? 'Selected image'} />
             {:else}
@@ -622,7 +658,14 @@
                 {result.totalSamples.toLocaleString()} samples
               </span>
             </header>
-            <div class="chart">
+            <div
+              class="chart zoomable"
+              role="button"
+              tabindex="0"
+              onclick={() => openSvgZoom(histogram?.svg, histogram?.width, histogram?.height)}
+              onkeydown={(event) =>
+                handleZoomKeydown(event, histogram?.svg, histogram?.width, histogram?.height)}
+            >
               {#if histogram}
                 {@html histogram.svg}
               {:else}
@@ -657,7 +700,13 @@
                 </button>
               </div>
             </header>
-            <div class="chart">
+            <div
+              class="chart zoomable"
+              role="button"
+              tabindex="0"
+              onclick={() => openSvgZoom(polarChart?.svg, polarChart?.width, polarChart?.height)}
+              onkeydown={(event) => handleZoomKeydown(event, polarChart?.svg, polarChart?.width, polarChart?.height)}
+            >
               {#if polarChart}
                 {@html polarChart.svg}
               {:else}
@@ -688,7 +737,14 @@
                 </button>
               </div>
             </header>
-            <div class="chart">
+            <div
+              class="chart zoomable"
+              role="button"
+              tabindex="0"
+              onclick={() => openSvgZoom(hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height)}
+              onkeydown={(event) =>
+                handleZoomKeydown(event, hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height)}
+            >
               {#if hueLightnessChart}
                 {@html hueLightnessChart.svg}
               {:else}

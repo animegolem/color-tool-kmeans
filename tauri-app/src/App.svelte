@@ -3,6 +3,7 @@
   import HomeView from './lib/views/HomeView.svelte';
   import GraphsView from './lib/views/GraphsView.svelte';
   import ExportsView from './lib/views/ExportsView.svelte';
+  import ZoomOverlay from './lib/components/ZoomOverlay.svelte';
 
   const navItems = [
     { key: 'home', label: 'Home' },
@@ -29,4 +30,6 @@
       <ExportsView />
     {/if}
   </section>
+
+  <ZoomOverlay />
 </main>
