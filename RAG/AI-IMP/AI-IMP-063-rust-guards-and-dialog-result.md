@@ -5,7 +5,7 @@ tags:
   - tauri
   - rust
   - reliability
-kanban_status: backlog
+kanban_status: completed
 depends_on:
   - ADR-002
   - AI-EPIC-006
