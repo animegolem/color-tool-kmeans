@@ -7,6 +7,7 @@ use tauri::{AppHandle, Manager};
 use tauri_app::color;
 use tauri_app::image_pipeline::{prepare_samples, quality_preset, SampleParams};
 use tauri_app::kmeans::{run_kmeans, KMeansConfig};
+use tauri_app::value_analysis::{generate_value_analysis, ValueAnalysisResult};
 use tauri_app::value_study::{generate_value_study, ValueStudyResult};
 use tauri_plugin_dialog;
 use tauri_plugin_shell;
@@ -48,6 +49,9 @@ fn default_seed() -> u64 {
 }
 fn default_max_samples() -> usize {
     300_000
+}
+fn default_value_levels() -> usize {
+    3
 }
 
 #[derive(Debug, Serialize, Clone, Copy)]
@@ -96,6 +100,32 @@ struct ValueStudyResponse {
     height: u32,
     percentile_low: f32,
     percentile_high: f32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ValueAnalysisRequest {
+    path: String,
+    image_id: String,
+    #[serde(default = "default_value_levels")]
+    levels: usize,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ValueAnalysisResponse {
+    neutral: String,
+    neutral_width: u32,
+    neutral_height: u32,
+    preview: String,
+    preview_width: u32,
+    preview_height: u32,
+    p10: f32,
+    p90: f32,
+    centroids: Vec<f32>,
+    boundaries: Vec<f32>,
+    counts: Vec<usize>,
+    levels: usize,
 }
 
 #[tauri::command]
@@ -232,6 +262,52 @@ async fn value_study(req: ValueStudyRequest, app: AppHandle) -> Result<ValueStud
 }
 
 #[tauri::command]
+async fn value_analysis(
+    req: ValueAnalysisRequest,
+    app: AppHandle,
+) -> Result<ValueAnalysisResponse, String> {
+    if req.path.is_empty() {
+        return Err("No file selected".into());
+    }
+    if req.image_id.trim().is_empty() {
+        return Err("Missing image id".into());
+    }
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|_| String::from("Failed to resolve cache directory"))?;
+    let levels = req.levels.clamp(2, 5);
+    let ValueAnalysisResult {
+        neutral,
+        neutral_width,
+        neutral_height,
+        preview,
+        preview_width,
+        preview_height,
+        p10,
+        p90,
+        centroids,
+        boundaries,
+        counts,
+    } = generate_value_analysis(&req.path, &req.image_id, levels, cache_dir)
+        .map_err(|e| format!("Value analysis failed: {e}"))?;
+    Ok(ValueAnalysisResponse {
+        neutral: neutral.to_string_lossy().to_string(),
+        preview: preview.to_string_lossy().to_string(),
+        neutral_width,
+        neutral_height,
+        preview_width,
+        preview_height,
+        p10,
+        p90,
+        centroids,
+        boundaries,
+        counts,
+        levels,
+    })
+}
+
+#[tauri::command]
 async fn open_image_dialog(app: AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::{DialogExt, FilePath};
     let (tx, rx) = std::sync::mpsc::channel::<Option<String>>();
@@ -259,6 +335,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             analyze_image,
             value_study,
+            value_analysis,
             open_image_dialog
         ])
         .run(tauri::generate_context!())

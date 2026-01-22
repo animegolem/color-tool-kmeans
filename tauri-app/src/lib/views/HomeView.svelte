@@ -1003,6 +1003,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
     gap: 20px;
+    align-items: center;
   }
 
   .analysis-column {
@@ -1077,6 +1078,7 @@
   @media (max-width: 980px) {
     .analysis-layout {
       grid-template-columns: 1fr;
+      align-items: stretch;
     }
   }
 

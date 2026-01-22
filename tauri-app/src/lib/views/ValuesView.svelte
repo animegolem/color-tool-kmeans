@@ -1,34 +1,33 @@
 <script lang="ts">
   import { convertFileSrc } from '@tauri-apps/api/core';
-  import type { SelectedImage, ValueStudyResult, ValueStudyState } from '../stores/ui';
+  import type { SelectedImage, ValueAnalysisResult, ValueAnalysisState } from '../stores/ui';
   import {
     selectedFile,
-    valueStudyResult,
-    valueStudyState,
-    valueStudyError,
-    setValueStudyPending,
-    setValueStudySuccess,
-    setValueStudyError,
+    valueAnalysisLevels,
+    valueAnalysisResult,
+    valueAnalysisState,
+    valueAnalysisError,
+    setValueAnalysisPending,
+    setValueAnalysisSuccess,
+    setValueAnalysisError,
     openZoomOverlay
   } from '../stores/ui';
-  import { requestValueStudy } from '../bridges/value-study';
-
-  const columnLabels = ['High', 'Medium', 'Low'] as const;
-  const rowLabels = ['High', 'Medium', 'Low'] as const;
+  import { requestValueAnalysis } from '../bridges/value-analysis';
 
   let file = $state<SelectedImage | null>(null);
-  let study = $state<ValueStudyResult | null>(null);
-  let status = $state<ValueStudyState>('idle');
+  let analysis = $state<ValueAnalysisResult | null>(null);
+  let status = $state<ValueAnalysisState>('idle');
   let error = $state<string | null>(null);
-
-  const tileSrcs = $derived.by(() => {
-    if (!study) return [] as string[];
-    return study.tiles.map((path) => convertFileSrc(path));
-  });
+  let levels = $state(3);
 
   const neutralSrc = $derived.by(() => {
-    if (!study?.neutral) return '';
-    return convertFileSrc(study.neutral);
+    if (!analysis?.neutral) return '';
+    return convertFileSrc(analysis.neutral);
+  });
+
+  const previewSrc = $derived.by(() => {
+    if (!analysis?.preview) return '';
+    return convertFileSrc(analysis.preview);
   });
 
   function openImageZoom(src: string, alt: string) {
@@ -41,18 +40,49 @@
     openImageZoom(src, alt);
   }
 
-  async function ensureValueStudy(currentFile: SelectedImage) {
+  function formatPercent(value: number) {
+    return `${Math.round(value * 100)}%`;
+  }
+
+  function keyLabel(p10: number, p90: number) {
+    const mid = (p10 + p90) * 0.5;
+    if (mid <= 0.38) return 'Low key';
+    if (mid >= 0.62) return 'High key';
+    return 'Mid key';
+  }
+
+  function contrastLabel(p10: number, p90: number) {
+    const range = p90 - p10;
+    if (range >= 0.75) return 'Full range';
+    if (range >= 0.6) return 'High contrast';
+    if (range >= 0.4) return 'Medium contrast';
+    return 'Low contrast';
+  }
+
+  function markerSize(count: number, maxCount: number) {
+    if (maxCount <= 0) return 8;
+    const min = 6;
+    const max = 14;
+    const ratio = Math.min(1, count / maxCount);
+    return Math.round(min + (max - min) * ratio);
+  }
+
+  function updateLevels() {
+    valueAnalysisLevels.set(levels);
+  }
+
+  async function ensureValueAnalysis(currentFile: SelectedImage, requestedLevels: number) {
     if (!currentFile.path) {
-      setValueStudyError(currentFile.id, 'Value study requires a native file path.');
+      setValueAnalysisError(currentFile.id, requestedLevels, 'Value analysis requires a native file path.');
       return;
     }
-    setValueStudyPending(currentFile.id);
+    setValueAnalysisPending(currentFile.id, requestedLevels);
     try {
-      const result = await requestValueStudy(currentFile.path, currentFile.id);
-      setValueStudySuccess(currentFile.id, result);
+      const result = await requestValueAnalysis(currentFile.path, currentFile.id, requestedLevels);
+      setValueAnalysisSuccess(currentFile.id, requestedLevels, result);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      setValueStudyError(currentFile.id, message);
+      setValueAnalysisError(currentFile.id, requestedLevels, message);
     }
   }
 
@@ -61,14 +91,17 @@
       selectedFile.subscribe((value) => {
         file = value;
       }),
-      valueStudyResult.subscribe((value) => {
-        study = value;
+      valueAnalysisResult.subscribe((value) => {
+        analysis = value;
       }),
-      valueStudyState.subscribe((value) => {
+      valueAnalysisState.subscribe((value) => {
         status = value;
       }),
-      valueStudyError.subscribe((value) => {
+      valueAnalysisError.subscribe((value) => {
         error = value;
+      }),
+      valueAnalysisLevels.subscribe((value) => {
+        levels = value;
       })
     ];
     return () => {
@@ -79,126 +112,149 @@
   $effect(() => {
     if (!file) return;
     if (status !== 'idle') return;
-    if (study) return;
-    void ensureValueStudy(file);
+    if (analysis) return;
+    void ensureValueAnalysis(file, levels);
   });
 </script>
 
 <section class="values">
   <header>
     <h1>Values</h1>
-    <p class="note">Value-only studies derived from the original image.</p>
+    <p class="note">Value analysis derived from OkLab lightness.</p>
   </header>
 
   {#if !file}
-    <div class="empty">Select an image to view the values grid.</div>
+    <div class="empty">Select an image to view the values analysis.</div>
   {:else if status === 'pending'}
-    <div class="empty">Generating value study…</div>
+    <div class="empty">Generating values analysis...</div>
   {:else if status === 'error'}
-    <div class="empty">Value study failed. {error ?? 'Unknown error.'}</div>
-  {:else if study}
-    <div class="original">
-      <div class="preview-frame">
-        <div class="preview-pair">
-          <div class="preview-card">
-            <span>Original</span>
-            {#if file.previewUrl}
-              <img
-                class="preview zoomable"
-                src={file.previewUrl}
-                alt={file.name}
-                role="button"
-                tabindex="0"
-                onclick={() => openImageZoom(file.previewUrl ?? '', file.name)}
-                onkeydown={(event) => handleZoomKeydown(event, file.previewUrl ?? '', file.name)}
-              />
-            {:else}
-              <div class="empty">Preview unavailable.</div>
-            {/if}
-          </div>
-          <div class="preview-card">
-            <span>Neutral values</span>
-            {#if neutralSrc}
-              <img
-                class="preview zoomable"
-                src={neutralSrc}
-                alt="Neutral values"
-                role="button"
-                tabindex="0"
-                onclick={() => openImageZoom(neutralSrc, 'Neutral values')}
-                onkeydown={(event) => handleZoomKeydown(event, neutralSrc, 'Neutral values')}
-              />
-            {:else}
-              <div class="empty">Neutral values unavailable.</div>
-            {/if}
-          </div>
+    <div class="empty">Values analysis failed. {error ?? 'Unknown error.'}</div>
+  {:else if analysis}
+    <div class="preview-frame">
+      <div class="preview-pair">
+        <div class="preview-card">
+          <span>Original</span>
+          {#if file.previewUrl}
+            <img
+              class="preview zoomable"
+              src={file.previewUrl}
+              alt={file.name}
+              role="button"
+              tabindex="0"
+              onclick={() => openImageZoom(file.previewUrl ?? '', file.name)}
+              onkeydown={(event) => handleZoomKeydown(event, file.previewUrl ?? '', file.name)}
+            />
+          {:else}
+            <div class="empty">Preview unavailable.</div>
+          {/if}
+        </div>
+        <div class="preview-card">
+          <span>Neutral values</span>
+          {#if neutralSrc}
+            <img
+              class="preview zoomable"
+              src={neutralSrc}
+              alt="Neutral values"
+              role="button"
+              tabindex="0"
+              onclick={() => openImageZoom(neutralSrc, 'Neutral values')}
+              onkeydown={(event) => handleZoomKeydown(event, neutralSrc, 'Neutral values')}
+            />
+          {:else}
+            <div class="empty">Neutral values unavailable.</div>
+          {/if}
         </div>
       </div>
     </div>
 
-    <div class="grid-frame">
-      <div class="major-label">Major Key</div>
-      <div class="minor-label">Minor Key</div>
-      <div class="grid">
-        <div class="corner"></div>
-        {#each columnLabels as label}
-          <div class="col-label">{label}</div>
-        {/each}
-        {#each rowLabels as rowLabel, rowIndex}
-          <div class="row-label">{rowLabel}</div>
-          {#each columnLabels as _, colIndex}
-            {@const tileIndex = rowIndex * 3 + colIndex}
-            {@const tileSrc = tileSrcs[tileIndex]}
-            <div class="tile">
-              {#if tileSrc}
-                <img
-                  class="zoomable"
-                  src={tileSrc}
-                  alt={`Value study ${rowLabel} ${columnLabels[colIndex]}`}
-                  role="button"
-                  tabindex="0"
-                  onclick={() =>
-                    openImageZoom(
-                      tileSrc,
-                      `Value study ${rowLabel} ${columnLabels[colIndex]}`
-                    )}
-                  onkeydown={(event) =>
-                    handleZoomKeydown(
-                      event,
-                      tileSrc,
-                      `Value study ${rowLabel} ${columnLabels[colIndex]}`
-                    )}
-                />
-              {:else}
-                <div class="tile-placeholder"></div>
-              {/if}
-            </div>
-          {/each}
-        {/each}
+    {@const safeP10 = Math.max(0, Math.min(1, analysis.p10))}
+    {@const safeP90 = Math.max(0, Math.min(1, analysis.p90))}
+    {@const rangeStart = safeP10 * 100}
+    {@const rangeWidth = Math.max(0, safeP90 - safeP10) * 100}
+
+    <div class="range-section">
+      <div class="range-header">
+        <div class="range-title">Value range</div>
+        <div class="range-tags">
+          <span>{keyLabel(safeP10, safeP90)}</span>
+          <span>{contrastLabel(safeP10, safeP90)}</span>
+        </div>
+      </div>
+      <div class="range-track">
+        <div class="range-active" style={`left: ${rangeStart}%; width: ${rangeWidth}%;`}></div>
+      </div>
+      <div class="range-meta">
+        <span>Shadows {formatPercent(safeP10)}</span>
+        <span>Highlights {formatPercent(safeP90)}</span>
+      </div>
+    </div>
+
+    <div class="analysis-section">
+      <div class="analysis-header">
+        <div class="analysis-title">Value masses</div>
+        <label class="levels">
+          <span>Levels</span>
+          <input type="range" min="2" max="5" step="1" bind:value={levels} oninput={updateLevels} />
+          <strong>{levels}</strong>
+        </label>
+      </div>
+      <div class="analysis-body">
+        {@const maxCount = analysis.counts.length ? Math.max(...analysis.counts) : 1}
+        <div class="ruler">
+          <div class="ruler-track">
+            {#each analysis.boundaries as boundary}
+              {@const boundaryTop = (1 - boundary) * 100}
+              <div class="ruler-boundary" style={`top: ${boundaryTop}%;`}></div>
+            {/each}
+            {#each analysis.centroids as centroid, idx}
+              {@const count = analysis.counts[idx] ?? 0}
+              {@const size = markerSize(count, maxCount)}
+              {@const markerTop = (1 - centroid) * 100}
+              <div
+                class="ruler-centroid"
+                style={`top: ${markerTop}%; width: ${size}px; height: ${size}px;`}
+                title={`${formatPercent(centroid)}`}
+              ></div>
+            {/each}
+          </div>
+          <div class="ruler-scale">
+            <span>100</span>
+            <span>0</span>
+          </div>
+        </div>
+        <div class="preview-card">
+          <span>Rendered frame</span>
+          {#if previewSrc}
+            <img
+              class="preview analysis-preview zoomable"
+              src={previewSrc}
+              alt="Rendered frame"
+              role="button"
+              tabindex="0"
+              onclick={() => openImageZoom(previewSrc, 'Rendered frame')}
+              onkeydown={(event) => handleZoomKeydown(event, previewSrc, 'Rendered frame')}
+            />
+          {:else}
+            <div class="empty">Preview unavailable.</div>
+          {/if}
+        </div>
       </div>
     </div>
   {:else}
-    <div class="empty">Select an image to view the values grid.</div>
+    <div class="empty">Select an image to view the values analysis.</div>
   {/if}
 </section>
 
 <style>
   .values {
-    max-width: 960px;
+    max-width: 980px;
     margin: 0 auto;
-    --label-col: 72px;
-    --grid-gap: 12px;
-  }
-
-  .original {
-    margin-bottom: 28px;
   }
 
   .preview-frame {
     display: flex;
     justify-content: center;
-    width: calc(100% - (var(--label-col) + var(--grid-gap)));
-    margin-left: calc(var(--label-col) + var(--grid-gap));
+    margin-bottom: 28px;
   }
 
   .preview-pair {
@@ -206,7 +262,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 24px;
     width: 100%;
-    max-width: 860px;
+    max-width: 880px;
   }
 
   .preview-card {
@@ -222,100 +278,194 @@
 
   .preview {
     width: 100%;
-    max-width: 420px;
-    border-radius: 10px;
-    border: 1px solid var(--line);
-    display: block;
+    border-radius: 12px;
+    border: 1px solid rgba(33, 33, 32, 0.2);
+    box-shadow: 0 12px 20px rgba(33, 33, 32, 0.12);
   }
 
-  .grid-frame {
-    position: relative;
-    margin-top: 24px;
+  .range-section {
+    background: rgba(33, 33, 32, 0.04);
+    border: 1px solid rgba(33, 33, 32, 0.12);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
   }
 
-  .major-label {
-    text-align: center;
-    font-weight: 600;
-    margin-bottom: 10px;
-  }
-
-  .minor-label {
-    position: absolute;
-    left: calc(-1 * var(--label-col));
-    top: 50%;
-    transform: translateY(-50%) rotate(-90deg);
-    font-weight: 600;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: var(--label-col) repeat(3, minmax(0, 1fr));
-    gap: var(--grid-gap);
+  .range-header {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
   }
 
-  .corner {
-    width: 100%;
-  }
-
-  .col-label,
-  .row-label {
+  .range-title {
     font-weight: 600;
-    text-align: center;
     font-size: 14px;
   }
 
-  .row-label {
-    text-align: right;
-    padding-right: 8px;
+  .range-tags {
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
 
-  .tile {
-    background: var(--panel);
-    border-radius: 10px;
-    border: 1px solid var(--line);
+  .range-tags span {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(33, 33, 32, 0.08);
+  }
+
+  .range-track {
+    position: relative;
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(33, 33, 32, 0.12);
     overflow: hidden;
   }
 
-  .tile img {
-    display: block;
-    width: 100%;
-    height: auto;
+  .range-active {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      #3a3936 0%,
+      #3a3936 20%,
+      #5a5953 20%,
+      #5a5953 40%,
+      #7a776f 40%,
+      #7a776f 60%,
+      #9a968d 60%,
+      #9a968d 80%,
+      #bab6ad 80%,
+      #bab6ad 100%
+    );
   }
 
-  .tile-placeholder {
-    padding-top: 56%;
-    background: rgba(33, 33, 32, 0.06);
+  .range-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-top: 8px;
+    color: rgba(33, 33, 32, 0.7);
+  }
+
+  .analysis-section {
+    border-radius: 14px;
+    background: rgba(33, 33, 32, 0.03);
+    border: 1px solid rgba(33, 33, 32, 0.12);
+    padding: 18px 20px 22px;
+    --ruler-height: 220px;
+  }
+
+  .analysis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .analysis-title {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .levels {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .levels input {
+    width: 140px;
+  }
+
+  .analysis-body {
+    display: grid;
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 24px;
+    align-items: center;
+  }
+
+  .ruler {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+  }
+
+  .ruler-track {
+    position: relative;
+    width: 12px;
+    height: var(--ruler-height);
+    border-radius: 999px;
+    background: rgba(33, 33, 32, 0.2);
+  }
+
+  .ruler-boundary {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 24px;
+    height: 2px;
+    background: rgba(33, 33, 32, 0.5);
+    border-radius: 999px;
+  }
+
+  .ruler-centroid {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(45deg);
+    background: rgba(33, 33, 32, 0.8);
+    border-radius: 2px;
+  }
+
+  .ruler-scale {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: var(--ruler-height);
+    font-size: 11px;
+    color: rgba(33, 33, 32, 0.6);
+  }
+
+  .analysis-preview {
+    height: var(--ruler-height);
+    object-fit: contain;
   }
 
   .empty {
     padding: 16px;
-    border-radius: 8px;
     background: var(--panel);
+    border-radius: 8px;
     color: rgba(33, 33, 32, 0.6);
   }
 
-  @media (max-width: 900px) {
-    .values {
-      --label-col: 56px;
-      --grid-gap: 10px;
-    }
-
-    .preview-frame {
-      width: 100%;
-      margin-left: 0;
+  @media (max-width: 860px) {
+    .analysis-section {
+      --ruler-height: 160px;
     }
 
     .preview-pair {
       grid-template-columns: 1fr;
-      max-width: 420px;
     }
 
-    .minor-label {
-      position: static;
-      transform: none;
-      text-align: center;
-      margin-bottom: 8px;
+    .analysis-body {
+      grid-template-columns: 1fr;
+    }
+
+    .ruler-track {
+      height: var(--ruler-height);
+    }
+
+    .ruler-scale {
+      height: var(--ruler-height);
     }
   }
 </style>

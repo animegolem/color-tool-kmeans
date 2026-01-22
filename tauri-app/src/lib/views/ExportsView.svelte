@@ -4,16 +4,17 @@
     analysisResult,
     params,
     selectedFile,
-    setValueStudyPending,
-    setValueStudySuccess,
-    setValueStudyError
+    valueAnalysisLevels,
+    setValueAnalysisPending,
+    setValueAnalysisSuccess,
+    setValueAnalysisError
   } from '../stores/ui';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
-  import { generateValueStudySvg } from '../exports/value-study';
+  import { generateValueAnalysisSvg } from '../exports/value-analysis';
   import { generatePaletteCsv } from '../exports/palette';
   import { getFsBridge } from '../bridges/fs';
   import { svgToPngBlob } from '../exports/png';
-  import { requestValueStudy } from '../bridges/value-study';
+  import { requestValueAnalysis } from '../bridges/value-analysis';
   import { convertFileSrc } from '@tauri-apps/api/core';
 
   const file = $derived.by(() => get(selectedFile));
@@ -92,38 +93,47 @@
     });
   }
 
-  async function loadValueStudyForExport() {
+  async function loadValueAnalysisForExport(levels: number) {
     if (!file?.path) {
-      throw new Error('Value study export requires a native file path.');
+      throw new Error('Values analysis export requires a native file path.');
     }
-    setValueStudyPending(file.id);
+    setValueAnalysisPending(file.id, levels);
     try {
-      const loaded = await requestValueStudy(file.path, file.id);
-      setValueStudySuccess(file.id, loaded);
+      const loaded = await requestValueAnalysis(file.path, file.id, levels);
+      setValueAnalysisSuccess(file.id, levels, loaded);
       return loaded;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      setValueStudyError(file.id, message);
+      setValueAnalysisError(file.id, levels, message);
       throw error;
     }
   }
 
-  async function saveValueStudyPng() {
+  async function saveValueAnalysisPng() {
     if (!file) return;
     await performSave(async () => {
-      const currentStudy = await loadValueStudyForExport();
+      const levels = get(valueAnalysisLevels);
+      const currentStudy = await loadValueAnalysisForExport(levels);
       const originalSrc = file.previewUrl || '';
       if (!originalSrc) {
         throw new Error('Original image preview unavailable for export.');
       }
-      const tiles = currentStudy.tiles.map((path) => convertFileSrc(path));
       const neutralSrc = convertFileSrc(currentStudy.neutral);
-      const { svg, width, height } = await generateValueStudySvg({
+      const previewSrc = convertFileSrc(currentStudy.preview);
+      const { svg, width, height } = await generateValueAnalysisSvg({
         originalSrc,
         neutralSrc,
-        tiles,
-        tileWidth: currentStudy.width,
-        tileHeight: currentStudy.height
+        previewSrc,
+        neutralWidth: currentStudy.neutralWidth,
+        neutralHeight: currentStudy.neutralHeight,
+        previewWidth: currentStudy.previewWidth,
+        previewHeight: currentStudy.previewHeight,
+        p10: currentStudy.p10,
+        p90: currentStudy.p90,
+        centroids: currentStudy.centroids,
+        boundaries: currentStudy.boundaries,
+        counts: currentStudy.counts,
+        levels: currentStudy.levels
       });
       const blob = await svgToPngBlob(svg, width, height, valueScale);
       const bridge = await getFsBridge();
@@ -131,7 +141,7 @@
       if (canceled) {
         setStatus('Export canceled.', 'info');
       } else {
-        setStatus('Values grid PNG saved.', 'info');
+        setStatus('Values analysis PNG saved.', 'info');
       }
     });
   }
@@ -179,10 +189,10 @@
         </div>
       </article>
       <article>
-        <h2>Values Grid</h2>
-        <p>Major/minor key grid with original + neutral values.</p>
+        <h2>Values Analysis</h2>
+        <p>Original + neutral values, range bar, and notan preview.</p>
         <div class="actions">
-          <button class="primary" onclick={saveValueStudyPng} disabled={isSaving}>
+          <button class="primary" onclick={saveValueAnalysisPng} disabled={isSaving}>
             Save PNG
           </button>
         </div>

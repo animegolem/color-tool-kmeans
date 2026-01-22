@@ -122,6 +122,54 @@ export const valueStudyError = derived(
   ([$valueStudyErrorById, $activeId]) => ($activeId ? $valueStudyErrorById[$activeId] ?? null : null)
 );
 
+export type ValueAnalysisState = 'idle' | 'pending' | 'ready' | 'error';
+
+export interface ValueAnalysisResult {
+  neutral: string;
+  neutralWidth: number;
+  neutralHeight: number;
+  preview: string;
+  previewWidth: number;
+  previewHeight: number;
+  p10: number;
+  p90: number;
+  centroids: number[];
+  boundaries: number[];
+  counts: number[];
+  levels: number;
+}
+
+export const valueAnalysisLevels = writable<number>(3);
+
+function valueAnalysisKey(imageId: string, levels: number) {
+  return `${imageId}:${levels}`;
+}
+
+export const valueAnalysisByKey = writable<Record<string, ValueAnalysisResult>>({});
+export const valueAnalysisStateByKey = writable<Record<string, ValueAnalysisState>>({});
+export const valueAnalysisErrorByKey = writable<Record<string, string | null>>({});
+export const valueAnalysisResult = derived(
+  [valueAnalysisByKey, activeImageId, valueAnalysisLevels],
+  ([$valueAnalysisByKey, $activeId, $levels]) => {
+    if (!$activeId) return null;
+    return $valueAnalysisByKey[valueAnalysisKey($activeId, $levels)] ?? null;
+  }
+);
+export const valueAnalysisState = derived(
+  [valueAnalysisStateByKey, activeImageId, valueAnalysisLevels],
+  ([$valueAnalysisStateByKey, $activeId, $levels]) => {
+    if (!$activeId) return 'idle';
+    return $valueAnalysisStateByKey[valueAnalysisKey($activeId, $levels)] ?? 'idle';
+  }
+);
+export const valueAnalysisError = derived(
+  [valueAnalysisErrorByKey, activeImageId, valueAnalysisLevels],
+  ([$valueAnalysisErrorByKey, $activeId, $levels]) => {
+    if (!$activeId) return null;
+    return $valueAnalysisErrorByKey[valueAnalysisKey($activeId, $levels)] ?? null;
+  }
+);
+
 export function setValueStudyPending(imageId: string) {
   valueStudyStateById.update((state) => ({ ...state, [imageId]: 'pending' }));
   valueStudyErrorById.update((errors) => ({ ...errors, [imageId]: null }));
@@ -136,6 +184,25 @@ export function setValueStudySuccess(imageId: string, result: ValueStudyResult) 
 export function setValueStudyError(imageId: string, message: string) {
   valueStudyStateById.update((state) => ({ ...state, [imageId]: 'error' }));
   valueStudyErrorById.update((errors) => ({ ...errors, [imageId]: message }));
+}
+
+export function setValueAnalysisPending(imageId: string, levels: number) {
+  const key = valueAnalysisKey(imageId, levels);
+  valueAnalysisStateByKey.update((state) => ({ ...state, [key]: 'pending' }));
+  valueAnalysisErrorByKey.update((errors) => ({ ...errors, [key]: null }));
+}
+
+export function setValueAnalysisSuccess(imageId: string, levels: number, result: ValueAnalysisResult) {
+  const key = valueAnalysisKey(imageId, levels);
+  valueAnalysisByKey.update((cache) => ({ ...cache, [key]: result }));
+  valueAnalysisStateByKey.update((state) => ({ ...state, [key]: 'ready' }));
+  valueAnalysisErrorByKey.update((errors) => ({ ...errors, [key]: null }));
+}
+
+export function setValueAnalysisError(imageId: string, levels: number, message: string) {
+  const key = valueAnalysisKey(imageId, levels);
+  valueAnalysisStateByKey.update((state) => ({ ...state, [key]: 'error' }));
+  valueAnalysisErrorByKey.update((errors) => ({ ...errors, [key]: message }));
 }
 
 export function setAnalysisPending() {
@@ -232,6 +299,9 @@ export function clearFile() {
   valueStudyById.set({});
   valueStudyStateById.set({});
   valueStudyErrorById.set({});
+  valueAnalysisByKey.set({});
+  valueAnalysisStateByKey.set({});
+  valueAnalysisErrorByKey.set({});
   resetAnalysis();
   try {
     // Clear native path used by Tauri compute bridge to avoid stale state
