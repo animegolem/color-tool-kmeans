@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use image::imageops::FilterType;
 use image::{DynamicImage, GenericImageView, GrayImage, ImageReader, RgbImage};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::color;
@@ -10,12 +11,13 @@ use crate::color;
 const VALUE_STUDY_MAX_DIMENSION: u32 = 1600;
 const PERCENTILE_LOW: f32 = 0.05;
 const PERCENTILE_HIGH: f32 = 0.95;
-const BLACK_OFFSETS: [f32; 3] = [0.15, 0.0, -0.05];
-const WHITE_OFFSETS: [f32; 3] = [0.05, 0.0, -0.15];
+const MAJOR_SHIFTS: [f32; 3] = [0.3, 0.0, -0.3];
+const MINOR_SCALES: [f32; 3] = [1.35, 1.0, 0.65];
 const TILE_ROWS: usize = 3;
 const TILE_COLS: usize = 3;
 const CENTER_ROW: usize = 1;
 const CENTER_COL: usize = 1;
+const META_FILE: &str = "meta.json";
 
 #[derive(Debug, Error)]
 pub enum ValueStudyError {
@@ -40,6 +42,12 @@ pub struct ValueStudyResult {
     pub percentile_high: f32,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct ValueStudyMeta {
+    percentile_low: f32,
+    percentile_high: f32,
+}
+
 pub fn generate_value_study(
     path: impl AsRef<Path>,
     image_id: &str,
@@ -52,6 +60,7 @@ pub fn generate_value_study(
 
     let tile_paths = build_tile_paths(&cache_dir);
     if tile_paths.iter().all(|path| path.exists()) {
+        let meta = load_meta(&cache_dir);
         let (width, height) = image::open(&tile_paths[CENTER_ROW * TILE_COLS + CENTER_COL])
             .map_err(ValueStudyError::Decode)?
             .dimensions();
@@ -59,8 +68,8 @@ pub fn generate_value_study(
             tiles: tile_paths,
             width,
             height,
-            percentile_low: PERCENTILE_LOW,
-            percentile_high: PERCENTILE_HIGH,
+            percentile_low: meta.as_ref().map_or(PERCENTILE_LOW, |value| value.percentile_low),
+            percentile_high: meta.as_ref().map_or(PERCENTILE_HIGH, |value| value.percentile_high),
         });
     }
 
@@ -71,13 +80,15 @@ pub fn generate_value_study(
         return Err(ValueStudyError::EmptyImage);
     }
     let (p_low, p_high) = percentile_bounds(&l_values, PERCENTILE_LOW, PERCENTILE_HIGH);
-    let range = (p_high - p_low).abs();
+    let mid = 0.5 * (p_low + p_high);
+    let half = 0.5 * (p_high - p_low);
 
     let mut tiles = Vec::with_capacity(tile_paths.len());
     for row in 0..TILE_ROWS {
-        let target_black = clamp01(p_low + BLACK_OFFSETS[row] * range);
+        let target_half = half * MINOR_SCALES[row];
         for col in 0..TILE_COLS {
-            let target_white = clamp01(p_high + WHITE_OFFSETS[col] * range);
+            let target_mid = clamp01(mid + MAJOR_SHIFTS[col] * half);
+            let (target_black, target_white) = target_window(target_mid, target_half);
             let idx = row * TILE_COLS + col;
             let tile_path = &tile_paths[idx];
             let mut tile = GrayImage::new(width, height);
@@ -94,6 +105,14 @@ pub fn generate_value_study(
             tiles.push(tile_path.clone());
         }
     }
+
+    write_meta(
+        &cache_dir,
+        &ValueStudyMeta {
+            percentile_low: p_low,
+            percentile_high: p_high,
+        },
+    );
 
     Ok(ValueStudyResult {
         tiles,
@@ -160,8 +179,14 @@ fn percentile_at(sorted: &[f32], percentile: f32) -> f32 {
     if percentile >= 1.0 {
         return sorted[n - 1];
     }
-    let idx = ((n - 1) as f32 * percentile).floor() as usize;
-    sorted[idx]
+    let pos = (n - 1) as f32 * percentile;
+    let lower = pos.floor() as usize;
+    let upper = pos.ceil() as usize;
+    if lower == upper {
+        return sorted[lower];
+    }
+    let t = pos - lower as f32;
+    sorted[lower] + (sorted[upper] - sorted[lower]) * t
 }
 
 fn remap_value(l: f32, p_low: f32, p_high: f32, target_black: f32, target_white: f32) -> f32 {
@@ -180,6 +205,27 @@ fn remap_value(l: f32, p_low: f32, p_high: f32, target_black: f32, target_white:
     (black + t * (white - black)).clamp(0.0, 1.0)
 }
 
+fn target_window(mid: f32, half: f32) -> (f32, f32) {
+    let mut black = mid - half;
+    let mut white = mid + half;
+    if black < 0.0 {
+        white -= black;
+        black = 0.0;
+    }
+    if white > 1.0 {
+        black -= white - 1.0;
+        white = 1.0;
+    }
+    black = clamp01(black);
+    white = clamp01(white);
+    if white <= black {
+        let center = 0.5 * (black + white);
+        black = (center - 0.01).max(0.0);
+        white = (center + 0.01).min(1.0);
+    }
+    (black, white)
+}
+
 fn clamp01(value: f32) -> f32 {
     value.max(0.0).min(1.0)
 }
@@ -194,6 +240,19 @@ fn build_tile_paths(cache_dir: &Path) -> Vec<PathBuf> {
         tiles.push(cache_dir.join(format!("tile-{idx:02}.png")));
     }
     tiles
+}
+
+fn load_meta(cache_dir: &Path) -> Option<ValueStudyMeta> {
+    let path = cache_dir.join(META_FILE);
+    let data = fs::read_to_string(path).ok()?;
+    serde_json::from_str(&data).ok()
+}
+
+fn write_meta(cache_dir: &Path, meta: &ValueStudyMeta) {
+    let path = cache_dir.join(META_FILE);
+    if let Ok(data) = serde_json::to_string(meta) {
+        let _ = fs::write(path, data);
+    }
 }
 
 fn sanitize_id(value: &str) -> String {

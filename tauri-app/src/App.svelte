@@ -6,7 +6,7 @@
   import ZoomOverlay from './lib/components/ZoomOverlay.svelte';
 
   const navItems = [
-    { key: 'home', label: 'Home' },
+    { key: 'home', label: 'Colors' },
     { key: 'values', label: 'Values' },
     { key: 'exports', label: 'Exports' }
   ] as const;

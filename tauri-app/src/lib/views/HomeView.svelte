@@ -42,13 +42,10 @@
   const isDev = import.meta.env.DEV ?? false;
   const devEnabled = isDev;
 
-  const nativeDragCopy = 'Native mode uses file paths. Use Upload to pick files.';
-
   let dragging = $state(false);
   let draggingWindow = $state(false);
   let bannerMessage = $state<string | null>(null);
   let spinnerVisible = $state(false);
-  let nativeMode = $state(isNativeModeActive());
   let devBannerVisible = $state(false);
   let devBannerData = $state<DevBannerDetails | null>(null);
   let devBannerFileLogged = false;
@@ -77,10 +74,6 @@
 
   function isNativeModeActive(): boolean {
     return isTauriEnv() || getBridgeOverride() === 'tauri';
-  }
-
-  function updateNativeMode() {
-    nativeMode = isNativeModeActive();
   }
 
   function mapErrorToMessage(error: unknown): string {
@@ -258,7 +251,6 @@
   async function chooseFile() {
     try {
       const bridge = await getFsBridge();
-      updateNativeMode();
       const selection = await bridge.openImageFile();
       if (!selection) {
         return;
@@ -295,7 +287,6 @@
     event.preventDefault();
     dragging = false;
     draggingWindow = false;
-    updateNativeMode();
     if (isTauriEnv() || getBridgeOverride() === 'tauri') {
       return;
     }
@@ -319,7 +310,6 @@
   function clearSelection() {
     clearFile();
     cancelPending();
-    updateNativeMode();
   }
 
   async function ingestSelection(fileSelection: FileSelection) {
@@ -327,7 +317,6 @@
     const token = loadToken;
     cancelPending();
     try {
-      updateNativeMode();
       let dataset;
       const nativeMode = (isTauriEnv() || getBridgeOverride() === 'tauri') && !!fileSelection.path;
       if (nativeMode) {
@@ -463,15 +452,8 @@
   }
 
   onMount(() => {
-    updateNativeMode();
     let dragDepth = 0;
     let hideTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === 'bridge.force') {
-        updateNativeMode();
-      }
-    };
 
     const showOverlay = () => {
       if (hideTimer) {
@@ -513,14 +495,12 @@
       dragging = false;
     };
 
-    window.addEventListener('storage', onStorage);
     window.addEventListener('dragenter', onDragEnter);
     window.addEventListener('dragleave', onDragLeave);
     window.addEventListener('drop', onDrop);
     window.addEventListener('pointerup', handleScrubEnd);
     window.addEventListener('pointercancel', handleScrubEnd);
     return () => {
-      window.removeEventListener('storage', onStorage);
       window.removeEventListener('dragenter', onDragEnter);
       window.removeEventListener('dragleave', onDragLeave);
       window.removeEventListener('drop', onDrop);
@@ -549,10 +529,7 @@
 
 <section class="home">
   <header>
-    <h1>Load an image</h1>
-    <p class="note">
-      Drop a file anywhere or use the upload button. Supported formats: PNG, JPEG, WebP.
-    </p>
+    <h1>Colors</h1>
   </header>
 
   {#if devEnabled && devBannerVisible && devBannerData}
@@ -582,11 +559,6 @@
         <pre>{JSON.stringify(devBannerData.detection, null, 2)}</pre>
       </details>
     </aside>
-  {/if}
-
-  {#if nativeMode}
-    <div class="native-chip" role="status">Native mode</div>
-    <p class="native-copy">{nativeDragCopy}</p>
   {/if}
 
   {#if file}
@@ -780,6 +752,7 @@
         <p class="title">Drop anywhere</p>
         <p class="note">or</p>
         <button class="upload" onclick={chooseFile}>Upload</button>
+        <p class="formats">Supported formats: PNG, JPEG, WebP.</p>
       </div>
     </div>
     <div class="selection empty">
@@ -981,30 +954,11 @@
     overflow: auto;
   }
 
-  .native-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--accent);
-    color: #fff;
-    border-radius: 999px;
-    padding: 4px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 6px;
-  }
-
-  .native-copy {
-    margin: 0 0 16px 0;
-    font-size: 13px;
-    color: rgba(33, 33, 32, 0.75);
-  }
-
   .dropzone {
     width: 100%;
     border: 2px dashed var(--accent);
     border-radius: 12px;
-    padding: 48px;
+    padding: 56px;
     text-align: center;
     background: rgba(130, 76, 50, 0.06);
     transition: background 0.2s ease, border-color 0.2s ease;
@@ -1138,6 +1092,12 @@
   .dropzone .title {
     font-size: 20px;
     margin-bottom: 8px;
+  }
+
+  .formats {
+    margin-top: 12px;
+    font-size: 12px;
+    color: rgba(33, 33, 32, 0.6);
   }
 
   .upload {

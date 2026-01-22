@@ -94,19 +94,21 @@
   {:else if study}
     <div class="original">
       <h2>Original</h2>
-      {#if file.previewUrl}
-        <img
-          class="preview zoomable"
-          src={file.previewUrl}
-          alt={file.name}
-          role="button"
-          tabindex="0"
-          onclick={() => openImageZoom(file.previewUrl ?? '', file.name)}
-          onkeydown={(event) => handleZoomKeydown(event, file.previewUrl ?? '', file.name)}
-        />
-      {:else}
-        <div class="empty">Preview unavailable.</div>
-      {/if}
+      <div class="preview-frame">
+        {#if file.previewUrl}
+          <img
+            class="preview zoomable"
+            src={file.previewUrl}
+            alt={file.name}
+            role="button"
+            tabindex="0"
+            onclick={() => openImageZoom(file.previewUrl ?? '', file.name)}
+            onkeydown={(event) => handleZoomKeydown(event, file.previewUrl ?? '', file.name)}
+          />
+        {:else}
+          <div class="empty">Preview unavailable.</div>
+        {/if}
+      </div>
     </div>
 
     <div class="grid-frame">
@@ -162,6 +164,11 @@
 
   .original {
     margin-bottom: 28px;
+  }
+
+  .preview-frame {
+    display: flex;
+    justify-content: center;
   }
 
   .preview {
