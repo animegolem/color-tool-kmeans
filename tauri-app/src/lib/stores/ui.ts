@@ -99,6 +99,7 @@ export type ValueStudyState = 'idle' | 'pending' | 'ready' | 'error';
 
 export interface ValueStudyResult {
   tiles: string[];
+  neutral: string;
   width: number;
   height: number;
   percentileLow: number;

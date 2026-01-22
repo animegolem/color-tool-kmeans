@@ -1,19 +1,29 @@
 <script lang="ts">
   import { get } from 'svelte/store';
-  import { analysisResult, params, selectedFile } from '../stores/ui';
+  import {
+    analysisResult,
+    params,
+    selectedFile,
+    setValueStudyPending,
+    setValueStudySuccess,
+    setValueStudyError
+  } from '../stores/ui';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
+  import { generateValueStudySvg } from '../exports/value-study';
   import { generatePaletteCsv } from '../exports/palette';
   import { getFsBridge } from '../bridges/fs';
   import { svgToPngBlob } from '../exports/png';
+  import { requestValueStudy } from '../bridges/value-study';
+  import { convertFileSrc } from '@tauri-apps/api/core';
 
   const file = $derived.by(() => get(selectedFile));
   const result = $derived.by(() => get(analysisResult));
   const paramSnapshot = $derived.by(() => get(params));
-
   let graphScale = $state(2);
   let isSaving = $state(false);
   let message = $state<string | null>(null);
   let messageVariant = $state<'info' | 'error'>('info');
+  const valueScale = 2;
 
   function baseName(): string {
     if (!file) return 'export';
@@ -82,6 +92,50 @@
     });
   }
 
+  async function loadValueStudyForExport() {
+    if (!file?.path) {
+      throw new Error('Value study export requires a native file path.');
+    }
+    setValueStudyPending(file.id);
+    try {
+      const loaded = await requestValueStudy(file.path, file.id);
+      setValueStudySuccess(file.id, loaded);
+      return loaded;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setValueStudyError(file.id, message);
+      throw error;
+    }
+  }
+
+  async function saveValueStudyPng() {
+    if (!file) return;
+    await performSave(async () => {
+      const currentStudy = await loadValueStudyForExport();
+      const originalSrc = file.previewUrl || '';
+      if (!originalSrc) {
+        throw new Error('Original image preview unavailable for export.');
+      }
+      const tiles = currentStudy.tiles.map((path) => convertFileSrc(path));
+      const neutralSrc = convertFileSrc(currentStudy.neutral);
+      const { svg, width, height } = await generateValueStudySvg({
+        originalSrc,
+        neutralSrc,
+        tiles,
+        tileWidth: currentStudy.width,
+        tileHeight: currentStudy.height
+      });
+      const blob = await svgToPngBlob(svg, width, height, valueScale);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-values.png`);
+      if (canceled) {
+        setStatus('Export canceled.', 'info');
+      } else {
+        setStatus('Values grid PNG saved.', 'info');
+      }
+    });
+  }
+
   async function performSave(action: () => Promise<void>) {
     if (isSaving) return;
     isSaving = true;
@@ -122,6 +176,15 @@
         <div class="actions">
           <button class="primary" onclick={saveCircleGraphPng} disabled={isSaving}>Save PNG</button>
           <button onclick={saveCircleGraphSvg} disabled={isSaving}>Save SVG</button>
+        </div>
+      </article>
+      <article>
+        <h2>Values Grid</h2>
+        <p>Major/minor key grid with original + neutral values.</p>
+        <div class="actions">
+          <button class="primary" onclick={saveValueStudyPng} disabled={isSaving}>
+            Save PNG
+          </button>
         </div>
       </article>
       <article>

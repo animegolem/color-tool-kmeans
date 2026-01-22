@@ -24,6 +24,7 @@ const finiteNumberSchema = z
 const valueStudyResponseSchema = z
   .object({
     tiles: z.array(z.string().min(1)).min(9, { message: 'tiles must include 9 paths' }),
+    neutral: z.string().min(1),
     width: finiteNumberSchema.min(1, { message: 'width must be >= 1' }),
     height: finiteNumberSchema.min(1, { message: 'height must be >= 1' }),
     percentileLow: finiteNumberSchema,
@@ -40,6 +41,7 @@ function normalizeValueStudyResponse(raw: unknown): Record<string, unknown> {
   const payload = raw as Record<string, unknown>;
   return {
     tiles: Array.isArray(payload.tiles) ? payload.tiles : [],
+    neutral: typeof payload.neutral === 'string' ? payload.neutral : '',
     width: Number(payload.width),
     height: Number(payload.height),
     percentileLow: Number(payload.percentileLow ?? (payload as any).percentile_low),
@@ -81,6 +83,7 @@ export async function requestValueStudy(path: string, imageId: string): Promise<
   const parsed = parseValueStudyResponse(rawResponse);
   return {
     tiles: parsed.tiles,
+    neutral: parsed.neutral,
     width: parsed.width,
     height: parsed.height,
     percentileLow: parsed.percentileLow,

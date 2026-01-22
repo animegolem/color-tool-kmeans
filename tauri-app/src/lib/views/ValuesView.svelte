@@ -26,6 +26,11 @@
     return study.tiles.map((path) => convertFileSrc(path));
   });
 
+  const neutralSrc = $derived.by(() => {
+    if (!study?.neutral) return '';
+    return convertFileSrc(study.neutral);
+  });
+
   function openImageZoom(src: string, alt: string) {
     openZoomOverlay({ kind: 'image', src, alt });
   }
@@ -93,21 +98,41 @@
     <div class="empty">Value study failed. {error ?? 'Unknown error.'}</div>
   {:else if study}
     <div class="original">
-      <h2>Original</h2>
       <div class="preview-frame">
-        {#if file.previewUrl}
-          <img
-            class="preview zoomable"
-            src={file.previewUrl}
-            alt={file.name}
-            role="button"
-            tabindex="0"
-            onclick={() => openImageZoom(file.previewUrl ?? '', file.name)}
-            onkeydown={(event) => handleZoomKeydown(event, file.previewUrl ?? '', file.name)}
-          />
-        {:else}
-          <div class="empty">Preview unavailable.</div>
-        {/if}
+        <div class="preview-pair">
+          <div class="preview-card">
+            <span>Original</span>
+            {#if file.previewUrl}
+              <img
+                class="preview zoomable"
+                src={file.previewUrl}
+                alt={file.name}
+                role="button"
+                tabindex="0"
+                onclick={() => openImageZoom(file.previewUrl ?? '', file.name)}
+                onkeydown={(event) => handleZoomKeydown(event, file.previewUrl ?? '', file.name)}
+              />
+            {:else}
+              <div class="empty">Preview unavailable.</div>
+            {/if}
+          </div>
+          <div class="preview-card">
+            <span>Neutral values</span>
+            {#if neutralSrc}
+              <img
+                class="preview zoomable"
+                src={neutralSrc}
+                alt="Neutral values"
+                role="button"
+                tabindex="0"
+                onclick={() => openImageZoom(neutralSrc, 'Neutral values')}
+                onkeydown={(event) => handleZoomKeydown(event, neutralSrc, 'Neutral values')}
+              />
+            {:else}
+              <div class="empty">Neutral values unavailable.</div>
+            {/if}
+          </div>
+        </div>
       </div>
     </div>
 
@@ -160,6 +185,9 @@
 <style>
   .values {
     max-width: 960px;
+    margin: 0 auto;
+    --label-col: 72px;
+    --grid-gap: 12px;
   }
 
   .original {
@@ -169,11 +197,32 @@
   .preview-frame {
     display: flex;
     justify-content: center;
+    width: calc(100% - (var(--label-col) + var(--grid-gap)));
+    margin-left: calc(var(--label-col) + var(--grid-gap));
+  }
+
+  .preview-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    width: 100%;
+    max-width: 860px;
+  }
+
+  .preview-card {
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(33, 33, 32, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
 
   .preview {
     width: 100%;
-    max-width: 640px;
+    max-width: 420px;
     border-radius: 10px;
     border: 1px solid var(--line);
     display: block;
@@ -192,7 +241,7 @@
 
   .minor-label {
     position: absolute;
-    left: -48px;
+    left: calc(-1 * var(--label-col));
     top: 50%;
     transform: translateY(-50%) rotate(-90deg);
     font-weight: 600;
@@ -200,8 +249,8 @@
 
   .grid {
     display: grid;
-    grid-template-columns: 72px repeat(3, minmax(0, 1fr));
-    gap: 12px;
+    grid-template-columns: var(--label-col) repeat(3, minmax(0, 1fr));
+    gap: var(--grid-gap);
     align-items: center;
   }
 
@@ -247,15 +296,26 @@
   }
 
   @media (max-width: 900px) {
+    .values {
+      --label-col: 56px;
+      --grid-gap: 10px;
+    }
+
+    .preview-frame {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .preview-pair {
+      grid-template-columns: 1fr;
+      max-width: 420px;
+    }
+
     .minor-label {
       position: static;
       transform: none;
       text-align: center;
       margin-bottom: 8px;
-    }
-
-    .grid {
-      grid-template-columns: 56px repeat(3, minmax(0, 1fr));
     }
   }
 </style>

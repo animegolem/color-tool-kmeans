@@ -91,6 +91,7 @@ struct ValueStudyRequest {
 #[serde(rename_all = "camelCase")]
 struct ValueStudyResponse {
     tiles: Vec<String>,
+    neutral: String,
     width: u32,
     height: u32,
     percentile_low: f32,
@@ -208,6 +209,7 @@ async fn value_study(req: ValueStudyRequest, app: AppHandle) -> Result<ValueStud
         .map_err(|_| String::from("Failed to resolve cache directory"))?;
     let ValueStudyResult {
         tiles,
+        neutral,
         width,
         height,
         percentile_low,
@@ -218,8 +220,10 @@ async fn value_study(req: ValueStudyRequest, app: AppHandle) -> Result<ValueStud
         .into_iter()
         .map(|path| path.to_string_lossy().to_string())
         .collect();
+    let neutral = neutral.to_string_lossy().to_string();
     Ok(ValueStudyResponse {
         tiles,
+        neutral,
         width,
         height,
         percentile_low,
