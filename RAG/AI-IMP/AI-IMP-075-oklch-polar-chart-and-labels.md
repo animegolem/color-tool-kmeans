@@ -5,7 +5,7 @@ tags:
   - visualization
   - oklch
   - exports
-kanban_status: in_progress
+kanban_status: completed
 depends_on:
   - AI-EPIC-009
   - AI-IMP-072

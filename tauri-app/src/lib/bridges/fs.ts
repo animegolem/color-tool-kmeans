@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { isTauriEnv, tauriInvoke, getBridgeOverride } from './tauri';
 
 const BROWSER_ID = 'browser' as const;
@@ -24,46 +23,6 @@ export interface FsBridge {
   saveBlob(blob: Blob, defaultName: string): Promise<SaveResult>;
   saveTextFile(text: string, defaultName: string): Promise<SaveResult>;
 }
-
-const electronFileSchema = z.object({
-  name: z.string().min(1),
-  path: z.string().optional(),
-  mimeType: z.string().optional(),
-  size: z.number().nonnegative().optional(),
-  lastModified: z.number().optional(),
-  data: z
-    .union([
-      z.instanceof(Uint8Array),
-      z.instanceof(ArrayBuffer),
-      z.array(z.number().int().min(0).max(255))
-    ])
-    .optional()
-});
-
-const electronOpenResponseSchema = z.object({
-  canceled: z.boolean(),
-  file: electronFileSchema.optional()
-});
-
-const electronSaveResponseSchema = z.object({
-  canceled: z.boolean(),
-  filePath: z.string().optional()
-});
-
-function normalizeBinary(data: Uint8Array | ArrayBuffer | number[] | undefined): Uint8Array {
-  if (data instanceof Uint8Array) {
-    return new Uint8Array(data);
-  }
-  if (data instanceof ArrayBuffer) {
-    return new Uint8Array(data.slice(0));
-  }
-  if (Array.isArray(data)) {
-    return Uint8Array.from(data);
-  }
-  return new Uint8Array();
-}
-
-// Electron FS bridge removed: Tauri-only baseline.
 
 function createTauriFsBridge(): FsBridge | null {
   if (!isTauriEnv()) return null;

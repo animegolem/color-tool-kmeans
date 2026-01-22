@@ -3,10 +3,11 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Instant;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tauri_app::color;
 use tauri_app::image_pipeline::{prepare_samples, quality_preset, SampleParams};
 use tauri_app::kmeans::{run_kmeans, KMeansConfig};
+use tauri_app::value_study::{generate_value_study, ValueStudyResult};
 use tauri_plugin_dialog;
 use tauri_plugin_shell;
 
@@ -77,6 +78,23 @@ struct AnalyzeResponse {
     duration_ms: f64,
     total_samples: usize,
     variant: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ValueStudyRequest {
+    path: String,
+    image_id: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ValueStudyResponse {
+    tiles: Vec<String>,
+    width: u32,
+    height: u32,
+    percentile_low: f32,
+    percentile_high: f32,
 }
 
 #[tauri::command]
@@ -177,6 +195,39 @@ async fn analyze_image(req: AnalyzeRequest, _app: AppHandle) -> Result<AnalyzeRe
 }
 
 #[tauri::command]
+async fn value_study(req: ValueStudyRequest, app: AppHandle) -> Result<ValueStudyResponse, String> {
+    if req.path.is_empty() {
+        return Err("No file selected".into());
+    }
+    if req.image_id.trim().is_empty() {
+        return Err("Missing image id".into());
+    }
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|_| String::from("Failed to resolve cache directory"))?;
+    let ValueStudyResult {
+        tiles,
+        width,
+        height,
+        percentile_low,
+        percentile_high,
+    } = generate_value_study(&req.path, &req.image_id, cache_dir)
+        .map_err(|e| format!("Value study failed: {e}"))?;
+    let tiles = tiles
+        .into_iter()
+        .map(|path| path.to_string_lossy().to_string())
+        .collect();
+    Ok(ValueStudyResponse {
+        tiles,
+        width,
+        height,
+        percentile_low,
+        percentile_high,
+    })
+}
+
+#[tauri::command]
 async fn open_image_dialog(app: AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::{DialogExt, FilePath};
     let (tx, rx) = std::sync::mpsc::channel::<Option<String>>();
@@ -201,7 +252,11 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![analyze_image, open_image_dialog])
+        .invoke_handler(tauri::generate_handler![
+            analyze_image,
+            value_study,
+            open_image_dialog
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

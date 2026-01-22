@@ -1,7 +1,7 @@
 import { writable, derived, get } from 'svelte/store';
 import type { ImageDataset } from '../compute/image-loader';
 
-export type View = 'home' | 'graphs' | 'exports';
+export type View = 'home' | 'values' | 'exports';
 
 export interface AnalysisParams {
   clusters: number;
@@ -95,6 +95,48 @@ export const analysisResult = derived([analysisById, activeImageId], ([$analysis
 });
 export const analysisError = writable<string | null>(null);
 
+export type ValueStudyState = 'idle' | 'pending' | 'ready' | 'error';
+
+export interface ValueStudyResult {
+  tiles: string[];
+  width: number;
+  height: number;
+  percentileLow: number;
+  percentileHigh: number;
+}
+
+export const valueStudyById = writable<Record<string, ValueStudyResult>>({});
+export const valueStudyStateById = writable<Record<string, ValueStudyState>>({});
+export const valueStudyErrorById = writable<Record<string, string | null>>({});
+export const valueStudyResult = derived([valueStudyById, activeImageId], ([$valueStudyById, $activeId]) => {
+  if (!$activeId) return null;
+  return $valueStudyById[$activeId] ?? null;
+});
+export const valueStudyState = derived(
+  [valueStudyStateById, activeImageId],
+  ([$valueStudyStateById, $activeId]) => ($activeId ? $valueStudyStateById[$activeId] ?? 'idle' : 'idle')
+);
+export const valueStudyError = derived(
+  [valueStudyErrorById, activeImageId],
+  ([$valueStudyErrorById, $activeId]) => ($activeId ? $valueStudyErrorById[$activeId] ?? null : null)
+);
+
+export function setValueStudyPending(imageId: string) {
+  valueStudyStateById.update((state) => ({ ...state, [imageId]: 'pending' }));
+  valueStudyErrorById.update((errors) => ({ ...errors, [imageId]: null }));
+}
+
+export function setValueStudySuccess(imageId: string, result: ValueStudyResult) {
+  valueStudyById.update((cache) => ({ ...cache, [imageId]: result }));
+  valueStudyStateById.update((state) => ({ ...state, [imageId]: 'ready' }));
+  valueStudyErrorById.update((errors) => ({ ...errors, [imageId]: null }));
+}
+
+export function setValueStudyError(imageId: string, message: string) {
+  valueStudyStateById.update((state) => ({ ...state, [imageId]: 'error' }));
+  valueStudyErrorById.update((errors) => ({ ...errors, [imageId]: message }));
+}
+
 export function setAnalysisPending() {
   analysisState.set('pending');
   analysisError.set(null);
@@ -186,6 +228,9 @@ export function clearFile() {
   });
   activeImageId.set(null);
   analysisById.set({});
+  valueStudyById.set({});
+  valueStudyStateById.set({});
+  valueStudyErrorById.set({});
   resetAnalysis();
   try {
     // Clear native path used by Tauri compute bridge to avoid stale state

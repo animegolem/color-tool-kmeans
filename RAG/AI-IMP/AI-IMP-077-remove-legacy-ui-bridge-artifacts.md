@@ -5,7 +5,7 @@ tags:
   - cleanup
   - ui
   - bridges
-kanban_status: backlog
+kanban_status: completed
 depends_on:
   - AI-EPIC-009
   - AI-IMP-074

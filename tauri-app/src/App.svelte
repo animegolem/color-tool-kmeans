@@ -1,13 +1,13 @@
 <script lang="ts">
   import { currentView, setView } from './lib/stores/ui';
   import HomeView from './lib/views/HomeView.svelte';
-  import GraphsView from './lib/views/GraphsView.svelte';
+  import ValuesView from './lib/views/ValuesView.svelte';
   import ExportsView from './lib/views/ExportsView.svelte';
   import ZoomOverlay from './lib/components/ZoomOverlay.svelte';
 
   const navItems = [
     { key: 'home', label: 'Home' },
-    { key: 'graphs', label: 'Graphs' },
+    { key: 'values', label: 'Values' },
     { key: 'exports', label: 'Exports' }
   ] as const;
 </script>
@@ -24,8 +24,8 @@
   <section class="view-container">
     {#if $currentView === 'home'}
       <HomeView />
-    {:else if $currentView === 'graphs'}
-      <GraphsView />
+    {:else if $currentView === 'values'}
+      <ValuesView />
     {:else}
       <ExportsView />
     {/if}

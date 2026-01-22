@@ -18,7 +18,7 @@ export interface AnalyzeOptions extends AnalysisParams {
 }
 
 export interface ComputeBridge {
-  readonly id: 'wasm' | 'tauri-native';
+  readonly id: 'tauri-native';
   analyze(dataset: ImageDataset, params: AnalyzeOptions): Promise<AnalysisResult>;
 }
 
@@ -36,8 +36,6 @@ export class TauriComputeError extends Error {
     }
   }
 }
-
-// Electron path removed: Tauri-only baseline.
 
 const finiteNumberSchema = z
   .number()
@@ -114,8 +112,6 @@ const tauriComputeResponseSchema = z
 type ParsedTauriCluster = z.infer<typeof tauriClusterSchema>;
 type ParsedTauriResponse = z.infer<typeof tauriComputeResponseSchema>;
 
-// tupleFrom and Electron schemas removed with Electron path.
-
 function coerceTriple(value: unknown): [number, number, number] | null {
   if (value instanceof Float32Array || value instanceof ArrayBuffer) {
     value = Array.from(value as ArrayLike<number>);
@@ -190,17 +186,6 @@ function parseTauriResponse(raw: unknown): ParsedTauriResponse {
   }
 }
 
-// Electron bridge removed.
-
-function createWasmComputeBridge(): ComputeBridge {
-  return {
-    id: 'wasm',
-    async analyze() {
-      throw new Error('Browser/WASM compute is no longer included in this build. Use the native Tauri path.');
-    }
-  } satisfies ComputeBridge;
-}
-
 function createTauriComputeBridge(): ComputeBridge | null {
   if (!isTauriEnv()) return null;
   return {
@@ -262,9 +247,7 @@ export function selectComputeBridge(): ComputeBridge {
     logSelection('compute', tauriBridge.id);
     return tauriBridge;
   }
-  const fallback = createWasmComputeBridge();
-  logSelection('compute', fallback.id);
-  return fallback;
+  throw new Error('Tauri environment not detected. Native compute requires Tauri runtime.');
 }
 
 let cachedComputeBridge: ComputeBridge | null = null;
