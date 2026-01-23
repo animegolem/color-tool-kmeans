@@ -16,19 +16,33 @@
 
   let file = $state<SelectedImage | null>(null);
   let analysis = $state<ValueAnalysisResult | null>(null);
+  let displayAnalysis = $state<ValueAnalysisResult | null>(null);
+  let displayImageId = $state<string | null>(null);
   let status = $state<ValueAnalysisState>('idle');
   let error = $state<string | null>(null);
   let levels = $state(3);
 
+  const renderAnalysis = $derived.by(() => analysis ?? displayAnalysis);
+
   const neutralSrc = $derived.by(() => {
-    if (!analysis?.neutral) return '';
-    return convertFileSrc(analysis.neutral);
+    if (!renderAnalysis?.neutral) return '';
+    return convertFileSrc(renderAnalysis.neutral);
   });
 
   const previewSrc = $derived.by(() => {
-    if (!analysis?.preview) return '';
-    return convertFileSrc(analysis.preview);
+    if (!renderAnalysis?.preview) return '';
+    return convertFileSrc(renderAnalysis.preview);
   });
+
+  const maxCount = $derived.by(() => {
+    if (!renderAnalysis?.counts?.length) return 1;
+    return Math.max(...renderAnalysis.counts);
+  });
+
+  const isRefreshing = $derived.by(
+    () => status === 'pending' && analysis === null && displayAnalysis !== null
+  );
+
 
   function openImageZoom(src: string, alt: string) {
     openZoomOverlay({ kind: 'image', src, alt });
@@ -90,9 +104,18 @@
     const unsubs = [
       selectedFile.subscribe((value) => {
         file = value;
+        const nextId = value?.id ?? null;
+        if (displayImageId && nextId !== displayImageId) {
+          displayAnalysis = null;
+        }
+        displayImageId = nextId;
       }),
       valueAnalysisResult.subscribe((value) => {
         analysis = value;
+        if (value && file) {
+          displayAnalysis = value;
+          displayImageId = file.id;
+        }
       }),
       valueAnalysisState.subscribe((value) => {
         status = value;
@@ -125,11 +148,15 @@
 
   {#if !file}
     <div class="empty">Select an image to view the values analysis.</div>
-  {:else if status === 'pending'}
-    <div class="empty">Generating values analysis...</div>
-  {:else if status === 'error'}
-    <div class="empty">Values analysis failed. {error ?? 'Unknown error.'}</div>
-  {:else if analysis}
+  {:else if !renderAnalysis}
+    {#if status === 'pending'}
+      <div class="empty">Generating values analysis...</div>
+    {:else if status === 'error'}
+      <div class="empty">Values analysis failed. {error ?? 'Unknown error.'}</div>
+    {:else}
+      <div class="empty">Select an image to view the values analysis.</div>
+    {/if}
+  {:else}
     <div class="preview-frame">
       <div class="preview-pair">
         <div class="preview-card">
@@ -167,8 +194,8 @@
       </div>
     </div>
 
-    {@const safeP10 = Math.max(0, Math.min(1, analysis.p10))}
-    {@const safeP90 = Math.max(0, Math.min(1, analysis.p90))}
+    {@const safeP10 = Math.max(0, Math.min(1, renderAnalysis.p10))}
+    {@const safeP90 = Math.max(0, Math.min(1, renderAnalysis.p90))}
     {@const rangeStart = safeP10 * 100}
     {@const rangeWidth = Math.max(0, safeP90 - safeP10) * 100}
 
@@ -199,15 +226,14 @@
         </label>
       </div>
       <div class="analysis-body">
-        {@const maxCount = analysis.counts.length ? Math.max(...analysis.counts) : 1}
         <div class="ruler">
           <div class="ruler-track">
-            {#each analysis.boundaries as boundary}
+            {#each renderAnalysis.boundaries as boundary}
               {@const boundaryTop = (1 - boundary) * 100}
               <div class="ruler-boundary" style={`top: ${boundaryTop}%;`}></div>
             {/each}
-            {#each analysis.centroids as centroid, idx}
-              {@const count = analysis.counts[idx] ?? 0}
+            {#each renderAnalysis.centroids as centroid, idx}
+              {@const count = renderAnalysis.counts[idx] ?? 0}
               {@const size = markerSize(count, maxCount)}
               {@const markerTop = (1 - centroid) * 100}
               <div
@@ -224,24 +250,27 @@
         </div>
         <div class="preview-card">
           <span>Rendered frame</span>
-          {#if previewSrc}
-            <img
-              class="preview analysis-preview zoomable"
-              src={previewSrc}
-              alt="Rendered frame"
-              role="button"
-              tabindex="0"
-              onclick={() => openImageZoom(previewSrc, 'Rendered frame')}
-              onkeydown={(event) => handleZoomKeydown(event, previewSrc, 'Rendered frame')}
-            />
-          {:else}
-            <div class="empty">Preview unavailable.</div>
-          {/if}
+          <div class="preview-shell">
+            {#if previewSrc}
+              <img
+                class="preview analysis-preview zoomable"
+                src={previewSrc}
+                alt="Rendered frame"
+                role="button"
+                tabindex="0"
+                onclick={() => openImageZoom(previewSrc, 'Rendered frame')}
+                onkeydown={(event) => handleZoomKeydown(event, previewSrc, 'Rendered frame')}
+              />
+            {:else}
+              <div class="empty">Preview unavailable.</div>
+            {/if}
+            {#if isRefreshing}
+              <div class="preview-overlay">Updating...</div>
+            {/if}
+          </div>
         </div>
       </div>
     </div>
-  {:else}
-    <div class="empty">Select an image to view the values analysis.</div>
   {/if}
 </section>
 
@@ -276,11 +305,33 @@
     letter-spacing: 0.08em;
   }
 
+  .preview-shell {
+    position: relative;
+    width: 100%;
+    display: grid;
+    place-items: center;
+  }
+
   .preview {
     width: 100%;
     border-radius: 12px;
     border: 1px solid rgba(33, 33, 32, 0.2);
     box-shadow: 0 12px 20px rgba(33, 33, 32, 0.12);
+  }
+
+  .preview-overlay {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(33, 33, 32, 0.8);
+    background: rgba(248, 242, 227, 0.7);
+    border-radius: 12px;
+    border: 1px solid rgba(33, 33, 32, 0.15);
   }
 
   .range-section {

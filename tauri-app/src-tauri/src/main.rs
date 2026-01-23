@@ -1,6 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use chrono::{Local, SecondsFormat};
 use serde::{Deserialize, Serialize};
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 use tauri::{AppHandle, Manager};
@@ -84,6 +87,21 @@ struct AnalyzeResponse {
     variant: String,
 }
 
+#[derive(Debug)]
+struct EventLog {
+    path: PathBuf,
+}
+
+impl EventLog {
+    fn append(&self, message: &str) {
+        let timestamp = Local::now().to_rfc3339_opts(SecondsFormat::Millis, false);
+        let line = format!("{timestamp} {message}\n");
+        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&self.path) {
+            let _ = file.write_all(line.as_bytes());
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ValueStudyRequest {
@@ -126,6 +144,13 @@ struct ValueAnalysisResponse {
     boundaries: Vec<f32>,
     counts: Vec<usize>,
     levels: usize,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LogEventRequest {
+    message: String,
+    source: Option<String>,
 }
 
 #[tauri::command]
@@ -308,6 +333,20 @@ async fn value_analysis(
 }
 
 #[tauri::command]
+async fn log_event(req: LogEventRequest, app: AppHandle) -> Result<(), String> {
+    let message = req.message.trim();
+    if message.is_empty() {
+        return Ok(());
+    }
+    let source = req
+        .source
+        .unwrap_or_else(|| String::from("renderer"));
+    let log = app.state::<EventLog>();
+    log.append(&format!("[{source}] {message}"));
+    Ok(())
+}
+
+#[tauri::command]
 async fn open_image_dialog(app: AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::{DialogExt, FilePath};
     let (tx, rx) = std::sync::mpsc::channel::<Option<String>>();
@@ -330,12 +369,30 @@ async fn open_image_dialog(app: AppHandle) -> Result<Option<String>, String> {
 
 fn main() {
     tauri::Builder::default()
+        .setup(|app| {
+            let cache_dir = app
+                .path()
+                .app_cache_dir()
+                .map_err(|_| String::from("Failed to resolve cache directory"))?;
+            let log_path = cache_dir.join("event-log.txt");
+            let logger = EventLog { path: log_path };
+            logger.append("[system] app setup");
+            app.manage(logger);
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Focused(focused) = event {
+                let log = window.app_handle().state::<EventLog>();
+                log.append(&format!("[system] window focused={focused}"));
+            }
+        })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             analyze_image,
             value_study,
             value_analysis,
+            log_event,
             open_image_dialog
         ])
         .run(tauri::generate_context!())
