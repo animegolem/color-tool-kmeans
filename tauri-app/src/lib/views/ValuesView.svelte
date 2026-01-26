@@ -46,11 +46,6 @@
     return convertFileSrc(renderAnalysis.preview);
   });
 
-  const bucketMapSrc = $derived.by(() => {
-    if (!renderAnalysis?.bucketMap) return '';
-    return convertFileSrc(renderAnalysis.bucketMap);
-  });
-
   const isRefreshing = $derived.by(
     () => status === 'pending' && analysis === null && displayAnalysis !== null
   );
@@ -246,8 +241,7 @@
 
   $effect(() => {
     const analysis = renderAnalysis;
-    const src = bucketMapSrc;
-    if (!analysis || !src || !analysis.bucketValues.length) {
+    if (!analysis || !analysis.bucketValues.length) {
       bucketMasks = [];
       maskReady = false;
       hoverBucket = null;
@@ -255,7 +249,16 @@
       lastMaskKey = '';
       return;
     }
-    const maskKey = `${analysis.bucketMap}:${analysis.previewWidth}x${analysis.previewHeight}:${
+    const mapData = analysis.bucketMapData ?? [];
+    if (!mapData.length) {
+      bucketMasks = [];
+      maskReady = false;
+      hoverBucket = null;
+      lockedBucket = null;
+      lastMaskKey = '';
+      return;
+    }
+    const maskKey = `${mapData.length}:${analysis.previewWidth}x${analysis.previewHeight}:${
       analysis.bucketValues.length
     }`;
     if (maskKey === lastMaskKey) return;
@@ -269,30 +272,20 @@
     const startedAt = performance.now();
     void logEvent(`values:mask:start buckets=${bucketCount}`);
     void (async () => {
-      const img = new Image();
-      img.src = src;
-      try {
-        await img.decode();
-      } catch {
-        void logEvent('values:mask:error decode');
+      const width = analysis.previewWidth;
+      const height = analysis.previewHeight;
+      if (!width || !height) return;
+      if (mapData.length !== width * height) {
+        void logEvent(`values:mask:error size=${mapData.length} expected=${width * height}`);
         return;
       }
-      if (requestId !== maskVersion) return;
-      const width = img.width || analysis.previewWidth;
-      const height = img.height || analysis.previewHeight;
-      void logEvent(`values:mask:decoded ${width}x${height}`);
       const baseCanvas = document.createElement('canvas');
       const baseCtx = baseCanvas.getContext('2d');
       if (!baseCtx || width <= 0 || height <= 0) return;
       baseCtx.imageSmoothingEnabled = false;
       baseCanvas.width = width;
       baseCanvas.height = height;
-      void logEvent('values:mask:draw:start');
-      baseCtx.drawImage(img, 0, 0, width, height);
-      void logEvent('values:mask:draw:done');
-      void logEvent('values:mask:image-data:start');
-      const baseData = baseCtx.getImageData(0, 0, width, height).data;
-      void logEvent('values:mask:image-data:done');
+      const baseData = Uint8Array.from(mapData);
       const maskColor = { r: 79, g: 95, b: 250, a: 0.38 };
       const masks: string[] = [];
       void logEvent(`values:mask:loop:start buckets=${bucketCount} pixels=${width * height}`);
@@ -308,12 +301,13 @@
         const maskData = maskCtx.createImageData(width, height);
         const pixels = maskData.data;
         const bucketLoopStart = performance.now();
-        for (let i = 0; i < baseData.length; i += 4) {
+        for (let i = 0; i < baseData.length; i += 1) {
           if (baseData[i] === bucket) {
-            pixels[i] = maskColor.r;
-            pixels[i + 1] = maskColor.g;
-            pixels[i + 2] = maskColor.b;
-            pixels[i + 3] = Math.round(maskColor.a * 255);
+            const offset = i * 4;
+            pixels[offset] = maskColor.r;
+            pixels[offset + 1] = maskColor.g;
+            pixels[offset + 2] = maskColor.b;
+            pixels[offset + 3] = Math.round(maskColor.a * 255);
           }
         }
         const bucketLoopDuration = Math.round(performance.now() - bucketLoopStart);

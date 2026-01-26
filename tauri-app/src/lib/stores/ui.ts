@@ -132,6 +132,7 @@ export interface ValueAnalysisResult {
   previewWidth: number;
   previewHeight: number;
   bucketMap: string;
+  bucketMapData: number[];
   p10: number;
   p90: number;
   p01: number;

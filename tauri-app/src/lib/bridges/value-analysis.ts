@@ -30,6 +30,7 @@ const valueAnalysisResponseSchema = z
     previewWidth: finiteNumberSchema.min(1, { message: 'previewWidth must be >= 1' }),
     previewHeight: finiteNumberSchema.min(1, { message: 'previewHeight must be >= 1' }),
     bucketMap: z.string().min(1),
+    bucketMapData: z.array(finiteNumberSchema),
     p10: finiteNumberSchema,
     p90: finiteNumberSchema,
     p01: finiteNumberSchema,
@@ -63,6 +64,11 @@ function normalizeValueAnalysisResponse(raw: unknown): Record<string, unknown> {
         : typeof (payload as any).bucket_map === 'string'
           ? (payload as any).bucket_map
           : '',
+    bucketMapData: Array.isArray(payload.bucketMapData)
+      ? payload.bucketMapData.map(Number)
+      : Array.isArray((payload as any).bucket_map_data)
+        ? (payload as any).bucket_map_data.map(Number)
+        : [],
     p10: Number(payload.p10),
     p90: Number(payload.p90),
     p01: Number(payload.p01),
@@ -131,6 +137,7 @@ export async function requestValueAnalysis(
     previewWidth: parsed.previewWidth,
     previewHeight: parsed.previewHeight,
     bucketMap: parsed.bucketMap,
+    bucketMapData: parsed.bucketMapData,
     p10: parsed.p10,
     p90: parsed.p90,
     p01: parsed.p01,

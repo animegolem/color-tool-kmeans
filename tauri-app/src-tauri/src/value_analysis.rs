@@ -9,7 +9,7 @@ use thiserror::Error;
 use crate::color;
 use crate::kmeans::{run_kmeans, KMeansConfig};
 
-const VALUE_ANALYSIS_CACHE_VERSION: u8 = 2;
+const VALUE_ANALYSIS_CACHE_VERSION: u8 = 3;
 const VALUE_ANALYSIS_MAX_DIMENSION: u32 = 1600;
 const VALUE_ANALYSIS_SQUINT_MAX_DIMENSION: u32 = 256;
 const VALUE_ANALYSIS_BLUR_SIGMA: f32 = 1.0;
@@ -50,6 +50,7 @@ pub struct ValueAnalysisResult {
     pub preview_width: u32,
     pub preview_height: u32,
     pub bucket_map: PathBuf,
+    pub bucket_map_data: Vec<u8>,
     pub p10: f32,
     pub p90: f32,
     pub p01: f32,
@@ -78,6 +79,7 @@ struct ValueAnalysisMeta {
     boundaries: Vec<f32>,
     bucket_values: Vec<f32>,
     counts: Vec<usize>,
+    bucket_map_data: Vec<u8>,
     neutral_width: u32,
     neutral_height: u32,
     preview_width: u32,
@@ -119,6 +121,7 @@ pub fn generate_value_analysis(
                 neutral_height: meta.neutral_height,
                 preview_width: meta.preview_width,
                 preview_height: meta.preview_height,
+                bucket_map_data: meta.bucket_map_data,
                 p10: meta.p10,
                 p90: meta.p90,
                 p01: meta.p01,
@@ -241,6 +244,7 @@ pub fn generate_value_analysis(
             boundaries: boundaries.clone(),
             bucket_values: bucket_values.clone(),
             counts: counts.clone(),
+            bucket_map_data: bucket_indices.clone(),
             neutral_width,
             neutral_height,
             preview_width,
@@ -258,6 +262,7 @@ pub fn generate_value_analysis(
         neutral_height,
         preview_width,
         preview_height,
+        bucket_map_data: bucket_indices,
         p10,
         p90,
         p01,
