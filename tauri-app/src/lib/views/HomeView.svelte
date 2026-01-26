@@ -36,6 +36,7 @@
   import { generateCircleGraphSvg } from '../exports/polar-chart';
   import { generateHueLightnessSvg } from '../exports/hue-lightness';
   import { generateHistogramSvg } from '../exports/histogram';
+  import { logEvent } from '../bridges/log';
 
   const ANALYZE_DEBOUNCE_MS = 400;
   const SPINNER_THRESHOLD_MS = 150;
@@ -452,6 +453,7 @@
   }
 
   onMount(() => {
+    void logEvent('home:view:mount');
     let dragDepth = 0;
     let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -506,6 +508,7 @@
       window.removeEventListener('drop', onDrop);
       window.removeEventListener('pointerup', handleScrubEnd);
       window.removeEventListener('pointercancel', handleScrubEnd);
+      void logEvent('home:view:unmount');
     };
   });
 

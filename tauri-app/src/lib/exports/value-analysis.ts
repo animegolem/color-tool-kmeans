@@ -10,7 +10,9 @@ export interface ValueAnalysisExportInput {
   previewHeight: number;
   p10: number;
   p90: number;
-  centroids: number[];
+  p01: number;
+  p99: number;
+  bucketValues: number[];
   boundaries: number[];
   counts: number[];
   levels: number;
@@ -38,8 +40,9 @@ export async function generateValueAnalysisSvg(
     previewHeight,
     p10,
     p90,
-    centroids,
-    boundaries,
+    p01,
+    p99,
+    bucketValues,
     counts,
     levels,
     background = '#f8f2e3'
@@ -58,12 +61,9 @@ export async function generateValueAnalysisSvg(
   const previewScale = previewWidth > 0 ? tileWidth / previewWidth : 1;
   const previewDisplayWidth = tileWidth;
   const previewDisplayHeight = Math.round(previewHeight * previewScale);
-  const rulerWidth = Math.round(70 * scale);
-  const rulerTrackWidth = Math.max(8, Math.round(10 * scale));
 
   const topPairWidth = tileWidth * 2 + previewGap;
-  const analysisWidth = rulerWidth + previewGap + previewDisplayWidth;
-  const contentWidth = Math.max(topPairWidth, analysisWidth);
+  const contentWidth = topPairWidth;
   const totalWidth = contentWidth + margin * 2;
 
   const topPairX = margin + (contentWidth - topPairWidth) / 2;
@@ -76,15 +76,18 @@ export async function generateValueAnalysisSvg(
   const rangeX = margin + (contentWidth - rangeWidth) / 2;
   const rangeLabelY = rangeY;
   const rangeTrackY = rangeLabelY + fontMedium + labelGap;
-  const rangeTrackHeight = Math.round(12 * scale);
+  const rangeTrackHeight = Math.round(18 * scale);
   const rangeMetaY = rangeTrackY + rangeTrackHeight + labelGap;
 
-  const analysisY = rangeMetaY + fontSmall + sectionGap;
-  const analysisLabelY = analysisY;
-  const analysisBodyY = analysisLabelY + fontMedium + labelGap;
-  const analysisX = margin + (contentWidth - analysisWidth) / 2;
+  const bucketY = rangeMetaY + fontSmall + sectionGap;
+  const bucketLabelY = bucketY;
+  const bucketStripY = bucketLabelY + fontMedium + labelGap;
+  const bucketStripHeight = Math.round(48 * scale);
 
-  const totalHeight = analysisBodyY + previewDisplayHeight + margin;
+  const notanLabelY = bucketStripY + bucketStripHeight + sectionGap;
+  const notanImageY = notanLabelY + fontMedium + labelGap;
+
+  const totalHeight = notanImageY + previewDisplayHeight + margin;
 
   const [originalData, neutralData, previewData] = await Promise.all([
     toDataUrl(originalSrc),
@@ -159,7 +162,7 @@ export async function generateValueAnalysisSvg(
         'text-anchor': 'start',
         'dominant-baseline': 'hanging'
       },
-      'Value Range'
+      'Values Track'
     )
   );
 
@@ -186,21 +189,32 @@ export async function generateValueAnalysisSvg(
       y: rangeTrackY,
       width: rangeWidth,
       height: rangeTrackHeight,
-      fill: 'rgba(33,33,32,0.12)',
+      fill: '#2d2c2a',
       rx: rangeTrackHeight / 2
     })
   );
 
   const safeP10 = clamp01(p10);
   const safeP90 = clamp01(p90);
-  const rangeStart = rangeX + rangeWidth * safeP10;
-  const rangeSpan = Math.max(0, rangeWidth * (safeP90 - safeP10));
-  const stepWidth = rangeSpan / 5;
-  const stepColors = ['#3a3936', '#5a5953', '#7a776f', '#9a968d', '#bab6ad'];
-  for (let i = 0; i < 5; i += 1) {
+  const safeP01 = clamp01(p01);
+  const safeP99 = clamp01(p99);
+  const stepColors = [
+    '#2d2c2a',
+    '#474641',
+    '#61605a',
+    '#7a776f',
+    '#949089',
+    '#aea99f',
+    '#c7c2b7',
+    '#dfd9cd',
+    '#f2ece0',
+    '#f8f2e3'
+  ];
+  const stepWidth = rangeWidth / stepColors.length;
+  for (let i = 0; i < stepColors.length; i += 1) {
     content.push(
       svgRect({
-        x: rangeStart + stepWidth * i,
+        x: rangeX + stepWidth * i,
         y: rangeTrackY,
         width: stepWidth,
         height: rangeTrackHeight,
@@ -209,6 +223,47 @@ export async function generateValueAnalysisSvg(
       })
     );
   }
+
+  const whiskerStart = rangeX + rangeWidth * safeP01;
+  const whiskerSpan = Math.max(0, rangeWidth * (safeP99 - safeP01));
+  content.push(
+    svgRect({
+      x: whiskerStart,
+      y: rangeTrackY + 2,
+      width: whiskerSpan,
+      height: Math.max(1, Math.round(2 * scale)),
+      fill: 'rgba(33,33,32,0.55)',
+      rx: Math.round(2 * scale)
+    })
+  );
+
+  const coreStart = rangeX + rangeWidth * safeP10;
+  const coreSpan = Math.max(0, rangeWidth * (safeP90 - safeP10));
+  content.push(
+    svgRect({
+      x: coreStart,
+      y: rangeTrackY + 2,
+      width: coreSpan,
+      height: rangeTrackHeight - 4,
+      fill: 'rgba(248,242,227,0.2)',
+      stroke: 'rgba(33,33,32,0.75)',
+      'stroke-width': Math.max(1, Math.round(2 * scale)),
+      rx: rangeTrackHeight / 2
+    })
+  );
+
+  content.push(
+    svgRect({
+      x: rangeX,
+      y: rangeTrackY,
+      width: rangeWidth,
+      height: rangeTrackHeight,
+      fill: 'none',
+      stroke: 'rgba(33,33,32,0.18)',
+      'stroke-width': Math.max(1, Math.round(1 * scale)),
+      rx: rangeTrackHeight / 2
+    })
+  );
 
   content.push(
     svgText(
@@ -221,7 +276,7 @@ export async function generateValueAnalysisSvg(
         'text-anchor': 'start',
         'dominant-baseline': 'hanging'
       },
-      `Shadows ${formatPercent(safeP10)}`
+      `Mass range ${formatPercent(safeP10)}-${formatPercent(safeP90)}`
     )
   );
   content.push(
@@ -235,15 +290,15 @@ export async function generateValueAnalysisSvg(
         'text-anchor': 'end',
         'dominant-baseline': 'hanging'
       },
-      `Highlights ${formatPercent(safeP90)}`
+      `Extremes ${formatPercent(safeP01)}-${formatPercent(safeP99)}`
     )
   );
 
   content.push(
     svgText(
       {
-        x: analysisX,
-        y: analysisLabelY,
+        x: rangeX,
+        y: bucketLabelY,
         fill: 'rgba(33,33,32,0.9)',
         'font-family': FONT_FAMILY,
         'font-size': fontMedium,
@@ -251,14 +306,14 @@ export async function generateValueAnalysisSvg(
         'text-anchor': 'start',
         'dominant-baseline': 'hanging'
       },
-      'Value Masses'
+      'Value Buckets'
     )
   );
   content.push(
     svgText(
       {
-        x: analysisX + analysisWidth,
-        y: analysisLabelY,
+        x: rangeX + rangeWidth,
+        y: bucketLabelY,
         fill: 'rgba(33,33,32,0.6)',
         'font-family': FONT_FAMILY,
         'font-size': fontSmall,
@@ -270,103 +325,77 @@ export async function generateValueAnalysisSvg(
     )
   );
 
-  const rulerX = analysisX;
-  const rulerY = analysisBodyY;
-  const trackX = rulerX + rulerWidth / 2;
-  const trackY1 = rulerY;
-  const trackY2 = rulerY + previewDisplayHeight;
+  const bucketTotal = counts.length ? counts.reduce((sum, count) => sum + count, 0) : 0;
+  let cursor = rangeX;
+  bucketValues.forEach((value, idx) => {
+    const count = counts[idx] ?? 0;
+    const share = bucketTotal > 0 ? count / bucketTotal : 1 / bucketValues.length;
+    const width =
+      idx === bucketValues.length - 1
+        ? rangeX + rangeWidth - cursor
+        : Math.max(1, rangeWidth * share);
+    const fill = grayFill(value);
+    content.push(
+      svgRect({
+        x: cursor,
+        y: bucketStripY,
+        width,
+        height: bucketStripHeight,
+        fill
+      })
+    );
+    if (width >= 42 * scale) {
+      content.push(
+        svgText(
+          {
+            x: cursor + width / 2,
+            y: bucketStripY + bucketStripHeight / 2,
+            fill: bucketTextColor(value),
+            'font-family': FONT_FAMILY,
+            'font-size': fontSmall,
+            'font-weight': 600,
+            'text-anchor': 'middle',
+            'dominant-baseline': 'middle'
+          },
+          formatPercent(share)
+        )
+      );
+    }
+    cursor += width;
+  });
 
   content.push(
-    svgLine({
-      x1: trackX,
-      y1: trackY1,
-      x2: trackX,
-      y2: trackY2,
-      stroke: 'rgba(33,33,32,0.2)',
-      'stroke-width': rulerTrackWidth,
-      'stroke-linecap': 'round'
+    svgRect({
+      x: rangeX,
+      y: bucketStripY,
+      width: rangeWidth,
+      height: bucketStripHeight,
+      fill: 'none',
+      stroke: 'rgba(33,33,32,0.18)',
+      'stroke-width': Math.max(1, Math.round(1 * scale))
     })
   );
 
-  boundaries.forEach((boundary) => {
-    const y = rulerY + (1 - boundary) * previewDisplayHeight;
-    content.push(
-      svgLine({
-        x1: trackX - rulerWidth / 2 + 6 * scale,
-        y1: y,
-        x2: trackX + rulerWidth / 2 - 6 * scale,
-        y2: y,
-        stroke: 'rgba(33,33,32,0.5)',
-        'stroke-width': Math.max(1, 2 * scale),
-        'stroke-linecap': 'round'
-      })
-    );
-  });
-
-  const maxCount = counts.length ? Math.max(...counts) : 1;
-  centroids.forEach((centroid, idx) => {
-    const count = counts[idx] ?? 0;
-    const size = markerSize(count, maxCount, scale);
-    const y = rulerY + (1 - centroid) * previewDisplayHeight;
-    content.push(
-      svgPolygon({
-        points: diamondPoints(trackX, y, size),
-        fill: 'rgba(33,33,32,0.85)'
-      })
-    );
-  });
-
   content.push(
     svgText(
       {
-        x: trackX,
-        y: rulerY - labelGap,
-        fill: 'rgba(33,33,32,0.6)',
+        x: rangeX,
+        y: notanLabelY,
+        fill: 'rgba(33,33,32,0.9)',
         'font-family': FONT_FAMILY,
-        'font-size': fontSmall,
-        'text-anchor': 'middle',
-        'dominant-baseline': 'ideographic'
-      },
-      '100'
-    )
-  );
-  content.push(
-    svgText(
-      {
-        x: trackX,
-        y: trackY2 + fontSmall + labelGap,
-        fill: 'rgba(33,33,32,0.6)',
-        'font-family': FONT_FAMILY,
-        'font-size': fontSmall,
-        'text-anchor': 'middle',
-        'dominant-baseline': 'hanging'
-      },
-      '0'
-    )
-  );
-
-  const previewX = analysisX + rulerWidth + previewGap;
-  content.push(
-    svgText(
-      {
-        x: previewX + previewDisplayWidth / 2,
-        y: analysisBodyY - labelGap - fontSmall,
-        fill: 'rgba(33,33,32,0.7)',
-        'font-family': FONT_FAMILY,
-        'font-size': fontSmall,
+        'font-size': fontMedium,
         'font-weight': 600,
-        'letter-spacing': 1.2,
-        'text-anchor': 'middle',
+        'text-anchor': 'start',
         'dominant-baseline': 'hanging'
       },
-      'RENDERED FRAME'
+      'Simplified Preview'
     )
   );
   content.push(
     svgImage({
       href: previewData,
-      x: previewX,
-      y: analysisBodyY,
+      x: rangeX,
+      y: notanImageY,
       width: previewDisplayWidth,
       height: previewDisplayHeight
     })
@@ -398,17 +427,13 @@ function contrastLabel(p10: number, p90: number) {
   return 'Low contrast';
 }
 
-function markerSize(count: number, maxCount: number, scale: number) {
-  if (maxCount <= 0) return Math.round(8 * scale);
-  const min = 6 * scale;
-  const max = 14 * scale;
-  const ratio = Math.min(1, count / maxCount);
-  return Math.round(min + (max - min) * ratio);
+function grayFill(value: number) {
+  const shade = Math.round(clamp01(value) * 255);
+  return `rgb(${shade},${shade},${shade})`;
 }
 
-function diamondPoints(x: number, y: number, size: number) {
-  const half = size / 2;
-  return `${x},${y - half} ${x + half},${y} ${x},${y + half} ${x - half},${y}`;
+function bucketTextColor(value: number) {
+  return value <= 0.52 ? 'rgba(248,242,227,0.9)' : 'rgba(33,33,32,0.85)';
 }
 
 function clamp01(value: number) {
@@ -437,14 +462,6 @@ function svgImage({
     height,
     preserveAspectRatio: 'xMidYMid meet'
   })} />`;
-}
-
-function svgLine(attrs: Record<string, string | number>): string {
-  return `<line ${serializeAttrs(attrs)} />`;
-}
-
-function svgPolygon(attrs: Record<string, string | number>): string {
-  return `<polygon ${serializeAttrs(attrs)} />`;
 }
 
 function serializeAttrs(attrs: Record<string, string | number>): string {

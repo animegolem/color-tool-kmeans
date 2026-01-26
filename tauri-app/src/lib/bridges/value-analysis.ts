@@ -29,12 +29,17 @@ const valueAnalysisResponseSchema = z
     preview: z.string().min(1),
     previewWidth: finiteNumberSchema.min(1, { message: 'previewWidth must be >= 1' }),
     previewHeight: finiteNumberSchema.min(1, { message: 'previewHeight must be >= 1' }),
+    bucketMap: z.string().min(1),
     p10: finiteNumberSchema,
     p90: finiteNumberSchema,
+    p01: finiteNumberSchema,
+    p99: finiteNumberSchema,
     centroids: z.array(finiteNumberSchema).min(1),
     boundaries: z.array(finiteNumberSchema),
+    bucketValues: z.array(finiteNumberSchema).min(1),
     counts: z.array(z.number().int().nonnegative()),
-    levels: z.number().int().min(2).max(5)
+    levels: z.number().int().min(2).max(5),
+    notanMode: z.boolean()
   })
   .readonly();
 
@@ -52,12 +57,26 @@ function normalizeValueAnalysisResponse(raw: unknown): Record<string, unknown> {
     preview: typeof payload.preview === 'string' ? payload.preview : '',
     previewWidth: Number(payload.previewWidth ?? (payload as any).preview_width),
     previewHeight: Number(payload.previewHeight ?? (payload as any).preview_height),
+    bucketMap:
+      typeof payload.bucketMap === 'string'
+        ? payload.bucketMap
+        : typeof (payload as any).bucket_map === 'string'
+          ? (payload as any).bucket_map
+          : '',
     p10: Number(payload.p10),
     p90: Number(payload.p90),
+    p01: Number(payload.p01),
+    p99: Number(payload.p99),
     centroids: Array.isArray(payload.centroids) ? payload.centroids.map(Number) : [],
     boundaries: Array.isArray(payload.boundaries) ? payload.boundaries.map(Number) : [],
+    bucketValues: Array.isArray(payload.bucketValues)
+      ? payload.bucketValues.map(Number)
+      : Array.isArray((payload as any).bucket_values)
+        ? (payload as any).bucket_values.map(Number)
+        : [],
     counts: Array.isArray(payload.counts) ? payload.counts.map(Number) : [],
-    levels: Number(payload.levels ?? (payload as any).levels)
+    levels: Number(payload.levels ?? (payload as any).levels),
+    notanMode: Boolean(payload.notanMode ?? (payload as any).notan_mode)
   };
 }
 
@@ -83,7 +102,8 @@ function parseValueAnalysisResponse(raw: unknown): ParsedValueAnalysis {
 export async function requestValueAnalysis(
   path: string,
   imageId: string,
-  levels: number
+  levels: number,
+  notanMode: boolean
 ): Promise<ValueAnalysisResult> {
   if (!isTauriEnv()) {
     throw new ValueAnalysisError('not-tauri', 'Value analysis requires the Tauri runtime.');
@@ -93,7 +113,9 @@ export async function requestValueAnalysis(
   }
   let rawResponse: unknown;
   try {
-    rawResponse = await tauriInvoke('value_analysis', { req: { path, imageId, levels } });
+    rawResponse = await tauriInvoke('value_analysis', {
+      req: { path, imageId, levels, notanMode }
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     throw new ValueAnalysisError('invoke-failed', `Tauri value_analysis invoke failed: ${message}`, {
@@ -108,11 +130,16 @@ export async function requestValueAnalysis(
     preview: parsed.preview,
     previewWidth: parsed.previewWidth,
     previewHeight: parsed.previewHeight,
+    bucketMap: parsed.bucketMap,
     p10: parsed.p10,
     p90: parsed.p90,
+    p01: parsed.p01,
+    p99: parsed.p99,
     centroids: parsed.centroids,
     boundaries: parsed.boundaries,
+    bucketValues: parsed.bucketValues,
     counts: parsed.counts,
-    levels: parsed.levels
+    levels: parsed.levels,
+    notanMode: parsed.notanMode
   };
 }

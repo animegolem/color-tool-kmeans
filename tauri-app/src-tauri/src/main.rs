@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 use tauri_app::color;
 use tauri_app::image_pipeline::{prepare_samples, quality_preset, SampleParams};
@@ -127,6 +127,8 @@ struct ValueAnalysisRequest {
     image_id: String,
     #[serde(default = "default_value_levels")]
     levels: usize,
+    #[serde(default)]
+    notan_mode: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -138,12 +140,17 @@ struct ValueAnalysisResponse {
     preview: String,
     preview_width: u32,
     preview_height: u32,
+    bucket_map: String,
     p10: f32,
     p90: f32,
+    p01: f32,
+    p99: f32,
     centroids: Vec<f32>,
     boundaries: Vec<f32>,
+    bucket_values: Vec<f32>,
     counts: Vec<usize>,
     levels: usize,
+    notan_mode: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -302,6 +309,7 @@ async fn value_analysis(
         .app_cache_dir()
         .map_err(|_| String::from("Failed to resolve cache directory"))?;
     let levels = req.levels.clamp(2, 5);
+    let notan_mode = req.notan_mode && levels == 2;
     let ValueAnalysisResult {
         neutral,
         neutral_width,
@@ -309,26 +317,36 @@ async fn value_analysis(
         preview,
         preview_width,
         preview_height,
+        bucket_map,
         p10,
         p90,
+        p01,
+        p99,
         centroids,
         boundaries,
+        bucket_values,
         counts,
-    } = generate_value_analysis(&req.path, &req.image_id, levels, cache_dir)
+        notan_mode: analysis_notan_mode,
+    } = generate_value_analysis(&req.path, &req.image_id, levels, notan_mode, cache_dir)
         .map_err(|e| format!("Value analysis failed: {e}"))?;
     Ok(ValueAnalysisResponse {
         neutral: neutral.to_string_lossy().to_string(),
         preview: preview.to_string_lossy().to_string(),
+        bucket_map: bucket_map.to_string_lossy().to_string(),
         neutral_width,
         neutral_height,
         preview_width,
         preview_height,
         p10,
         p90,
+        p01,
+        p99,
         centroids,
         boundaries,
+        bucket_values,
         counts,
         levels,
+        notan_mode: analysis_notan_mode,
     })
 }
 
@@ -378,6 +396,16 @@ fn main() {
             let logger = EventLog { path: log_path };
             logger.append("[system] app setup");
             app.manage(logger);
+            let heartbeat_path = cache_dir.join("event-log.txt");
+            std::thread::spawn(move || {
+                let heartbeat = EventLog {
+                    path: heartbeat_path,
+                };
+                loop {
+                    std::thread::sleep(Duration::from_secs(10));
+                    heartbeat.append("[system] heartbeat");
+                }
+            });
             Ok(())
         })
         .on_window_event(|window, event| {

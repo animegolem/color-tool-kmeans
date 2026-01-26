@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { onDestroy, onMount } from 'svelte';
   import { convertFileSrc } from '@tauri-apps/api/core';
   import type { SelectedImage, ValueAnalysisResult, ValueAnalysisState } from '../stores/ui';
   import {
     selectedFile,
     valueAnalysisLevels,
+    valueAnalysisNotanMode,
     valueAnalysisResult,
     valueAnalysisState,
     valueAnalysisError,
@@ -13,6 +15,7 @@
     openZoomOverlay
   } from '../stores/ui';
   import { requestValueAnalysis } from '../bridges/value-analysis';
+  import { logEvent } from '../bridges/log';
 
   let file = $state<SelectedImage | null>(null);
   let analysis = $state<ValueAnalysisResult | null>(null);
@@ -21,8 +24,17 @@
   let status = $state<ValueAnalysisState>('idle');
   let error = $state<string | null>(null);
   let levels = $state(3);
+  let notanMode = $state(true);
+  let previewMode = $state<'notan' | 'original'>('notan');
+  let hoverBucket = $state<number | null>(null);
+  let lockedBucket = $state<number | null>(null);
+  let bucketMasks = $state<string[]>([]);
+  let maskReady = $state(false);
+  let maskVersion = 0;
+  let lastMaskKey = '';
 
   const renderAnalysis = $derived.by(() => analysis ?? displayAnalysis);
+  const effectiveNotanMode = $derived.by(() => notanMode && levels === 2);
 
   const neutralSrc = $derived.by(() => {
     if (!renderAnalysis?.neutral) return '';
@@ -34,14 +46,47 @@
     return convertFileSrc(renderAnalysis.preview);
   });
 
-  const maxCount = $derived.by(() => {
-    if (!renderAnalysis?.counts?.length) return 1;
-    return Math.max(...renderAnalysis.counts);
+  const bucketMapSrc = $derived.by(() => {
+    if (!renderAnalysis?.bucketMap) return '';
+    return convertFileSrc(renderAnalysis.bucketMap);
   });
 
   const isRefreshing = $derived.by(
     () => status === 'pending' && analysis === null && displayAnalysis !== null
   );
+
+  const bucketData = $derived.by(() => {
+    if (!renderAnalysis) return [];
+    const counts = renderAnalysis.counts ?? [];
+    const total = counts.reduce((sum, count) => sum + count, 0) || 1;
+    return renderAnalysis.bucketValues.map((value, idx) => {
+      const count = counts[idx] ?? 0;
+      const share = count / total;
+      const lower = idx === 0 ? 0 : renderAnalysis.boundaries[idx - 1] ?? 0;
+      const upper =
+        idx === renderAnalysis.bucketValues.length - 1
+          ? 1
+          : renderAnalysis.boundaries[idx] ?? 1;
+      return {
+        idx,
+        value,
+        count,
+        share,
+        lower,
+        upper
+      };
+    });
+  });
+
+  const activeBucket = $derived.by(() => (lockedBucket !== null ? lockedBucket : hoverBucket));
+  const activePreviewSrc = $derived.by(() =>
+    previewMode === 'original' ? file?.previewUrl ?? '' : previewSrc
+  );
+  const activePreviewLabel = $derived.by(() =>
+    previewMode === 'original' ? 'Original + overlay' : 'Simplified tones'
+  );
+  const rangeSteps = $derived.by(() => Array.from({ length: 11 }, (_, idx) => idx / 10));
+  const notanToggleDisabled = $derived.by(() => levels !== 2);
 
 
   function openImageZoom(src: string, alt: string) {
@@ -73,30 +118,80 @@
     return 'Low contrast';
   }
 
-  function markerSize(count: number, maxCount: number) {
-    if (maxCount <= 0) return 8;
-    const min = 6;
-    const max = 14;
-    const ratio = Math.min(1, count / maxCount);
-    return Math.round(min + (max - min) * ratio);
-  }
-
   function updateLevels() {
     valueAnalysisLevels.set(levels);
+    void logEvent(`values:levels ${levels}`);
   }
 
-  async function ensureValueAnalysis(currentFile: SelectedImage, requestedLevels: number) {
+  function updateNotanMode(next: boolean) {
+    valueAnalysisNotanMode.set(next);
+    void logEvent(`values:two-tone ${next}`);
+  }
+
+  function updatePreviewMode(next: 'notan' | 'original') {
+    previewMode = next;
+    void logEvent(`values:preview ${next}`);
+  }
+
+  function bucketTone(value: number) {
+    const shade = Math.round(Math.max(0, Math.min(1, value)) * 255);
+    return `rgb(${shade}, ${shade}, ${shade})`;
+  }
+
+  function bucketTextColor(value: number) {
+    return value <= 0.52 ? 'rgba(248, 242, 227, 0.9)' : 'rgba(33, 33, 32, 0.85)';
+  }
+
+  function bucketLabel(bucket: { lower: number; upper: number; share: number }) {
+    return `${formatPercent(bucket.lower)}-${formatPercent(bucket.upper)} | ${formatPercent(
+      bucket.share
+    )}`;
+  }
+
+  function handleBucketEnter(idx: number) {
+    hoverBucket = idx;
+  }
+
+  function handleBucketLeave() {
+    hoverBucket = null;
+  }
+
+  function toggleBucket(idx: number) {
+    lockedBucket = lockedBucket === idx ? null : idx;
+  }
+
+  async function ensureValueAnalysis(
+    currentFile: SelectedImage,
+    requestedLevels: number,
+    requestedNotanMode: boolean
+  ) {
     if (!currentFile.path) {
-      setValueAnalysisError(currentFile.id, requestedLevels, 'Value analysis requires a native file path.');
+      setValueAnalysisError(
+        currentFile.id,
+        requestedLevels,
+        requestedNotanMode,
+        'Value analysis requires a native file path.'
+      );
       return;
     }
-    setValueAnalysisPending(currentFile.id, requestedLevels);
+    const startedAt = performance.now();
+    void logEvent(`values:analysis:start levels=${requestedLevels} twoTone=${requestedNotanMode}`);
+    setValueAnalysisPending(currentFile.id, requestedLevels, requestedNotanMode);
     try {
-      const result = await requestValueAnalysis(currentFile.path, currentFile.id, requestedLevels);
-      setValueAnalysisSuccess(currentFile.id, requestedLevels, result);
+      const result = await requestValueAnalysis(
+        currentFile.path,
+        currentFile.id,
+        requestedLevels,
+        requestedNotanMode
+      );
+      const duration = Math.round(performance.now() - startedAt);
+      void logEvent(`values:analysis:success ms=${duration}`);
+      setValueAnalysisSuccess(currentFile.id, requestedLevels, requestedNotanMode, result);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      setValueAnalysisError(currentFile.id, requestedLevels, message);
+      const duration = Math.round(performance.now() - startedAt);
+      void logEvent(`values:analysis:error ms=${duration} message=${message}`);
+      setValueAnalysisError(currentFile.id, requestedLevels, requestedNotanMode, message);
     }
   }
 
@@ -125,6 +220,9 @@
       }),
       valueAnalysisLevels.subscribe((value) => {
         levels = value;
+      }),
+      valueAnalysisNotanMode.subscribe((value) => {
+        notanMode = value;
       })
     ];
     return () => {
@@ -132,11 +230,103 @@
     };
   });
 
+  onMount(() => {
+    void logEvent('values:view:mount');
+    return () => {
+      void logEvent('values:view:unmount');
+    };
+  });
+
   $effect(() => {
     if (!file) return;
     if (status !== 'idle') return;
     if (analysis) return;
-    void ensureValueAnalysis(file, levels);
+    void ensureValueAnalysis(file, levels, effectiveNotanMode);
+  });
+
+  $effect(() => {
+    const analysis = renderAnalysis;
+    const src = bucketMapSrc;
+    if (!analysis || !src || !analysis.bucketValues.length) {
+      bucketMasks = [];
+      maskReady = false;
+      hoverBucket = null;
+      lockedBucket = null;
+      lastMaskKey = '';
+      return;
+    }
+    const maskKey = `${analysis.bucketMap}:${analysis.previewWidth}x${analysis.previewHeight}:${
+      analysis.bucketValues.length
+    }`;
+    if (maskKey === lastMaskKey) return;
+    lastMaskKey = maskKey;
+    maskVersion += 1;
+    const requestId = maskVersion;
+    maskReady = false;
+    hoverBucket = null;
+    lockedBucket = null;
+    const bucketCount = analysis.bucketValues.length;
+    const startedAt = performance.now();
+    void logEvent(`values:mask:start buckets=${bucketCount}`);
+    void (async () => {
+      const img = new Image();
+      img.src = src;
+      try {
+        await img.decode();
+      } catch {
+        void logEvent('values:mask:error decode');
+        return;
+      }
+      if (requestId !== maskVersion) return;
+      const width = img.width || analysis.previewWidth;
+      const height = img.height || analysis.previewHeight;
+      void logEvent(`values:mask:decoded ${width}x${height}`);
+      const baseCanvas = document.createElement('canvas');
+      const baseCtx = baseCanvas.getContext('2d');
+      if (!baseCtx || width <= 0 || height <= 0) return;
+      baseCtx.imageSmoothingEnabled = false;
+      baseCanvas.width = width;
+      baseCanvas.height = height;
+      void logEvent('values:mask:draw:start');
+      baseCtx.drawImage(img, 0, 0, width, height);
+      void logEvent('values:mask:draw:done');
+      void logEvent('values:mask:image-data:start');
+      const baseData = baseCtx.getImageData(0, 0, width, height).data;
+      void logEvent('values:mask:image-data:done');
+      const maskColor = { r: 79, g: 95, b: 250, a: 0.38 };
+      const masks: string[] = [];
+      void logEvent(`values:mask:loop:start buckets=${bucketCount} pixels=${width * height}`);
+      for (let bucket = 0; bucket < bucketCount; bucket += 1) {
+        const maskCanvas = document.createElement('canvas');
+        const maskCtx = maskCanvas.getContext('2d');
+        if (!maskCtx) {
+          masks.push('');
+          continue;
+        }
+        maskCanvas.width = width;
+        maskCanvas.height = height;
+        const maskData = maskCtx.createImageData(width, height);
+        const pixels = maskData.data;
+        const bucketLoopStart = performance.now();
+        for (let i = 0; i < baseData.length; i += 4) {
+          if (baseData[i] === bucket) {
+            pixels[i] = maskColor.r;
+            pixels[i + 1] = maskColor.g;
+            pixels[i + 2] = maskColor.b;
+            pixels[i + 3] = Math.round(maskColor.a * 255);
+          }
+        }
+        const bucketLoopDuration = Math.round(performance.now() - bucketLoopStart);
+        void logEvent(`values:mask:bucket:${bucket} ms=${bucketLoopDuration}`);
+        maskCtx.putImageData(maskData, 0, 0);
+        masks.push(maskCanvas.toDataURL('image/png'));
+      }
+      if (requestId !== maskVersion) return;
+      bucketMasks = masks;
+      maskReady = true;
+      const duration = Math.round(performance.now() - startedAt);
+      void logEvent(`values:mask:done ms=${duration}`);
+    })();
   });
 </script>
 
@@ -196,73 +386,129 @@
 
     {@const safeP10 = Math.max(0, Math.min(1, renderAnalysis.p10))}
     {@const safeP90 = Math.max(0, Math.min(1, renderAnalysis.p90))}
+    {@const safeP01 = Math.max(0, Math.min(1, renderAnalysis.p01))}
+    {@const safeP99 = Math.max(0, Math.min(1, renderAnalysis.p99))}
     {@const rangeStart = safeP10 * 100}
     {@const rangeWidth = Math.max(0, safeP90 - safeP10) * 100}
+    {@const extremeStart = safeP01 * 100}
+    {@const extremeWidth = Math.max(0, safeP99 - safeP01) * 100}
 
     <div class="range-section">
       <div class="range-header">
-        <div class="range-title">Value range</div>
+        <div class="range-title">Range finder</div>
         <div class="range-tags">
           <span>{keyLabel(safeP10, safeP90)}</span>
           <span>{contrastLabel(safeP10, safeP90)}</span>
         </div>
       </div>
+      <div class="range-steps">
+        {#each rangeSteps as step}
+          <div class="range-step" style={`background: ${bucketTone(step)};`}></div>
+        {/each}
+      </div>
       <div class="range-track">
-        <div class="range-active" style={`left: ${rangeStart}%; width: ${rangeWidth}%;`}></div>
+        <div class="range-whisker" style={`left: ${extremeStart}%; width: ${extremeWidth}%;`}></div>
+        <div class="range-core" style={`left: ${rangeStart}%; width: ${rangeWidth}%;`}></div>
+      </div>
+      <div class="range-scale">
+        <span>0</span>
+        <span>100</span>
       </div>
       <div class="range-meta">
-        <span>Shadows {formatPercent(safeP10)}</span>
-        <span>Highlights {formatPercent(safeP90)}</span>
+        <span>Mass range {formatPercent(safeP10)}-{formatPercent(safeP90)}</span>
+        <span>Extremes {formatPercent(safeP01)}-{formatPercent(safeP99)}</span>
       </div>
     </div>
 
     <div class="analysis-section">
       <div class="analysis-header">
-        <div class="analysis-title">Value masses</div>
-        <label class="levels">
-          <span>Levels</span>
-          <input type="range" min="2" max="5" step="1" bind:value={levels} oninput={updateLevels} />
-          <strong>{levels}</strong>
-        </label>
+        <div class="analysis-title">Simplified tones</div>
+        <div class="analysis-controls">
+          <label class="levels">
+            <span>Levels</span>
+            <input type="range" min="2" max="5" step="1" bind:value={levels} oninput={updateLevels} />
+            <strong>{levels}</strong>
+          </label>
+          <label class="toggle" class:disabled={notanToggleDisabled}>
+            <span>Two-tone threshold</span>
+            <input
+              type="checkbox"
+              bind:checked={notanMode}
+              disabled={notanToggleDisabled}
+              oninput={() => updateNotanMode(notanMode)}
+              title={notanToggleDisabled ? 'Requires 2 levels.' : ''}
+            />
+          </label>
+        </div>
       </div>
-      <div class="analysis-body">
-        <div class="ruler">
-          <div class="ruler-track">
-            {#each renderAnalysis.boundaries as boundary}
-              {@const boundaryTop = (1 - boundary) * 100}
-              <div class="ruler-boundary" style={`top: ${boundaryTop}%;`}></div>
-            {/each}
-            {#each renderAnalysis.centroids as centroid, idx}
-              {@const count = renderAnalysis.counts[idx] ?? 0}
-              {@const size = markerSize(count, maxCount)}
-              {@const markerTop = (1 - centroid) * 100}
-              <div
-                class="ruler-centroid"
-                style={`top: ${markerTop}%; width: ${size}px; height: ${size}px;`}
-                title={`${formatPercent(centroid)}`}
-              ></div>
-            {/each}
-          </div>
-          <div class="ruler-scale">
-            <span>100</span>
-            <span>0</span>
+
+      <div class="bucket-strip" role="list">
+        {#each bucketData as bucket}
+          <button
+            class="bucket"
+            type="button"
+            style={`flex: ${Math.max(1, bucket.count)}; background: ${bucketTone(bucket.value)}; color: ${bucketTextColor(
+              bucket.value
+            )};`}
+            title={bucketLabel(bucket)}
+            aria-pressed={activeBucket === bucket.idx}
+            onmouseenter={() => handleBucketEnter(bucket.idx)}
+            onmouseleave={handleBucketLeave}
+            onclick={() => toggleBucket(bucket.idx)}
+          >
+            <span class="bucket-percent">{formatPercent(bucket.share)}</span>
+            <span class="bucket-range">
+              {formatPercent(bucket.lower)}-{formatPercent(bucket.upper)}
+            </span>
+          </button>
+        {/each}
+      </div>
+
+      <div class="bucket-meta">
+        <span>Click a bucket to highlight its mass (optional).</span>
+        {#if levels === 2}
+          <span>Two-tone threshold uses Otsu when enabled.</span>
+        {/if}
+      </div>
+
+      <div class="preview-panel">
+        <div class="preview-panel-header">
+          <div class="preview-title">Simplified preview</div>
+          <div class="preview-toggle">
+            <button
+              class:active={previewMode === 'notan'}
+              type="button"
+              onclick={() => updatePreviewMode('notan')}
+            >
+              Simplified
+            </button>
+            <button
+              class:active={previewMode === 'original'}
+              type="button"
+              onclick={() => updatePreviewMode('original')}
+            >
+              Original + overlay
+            </button>
           </div>
         </div>
-        <div class="preview-card">
-          <span>Rendered frame</span>
+        <div class="preview-card preview-primary">
+          <span>{activePreviewLabel}</span>
           <div class="preview-shell">
-            {#if previewSrc}
+            {#if activePreviewSrc}
               <img
-                class="preview analysis-preview zoomable"
-                src={previewSrc}
-                alt="Rendered frame"
+                class="preview zoomable"
+                src={activePreviewSrc}
+                alt={activePreviewLabel}
                 role="button"
                 tabindex="0"
-                onclick={() => openImageZoom(previewSrc, 'Rendered frame')}
-                onkeydown={(event) => handleZoomKeydown(event, previewSrc, 'Rendered frame')}
+                onclick={() => openImageZoom(activePreviewSrc, activePreviewLabel)}
+                onkeydown={(event) => handleZoomKeydown(event, activePreviewSrc, activePreviewLabel)}
               />
             {:else}
               <div class="empty">Preview unavailable.</div>
+            {/if}
+            {#if activeBucket !== null && maskReady && bucketMasks[activeBucket]}
+              <img class="preview-mask" src={bucketMasks[activeBucket]} alt="" aria-hidden="true" />
             {/if}
             {#if isRefreshing}
               <div class="preview-overlay">Updating...</div>
@@ -371,30 +617,72 @@
 
   .range-track {
     position: relative;
-    height: 12px;
+    height: 44px;
     border-radius: 999px;
-    background: rgba(33, 33, 32, 0.12);
+    border: 1px solid rgba(33, 33, 32, 0.18);
+    background: linear-gradient(
+      90deg,
+      #2d2c2a 0%,
+      #2d2c2a 9%,
+      #474641 9%,
+      #474641 18%,
+      #61605a 18%,
+      #61605a 27%,
+      #7a776f 27%,
+      #7a776f 36%,
+      #949089 36%,
+      #949089 45%,
+      #aea99f 45%,
+      #aea99f 54%,
+      #c7c2b7 54%,
+      #c7c2b7 63%,
+      #dfd9cd 63%,
+      #dfd9cd 72%,
+      #f2ece0 72%,
+      #f2ece0 81%,
+      #f8f2e3 81%,
+      #f8f2e3 100%
+    );
     overflow: hidden;
   }
 
-  .range-active {
+  .range-steps {
+    display: grid;
+    grid-template-columns: repeat(11, minmax(0, 1fr));
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+
+  .range-step {
+    height: 14px;
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px rgba(33, 33, 32, 0.12);
+  }
+
+  .range-whisker {
     position: absolute;
-    top: 0;
-    bottom: 0;
+    top: 8px;
+    height: 3px;
     border-radius: 999px;
-    background: linear-gradient(
-      90deg,
-      #3a3936 0%,
-      #3a3936 20%,
-      #5a5953 20%,
-      #5a5953 40%,
-      #7a776f 40%,
-      #7a776f 60%,
-      #9a968d 60%,
-      #9a968d 80%,
-      #bab6ad 80%,
-      #bab6ad 100%
-    );
+    background: rgba(33, 33, 32, 0.55);
+  }
+
+  .range-core {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    border-radius: 999px;
+    border: 2px solid rgba(33, 33, 32, 0.75);
+    background: rgba(248, 242, 227, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(248, 242, 227, 0.5);
+  }
+
+  .range-scale {
+    margin-top: 6px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: rgba(33, 33, 32, 0.5);
   }
 
   .range-meta {
@@ -410,7 +698,6 @@
     background: rgba(33, 33, 32, 0.03);
     border: 1px solid rgba(33, 33, 32, 0.12);
     padding: 18px 20px 22px;
-    --ruler-height: 220px;
   }
 
   .analysis-header {
@@ -418,6 +705,7 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
+    gap: 16px;
   }
 
   .analysis-title {
@@ -425,7 +713,16 @@
     font-weight: 600;
   }
 
-  .levels {
+  .analysis-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .levels,
+  .toggle {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -438,57 +735,114 @@
     width: 140px;
   }
 
-  .analysis-body {
-    display: grid;
-    grid-template-columns: 80px minmax(0, 1fr);
-    gap: 24px;
-    align-items: center;
+  .toggle input {
+    width: 18px;
+    height: 18px;
   }
 
-  .ruler {
-    display: grid;
-    justify-items: center;
-    gap: 8px;
+  .toggle.disabled {
+    opacity: 0.5;
   }
 
-  .ruler-track {
-    position: relative;
-    width: 12px;
-    height: var(--ruler-height);
-    border-radius: 999px;
-    background: rgba(33, 33, 32, 0.2);
-  }
-
-  .ruler-boundary {
-    position: absolute;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 24px;
-    height: 2px;
-    background: rgba(33, 33, 32, 0.5);
-    border-radius: 999px;
-  }
-
-  .ruler-centroid {
-    position: absolute;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(45deg);
-    background: rgba(33, 33, 32, 0.8);
-    border-radius: 2px;
-  }
-
-  .ruler-scale {
+  .bucket-strip {
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: var(--ruler-height);
-    font-size: 11px;
-    color: rgba(33, 33, 32, 0.6);
+    gap: 2px;
+    border-radius: 12px;
+    border: 1px solid rgba(33, 33, 32, 0.16);
+    overflow: hidden;
+    background: rgba(33, 33, 32, 0.08);
   }
 
-  .analysis-preview {
-    height: var(--ruler-height);
-    object-fit: contain;
+  .bucket {
+    border: none;
+    padding: 10px 8px;
+    min-width: 52px;
+    min-height: 64px;
+    cursor: pointer;
+    display: grid;
+    align-content: space-between;
+    text-align: left;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .bucket:hover {
+    transform: translateY(-1px);
+    box-shadow: inset 0 0 0 2px rgba(33, 33, 32, 0.35);
+  }
+
+  .bucket[aria-pressed='true'] {
+    box-shadow: inset 0 0 0 2px rgba(79, 95, 250, 0.7);
+  }
+
+  .bucket-percent {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .bucket-range {
+    font-size: 11px;
+    opacity: 0.75;
+  }
+
+  .bucket-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+    color: rgba(33, 33, 32, 0.6);
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+
+  .preview-panel {
+    margin-top: 20px;
+    display: grid;
+    gap: 12px;
+  }
+
+  .preview-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .preview-title {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .preview-toggle {
+    display: inline-flex;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 4px;
+    background: rgba(33, 33, 32, 0.08);
+  }
+
+  .preview-toggle button {
+    border: none;
+    background: transparent;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 10px;
+    border-radius: 999px;
+    color: rgba(33, 33, 32, 0.6);
+    cursor: pointer;
+  }
+
+  .preview-toggle button.active {
+    background: rgba(33, 33, 32, 0.15);
+    color: rgba(33, 33, 32, 0.9);
+  }
+
+  .preview-mask {
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    mix-blend-mode: multiply;
+    pointer-events: none;
   }
 
   .empty {
@@ -499,24 +853,8 @@
   }
 
   @media (max-width: 860px) {
-    .analysis-section {
-      --ruler-height: 160px;
-    }
-
     .preview-pair {
       grid-template-columns: 1fr;
-    }
-
-    .analysis-body {
-      grid-template-columns: 1fr;
-    }
-
-    .ruler-track {
-      height: var(--ruler-height);
-    }
-
-    .ruler-scale {
-      height: var(--ruler-height);
     }
   }
 </style>

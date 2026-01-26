@@ -1,10 +1,12 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import {
     analysisResult,
     params,
     selectedFile,
     valueAnalysisLevels,
+    valueAnalysisNotanMode,
     setValueAnalysisPending,
     setValueAnalysisSuccess,
     setValueAnalysisError
@@ -16,6 +18,7 @@
   import { svgToPngBlob } from '../exports/png';
   import { requestValueAnalysis } from '../bridges/value-analysis';
   import { convertFileSrc } from '@tauri-apps/api/core';
+  import { logEvent } from '../bridges/log';
 
   const file = $derived.by(() => get(selectedFile));
   const result = $derived.by(() => get(analysisResult));
@@ -25,6 +28,13 @@
   let message = $state<string | null>(null);
   let messageVariant = $state<'info' | 'error'>('info');
   const valueScale = 2;
+
+  onMount(() => {
+    void logEvent('exports:view:mount');
+    return () => {
+      void logEvent('exports:view:unmount');
+    };
+  });
 
   function baseName(): string {
     if (!file) return 'export';
@@ -93,18 +103,18 @@
     });
   }
 
-  async function loadValueAnalysisForExport(levels: number) {
+  async function loadValueAnalysisForExport(levels: number, notanMode: boolean) {
     if (!file?.path) {
       throw new Error('Values analysis export requires a native file path.');
     }
-    setValueAnalysisPending(file.id, levels);
+    setValueAnalysisPending(file.id, levels, notanMode);
     try {
-      const loaded = await requestValueAnalysis(file.path, file.id, levels);
-      setValueAnalysisSuccess(file.id, levels, loaded);
+      const loaded = await requestValueAnalysis(file.path, file.id, levels, notanMode);
+      setValueAnalysisSuccess(file.id, levels, notanMode, loaded);
       return loaded;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      setValueAnalysisError(file.id, levels, message);
+      setValueAnalysisError(file.id, levels, notanMode, message);
       throw error;
     }
   }
@@ -113,7 +123,8 @@
     if (!file) return;
     await performSave(async () => {
       const levels = get(valueAnalysisLevels);
-      const currentStudy = await loadValueAnalysisForExport(levels);
+      const notanMode = get(valueAnalysisNotanMode);
+      const currentStudy = await loadValueAnalysisForExport(levels, notanMode);
       const originalSrc = file.previewUrl || '';
       if (!originalSrc) {
         throw new Error('Original image preview unavailable for export.');
@@ -130,7 +141,9 @@
         previewHeight: currentStudy.previewHeight,
         p10: currentStudy.p10,
         p90: currentStudy.p90,
-        centroids: currentStudy.centroids,
+        p01: currentStudy.p01,
+        p99: currentStudy.p99,
+        bucketValues: currentStudy.bucketValues,
         boundaries: currentStudy.boundaries,
         counts: currentStudy.counts,
         levels: currentStudy.levels

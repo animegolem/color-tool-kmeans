@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import type { View } from './lib/stores/ui';
   import { currentView, setView } from './lib/stores/ui';
   import HomeView from './lib/views/HomeView.svelte';
   import ValuesView from './lib/views/ValuesView.svelte';
@@ -12,6 +13,11 @@
     { key: 'values', label: 'Values' },
     { key: 'exports', label: 'Exports' }
   ] as const;
+
+  function handleNavClick(view: View) {
+    setView(view);
+    void logEvent(`nav:view ${view}`);
+  }
 
   onMount(() => {
     const log = (message: string) => {
@@ -41,12 +47,32 @@
     window.addEventListener('pagehide', handlePageHide);
     window.addEventListener('pageshow', handlePageShow);
 
+    let lastFrame = performance.now();
+    let lastStallLog = 0;
+    let frameHandle = 0;
+    const frameTick = () => {
+      lastFrame = performance.now();
+      frameHandle = window.requestAnimationFrame(frameTick);
+    };
+    frameHandle = window.requestAnimationFrame(frameTick);
+    const stallTimer = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      const now = performance.now();
+      const stalledFor = now - lastFrame;
+      if (stalledFor > 1000 && now - lastStallLog > 5000) {
+        lastStallLog = now;
+        log(`renderer:stall ms=${Math.round(stalledFor)}`);
+      }
+    }, 500);
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('blur', handleBlur);
       window.removeEventListener('pagehide', handlePageHide);
       window.removeEventListener('pageshow', handlePageShow);
+      window.cancelAnimationFrame(frameHandle);
+      window.clearInterval(stallTimer);
     };
   });
 </script>
@@ -54,7 +80,7 @@
 <main>
   <nav class="nav">
     {#each navItems as item}
-      <button class:active={$currentView === item.key} onclick={() => setView(item.key)}>
+      <button class:active={$currentView === item.key} onclick={() => handleNavClick(item.key)}>
         {item.label}
       </button>
     {/each}

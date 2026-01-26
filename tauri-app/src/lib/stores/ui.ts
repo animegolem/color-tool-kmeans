@@ -131,42 +131,49 @@ export interface ValueAnalysisResult {
   preview: string;
   previewWidth: number;
   previewHeight: number;
+  bucketMap: string;
   p10: number;
   p90: number;
+  p01: number;
+  p99: number;
   centroids: number[];
   boundaries: number[];
+  bucketValues: number[];
   counts: number[];
   levels: number;
+  notanMode: boolean;
 }
 
 export const valueAnalysisLevels = writable<number>(3);
+export const valueAnalysisNotanMode = writable<boolean>(true);
 
-function valueAnalysisKey(imageId: string, levels: number) {
-  return `${imageId}:${levels}`;
+function valueAnalysisKey(imageId: string, levels: number, notanMode: boolean) {
+  const mode = notanMode && levels === 2 ? 'notan' : 'kmeans';
+  return `${imageId}:${levels}:${mode}`;
 }
 
 export const valueAnalysisByKey = writable<Record<string, ValueAnalysisResult>>({});
 export const valueAnalysisStateByKey = writable<Record<string, ValueAnalysisState>>({});
 export const valueAnalysisErrorByKey = writable<Record<string, string | null>>({});
 export const valueAnalysisResult = derived(
-  [valueAnalysisByKey, activeImageId, valueAnalysisLevels],
-  ([$valueAnalysisByKey, $activeId, $levels]) => {
+  [valueAnalysisByKey, activeImageId, valueAnalysisLevels, valueAnalysisNotanMode],
+  ([$valueAnalysisByKey, $activeId, $levels, $notanMode]) => {
     if (!$activeId) return null;
-    return $valueAnalysisByKey[valueAnalysisKey($activeId, $levels)] ?? null;
+    return $valueAnalysisByKey[valueAnalysisKey($activeId, $levels, $notanMode)] ?? null;
   }
 );
 export const valueAnalysisState = derived(
-  [valueAnalysisStateByKey, activeImageId, valueAnalysisLevels],
-  ([$valueAnalysisStateByKey, $activeId, $levels]) => {
+  [valueAnalysisStateByKey, activeImageId, valueAnalysisLevels, valueAnalysisNotanMode],
+  ([$valueAnalysisStateByKey, $activeId, $levels, $notanMode]) => {
     if (!$activeId) return 'idle';
-    return $valueAnalysisStateByKey[valueAnalysisKey($activeId, $levels)] ?? 'idle';
+    return $valueAnalysisStateByKey[valueAnalysisKey($activeId, $levels, $notanMode)] ?? 'idle';
   }
 );
 export const valueAnalysisError = derived(
-  [valueAnalysisErrorByKey, activeImageId, valueAnalysisLevels],
-  ([$valueAnalysisErrorByKey, $activeId, $levels]) => {
+  [valueAnalysisErrorByKey, activeImageId, valueAnalysisLevels, valueAnalysisNotanMode],
+  ([$valueAnalysisErrorByKey, $activeId, $levels, $notanMode]) => {
     if (!$activeId) return null;
-    return $valueAnalysisErrorByKey[valueAnalysisKey($activeId, $levels)] ?? null;
+    return $valueAnalysisErrorByKey[valueAnalysisKey($activeId, $levels, $notanMode)] ?? null;
   }
 );
 
@@ -186,21 +193,31 @@ export function setValueStudyError(imageId: string, message: string) {
   valueStudyErrorById.update((errors) => ({ ...errors, [imageId]: message }));
 }
 
-export function setValueAnalysisPending(imageId: string, levels: number) {
-  const key = valueAnalysisKey(imageId, levels);
+export function setValueAnalysisPending(imageId: string, levels: number, notanMode: boolean) {
+  const key = valueAnalysisKey(imageId, levels, notanMode);
   valueAnalysisStateByKey.update((state) => ({ ...state, [key]: 'pending' }));
   valueAnalysisErrorByKey.update((errors) => ({ ...errors, [key]: null }));
 }
 
-export function setValueAnalysisSuccess(imageId: string, levels: number, result: ValueAnalysisResult) {
-  const key = valueAnalysisKey(imageId, levels);
+export function setValueAnalysisSuccess(
+  imageId: string,
+  levels: number,
+  notanMode: boolean,
+  result: ValueAnalysisResult
+) {
+  const key = valueAnalysisKey(imageId, levels, notanMode);
   valueAnalysisByKey.update((cache) => ({ ...cache, [key]: result }));
   valueAnalysisStateByKey.update((state) => ({ ...state, [key]: 'ready' }));
   valueAnalysisErrorByKey.update((errors) => ({ ...errors, [key]: null }));
 }
 
-export function setValueAnalysisError(imageId: string, levels: number, message: string) {
-  const key = valueAnalysisKey(imageId, levels);
+export function setValueAnalysisError(
+  imageId: string,
+  levels: number,
+  notanMode: boolean,
+  message: string
+) {
+  const key = valueAnalysisKey(imageId, levels, notanMode);
   valueAnalysisStateByKey.update((state) => ({ ...state, [key]: 'error' }));
   valueAnalysisErrorByKey.update((errors) => ({ ...errors, [key]: message }));
 }

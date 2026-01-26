@@ -3,8 +3,7 @@
 ## Project Structure & Module Organization
 - `RAG/AI-EPIC/` — epics; source of truth for scope and success metrics.
 - `RAG/AI-IMP/` — implementation tickets; keep checklists and AC current.
-- `figma/` — exported frames/assets (pulled via Figma MCP). No secrets.
-- Treat Figma as the visual source of truth. Always confirm layouts/controls against the latest exports (and fetch updates before UI work). When unsure about behavior, escalate to the project owner before making assumptions.
+- `figma/` — exported frames/assets (if available). No secrets.
 - `tauri-app/` — desktop implementation (Svelte renderer + Tauri backend).
 
 ## RAG Process
@@ -45,7 +44,6 @@
 - Tauri: avoid remote content; prefer local assets and the configured CSP. Load local files via `file://` or the Tauri asset protocol as configured.
 - Preferences: local-only storage (Tauri Store when added); no telemetry.
 - Secrets: do not commit tokens. For Figma tooling, set `FIGMA_API_KEY` in your environment; exports go to `figma/`.
-- Keep `figma/` exports in sync with current UI work (home boot, drag/drop, loaded states, graphs, exports). Refresh assets whenever the design changes so future contributors reference the right visuals.
 
 ## Agent-Specific Notes
 - Respect this document and any nested AGENTS.md. Keep changes minimal and focused. When adding assets or planning docs, place them in the directories above and keep the repo fully offline at runtime.

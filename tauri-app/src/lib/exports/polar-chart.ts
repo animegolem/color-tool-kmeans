@@ -32,20 +32,44 @@ export function generateCircleGraphSvg(
   const useHsl = options.useHsl === true;
   const chromaValues = clusters.map((cluster) => getChroma(cluster, useHsl));
   const maxChroma = Math.max(1e-6, ...chromaValues);
+  const maxSymbolRadius = radius * 0.3 * (options.symbolScale || 1);
+  const padding = 8;
+  const effectiveRadius = Math.max(0, radius - maxSymbolRadius - padding);
   const layout = clusters.map((cluster) =>
-    buildLayoutEntry(cluster, radius, center, options, maxChroma, useHsl)
+    buildLayoutEntry(cluster, effectiveRadius, maxSymbolRadius, center, options, maxChroma, useHsl)
   );
 
   const svgParts: string[] = [];
   const axisGroup = svgGroup([
-    svgCircle({ cx: center, cy: center, r: radius, fill: 'none', stroke: 'rgba(16,17,17,0.85)', 'stroke-width': 1 }),
-    svgLine({ x1: center - radius, y1: center, x2: center + radius, y2: center, stroke: 'rgba(16,17,17,0.85)', 'stroke-width': 1 }),
-    svgLine({ x1: center, y1: center - radius, x2: center, y2: center + radius, stroke: 'rgba(16,17,17,0.85)', 'stroke-width': 1 })
+    svgCircle({
+      cx: center,
+      cy: center,
+      r: effectiveRadius,
+      fill: 'none',
+      stroke: 'rgba(16,17,17,0.85)',
+      'stroke-width': 1
+    }),
+    svgLine({
+      x1: center - effectiveRadius,
+      y1: center,
+      x2: center + effectiveRadius,
+      y2: center,
+      stroke: 'rgba(16,17,17,0.85)',
+      'stroke-width': 1
+    }),
+    svgLine({
+      x1: center,
+      y1: center - effectiveRadius,
+      x2: center,
+      y2: center + effectiveRadius,
+      stroke: 'rgba(16,17,17,0.85)',
+      'stroke-width': 1
+    })
   ]);
 
   if (options.showGamutBackground && !useHsl) {
     const meanL = computeMeanLightness(clusters);
-    svgParts.push(buildGamutBackground(center, radius, meanL));
+    svgParts.push(buildGamutBackground(center, effectiveRadius, meanL));
   }
 
   if (options.useGradient) {
@@ -77,7 +101,7 @@ export function generateCircleGraphSvg(
   svgParts.push(axisGroup);
 
   if (options.showAxisLabels !== false) {
-    const axisLabelRadius = radius + 24;
+    const axisLabelRadius = effectiveRadius + 24;
     const hueText = '<- Hue ->';
     const secondary = '<- Chroma ->';
     svgParts.push(
@@ -158,7 +182,8 @@ interface LayoutEntry {
 
 function buildLayoutEntry(
   cluster: AnalysisCluster,
-  radius: number,
+  effectiveRadius: number,
+  maxSymbolRadius: number,
   center: number,
   options: CircleGraphOptions,
   maxChroma: number,
@@ -166,9 +191,6 @@ function buildLayoutEntry(
 ): LayoutEntry {
   const hue = getHue(cluster, useHsl);
   const chroma = getChroma(cluster, useHsl);
-  const maxSymbolRadius = radius * 0.3 * (options.symbolScale || 1);
-  const padding = 8;
-  const effectiveRadius = Math.max(0, radius - maxSymbolRadius - padding);
   const symbolRadius = Math.max(3.5, Math.sqrt(Math.max(cluster.share, 0)) * maxSymbolRadius);
   const angle = hue * DEG_TO_RAD - Math.PI / 2;
   const r = effectiveRadius * (chroma / maxChroma);
