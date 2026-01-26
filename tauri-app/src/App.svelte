@@ -64,6 +64,10 @@
         log(`renderer:stall ms=${Math.round(stalledFor)}`);
       }
     }, 500);
+    const rendererHeartbeat = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      log('renderer:heartbeat');
+    }, 5000);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
@@ -73,6 +77,7 @@
       window.removeEventListener('pageshow', handlePageShow);
       window.cancelAnimationFrame(frameHandle);
       window.clearInterval(stallTimer);
+      window.clearInterval(rendererHeartbeat);
     };
   });
 </script>

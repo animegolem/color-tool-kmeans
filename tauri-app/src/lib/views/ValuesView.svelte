@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { convertFileSrc } from '@tauri-apps/api/core';
   import type { SelectedImage, ValueAnalysisResult, ValueAnalysisState } from '../stores/ui';
   import {
@@ -26,11 +26,6 @@
   let levels = $state(3);
   let notanMode = $state(true);
   let previewMode = $state<'notan' | 'original'>('notan');
-  let hoverBucket = $state<number | null>(null);
-  let lockedBucket = $state<number | null>(null);
-  let bucketMasks = $state<string[]>([]);
-  let maskReady = $state(false);
-  let maskVersion = 0;
   let lastMaskKey = '';
 
   const renderAnalysis = $derived.by(() => analysis ?? displayAnalysis);
@@ -73,7 +68,6 @@
     });
   });
 
-  const activeBucket = $derived.by(() => (lockedBucket !== null ? lockedBucket : hoverBucket));
   const activePreviewSrc = $derived.by(() =>
     previewMode === 'original' ? file?.previewUrl ?? '' : previewSrc
   );
@@ -143,18 +137,6 @@
     )}`;
   }
 
-  function handleBucketEnter(idx: number) {
-    hoverBucket = idx;
-  }
-
-  function handleBucketLeave() {
-    hoverBucket = null;
-  }
-
-  function toggleBucket(idx: number) {
-    lockedBucket = lockedBucket === idx ? null : idx;
-  }
-
   async function ensureValueAnalysis(
     currentFile: SelectedImage,
     requestedLevels: number,
@@ -201,11 +183,19 @@
         displayImageId = nextId;
       }),
       valueAnalysisResult.subscribe((value) => {
+        const startedAt = performance.now();
+        void logEvent(
+          `values:analysis:subscribe:start has=${value ? 'yes' : 'no'} map=${
+            value?.bucketMapData?.length ?? 0
+          }`
+        );
         analysis = value;
         if (value && file) {
           displayAnalysis = value;
           displayImageId = file.id;
         }
+        const duration = Math.round(performance.now() - startedAt);
+        void logEvent(`values:analysis:subscribe:done ms=${duration}`);
       }),
       valueAnalysisState.subscribe((value) => {
         status = value;
@@ -227,7 +217,21 @@
 
   onMount(() => {
     void logEvent('values:view:mount');
+    queueMicrotask(() => {
+      void logEvent('values:view:mount:tick');
+    });
+    void tick().then(() => {
+      void logEvent('values:view:mount:afterDOM');
+    });
+    const rafHandle = window.requestAnimationFrame(() => {
+      void logEvent('values:view:mount:raf');
+    });
+    const afterTick = window.setTimeout(() => {
+      void logEvent('values:view:mount:after100ms');
+    }, 100);
     return () => {
+      window.cancelAnimationFrame(rafHandle);
+      window.clearTimeout(afterTick);
       void logEvent('values:view:unmount');
     };
   });
@@ -242,85 +246,15 @@
   $effect(() => {
     const analysis = renderAnalysis;
     if (!analysis || !analysis.bucketValues.length) {
-      bucketMasks = [];
-      maskReady = false;
-      hoverBucket = null;
-      lockedBucket = null;
       lastMaskKey = '';
       return;
     }
     const mapData = analysis.bucketMapData ?? [];
-    if (!mapData.length) {
-      bucketMasks = [];
-      maskReady = false;
-      hoverBucket = null;
-      lockedBucket = null;
-      lastMaskKey = '';
-      return;
-    }
     const maskKey = `${mapData.length}:${analysis.previewWidth}x${analysis.previewHeight}:${
       analysis.bucketValues.length
     }`;
     if (maskKey === lastMaskKey) return;
     lastMaskKey = maskKey;
-    maskVersion += 1;
-    const requestId = maskVersion;
-    maskReady = false;
-    hoverBucket = null;
-    lockedBucket = null;
-    const bucketCount = analysis.bucketValues.length;
-    const startedAt = performance.now();
-    void logEvent(`values:mask:start buckets=${bucketCount}`);
-    void (async () => {
-      const width = analysis.previewWidth;
-      const height = analysis.previewHeight;
-      if (!width || !height) return;
-      if (mapData.length !== width * height) {
-        void logEvent(`values:mask:error size=${mapData.length} expected=${width * height}`);
-        return;
-      }
-      const baseCanvas = document.createElement('canvas');
-      const baseCtx = baseCanvas.getContext('2d');
-      if (!baseCtx || width <= 0 || height <= 0) return;
-      baseCtx.imageSmoothingEnabled = false;
-      baseCanvas.width = width;
-      baseCanvas.height = height;
-      const baseData = Uint8Array.from(mapData);
-      const maskColor = { r: 79, g: 95, b: 250, a: 0.38 };
-      const masks: string[] = [];
-      void logEvent(`values:mask:loop:start buckets=${bucketCount} pixels=${width * height}`);
-      for (let bucket = 0; bucket < bucketCount; bucket += 1) {
-        const maskCanvas = document.createElement('canvas');
-        const maskCtx = maskCanvas.getContext('2d');
-        if (!maskCtx) {
-          masks.push('');
-          continue;
-        }
-        maskCanvas.width = width;
-        maskCanvas.height = height;
-        const maskData = maskCtx.createImageData(width, height);
-        const pixels = maskData.data;
-        const bucketLoopStart = performance.now();
-        for (let i = 0; i < baseData.length; i += 1) {
-          if (baseData[i] === bucket) {
-            const offset = i * 4;
-            pixels[offset] = maskColor.r;
-            pixels[offset + 1] = maskColor.g;
-            pixels[offset + 2] = maskColor.b;
-            pixels[offset + 3] = Math.round(maskColor.a * 255);
-          }
-        }
-        const bucketLoopDuration = Math.round(performance.now() - bucketLoopStart);
-        void logEvent(`values:mask:bucket:${bucket} ms=${bucketLoopDuration}`);
-        maskCtx.putImageData(maskData, 0, 0);
-        masks.push(maskCanvas.toDataURL('image/png'));
-      }
-      if (requestId !== maskVersion) return;
-      bucketMasks = masks;
-      maskReady = true;
-      const duration = Math.round(performance.now() - startedAt);
-      void logEvent(`values:mask:done ms=${duration}`);
-    })();
   });
 </script>
 
@@ -354,6 +288,8 @@
               tabindex="0"
               onclick={() => openImageZoom(file.previewUrl ?? '', file.name)}
               onkeydown={(event) => handleZoomKeydown(event, file.previewUrl ?? '', file.name)}
+              onload={() => void logEvent('values:image:original:load')}
+              onerror={() => void logEvent('values:image:original:error')}
             />
           {:else}
             <div class="empty">Preview unavailable.</div>
@@ -370,6 +306,8 @@
               tabindex="0"
               onclick={() => openImageZoom(neutralSrc, 'Neutral values')}
               onkeydown={(event) => handleZoomKeydown(event, neutralSrc, 'Neutral values')}
+              onload={() => void logEvent('values:image:neutral:load')}
+              onerror={() => void logEvent('values:image:neutral:error')}
             />
           {:else}
             <div class="empty">Neutral values unavailable.</div>
@@ -445,10 +383,7 @@
               bucket.value
             )};`}
             title={bucketLabel(bucket)}
-            aria-pressed={activeBucket === bucket.idx}
-            onmouseenter={() => handleBucketEnter(bucket.idx)}
-            onmouseleave={handleBucketLeave}
-            onclick={() => toggleBucket(bucket.idx)}
+            aria-pressed="false"
           >
             <span class="bucket-percent">{formatPercent(bucket.share)}</span>
             <span class="bucket-range">
@@ -459,7 +394,7 @@
       </div>
 
       <div class="bucket-meta">
-        <span>Click a bucket to highlight its mass (optional).</span>
+        <span>Bucket splits are derived from the current analysis.</span>
         {#if levels === 2}
           <span>Two-tone threshold uses Otsu when enabled.</span>
         {/if}
@@ -497,12 +432,11 @@
                 tabindex="0"
                 onclick={() => openImageZoom(activePreviewSrc, activePreviewLabel)}
                 onkeydown={(event) => handleZoomKeydown(event, activePreviewSrc, activePreviewLabel)}
+                onload={() => void logEvent('values:image:preview:load')}
+                onerror={() => void logEvent('values:image:preview:error')}
               />
             {:else}
               <div class="empty">Preview unavailable.</div>
-            {/if}
-            {#if activeBucket !== null && maskReady && bucketMasks[activeBucket]}
-              <img class="preview-mask" src={bucketMasks[activeBucket]} alt="" aria-hidden="true" />
             {/if}
             {#if isRefreshing}
               <div class="preview-overlay">Updating...</div>
