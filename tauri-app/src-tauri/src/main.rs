@@ -2,9 +2,9 @@
 
 use chrono::{Local, SecondsFormat};
 use serde::{Deserialize, Serialize};
-use std::fs::OpenOptions;
+use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 use tauri_app::color;
@@ -102,6 +102,45 @@ impl EventLog {
     }
 }
 
+fn build_log_path(cache_dir: &Path) -> PathBuf {
+    let timestamp = Local::now().format("%Y%m%d-%H%M%S").to_string();
+    cache_dir.join(format!("event-log-{timestamp}.txt"))
+}
+
+fn prune_event_logs(cache_dir: &Path, keep: usize, current: &Path) {
+    let Ok(entries) = fs::read_dir(cache_dir) else {
+        return;
+    };
+    let mut logs: Vec<(PathBuf, std::time::SystemTime)> = entries
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| {
+            let path = entry.path();
+            let name = path.file_name()?.to_string_lossy();
+            if !name.starts_with("event-log") || !name.ends_with(".txt") {
+                return None;
+            }
+            let modified = entry
+                .metadata()
+                .and_then(|meta| meta.modified())
+                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+            Some((path, modified))
+        })
+        .collect();
+
+    logs.sort_by_key(|(_, modified)| *modified);
+    let mut to_remove = logs.len().saturating_sub(keep);
+    for (path, _) in logs {
+        if to_remove == 0 {
+            break;
+        }
+        if path == current {
+            continue;
+        }
+        let _ = fs::remove_file(&path);
+        to_remove -= 1;
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ValueStudyRequest {
@@ -150,6 +189,7 @@ struct ValueAnalysisResponse {
     boundaries: Vec<f32>,
     bucket_values: Vec<f32>,
     counts: Vec<usize>,
+    histogram_bins: Vec<u32>,
     levels: usize,
     notan_mode: bool,
 }
@@ -328,6 +368,7 @@ async fn value_analysis(
         boundaries,
         bucket_values,
         counts,
+        histogram_bins,
         notan_mode: analysis_notan_mode,
     } = generate_value_analysis(&req.path, &req.image_id, levels, notan_mode, cache_dir)
         .map_err(|e| format!("Value analysis failed: {e}"))?;
@@ -348,6 +389,7 @@ async fn value_analysis(
         boundaries,
         bucket_values,
         counts,
+        histogram_bins,
         levels,
         notan_mode: analysis_notan_mode,
     })
@@ -395,11 +437,12 @@ fn main() {
                 .path()
                 .app_cache_dir()
                 .map_err(|_| String::from("Failed to resolve cache directory"))?;
-            let log_path = cache_dir.join("event-log.txt");
+            let log_path = build_log_path(&cache_dir);
             let logger = EventLog { path: log_path };
             logger.append("[system] app setup");
+            prune_event_logs(&cache_dir, 5, &logger.path);
             app.manage(logger);
-            let heartbeat_path = cache_dir.join("event-log.txt");
+            let heartbeat_path = app.state::<EventLog>().path.clone();
             std::thread::spawn(move || {
                 let heartbeat = EventLog {
                     path: heartbeat_path,

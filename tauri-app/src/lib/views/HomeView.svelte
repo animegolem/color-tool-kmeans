@@ -224,31 +224,6 @@
     }
   }
 
-  $effect(() => {
-	    const unsubFile = selectedFile.subscribe((value) => {
-	      file = value;
-	    });
-	    const unsubParams = params.subscribe((value) => {
-	      currentParams = { ...value };
-	    });
-	    const unsubStatus = analysisState.subscribe((value) => {
-	      status = value;
-	    });
-    const unsubResult = analysisResult.subscribe((value) => {
-      result = value;
-    });
-    const unsubError = analysisError.subscribe((value) => {
-      analysisErr = value;
-    });
-    return () => {
-      unsubFile();
-      unsubParams();
-      unsubStatus();
-      unsubResult();
-      unsubError();
-    };
-  });
-
   async function chooseFile() {
     try {
       const bridge = await getFsBridge();
@@ -454,6 +429,23 @@
 
   onMount(() => {
     void logEvent('home:view:mount');
+    const unsubs = [
+      selectedFile.subscribe((value) => {
+        file = value;
+      }),
+      params.subscribe((value) => {
+        currentParams = { ...value };
+      }),
+      analysisState.subscribe((value) => {
+        status = value;
+      }),
+      analysisResult.subscribe((value) => {
+        result = value;
+      }),
+      analysisError.subscribe((value) => {
+        analysisErr = value;
+      })
+    ];
     let dragDepth = 0;
     let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -503,6 +495,7 @@
     window.addEventListener('pointerup', handleScrubEnd);
     window.addEventListener('pointercancel', handleScrubEnd);
     return () => {
+      unsubs.forEach((unsub) => unsub());
       window.removeEventListener('dragenter', onDragEnter);
       window.removeEventListener('dragleave', onDragLeave);
       window.removeEventListener('drop', onDrop);

@@ -9,7 +9,7 @@ use thiserror::Error;
 use crate::color;
 use crate::kmeans::{run_kmeans, KMeansConfig};
 
-const VALUE_ANALYSIS_CACHE_VERSION: u8 = 3;
+const VALUE_ANALYSIS_CACHE_VERSION: u8 = 4;
 const VALUE_ANALYSIS_MAX_DIMENSION: u32 = 1600;
 const VALUE_ANALYSIS_SQUINT_MAX_DIMENSION: u32 = 256;
 const VALUE_ANALYSIS_BLUR_SIGMA: f32 = 1.0;
@@ -22,6 +22,7 @@ const BUCKET_QUANTILE_HIGH: f32 = 0.90;
 const LEVEL_MIN: usize = 2;
 const LEVEL_MAX: usize = 5;
 const MAX_ITERS: usize = 20;
+const HISTOGRAM_BINS: usize = 16;
 const META_FILE: &str = "meta.json";
 const NEUTRAL_FILE: &str = "neutral.png";
 const PREVIEW_FILE: &str = "preview.png";
@@ -59,6 +60,7 @@ pub struct ValueAnalysisResult {
     pub boundaries: Vec<f32>,
     pub bucket_values: Vec<f32>,
     pub counts: Vec<usize>,
+    pub histogram_bins: Vec<u32>,
     pub notan_mode: bool,
 }
 
@@ -80,6 +82,7 @@ struct ValueAnalysisMeta {
     bucket_values: Vec<f32>,
     counts: Vec<usize>,
     bucket_map_data: Vec<u8>,
+    histogram_bins: Vec<u32>,
     neutral_width: u32,
     neutral_height: u32,
     preview_width: u32,
@@ -130,6 +133,7 @@ pub fn generate_value_analysis(
                 boundaries: meta.boundaries,
                 bucket_values: meta.bucket_values,
                 counts: meta.counts,
+                histogram_bins: meta.histogram_bins,
                 notan_mode: meta.notan_mode,
             });
         }
@@ -160,6 +164,7 @@ pub fn generate_value_analysis(
         return Err(ValueAnalysisError::EmptyImage);
     }
 
+    let histogram_bins = histogram_counts(&l_values, HISTOGRAM_BINS);
     let (p10, p90) = percentile_bounds(&l_values, PERCENTILE_LOW, PERCENTILE_HIGH);
     let (p01, p99) = percentile_bounds(
         &l_values,
@@ -245,6 +250,7 @@ pub fn generate_value_analysis(
             bucket_values: bucket_values.clone(),
             counts: counts.clone(),
             bucket_map_data: bucket_indices.clone(),
+            histogram_bins: histogram_bins.clone(),
             neutral_width,
             neutral_height,
             preview_width,
@@ -271,6 +277,7 @@ pub fn generate_value_analysis(
         boundaries,
         bucket_values,
         counts,
+        histogram_bins,
         notan_mode,
     })
 }
@@ -453,12 +460,7 @@ fn otsu_threshold(values: &[f32], bins: usize) -> f32 {
     if values.is_empty() {
         return 0.5;
     }
-    let bins = bins.max(2);
-    let mut hist = vec![0u32; bins];
-    for &value in values.iter() {
-        let scaled = (value.clamp(0.0, 1.0) * (bins as f32 - 1.0)).round() as usize;
-        hist[scaled.min(bins - 1)] += 1;
-    }
+    let hist = histogram_counts(values, bins.max(2));
     let total = values.len() as f32;
     let mut sum_total = 0.0;
     for (idx, count) in hist.iter().enumerate() {
@@ -487,6 +489,17 @@ fn otsu_threshold(values: &[f32], bins: usize) -> f32 {
         }
     }
     (best as f32 / (bins as f32 - 1.0)).clamp(0.0, 1.0)
+}
+
+fn histogram_counts(values: &[f32], bins: usize) -> Vec<u32> {
+    let bins = bins.max(2);
+    let mut hist = vec![0u32; bins];
+    for &value in values.iter() {
+        let scaled = (value.clamp(0.0, 1.0) * (bins as f32 - 1.0)).round() as usize;
+        let idx = scaled.min(bins - 1);
+        hist[idx] += 1;
+    }
+    hist
 }
 
 fn load_meta(cache_dir: &Path) -> Option<ValueAnalysisMeta> {

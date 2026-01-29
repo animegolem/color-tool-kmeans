@@ -1,11 +1,10 @@
 <script lang="ts">
-  import { onDestroy, onMount, tick } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { convertFileSrc } from '@tauri-apps/api/core';
   import type { SelectedImage, ValueAnalysisResult, ValueAnalysisState } from '../stores/ui';
   import {
     selectedFile,
     valueAnalysisLevels,
-    valueAnalysisNotanMode,
     valueAnalysisResult,
     valueAnalysisState,
     valueAnalysisError,
@@ -24,12 +23,10 @@
   let status = $state<ValueAnalysisState>('idle');
   let error = $state<string | null>(null);
   let levels = $state(3);
-  let notanMode = $state(true);
-  let previewMode = $state<'notan' | 'original'>('notan');
   let lastMaskKey = '';
 
   const renderAnalysis = $derived.by(() => analysis ?? displayAnalysis);
-  const effectiveNotanMode = $derived.by(() => notanMode && levels === 2);
+  const effectiveNotanMode = $derived.by(() => levels === 2);
 
   const neutralSrc = $derived.by(() => {
     if (!renderAnalysis?.neutral) return '';
@@ -44,6 +41,24 @@
   const isRefreshing = $derived.by(
     () => status === 'pending' && analysis === null && displayAnalysis !== null
   );
+
+  const histogramBins = $derived.by(() => {
+    const bins = renderAnalysis?.histogramBins ?? [];
+    if (!bins.length) return [];
+    const maxCount = Math.max(...bins, 1);
+    return bins.map((count, idx) => {
+      const value = bins.length > 1 ? idx / (bins.length - 1) : 0;
+      const normalized = maxCount > 0 ? count / maxCount : 0;
+      const heightPct = count === 0 ? 0 : Math.max(2, Math.round(normalized * 100));
+      return {
+        idx,
+        count,
+        value,
+        heightPct,
+        isEmpty: count === 0
+      };
+    });
+  });
 
   const bucketData = $derived.by(() => {
     if (!renderAnalysis) return [];
@@ -68,14 +83,7 @@
     });
   });
 
-  const activePreviewSrc = $derived.by(() =>
-    previewMode === 'original' ? file?.previewUrl ?? '' : previewSrc
-  );
-  const activePreviewLabel = $derived.by(() =>
-    previewMode === 'original' ? 'Original + overlay' : 'Simplified tones'
-  );
-  const rangeSteps = $derived.by(() => Array.from({ length: 11 }, (_, idx) => idx / 10));
-  const notanToggleDisabled = $derived.by(() => levels !== 2);
+
 
 
   function openImageZoom(src: string, alt: string) {
@@ -110,16 +118,6 @@
   function updateLevels() {
     valueAnalysisLevels.set(levels);
     void logEvent(`values:levels ${levels}`);
-  }
-
-  function updateNotanMode(next: boolean) {
-    valueAnalysisNotanMode.set(next);
-    void logEvent(`values:two-tone ${next}`);
-  }
-
-  function updatePreviewMode(next: 'notan' | 'original') {
-    previewMode = next;
-    void logEvent(`values:preview ${next}`);
   }
 
   function bucketTone(value: number) {
@@ -172,7 +170,7 @@
     }
   }
 
-  $effect(() => {
+  onMount(() => {
     const unsubs = [
       selectedFile.subscribe((value) => {
         file = value;
@@ -205,17 +203,8 @@
       }),
       valueAnalysisLevels.subscribe((value) => {
         levels = value;
-      }),
-      valueAnalysisNotanMode.subscribe((value) => {
-        notanMode = value;
       })
     ];
-    return () => {
-      unsubs.forEach((unsub) => unsub());
-    };
-  });
-
-  onMount(() => {
     void logEvent('values:view:mount');
     queueMicrotask(() => {
       void logEvent('values:view:mount:tick');
@@ -230,6 +219,7 @@
       void logEvent('values:view:mount:after100ms');
     }, 100);
     return () => {
+      unsubs.forEach((unsub) => unsub());
       window.cancelAnimationFrame(rafHandle);
       window.clearTimeout(afterTick);
       void logEvent('values:view:unmount');
@@ -333,22 +323,37 @@
           <span>{contrastLabel(safeP10, safeP90)}</span>
         </div>
       </div>
-      <div class="range-steps">
-        {#each rangeSteps as step}
-          <div class="range-step" style={`background: ${bucketTone(step)};`}></div>
-        {/each}
-      </div>
-      <div class="range-track">
-        <div class="range-whisker" style={`left: ${extremeStart}%; width: ${extremeWidth}%;`}></div>
-        <div class="range-core" style={`left: ${rangeStart}%; width: ${rangeWidth}%;`}></div>
-      </div>
-      <div class="range-scale">
-        <span>0</span>
-        <span>100</span>
+    <div class="range-track">
+      <div class="range-extension" style={`left: ${extremeStart}%; width: ${extremeWidth}%;`}></div>
+      <div class="range-core" style={`left: ${rangeStart}%; width: ${rangeWidth}%;`}></div>
+      <div class="range-outline" style={`left: ${extremeStart}%; width: ${extremeWidth}%;`}></div>
+    </div>
+    <div class="range-scale">
+      <span>0</span>
+      <span>100</span>
       </div>
       <div class="range-meta">
         <span>Mass range {formatPercent(safeP10)}-{formatPercent(safeP90)}</span>
         <span>Extremes {formatPercent(safeP01)}-{formatPercent(safeP99)}</span>
+      </div>
+    </div>
+
+    <div class="histogram-section">
+      <div class="histogram-header">
+        <div class="histogram-title">Values Histogram</div>
+      </div>
+      <div class="histogram-grid" role="list">
+        {#each histogramBins as bin}
+          <div class="histogram-column">
+            <div
+              class="histogram-bar"
+              style={`height: ${bin.heightPct}%; background: ${
+                bin.isEmpty ? 'transparent' : bucketTone(bin.value)
+              };`}
+              title={bin.count ? `${bin.count} samples` : '0'}
+            ></div>
+          </div>
+        {/each}
       </div>
     </div>
 
@@ -360,16 +365,6 @@
             <span>Levels</span>
             <input type="range" min="2" max="5" step="1" bind:value={levels} oninput={updateLevels} />
             <strong>{levels}</strong>
-          </label>
-          <label class="toggle" class:disabled={notanToggleDisabled}>
-            <span>Two-tone threshold</span>
-            <input
-              type="checkbox"
-              bind:checked={notanMode}
-              disabled={notanToggleDisabled}
-              oninput={() => updateNotanMode(notanMode)}
-              title={notanToggleDisabled ? 'Requires 2 levels.' : ''}
-            />
           </label>
         </div>
       </div>
@@ -386,52 +381,22 @@
             aria-pressed="false"
           >
             <span class="bucket-percent">{formatPercent(bucket.share)}</span>
-            <span class="bucket-range">
-              {formatPercent(bucket.lower)}-{formatPercent(bucket.upper)}
-            </span>
           </button>
         {/each}
       </div>
 
-      <div class="bucket-meta">
-        <span>Bucket splits are derived from the current analysis.</span>
-        {#if levels === 2}
-          <span>Two-tone threshold uses Otsu when enabled.</span>
-        {/if}
-      </div>
-
       <div class="preview-panel">
-        <div class="preview-panel-header">
-          <div class="preview-title">Simplified preview</div>
-          <div class="preview-toggle">
-            <button
-              class:active={previewMode === 'notan'}
-              type="button"
-              onclick={() => updatePreviewMode('notan')}
-            >
-              Simplified
-            </button>
-            <button
-              class:active={previewMode === 'original'}
-              type="button"
-              onclick={() => updatePreviewMode('original')}
-            >
-              Original + overlay
-            </button>
-          </div>
-        </div>
         <div class="preview-card preview-primary">
-          <span>{activePreviewLabel}</span>
           <div class="preview-shell">
-            {#if activePreviewSrc}
+            {#if previewSrc}
               <img
                 class="preview zoomable"
-                src={activePreviewSrc}
-                alt={activePreviewLabel}
+                src={previewSrc}
+                alt="Simplified tones"
                 role="button"
                 tabindex="0"
-                onclick={() => openImageZoom(activePreviewSrc, activePreviewLabel)}
-                onkeydown={(event) => handleZoomKeydown(event, activePreviewSrc, activePreviewLabel)}
+                onclick={() => openImageZoom(previewSrc, 'Simplified tones')}
+                onkeydown={(event) => handleZoomKeydown(event, previewSrc, 'Simplified tones')}
                 onload={() => void logEvent('values:image:preview:load')}
                 onerror={() => void logEvent('values:image:preview:error')}
               />
@@ -548,61 +513,33 @@
     height: 44px;
     border-radius: 999px;
     border: 1px solid rgba(33, 33, 32, 0.18);
-    background: linear-gradient(
-      90deg,
-      #2d2c2a 0%,
-      #2d2c2a 9%,
-      #474641 9%,
-      #474641 18%,
-      #61605a 18%,
-      #61605a 27%,
-      #7a776f 27%,
-      #7a776f 36%,
-      #949089 36%,
-      #949089 45%,
-      #aea99f 45%,
-      #aea99f 54%,
-      #c7c2b7 54%,
-      #c7c2b7 63%,
-      #dfd9cd 63%,
-      #dfd9cd 72%,
-      #f2ece0 72%,
-      #f2ece0 81%,
-      #f8f2e3 81%,
-      #f8f2e3 100%
-    );
+    background: linear-gradient(90deg, #2a2926 0%, #f8f2e3 100%);
     overflow: hidden;
   }
 
-  .range-steps {
-    display: grid;
-    grid-template-columns: repeat(11, minmax(0, 1fr));
-    gap: 4px;
-    margin-bottom: 10px;
-  }
-
-  .range-step {
-    height: 14px;
-    border-radius: 6px;
-    box-shadow: inset 0 0 0 1px rgba(33, 33, 32, 0.12);
-  }
-
-  .range-whisker {
-    position: absolute;
-    top: 8px;
-    height: 3px;
-    border-radius: 999px;
-    background: rgba(33, 33, 32, 0.55);
-  }
-
-  .range-core {
+  .range-extension {
     position: absolute;
     top: 6px;
     bottom: 6px;
     border-radius: 999px;
+    background: rgba(33, 33, 32, 0.1);
+  }
+
+  .range-core {
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    border-radius: 999px;
+    background: rgba(33, 33, 32, 0.22);
+  }
+
+  .range-outline {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    border-radius: 999px;
     border: 2px solid rgba(33, 33, 32, 0.75);
-    background: rgba(248, 242, 227, 0.16);
-    box-shadow: inset 0 0 0 1px rgba(248, 242, 227, 0.5);
+    pointer-events: none;
   }
 
   .range-scale {
@@ -619,6 +556,47 @@
     font-size: 12px;
     margin-top: 8px;
     color: rgba(33, 33, 32, 0.7);
+  }
+
+  .histogram-section {
+    margin-bottom: 28px;
+    background: rgba(33, 33, 32, 0.03);
+    border: 1px solid rgba(33, 33, 32, 0.12);
+    border-radius: 14px;
+    padding: 16px 20px 18px;
+  }
+
+  .histogram-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .histogram-title {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .histogram-grid {
+    height: 44px;
+    display: grid;
+    grid-template-columns: repeat(16, minmax(0, 1fr));
+    gap: 4px;
+    align-items: end;
+  }
+
+  .histogram-column {
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .histogram-bar {
+    width: 100%;
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 1px rgba(33, 33, 32, 0.15);
   }
 
   .analysis-section {
@@ -649,8 +627,7 @@
     justify-content: flex-end;
   }
 
-  .levels,
-  .toggle {
+  .levels {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -661,15 +638,6 @@
 
   .levels input {
     width: 140px;
-  }
-
-  .toggle input {
-    width: 18px;
-    height: 18px;
-  }
-
-  .toggle.disabled {
-    opacity: 0.5;
   }
 
   .bucket-strip {
@@ -683,13 +651,13 @@
 
   .bucket {
     border: none;
-    padding: 10px 8px;
-    min-width: 52px;
-    min-height: 64px;
+    padding: 8px 6px;
+    min-width: 48px;
+    min-height: 36px;
     cursor: pointer;
     display: grid;
-    align-content: space-between;
-    text-align: left;
+    place-items: center;
+    text-align: center;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
@@ -703,23 +671,8 @@
   }
 
   .bucket-percent {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-  }
-
-  .bucket-range {
-    font-size: 11px;
-    opacity: 0.75;
-  }
-
-  .bucket-meta {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    font-size: 12px;
-    color: rgba(33, 33, 32, 0.6);
-    margin-top: 10px;
-    flex-wrap: wrap;
   }
 
   .preview-panel {
@@ -728,50 +681,6 @@
     gap: 12px;
   }
 
-  .preview-panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .preview-title {
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  .preview-toggle {
-    display: inline-flex;
-    gap: 6px;
-    border-radius: 999px;
-    padding: 4px;
-    background: rgba(33, 33, 32, 0.08);
-  }
-
-  .preview-toggle button {
-    border: none;
-    background: transparent;
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 6px 10px;
-    border-radius: 999px;
-    color: rgba(33, 33, 32, 0.6);
-    cursor: pointer;
-  }
-
-  .preview-toggle button.active {
-    background: rgba(33, 33, 32, 0.15);
-    color: rgba(33, 33, 32, 0.9);
-  }
-
-  .preview-mask {
-    position: absolute;
-    inset: 0;
-    border-radius: 12px;
-    mix-blend-mode: multiply;
-    pointer-events: none;
-  }
 
   .empty {
     padding: 16px;

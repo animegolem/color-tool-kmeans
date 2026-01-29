@@ -39,6 +39,7 @@ const valueAnalysisResponseSchema = z
     boundaries: z.array(finiteNumberSchema),
     bucketValues: z.array(finiteNumberSchema).min(1),
     counts: z.array(z.number().int().nonnegative()),
+    histogramBins: z.array(z.number().int().nonnegative()),
     levels: z.number().int().min(2).max(5),
     notanMode: z.boolean()
   })
@@ -81,6 +82,11 @@ function normalizeValueAnalysisResponse(raw: unknown): Record<string, unknown> {
         ? (payload as any).bucket_values.map(Number)
         : [],
     counts: Array.isArray(payload.counts) ? payload.counts.map(Number) : [],
+    histogramBins: Array.isArray(payload.histogramBins)
+      ? payload.histogramBins.map(Number)
+      : Array.isArray((payload as any).histogram_bins)
+        ? (payload as any).histogram_bins.map(Number)
+        : [],
     levels: Number(payload.levels ?? (payload as any).levels),
     notanMode: Boolean(payload.notanMode ?? (payload as any).notan_mode)
   };
@@ -146,6 +152,7 @@ export async function requestValueAnalysis(
     boundaries: parsed.boundaries,
     bucketValues: parsed.bucketValues,
     counts: parsed.counts,
+    histogramBins: parsed.histogramBins,
     levels: parsed.levels,
     notanMode: parsed.notanMode
   };

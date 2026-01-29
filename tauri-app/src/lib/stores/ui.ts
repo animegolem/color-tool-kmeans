@@ -141,6 +141,7 @@ export interface ValueAnalysisResult {
   boundaries: number[];
   bucketValues: number[];
   counts: number[];
+  histogramBins: number[];
   levels: number;
   notanMode: boolean;
 }
