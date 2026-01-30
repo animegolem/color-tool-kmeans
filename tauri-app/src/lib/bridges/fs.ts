@@ -20,6 +20,7 @@ export interface SaveResult {
 export interface FsBridge {
   readonly id: typeof BROWSER_ID | typeof TAURI_ID;
   openImageFile(): Promise<FileSelection | null>;
+  openVideoFile(): Promise<FileSelection | null>;
   saveBlob(blob: Blob, defaultName: string): Promise<SaveResult>;
   saveTextFile(text: string, defaultName: string): Promise<SaveResult>;
 }
@@ -39,6 +40,22 @@ function createTauriFsBridge(): FsBridge | null {
         blob: new Blob([], { type: inferMimeType(name) }),
         mimeType: inferMimeType(name)
       } satisfies FileSelection;
+    },
+    async openVideoFile() {
+      try {
+        const path = await tauriInvoke('open_video_dialog');
+        if (!path) return null;
+        const name = String(path).split(/[\\/]/).pop() ?? 'video';
+        return {
+          name,
+          path: String(path),
+          size: 0,
+          blob: new Blob([], { type: inferMimeType(name) }),
+          mimeType: inferMimeType(name)
+        } satisfies FileSelection;
+      } catch {
+        return null;
+      }
     },
     async saveBlob(blob, defaultName) {
       return browserSaveBlob(blob, defaultName);
@@ -61,6 +78,29 @@ function createBrowserFsBridge(): FsBridge {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/png,image/jpeg,image/webp';
+        input.onchange = () => {
+          const file = input.files?.[0];
+          if (!file) {
+            resolve(null);
+            return;
+          }
+          resolve({
+            name: file.name,
+            blob: file,
+            size: file.size,
+            path: (file as unknown as { path?: string }).path,
+            lastModified: file.lastModified,
+            mimeType: file.type || inferMimeType(file.name)
+          });
+        };
+        input.click();
+      });
+    },
+    async openVideoFile() {
+      return new Promise<FileSelection | null>((resolve) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'video/mp4';
         input.onchange = () => {
           const file = input.files?.[0];
           if (!file) {
@@ -122,6 +162,7 @@ function inferMimeType(name: string): string {
   if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
   if (lower.endsWith('.webp')) return 'image/webp';
   if (lower.endsWith('.bmp')) return 'image/bmp';
+  if (lower.endsWith('.mp4')) return 'video/mp4';
   return 'application/octet-stream';
 }
 

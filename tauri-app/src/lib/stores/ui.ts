@@ -343,3 +343,19 @@ export function openZoomOverlay(content: ZoomContent) {
 export function closeZoomOverlay() {
   zoomOverlay.set(null);
 }
+
+export interface VideoState {
+  path: string;
+  name: string;
+  duration: number;
+  fps: number | null;
+  currentTime: number;
+  stripPath?: string | null;
+  posterPath?: string | null;
+}
+
+export const videoState = writable<VideoState | null>(null);
+
+export function setVideoState(state: VideoState | null) {
+  videoState.set(state);
+}

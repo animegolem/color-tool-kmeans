@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 use tauri_app::color;
+use tauri_app::ffmpeg;
 use tauri_app::image_pipeline::{prepare_samples, quality_preset, SampleParams};
 use tauri_app::kmeans::{run_kmeans, KMeansConfig};
 use tauri_app::value_analysis::{generate_value_analysis, ValueAnalysisResult};
@@ -192,6 +193,51 @@ struct ValueAnalysisResponse {
     histogram_bins: Vec<u32>,
     levels: usize,
     notan_mode: bool,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct VideoFrameRequest {
+    path: String,
+    frame_id: String,
+    timestamp: f32,
+    max_dimension: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct VideoFrameResponse {
+    path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct VideoProbeRequest {
+    path: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct VideoProbeResponse {
+    duration: f32,
+    fps: Option<f32>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct VideoStripRequest {
+    path: String,
+    strip_id: String,
+    duration: f32,
+    thumb_count: u32,
+    thumb_width: u32,
+    thumb_height: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct VideoStripResponse {
+    path: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -430,6 +476,110 @@ async fn open_image_dialog(app: AppHandle) -> Result<Option<String>, String> {
     Ok(path)
 }
 
+#[tauri::command]
+async fn open_video_dialog(app: AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::{DialogExt, FilePath};
+    let (tx, rx) = std::sync::mpsc::channel::<Option<String>>();
+    app.dialog()
+        .file()
+        .add_filter("Videos", &["mp4"])
+        .pick_file(move |p| {
+            let mapped = p.map(|fp| match fp {
+                FilePath::Path(pb) => pb.display().to_string(),
+                FilePath::Url(u) => u.to_string(),
+            });
+            let _ = tx.send(mapped);
+        });
+    let path = rx.recv().map_err(|_| String::from("dialog channel closed"))?;
+    Ok(path)
+}
+
+#[tauri::command]
+async fn extract_video_frame(
+    req: VideoFrameRequest,
+    app: AppHandle,
+) -> Result<VideoFrameResponse, String> {
+    if req.path.is_empty() {
+        return Err("No file selected".into());
+    }
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|_| String::from("Failed to resolve cache directory"))?;
+    let safe_id: String = req
+        .frame_id
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect();
+    if safe_id.is_empty() {
+        return Err("Invalid frame id".into());
+    }
+    let max_dimension = req.max_dimension.clamp(80, 4096);
+    let output_path = cache_dir.join(format!("video-frame-{safe_id}.png"));
+    let frame_req = ffmpeg::FrameExtractRequest {
+        input_path: PathBuf::from(&req.path),
+        timestamp_seconds: req.timestamp.max(0.0),
+        max_dimension,
+        output_path: output_path.clone(),
+    };
+    ffmpeg::extract_frame_png(&app, &frame_req).await?;
+    Ok(VideoFrameResponse {
+        path: output_path.to_string_lossy().to_string(),
+    })
+}
+
+#[tauri::command]
+async fn probe_video(req: VideoProbeRequest, app: AppHandle) -> Result<VideoProbeResponse, String> {
+    if req.path.is_empty() {
+        return Err("No file selected".into());
+    }
+    let (duration, fps) = ffmpeg::ffprobe_details(&app, Path::new(&req.path)).await?;
+    Ok(VideoProbeResponse { duration, fps })
+}
+
+#[tauri::command]
+async fn extract_video_strip(
+    req: VideoStripRequest,
+    app: AppHandle,
+) -> Result<VideoStripResponse, String> {
+    if req.path.is_empty() {
+        return Err("No file selected".into());
+    }
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|_| String::from("Failed to resolve cache directory"))?;
+    let safe_id: String = req
+        .strip_id
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect();
+    if safe_id.is_empty() {
+        return Err("Invalid strip id".into());
+    }
+    let thumb_count = req.thumb_count.clamp(8, 120);
+    let thumb_width = req.thumb_width.clamp(32, 240);
+    let thumb_height = req.thumb_height.clamp(24, 200);
+    let output_path = cache_dir.join(format!("video-strip-{safe_id}.png"));
+    let strip_req = ffmpeg::StripExtractRequest {
+        input_path: PathBuf::from(&req.path),
+        duration_seconds: req.duration.max(0.0),
+        thumb_count,
+        thumb_width,
+        thumb_height,
+        output_path: output_path.clone(),
+    };
+    ffmpeg::extract_strip_png(&app, &strip_req).await?;
+    Ok(VideoStripResponse {
+        path: output_path.to_string_lossy().to_string(),
+    })
+}
+
+#[tauri::command]
+async fn ffmpeg_version(app: AppHandle) -> Result<String, String> {
+    ffmpeg::ffmpeg_version(&app).await
+}
+
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
@@ -467,7 +617,12 @@ fn main() {
             value_study,
             value_analysis,
             log_event,
-            open_image_dialog
+            open_image_dialog,
+            open_video_dialog,
+            extract_video_frame,
+            probe_video,
+            extract_video_strip,
+            ffmpeg_version
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

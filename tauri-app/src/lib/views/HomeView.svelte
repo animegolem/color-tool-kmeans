@@ -11,7 +11,8 @@
     ImageEntry,
     SelectedImage,
     AnalysisResult,
-    AnalysisState
+    AnalysisState,
+    VideoState
   } from '../stores/ui';
   import {
     selectedFile,
@@ -25,17 +26,21 @@
     setAnalysisSuccess,
     setAnalysisError,
     clearAnalysisError,
-    openZoomOverlay
+    openZoomOverlay,
+    videoState,
+    setVideoState
   } from '../stores/ui';
   import { analyzeImage } from '../compute/bridge';
   import { TauriComputeError } from '../bridges/compute';
   import { loadImageDataset } from '../compute/image-loader';
   import { getFsBridge, type FileSelection } from '../bridges/fs';
-  import { isTauriEnv, getBridgeOverride, tauriDetectionInfo } from '../bridges/tauri';
+  import { getBridgeOverride, isTauriEnv, tauriDetectionInfo } from '../bridges/tauri';
   import { convertFileSrc } from '@tauri-apps/api/core';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
   import { generateHueLightnessSvg } from '../exports/hue-lightness';
   import { generateHistogramSvg } from '../exports/histogram';
+  import { getFfmpegVersion } from '../bridges/ffmpeg';
+  import { extractVideoFrame, extractVideoStrip, probeVideo } from '../bridges/video';
   import { logEvent } from '../bridges/log';
 
   const ANALYZE_DEBOUNCE_MS = 400;
@@ -52,6 +57,25 @@
   let devBannerFileLogged = false;
   let devBannerAnalysisLogged = false;
   let isScrubbing = $state(false);
+  let videoSelection = $state<FileSelection | null>(null);
+  let videoSrcUrl = $state<string | null>(null);
+  let videoPosterUrl = $state<string | null>(null);
+  let videoPosterPath = $state<string | null>(null);
+  let videoDuration = $state(0);
+  let videoCurrentTime = $state(0);
+  let videoScrubbing = $state(false);
+  let videoFps = $state<number | null>(null);
+  let videoAspectRatio = $state<number | null>(null);
+  let videoFrameId = $state<string | null>(null);
+  let videoDecodeToken = 0;
+  let videoDecodeTimer: ReturnType<typeof setTimeout> | null = null;
+  let videoProbePending = $state(false);
+  let videoStripUrl = $state<string | null>(null);
+  let videoStripPath = $state<string | null>(null);
+  let videoStripPending = $state(false);
+  let videoStripId = $state<string | null>(null);
+  let videoElement = $state<HTMLVideoElement | null>(null);
+  let restoringVideoState = false;
 
   let dropRef = $state<HTMLElement | null>(null);
 
@@ -173,6 +197,8 @@
     formatHistogramSortLabel(currentParams.histogramSort)
   );
 
+  const videoDisplayUrl = $derived.by(() => videoPosterUrl ?? null);
+
   function buildPreviewUrl(selection: FileSelection, nativeMode: boolean): string | null {
     if (nativeMode && selection.path) {
       return convertFileSrc(selection.path);
@@ -181,6 +207,23 @@
       return URL.createObjectURL(selection.blob);
     }
     return null;
+  }
+
+  function formatTime(seconds: number): string {
+    if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
+    const whole = Math.floor(seconds);
+    const mins = Math.floor(whole / 60);
+    const secs = whole % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  function maxDimensionForQuality(quality: number): number {
+    const step = Math.round(quality);
+    if (step <= 0) return 1200;
+    if (step === 1) return 1600;
+    if (step === 2) return 2200;
+    if (step === 3) return 2600;
+    return 3200;
   }
 
   function openImageZoom() {
@@ -235,6 +278,22 @@
     }
   }
 
+  async function chooseVideo() {
+    try {
+      const bridge = await getFsBridge();
+      const selection = await bridge.openVideoFile();
+      if (!selection) {
+        return;
+      }
+      recordDevEvent({ fsBridge: bridge.id }, 'file');
+      void logEvent(`video:file:loaded name=${selection.name}`);
+      loadVideoSelection(selection);
+    } catch (error) {
+      console.error('[home] Failed to open video dialog', error);
+      bannerMessage = 'Could not open the video file dialog. Restart the app or verify Tauri is running.';
+    }
+  }
+
   function handleDropzoneKeydown(event: KeyboardEvent) {
     if (event.defaultPrevented) return;
     if (event.key === 'Enter' || event.key === ' ') {
@@ -285,6 +344,7 @@
   }
 
   async function ingestSelection(fileSelection: FileSelection) {
+    clearVideoSelection();
     loadToken += 1;
     const token = loadToken;
     cancelPending();
@@ -321,6 +381,333 @@
         setAnalysisError('Failed to decode the selected image. Please try another file.');
       }
     }
+  }
+
+  function buildVideoSelectionFromState(state: VideoState): FileSelection {
+    return {
+      name: state.name,
+      path: state.path,
+      size: 0,
+      blob: new Blob([], { type: 'video/mp4' }),
+      mimeType: 'video/mp4'
+    };
+  }
+
+  function resetVideoState() {
+    videoSelection = null;
+    if (videoSrcUrl && videoSrcUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(videoSrcUrl);
+    }
+    videoSrcUrl = null;
+    videoPosterUrl = null;
+    videoPosterPath = null;
+    videoDuration = 0;
+    videoCurrentTime = 0;
+    videoFps = null;
+    videoScrubbing = false;
+    videoAspectRatio = null;
+    videoFrameId = null;
+    videoProbePending = false;
+    videoStripUrl = null;
+    videoStripPath = null;
+    videoStripPending = false;
+    videoStripId = null;
+    if (videoElement) {
+      videoElement.pause();
+      videoElement.currentTime = 0;
+    }
+    videoDecodeToken += 1;
+    if (videoDecodeTimer) {
+      clearTimeout(videoDecodeTimer);
+      videoDecodeTimer = null;
+    }
+  }
+
+  function pushVideoState() {
+    if (restoringVideoState) return;
+    if (!videoSelection?.path) {
+      setVideoState(null);
+      return;
+    }
+    setVideoState({
+      path: videoSelection.path,
+      name: videoSelection.name,
+      duration: videoDuration,
+      fps: videoFps,
+      currentTime: videoCurrentTime,
+      stripPath: videoStripPath,
+      posterPath: videoPosterPath
+    });
+  }
+
+  function loadVideoSelection(selection: FileSelection) {
+    const nativeMode = (isTauriEnv() || getBridgeOverride() === 'tauri') && !!selection.path;
+    if (!nativeMode || !selection.path) {
+      bannerMessage = 'Video analysis requires the desktop app.';
+      return;
+    }
+    clearSelection();
+    resetVideoState();
+    videoSelection = selection;
+    videoSrcUrl = buildPreviewUrl(selection, nativeMode);
+    videoDuration = 0;
+    videoCurrentTime = 0;
+    videoFps = null;
+    videoFrameId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    videoStripId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    pushVideoState();
+    void probeVideoDuration(selection.path);
+  }
+
+  function restoreVideoSelection(state: VideoState) {
+    if (!state.path) return;
+    restoringVideoState = true;
+    resetVideoState();
+    videoSelection = buildVideoSelectionFromState(state);
+    videoSrcUrl = buildPreviewUrl(videoSelection, true);
+    videoDuration = state.duration ?? 0;
+    videoFps = state.fps ?? null;
+    videoCurrentTime = state.currentTime ?? 0;
+    videoFrameId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    videoStripId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    if (state.stripPath) {
+      videoStripPath = state.stripPath;
+      videoStripUrl = `${convertFileSrc(state.stripPath)}?t=${Date.now()}`;
+    }
+    if (state.posterPath) {
+      videoPosterPath = state.posterPath;
+      videoPosterUrl = `${convertFileSrc(state.posterPath)}?t=${Date.now()}`;
+    }
+    restoringVideoState = false;
+    if (videoSelection?.path && (videoDuration <= 0 || !videoFps)) {
+      void probeVideoDuration(videoSelection.path);
+    } else {
+      if (!videoStripPath && videoDuration > 0) {
+        scheduleVideoStripGeneration();
+      }
+      if (!videoPosterPath && videoDuration > 0) {
+        scheduleVideoFrameDecode();
+      }
+    }
+  }
+
+  function clearVideoSelection() {
+    resetVideoState();
+    pushVideoState();
+    clearFile();
+  }
+
+  async function probeVideoDuration(path: string) {
+    videoProbePending = true;
+    try {
+      const response = await probeVideo(path);
+      if (Number.isFinite(response.duration) && response.duration > 0) {
+        videoDuration = response.duration;
+      }
+      if (Number.isFinite(response.fps ?? NaN) && (response.fps ?? 0) > 0) {
+        videoFps = response.fps ?? null;
+      }
+      void logEvent(
+        `video:probe:done duration=${videoDuration.toFixed(2)} fps=${videoFps ?? 'unknown'}`
+      );
+      if (!videoStripPath) {
+        scheduleVideoStripGeneration();
+      }
+      if (!videoPosterPath) {
+        scheduleVideoFrameDecode();
+      }
+      pushVideoState();
+      if (videoElement) {
+        videoElement.currentTime = videoCurrentTime;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      void logEvent(`video:probe:error message=${message}`);
+    } finally {
+      videoProbePending = false;
+    }
+  }
+
+  function scheduleVideoStripGeneration() {
+    if (!videoSelection?.path || videoStripPending || videoDuration <= 0 || videoStripPath) return;
+    if (!isNativeModeActive()) return;
+    const stripId = videoStripId ?? (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+    videoStripId = stripId;
+    videoStripPending = true;
+    const thumbCount = 60;
+    const thumbWidth = 64;
+    const thumbHeight = 36;
+    void logEvent(`video:strip:start count=${thumbCount}`);
+    extractVideoStrip({
+      path: videoSelection.path,
+      stripId,
+      duration: videoDuration,
+      thumbCount,
+      thumbWidth,
+      thumbHeight
+    })
+      .then((response) => {
+        videoStripPath = response.path;
+        videoStripUrl = `${convertFileSrc(response.path)}?t=${Date.now()}`;
+        pushVideoState();
+        void logEvent('video:strip:done');
+      })
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        void logEvent(`video:strip:error message=${message}`);
+      })
+      .finally(() => {
+        videoStripPending = false;
+      });
+  }
+
+  function stepVideoFrames(step: number) {
+    if (videoDuration <= 0) return;
+    const fps = videoFps && videoFps > 0 ? videoFps : 24;
+    const delta = step / fps;
+    const next = Math.min(Math.max(videoCurrentTime + delta, 0), videoDuration);
+    videoCurrentTime = next;
+    if (videoElement) {
+      videoElement.currentTime = next;
+    }
+    scheduleVideoFrameDecode();
+    pushVideoState();
+  }
+
+  function handleVideoScrubStart() {
+    videoScrubbing = true;
+  }
+
+  function handleVideoMetadata() {
+    if (!videoElement) return;
+    const duration = videoElement.duration;
+    if (Number.isFinite(duration) && duration > 0) {
+      videoDuration = duration;
+    } else if (videoElement.seekable.length > 0) {
+      const seekEnd = videoElement.seekable.end(0);
+      if (Number.isFinite(seekEnd) && seekEnd > 0) {
+        videoDuration = seekEnd;
+      }
+    }
+    if (videoCurrentTime > 0) {
+      videoElement.currentTime = videoCurrentTime;
+    }
+    if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
+      videoAspectRatio = videoElement.videoWidth / videoElement.videoHeight;
+    }
+    void logEvent(`video:metadata duration=${videoDuration.toFixed(2)}`);
+    if (!videoStripPath && videoDuration > 0) {
+      scheduleVideoStripGeneration();
+    }
+    if (!videoPosterPath) {
+      scheduleVideoFrameDecode();
+    }
+  }
+
+  function handleVideoSeeked() {
+    if (!videoElement || videoScrubbing) return;
+    videoCurrentTime = videoElement.currentTime;
+    pushVideoState();
+  }
+
+  function handleVideoLoadedData() {
+    if (!videoElement) return;
+    if (videoCurrentTime > 0 && Math.abs(videoElement.currentTime - videoCurrentTime) > 0.01) {
+      videoElement.currentTime = videoCurrentTime;
+    }
+    void logEvent(`video:loadeddata ready=${videoElement.readyState}`);
+  }
+
+  function handleVideoError() {
+    const error = videoElement?.error;
+    const code = error?.code ?? 'unknown';
+    const message = error?.message ?? 'unknown';
+    void logEvent(`video:load:error code=${code} message=${message}`);
+  }
+
+  function handleStripSeek(event: PointerEvent) {
+    if (videoDuration <= 0) return;
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
+    const nextTime = ratio * videoDuration;
+    videoCurrentTime = nextTime;
+    if (videoElement) {
+      videoElement.currentTime = nextTime;
+    }
+    scheduleVideoFrameDecode();
+    pushVideoState();
+  }
+
+  function handleVideoScrubInput(event: Event) {
+    const nextTime = Number((event.target as HTMLInputElement).value);
+    videoCurrentTime = nextTime;
+    if (videoElement) {
+      videoElement.currentTime = nextTime;
+    }
+    pushVideoState();
+  }
+
+  function handleVideoScrubEnd() {
+    videoScrubbing = false;
+    scheduleVideoFrameDecode();
+    pushVideoState();
+  }
+
+  function scheduleVideoFrameDecode() {
+    if (!videoSelection?.path) return;
+    if (!isNativeModeActive()) {
+      bannerMessage = 'Video analysis requires the desktop app.';
+      return;
+    }
+    if (videoDecodeTimer) {
+      clearTimeout(videoDecodeTimer);
+    }
+    const requestTime = videoCurrentTime;
+    const frameId = videoFrameId ?? (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+    videoFrameId = frameId;
+    const quality = currentParams.quality ?? 2;
+    const maxDimension = maxDimensionForQuality(quality);
+    const token = ++videoDecodeToken;
+    videoDecodeTimer = setTimeout(async () => {
+      if (!videoSelection?.path || token !== videoDecodeToken) return;
+      try {
+        void logEvent(`video:frame:start t=${requestTime.toFixed(2)} max=${maxDimension}`);
+        const response = await extractVideoFrame({
+          path: videoSelection.path,
+          frameId,
+          timestamp: requestTime,
+          maxDimension
+        });
+        if (token !== videoDecodeToken) return;
+        const framePath = response.path;
+        if (!framePath) return;
+        (globalThis as any).__ACTIVE_IMAGE_PATH__ = framePath;
+        const previewUrl = `${convertFileSrc(framePath)}?t=${Date.now()}`;
+        videoPosterUrl = previewUrl;
+        videoPosterPath = framePath;
+        const dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
+        const entry: ImageEntry = {
+          id: frameId,
+          name: videoSelection.name,
+          path: framePath,
+          size: 0,
+          source: { kind: 'path', path: framePath },
+          previewUrl
+        };
+        setFile(entry, dataset);
+        lastRequestKey = null;
+        scheduleAnalysisWith({ ...entry, dataset }, currentParams);
+        pushVideoState();
+        void logEvent(`video:frame:done t=${requestTime.toFixed(2)}`);
+      } catch (error) {
+        if (token !== videoDecodeToken) return;
+        console.error('[home] Video frame decode failed', error);
+        const message = error instanceof Error ? error.message : String(error);
+        void logEvent(`video:frame:error message=${message}`);
+        bannerMessage = 'Failed to decode video frame. Please try another file.';
+      }
+    }, 250);
   }
 
   function cancelPending() {
@@ -423,8 +810,22 @@
     return 'Top clusters by frequency';
   }
 
+  let ffmpegChecked = false;
+  async function checkFfmpegVersion() {
+    if (ffmpegChecked || !isTauriEnv()) return;
+    ffmpegChecked = true;
+    try {
+      const version = await getFfmpegVersion();
+      void logEvent(`ffmpeg:version ${version}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      void logEvent(`ffmpeg:version unavailable message=${message}`);
+    }
+  }
+
   onMount(() => {
     void logEvent('home:view:mount');
+    void checkFfmpegVersion();
     const unsubs = [
       selectedFile.subscribe((value) => {
         file = value;
@@ -440,6 +841,20 @@
       }),
       analysisError.subscribe((value) => {
         analysisErr = value;
+      }),
+      videoState.subscribe((state) => {
+        if (restoringVideoState) return;
+        if (!state) {
+          if (videoSelection) {
+            resetVideoState();
+            clearFile();
+          }
+          return;
+        }
+        if (videoSelection?.path === state.path) {
+          return;
+        }
+        restoreVideoSelection(state);
       })
     ];
     let dragDepth = 0;
@@ -506,6 +921,12 @@
   });
 
   $effect(() => {
+    if (videoElement && videoSrcUrl) {
+      videoElement.load();
+    }
+  });
+
+  $effect(() => {
     const activeFile = file;
     const paramSnapshot = currentParams;
     if (!activeFile) {
@@ -553,40 +974,119 @@
     </aside>
   {/if}
 
-  {#if file}
+  {#if file || videoSelection}
     <section class="analysis-layout">
       <div class="analysis-column">
-        <div
-          bind:this={dropRef}
-          class:dragging={dragging}
-          class="dropzone dropzone--image"
-          tabindex="0"
-          role="button"
-          aria-label="Image dropzone"
-          aria-busy={status === 'pending'}
-          ondragover={handleDragOver}
-          ondragleave={handleDragLeave}
-          ondrop={handleDrop}
-          onkeydown={handleDropzoneKeydown}
-        >
-          <div
-            class="image-preview zoomable"
-            role="button"
-            tabindex="0"
-            onclick={openImageZoom}
-            onkeydown={(event) => {
-              if (event.key !== 'Enter' && event.key !== ' ') return;
-              event.preventDefault();
-              openImageZoom();
-            }}
-          >
-            {#if file?.previewUrl}
-              <img src={file.previewUrl} alt={file?.name ?? 'Selected image'} />
-            {:else}
-              <div class="preview-placeholder">Image preview unavailable.</div>
-            {/if}
+        {#if videoSelection}
+          <div class="media-panel">
+            <div class="image-preview">
+              {#if videoSrcUrl}
+                <div
+                  class="video-frame"
+                  style={videoAspectRatio ? `aspect-ratio: ${videoAspectRatio}` : undefined}
+                >
+                  <video
+                    bind:this={videoElement}
+                    src={videoSrcUrl}
+                    poster={videoDisplayUrl ?? undefined}
+                    muted
+                    playsinline
+                    preload="auto"
+                    onloadedmetadata={handleVideoMetadata}
+                    onloadeddata={handleVideoLoadedData}
+                    onseeked={handleVideoSeeked}
+                    onerror={handleVideoError}
+                  ></video>
+                </div>
+              {:else}
+                <div class="preview-placeholder">Loading video frame…</div>
+              {/if}
+            </div>
+            <div class="video-controls">
+              <div class="step-group">
+                <button type="button" class="step-btn" onclick={() => stepVideoFrames(-10)}>◀◀</button>
+                <button type="button" class="step-btn" onclick={() => stepVideoFrames(-1)}>◀</button>
+              </div>
+              <input
+                class="video-scrub"
+                type="range"
+                min="0"
+                max={videoDuration > 0 ? videoDuration : 1}
+                step="0.01"
+                bind:value={videoCurrentTime}
+                onpointerdown={handleVideoScrubStart}
+                onpointerup={handleVideoScrubEnd}
+                onpointercancel={handleVideoScrubEnd}
+                oninput={handleVideoScrubInput}
+                disabled={videoDuration <= 0}
+                aria-label="Video timeline"
+              />
+              <div class="step-group step-group--right">
+                <button type="button" class="step-btn" onclick={() => stepVideoFrames(1)}>▶</button>
+                <button type="button" class="step-btn" onclick={() => stepVideoFrames(10)}>▶▶</button>
+              </div>
+              <div class="video-time">
+                {#if videoProbePending && videoDuration <= 0}
+                  Indexing…
+                {:else}
+                  {formatTime(videoCurrentTime)} / {formatTime(videoDuration)}
+                {/if}
+              </div>
+            </div>
+            <div class="video-strip">
+              {#if videoStripUrl}
+                <div
+                  class="video-strip__image"
+                  style={`background-image: url(${videoStripUrl})`}
+                ></div>
+              {:else if videoStripPending}
+                <div class="video-strip__placeholder">Building strip…</div>
+              {/if}
+              <button
+                type="button"
+                class="video-strip__hit"
+                onpointerdown={handleStripSeek}
+                aria-label="Jump to video position"
+              ></button>
+              <div
+                class="video-strip__indicator"
+                style={`left: ${videoDuration > 0 ? (videoCurrentTime / videoDuration) * 100 : 0}%`}
+              ></div>
+            </div>
           </div>
-        </div>
+        {:else}
+          <div
+            bind:this={dropRef}
+            class:dragging={dragging}
+            class="dropzone dropzone--image"
+            tabindex="0"
+            role="button"
+            aria-label="Image dropzone"
+            aria-busy={status === 'pending'}
+            ondragover={handleDragOver}
+            ondragleave={handleDragLeave}
+            ondrop={handleDrop}
+            onkeydown={handleDropzoneKeydown}
+          >
+            <div
+              class="image-preview zoomable"
+              role="button"
+              tabindex="0"
+              onclick={openImageZoom}
+              onkeydown={(event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                openImageZoom();
+              }}
+            >
+              {#if file?.previewUrl}
+                <img src={file.previewUrl} alt={file?.name ?? 'Selected image'} />
+              {:else}
+                <div class="preview-placeholder">Image preview unavailable.</div>
+              {/if}
+            </div>
+          </div>
+        {/if}
         {#if status === 'ready' && result}
           <article class="analysis-card">
             <header class="analysis-header">
@@ -720,11 +1220,19 @@
       </div>
     </section>
     <div class="selection selection--compact">
-      <div>
-        <strong>Selected file:</strong>
-        <span>{file?.name}</span>
-      </div>
-      <button onclick={clearSelection}>Clear</button>
+      {#if videoSelection}
+        <div>
+          <strong>Selected video:</strong>
+          <span>{videoSelection?.name}</span>
+        </div>
+        <button onclick={clearVideoSelection}>Clear</button>
+      {:else}
+        <div>
+          <strong>Selected file:</strong>
+          <span>{file?.name}</span>
+        </div>
+        <button onclick={clearSelection}>Clear</button>
+      {/if}
     </div>
   {:else}
     <div
@@ -743,8 +1251,11 @@
       <div class="inner">
         <p class="title">Drop anywhere</p>
         <p class="note">or</p>
-        <button class="upload" onclick={chooseFile}>Upload</button>
-        <p class="formats">Supported formats: PNG, JPEG, WebP.</p>
+        <div class="upload-group">
+          <button class="upload" onclick={chooseFile}>Upload image</button>
+          <button class="upload upload--ghost" onclick={chooseVideo}>Upload video</button>
+        </div>
+        <p class="formats">Images: PNG, JPEG, WebP · Videos: MP4.</p>
       </div>
     </div>
     <div class="selection empty">
@@ -759,7 +1270,7 @@
         <div style="display:grid;place-items:center;gap:8px;min-width:280px">
           <div class="spinner" aria-hidden="true" style="display:none"></div>
           <div style="font-size:20px;font-weight:500">Drop Anywhere</div>
-          <div style="font-size:12px;opacity:.8">PNG · JPEG · WebP</div>
+          <div style="font-size:12px;opacity:.8">PNG · JPEG · WebP · MP4</div>
         </div>
       </div>
     </div>
@@ -1082,12 +1593,137 @@
     color: rgba(33, 33, 32, 0.6);
   }
 
+  .upload-group {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
   .upload {
     background: var(--accent);
     color: #fff;
     border: none;
     border-radius: 6px;
     padding: 10px 18px;
+  }
+
+  .upload--ghost {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+
+  .media-panel {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid var(--line);
+  }
+
+  .media-panel .image-preview {
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .media-panel .video-frame {
+    width: 100%;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    aspect-ratio: 16 / 9;
+  }
+
+  .media-panel video {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .video-controls {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .step-group {
+    display: inline-flex;
+    gap: 6px;
+  }
+
+  .step-group--right {
+    justify-content: flex-end;
+  }
+
+  .step-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 6px 10px;
+    min-width: 36px;
+  }
+
+  .video-scrub {
+    width: 100%;
+  }
+
+  .video-time {
+    font-size: 12px;
+    color: rgba(33, 33, 32, 0.65);
+    min-width: 90px;
+    text-align: right;
+  }
+
+  .video-strip {
+    position: relative;
+    height: 52px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.7);
+    overflow: hidden;
+  }
+
+  .video-strip__image {
+    position: absolute;
+    inset: 0;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.9;
+  }
+
+  .video-strip__hit {
+    position: absolute;
+    inset: 0;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    z-index: 2;
+  }
+
+  .video-strip__placeholder {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    color: rgba(33, 33, 32, 0.6);
+  }
+
+  .video-strip__indicator {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent);
+    transform: translateX(-1px);
+    z-index: 3;
   }
 
   .selection {

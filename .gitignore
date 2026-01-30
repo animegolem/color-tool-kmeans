@@ -38,8 +38,4 @@ tauri-app/src-tauri/gen/
 bench-assets/
 bench-reports/*
 !bench-reports/README.md
-
-# Local reference docs / utilities
-svelte-llms-full.txt
-svelte-llms-small.txt
-tauri-app/src-tauri/src/bin/rmpc_theme_gen.rs
+tauri-app/.ffmpeg-build/

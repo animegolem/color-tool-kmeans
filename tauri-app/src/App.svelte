@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { View } from './lib/stores/ui';
   import { currentView, setView } from './lib/stores/ui';
+  import { isTauriEnv } from './lib/bridges/tauri';
   import HomeView from './lib/views/HomeView.svelte';
   import ValuesView from './lib/views/ValuesView.svelte';
   import ExportsView from './lib/views/ExportsView.svelte';
@@ -25,6 +26,49 @@
     };
     log(`renderer:mounted visibility=${document.visibilityState}`);
 
+    let zoomLevel = 1;
+    const zoomStep = 0.1;
+    const zoomMin = 0.2;
+    const zoomMax = 5;
+    const zoomEnabled = isTauriEnv();
+
+    const applyZoom = async (nextLevel: number) => {
+      const clamped = Math.min(zoomMax, Math.max(zoomMin, nextLevel));
+      zoomLevel = clamped;
+      try {
+        const { getCurrentWebview } = await import('@tauri-apps/api/webview');
+        await getCurrentWebview().setZoom(clamped);
+        log(`ui:zoom ${clamped.toFixed(2)}`);
+      } catch (err) {
+        log(`ui:zoom:error`);
+        console.warn('[zoom] failed to set webview zoom', err);
+      }
+    };
+
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      if (target.isContentEditable) return true;
+      const tag = target.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+      return !!target.closest('[contenteditable="true"]');
+    };
+
+    const handleZoomHotkeys = (event: KeyboardEvent) => {
+      if (!zoomEnabled) return;
+      if (!event.metaKey && !event.ctrlKey) return;
+      if (event.altKey) return;
+      if (isEditableTarget(event.target)) return;
+      const key = event.key;
+      if (key !== '+' && key !== '=' && key !== '-' && key !== '_' && key !== '0') return;
+      event.preventDefault();
+      if (key === '0') {
+        void applyZoom(1);
+        return;
+      }
+      const direction = key === '-' || key === '_' ? -1 : 1;
+      void applyZoom(zoomLevel + zoomStep * direction);
+    };
+
     const handleVisibility = () => {
       log(`visibility:${document.visibilityState}`);
     };
@@ -46,6 +90,7 @@
     window.addEventListener('blur', handleBlur);
     window.addEventListener('pagehide', handlePageHide);
     window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('keydown', handleZoomHotkeys);
 
     let lastFrame = performance.now();
     let lastStallLog = 0;
@@ -75,6 +120,7 @@
       window.removeEventListener('blur', handleBlur);
       window.removeEventListener('pagehide', handlePageHide);
       window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('keydown', handleZoomHotkeys);
       window.cancelAnimationFrame(frameHandle);
       window.clearInterval(stallTimer);
       window.clearInterval(rendererHeartbeat);
