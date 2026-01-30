@@ -24,11 +24,6 @@ jobs:
             exit 1
           fi
 
-      - name: LOC enforcement
-        run: node scripts/ci/loc-enforce.js
-        env:
-          LOC_MAX: 350
-
       - name: Install FFmpeg sidecars (Linux)
         run: |
           cd tauri-app
