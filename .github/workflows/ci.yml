@@ -29,6 +29,11 @@ jobs:
         env:
           LOC_MAX: 350
 
+      - name: Install FFmpeg sidecars (Linux)
+        run: |
+          cd tauri-app
+          ./scripts/fetch-ffmpeg-btbn-lgpl.sh x86_64-unknown-linux-gnu https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-lgpl.tar.xz
+
       - name: Electron app tests
         if: ${{ hashFiles('electron-app/package.json') != '' }}
         run: |
