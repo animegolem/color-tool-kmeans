@@ -1,87 +1,102 @@
-## Color Tool — Native K‑Means Palette Analyzer (Tauri)
+# Color Tool — Perceptual Color & Tonality Analyzer
 
-Desktop tool for analyzing images and extracting color palettes with K‑Means. The app runs natively via Tauri (Rust + WebView), with a Svelte 5 UI and offline‑friendly exports.
+Desktop app for analyzing color palettes and tonal structure in images and video. Built with Tauri (Rust + Svelte), using OKLab/OKLch color spaces for perceptually accurate results.
 
-**Why Tauri**
-- Native file I/O and compute with Rust, better perf vs. browser/WASM.
-- Small bundles and solid offline story (no CDNs, local fonts only).
+## Features
 
-**Current Status (October 2025)**
-- Tauri native path is stable in dev: image selection, native analysis, and top‑8 cluster preview render in the UI.
-- Bridges are async‑ready and self‑diagnosing; invoke logging pinpoints the active path.
-- Response validation guards native results (typed errors instead of silent zeros).
-- In progress: error surfacing UX, dev diagnostics banner, graph/exports parity with Figma.
+### Color Analysis
+- K-means clustering in OKLab space extracts dominant colors
+- Three visualization modes:
+  - **Cluster histogram**: Top clusters sorted by frequency, hue, or lightness
+  - **Polar chart**: Hue × chroma plot in OKLCH (default) or HSL ("Gurney circles") mode
+  - **Hue × Lightness**: Scatter plot showing color distribution across hue and value
+- Configurable cluster count (K), sampling stride, and quality settings
+
+### Video Support
+- HTML5 video player with timeline scrubbing
+- Frame extraction via ffmpeg with 250ms debounce
+- Thumbnail strip (60 frames) for quick navigation
+- Analyze any frame by scrubbing to it
+
+### Values/Tonality Analysis
+- Extracts lightness distribution from OKLab L channel
+- Configurable tonal buckets (2–5 levels) via k-means
+- Notan mode: 2-tone simplification using Otsu thresholding
+- Range finder showing image key (high key, low key, full range)
+- Generates neutral grayscale and simplified tone previews
+
+### Exports
+- PNG, SVG, and CSV export for charts and palettes
 
 ## Quick Start
 
-Prereqs
-- Node 18.20.8, Rust (stable), and the Tauri CLI (`npm i -g @tauri-apps/cli`)
-- Linux/NVIDIA note: for packaged runs set `WEBKIT_DISABLE_DMABUF_RENDERER=1` (see Troubleshooting)
+### Prerequisites
+- Node 18.20.8
+- Rust (stable)
+- Tauri CLI: `npm i -g @tauri-apps/cli`
+- ffmpeg/ffprobe (for video features)
 
-Dev Run
-```
+### Development
+```bash
 cd tauri-app
 npm ci
 npm run tauri dev
 ```
 
-Packaged Build
-```
+### Build
+```bash
 cd tauri-app
 npm run build           # build renderer
 npm run tauri build     # bundle native app
 ```
-Linux (Wayland/NVIDIA) first‑run stability:
-```
+
+### Linux/NVIDIA/Wayland
+WebKit stability fix for packaged builds:
+```bash
 WEBKIT_DISABLE_DMABUF_RENDERER=1 ./src-tauri/target/release/tauri-app
 ```
 
-Fonts (offline)
-- We vendor Fira Sans locally. If fonts are missing at runtime, run:
-```
-cd tauri-app && bash scripts/fetch-fira.sh
-```
+## Architecture
 
-## What You Can Do Today
-- Upload an image (native file dialog) and see the native analysis with the top clusters.
-- Tweak parameters (K, stride, min lum, space) and re‑run analysis.
-- Inspect bridge selection and env in the console (dev banner + `[tauri-invoke]` logs).
+### UI Structure
+- **Home tab**: Image/video upload, color analysis, three chart views
+- **Values tab**: Tonality analysis with tonal buckets and histograms
+- **Exports tab**: Export charts and palettes
 
-## Roadmap (Focused)
-- Home UX polish: native‑mode badge, clearer drag/drop copy, actionable error toasts.
-- Dev diagnostics: one‑time detection banner, force‑override warning, DevTools hotkey.
-- Circle graph render (Figma parity) and palette rail.
-- Exports: Circle PNG/SVG and palette CSV with embedded fonts; deterministic bytes.
-- Preferences: last dir/parameters/view via Tauri store; no telemetry.
-- Accessibility: overlay roles/labels, keyboard paths for Upload/Export.
+### Color Pipeline
+All color processing uses OKLab/OKLch for perceptual uniformity (colors that look equally different to humans are equally distant in the color space). The one exception is HSL mode in the polar chart, included for artists familiar with traditional color wheels.
 
-See RAG epics/tickets for live status:
-- `RAG/AI-EPIC/AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes.md`
-- `RAG/AI-EPIC/AI-EPIC-007-tauri-ui-graphs-exports.md`
-- Recent work logs under `RAG/AI-LOG/`.
+### Video Pipeline
+1. `ffprobe` extracts duration and frame rate
+2. Thumbnail strip generated on load (60 frames tiled)
+3. Scrubbing triggers debounced frame extraction via `ffmpeg`
+4. Extracted frame analyzed with same pipeline as images
 
-## Architecture (Short)
-- Renderer (Svelte 5): `tauri-app/src` (Home, Graphs, Exports views).
-- Bridges: `tauri-app/src/lib/bridges/` select FS/compute at first use; Tauri is preferred when present.
-  - Diagnostics: `[tauri-invoke]` logs which resolver handled a command.
-  - Validation: native compute responses are schema‑checked; errors become typed `TauriComputeError`s.
-- Native (Rust): `tauri-app/src-tauri/src/main.rs`
-  - Commands: `open_image_dialog`, `analyze_image` (sampling → k‑means → palette).
+### State Management
+Analysis results are cached per image/frame. Video state (position, paths) persists across sessions for quick restoration.
 
-## Repository Structure
-- `tauri-app/` — Tauri desktop app (renderer + Rust); main development target
-- `figma/` — exported frames/assets (source of UI truth)
-- `RAG/` — epics, implementation tickets, and session logs
-- `archive/` — legacy or experimental code (e.g., Electron app, WASM compute)
+## FFmpeg
+
+Video features require ffmpeg and ffprobe binaries.
+
+**Release builds**: Include ffmpeg binaries with LGPL license sidecars.
+
+**Building from source**: Helper scripts are available for compiling ffmpeg with the required features. See `scripts/` directory.
+
+**System ffmpeg**: The app auto-discovers ffmpeg in standard locations if not bundled.
 
 ## Troubleshooting
-- “Could not connect to localhost” in packaged debug: start the dev server (`npm run dev`) or use the release bundle.
-- Linux/NVIDIA crash on first run: use `WEBKIT_DISABLE_DMABUF_RENDERER=1` (and optionally `GDK_BACKEND=x11`).
-- Forcing native path: in DevTools, `localStorage.setItem('bridge.force', 'tauri'); location.reload();`
+
+- **"Could not connect to localhost"** in packaged debug builds: Start the dev server (`npm run dev`) or use the release bundle.
+- **Linux/NVIDIA crash**: Use `WEBKIT_DISABLE_DMABUF_RENDERER=1` (and optionally `GDK_BACKEND=x11`).
+- **Force native path**: In DevTools console: `localStorage.setItem('bridge.force', 'tauri'); location.reload();`
 
 ## Credits
-- K‑Means core, color conversions, and sampling are adapted from prior work in this repository’s Rust modules (`color.rs`, `kmeans.rs`, `image_pipeline.rs`).
-- Attributions are listed in `ATTRIBUTIONS.md`.
+
+- OKLab color space by Björn Ottosson
+- ffmpeg for video processing (LGPL)
+- K-means clustering and color conversions implemented in Rust
 
 ## License
+
 MIT — see `LICENSE`.

@@ -124,7 +124,8 @@ pub fn generate_value_study(
                 let l = l_values[i];
                 let mut mapped = remap_value(l, p_low, p_high, target_black, target_white);
                 if POSTERIZE_LEVELS >= 2 {
-                    mapped = posterize_in_band(mapped, target_black, target_white, POSTERIZE_LEVELS);
+                    mapped =
+                        posterize_in_band(mapped, target_black, target_white, POSTERIZE_LEVELS);
                 }
                 *pixel = image::Luma([to_u8(mapped)]);
             }
@@ -159,9 +160,7 @@ pub fn generate_value_study(
 }
 
 fn load_rgb_with_downscale(path: &Path) -> Result<RgbImage> {
-    let img = ImageReader::open(path)?
-        .with_guessed_format()?
-        .decode()?;
+    let img = ImageReader::open(path)?.with_guessed_format()?.decode()?;
     Ok(to_rgb_with_downscale(img, VALUE_STUDY_MAX_DIMENSION))
 }
 

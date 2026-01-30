@@ -166,11 +166,7 @@ pub fn generate_value_analysis(
 
     let histogram_bins = histogram_counts(&l_values, HISTOGRAM_BINS);
     let (p10, p90) = percentile_bounds(&l_values, PERCENTILE_LOW, PERCENTILE_HIGH);
-    let (p01, p99) = percentile_bounds(
-        &l_values,
-        PERCENTILE_EXTREME_LOW,
-        PERCENTILE_EXTREME_HIGH,
-    );
+    let (p01, p99) = percentile_bounds(&l_values, PERCENTILE_EXTREME_LOW, PERCENTILE_EXTREME_HIGH);
     let mut sorted = l_values.clone();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
@@ -283,9 +279,7 @@ pub fn generate_value_analysis(
 }
 
 fn load_rgb_with_downscale(path: &Path, max_dim: u32, filter: FilterType) -> Result<RgbImage> {
-    let img = ImageReader::open(path)?
-        .with_guessed_format()?
-        .decode()?;
+    let img = ImageReader::open(path)?.with_guessed_format()?.decode()?;
     Ok(to_rgb_with_downscale(img, max_dim, filter))
 }
 
@@ -333,7 +327,11 @@ fn render_preview_with_buckets(
     let mut preview = RgbImage::new(width, height);
     for (i, pixel) in preview.pixels_mut().enumerate() {
         let idx = bucket_indices[i] as usize;
-        let l = bucket_values.get(idx).copied().unwrap_or(0.5).clamp(0.0, 1.0);
+        let l = bucket_values
+            .get(idx)
+            .copied()
+            .unwrap_or(0.5)
+            .clamp(0.0, 1.0);
         let rgb = color::oklab_to_rgb8([l, 0.0, 0.0]);
         *pixel = Rgb(rgb);
     }

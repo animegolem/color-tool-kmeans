@@ -97,7 +97,11 @@ impl EventLog {
     fn append(&self, message: &str) {
         let timestamp = Local::now().to_rfc3339_opts(SecondsFormat::Millis, false);
         let line = format!("{timestamp} {message}\n");
-        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&self.path) {
+        if let Ok(mut file) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.path)
+        {
             let _ = file.write_all(line.as_bytes());
         }
     }
@@ -499,9 +503,7 @@ async fn log_event(req: LogEventRequest, app: AppHandle) -> Result<(), String> {
     if message.is_empty() {
         return Ok(());
     }
-    let source = req
-        .source
-        .unwrap_or_else(|| String::from("renderer"));
+    let source = req.source.unwrap_or_else(|| String::from("renderer"));
     let log = app.state::<EventLog>();
     log.append(&format!("[{source}] {message}"));
     Ok(())
@@ -524,7 +526,9 @@ async fn open_image_dialog(app: AppHandle) -> Result<Option<String>, String> {
             });
             let _ = tx.send(mapped);
         });
-    let path = rx.recv().map_err(|_| String::from("dialog channel closed"))?;
+    let path = rx
+        .recv()
+        .map_err(|_| String::from("dialog channel closed"))?;
     Ok(path)
 }
 
@@ -542,7 +546,9 @@ async fn open_video_dialog(app: AppHandle) -> Result<Option<String>, String> {
             });
             let _ = tx.send(mapped);
         });
-    let path = rx.recv().map_err(|_| String::from("dialog channel closed"))?;
+    let path = rx
+        .recv()
+        .map_err(|_| String::from("dialog channel closed"))?;
     Ok(path)
 }
 

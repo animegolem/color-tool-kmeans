@@ -175,7 +175,8 @@ pub async fn extract_frame_png<R: Runtime>(
         "scale={max_dimension}:{max_dimension}:force_original_aspect_ratio=decrease:flags=lanczos"
     );
     let (command, path) = build_ffmpeg_command(app)?;
-    let output = command.args([
+    let output = command
+        .args([
             "-hide_banner",
             "-loglevel",
             "error",
@@ -231,7 +232,9 @@ fn build_ffprobe_command<R: Runtime>(
 
 fn resolve_binary_path(name: &str) -> Result<PathBuf, String> {
     let exe = std::env::current_exe().map_err(|e| format!("Failed to resolve current exe: {e}"))?;
-    let exe_dir = exe.parent().ok_or_else(|| "Missing executable directory".to_string())?;
+    let exe_dir = exe
+        .parent()
+        .ok_or_else(|| "Missing executable directory".to_string())?;
     let mut candidates = vec![
         exe_dir.join(name),
         exe_dir.join(format!("{name}.exe")),
@@ -240,7 +243,11 @@ fn resolve_binary_path(name: &str) -> Result<PathBuf, String> {
     ];
 
     let mut dev_bin = None;
-    if let Some(candidate) = exe_dir.parent().and_then(|p| p.parent()).map(|p| p.join("bin")) {
+    if let Some(candidate) = exe_dir
+        .parent()
+        .and_then(|p| p.parent())
+        .map(|p| p.join("bin"))
+    {
         let suffix = target_suffix();
         candidates.push(candidate.join(format!("{name}-{suffix}")));
         candidates.push(candidate.join(format!("{name}-{suffix}.exe")));
