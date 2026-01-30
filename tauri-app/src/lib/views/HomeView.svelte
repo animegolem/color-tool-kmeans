@@ -142,10 +142,7 @@
       symbolScale: currentParams.symbolScale,
       showAxisLabels: currentParams.showAxisLabels,
       showStroke: currentParams.showClusterOutline,
-      showGamutBackground: currentParams.showGamutBackground,
-      showPaletteMask: currentParams.showPaletteMask,
       useHsl: currentParams.useHslPolar,
-      useGradient: currentParams.useGradientOverlay,
       size: 420
     });
   });
@@ -157,7 +154,6 @@
       showAxisLabels: currentParams.showAxisLabels,
       showStroke: currentParams.showClusterOutline,
       sizeMode: currentParams.hueLightnessSizeMode,
-      useGradient: currentParams.useGradientOverlay,
       width: 420,
       height: 240
     });
@@ -815,7 +811,7 @@
         <input
           type="range"
           min="1"
-          max="10000"
+          max="2000"
           step="1"
           bind:value={$params.clusters}
           onpointerdown={handleScrubStart}
@@ -823,7 +819,7 @@
           onpointercancel={handleScrubEnd}
           onblur={handleScrubEnd}
         />
-        <input class="number-input" type="number" min="1" max="10000" step="1" bind:value={$params.clusters} />
+        <input class="number-input" type="number" min="1" max="2000" step="1" bind:value={$params.clusters} />
       </label>
       <label>
         <span>Speed ← → Quality: <strong>{$params.quality}</strong></span>
@@ -874,18 +870,6 @@
       <label class="choice">
         <input type="checkbox" bind:checked={$params.showAxisLabels} />
         Axis labels
-      </label>
-      <label class="choice">
-        <input type="checkbox" bind:checked={$params.showGamutBackground} />
-        Gamut background
-      </label>
-      <label class="choice">
-        <input type="checkbox" bind:checked={$params.showPaletteMask} />
-        Palette mask
-      </label>
-      <label class="choice">
-        <input type="checkbox" bind:checked={$params.useGradientOverlay} />
-        Blend overlaps (gradient)
       </label>
     </div>
   </section>

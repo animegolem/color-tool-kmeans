@@ -1,14 +1,12 @@
 import type { AnalysisCluster } from '../stores/ui';
 import { svgCircle, svgDocument, svgGroup, svgLine, svgRect, svgText } from './svg';
 import { svgToPngBlob } from './png';
-import { buildGradientLayer } from './gradient';
 
 export interface HueLightnessOptions {
   symbolScale: number;
   showAxisLabels?: boolean;
   showStroke?: boolean;
   sizeMode?: 'frequency' | 'chroma';
-  useGradient?: boolean;
   width?: number;
   height?: number;
 }
@@ -97,13 +95,6 @@ export function generateHueLightnessSvg(
     );
   }
 
-  if (options.useGradient) {
-    const gradient = buildGradientLayer(width, height, points, { alphaScale: 0.14, opacity: 0.85 });
-    if (gradient) {
-      svgParts.push(gradient);
-    }
-  }
-
   svgParts.push(axisGroup);
   svgParts.push(...circleParts);
 
@@ -144,8 +135,7 @@ export function generateHueLightnessSvg(
       content: svgParts.join(''),
       attrs: {
         'data-color-model': 'oklch',
-        'data-view': 'hue-lightness',
-        'data-gradient-overlay': options.useGradient ? 'on' : 'off'
+        'data-view': 'hue-lightness'
       }
     }),
     width,
