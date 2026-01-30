@@ -112,10 +112,10 @@ pub fn generate_value_study(
     neutral.save(&neutral_path)?;
 
     let mut tiles = Vec::with_capacity(tile_paths.len());
-    for row in 0..TILE_ROWS {
-        let target_half = half * MINOR_SCALES[row];
-        for col in 0..TILE_COLS {
-            let target_mid = mid + MAJOR_SHIFTS[col] * half;
+    for (row, minor_scale) in MINOR_SCALES.iter().enumerate().take(TILE_ROWS) {
+        let target_half = half * *minor_scale;
+        for (col, major_shift) in MAJOR_SHIFTS.iter().enumerate().take(TILE_COLS) {
+            let target_mid = mid + *major_shift * half;
             let (target_black, target_white) = target_window(target_mid, target_half);
             let idx = row * TILE_COLS + col;
             let tile_path = &tile_paths[idx];
@@ -251,7 +251,7 @@ fn remap_value(l: f32, p_low: f32, p_high: f32, target_black: f32, target_white:
 }
 
 fn target_window(mid: f32, half: f32) -> (f32, f32) {
-    let clamped_half = half.max(0.0).min(0.49);
+    let clamped_half = half.clamp(0.0, 0.49);
     let clamped_mid = mid.clamp(clamped_half, 1.0 - clamped_half);
     let black = clamp01(clamped_mid - clamped_half);
     let white = clamp01(clamped_mid + clamped_half);
@@ -263,7 +263,7 @@ fn target_window(mid: f32, half: f32) -> (f32, f32) {
 }
 
 fn clamp01(value: f32) -> f32 {
-    value.max(0.0).min(1.0)
+    value.clamp(0.0, 1.0)
 }
 
 fn to_u8(value: f32) -> u8 {

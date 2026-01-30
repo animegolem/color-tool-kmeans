@@ -117,7 +117,7 @@ fn oklab_to_linear_rgb(lab: [f32; 3]) -> [f32; 3] {
 }
 
 fn is_in_gamut_rgb(rgb: [f32; 3]) -> bool {
-    rgb.iter().all(|&c| c >= -EPSILON && c <= 1.0 + EPSILON)
+    rgb.iter().all(|&c| (-EPSILON..=1.0 + EPSILON).contains(&c))
 }
 
 /// Convert sRGB bytes to OKLab (L in 0..1, a/b in OKLab units).

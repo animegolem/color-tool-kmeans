@@ -312,9 +312,9 @@ fn best_centroid_simd(px: f32, py: f32, pz: f32, centroids: &CentroidsSoa) -> (u
         let dz = pz_v - cz;
         let dist = dx * dx + dy * dy + dz * dz;
         let dist_arr: [f32; LANES] = dist.into();
-        for (lane, &d) in dist_arr.iter().enumerate().take(LANES) {
-            if d < best_dist {
-                best_dist = d;
+        for (lane, d) in dist_arr.iter().enumerate().take(LANES) {
+            if *d < best_dist {
+                best_dist = *d;
                 best_idx = idx + lane;
             }
         }
@@ -343,16 +343,18 @@ fn best_centroid_simd(px: f32, py: f32, pz: f32, centroids: &CentroidsSoa) -> (u
 fn best_centroid_scalar(px: f32, py: f32, pz: f32, centroids: &CentroidsSoa) -> (usize, f32) {
     let mut best_idx = 0usize;
     let mut best_dist = f32::MAX;
-    for (idx, (&cx, (&cy, &cz))) in centroids
-        .cx
-        .iter()
-        .zip(centroids.cy.iter().zip(centroids.cz.iter()))
-        .enumerate()
-    {
-        let d = squared_distance_components(px, py, pz, cx, cy, cz);
+    for i in 0..centroids.len() {
+        let d = squared_distance_components(
+            px,
+            py,
+            pz,
+            centroids.cx[i],
+            centroids.cy[i],
+            centroids.cz[i],
+        );
         if d < best_dist {
             best_dist = d;
-            best_idx = idx;
+            best_idx = i;
         }
     }
     (best_idx, best_dist)
@@ -367,16 +369,11 @@ fn kmeans_plus_plus(points: &PointsSoa, k: usize, rng: &mut SmallRng) -> Centroi
     chosen_flags[first_idx] = true;
 
     let mut distances = vec![0.0f32; n];
-    for ((px, (py, pz)), dist) in points
-        .px
-        .iter()
-        .zip(points.py.iter().zip(points.pz.iter()))
-        .zip(distances.iter_mut())
-    {
+    for (i, dist) in distances.iter_mut().enumerate() {
         *dist = squared_distance_components(
-            *px,
-            *py,
-            *pz,
+            points.px[i],
+            points.py[i],
+            points.pz[i],
             centroids.cx[0],
             centroids.cy[0],
             centroids.cz[0],
@@ -425,7 +422,7 @@ fn kmeans_plus_plus(points: &PointsSoa, k: usize, rng: &mut SmallRng) -> Centroi
                 *dist = 0.0;
                 continue;
             }
-            let val = squared_distance_components(
+            let next_dist = squared_distance_components(
                 points.px[i],
                 points.py[i],
                 points.pz[i],
@@ -433,8 +430,8 @@ fn kmeans_plus_plus(points: &PointsSoa, k: usize, rng: &mut SmallRng) -> Centroi
                 centroids.cy[centroid_idx],
                 centroids.cz[centroid_idx],
             );
-            if val < *dist {
-                *dist = val;
+            if next_dist < *dist {
+                *dist = next_dist;
             }
         }
     }
