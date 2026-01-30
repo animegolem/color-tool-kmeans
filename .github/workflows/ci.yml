@@ -62,7 +62,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd tauri-app
-          npm ci
+          npm install --no-audit --no-fund
 
       - name: Build Tauri app (Windows)
         run: |
