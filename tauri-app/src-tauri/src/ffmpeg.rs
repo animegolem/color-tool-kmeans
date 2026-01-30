@@ -1,5 +1,5 @@
+use std::fs;
 use std::path::{Path, PathBuf};
-use std::{fs, io};
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_shell::ShellExt;
 

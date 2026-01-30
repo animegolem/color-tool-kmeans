@@ -48,6 +48,7 @@ pub fn linear_to_srgb8(rgb: [f32; 3]) -> [u8; 3] {
     })
 }
 
+#[allow(clippy::excessive_precision)]
 pub fn rgb_to_xyz(linear_rgb: [f32; 3]) -> [f32; 3] {
     let r = linear_rgb[0];
     let g = linear_rgb[1];
@@ -59,6 +60,7 @@ pub fn rgb_to_xyz(linear_rgb: [f32; 3]) -> [f32; 3] {
     ]
 }
 
+#[allow(clippy::excessive_precision)]
 pub fn xyz_to_rgb(xyz: [f32; 3]) -> [f32; 3] {
     let x = xyz[0];
     let y = xyz[1];
@@ -78,6 +80,7 @@ fn normalize_degrees(deg: f32) -> f32 {
     value
 }
 
+#[allow(clippy::excessive_precision)]
 fn linear_rgb_to_oklab(rgb: [f32; 3]) -> [f32; 3] {
     let r = rgb[0];
     let g = rgb[1];
@@ -95,6 +98,7 @@ fn linear_rgb_to_oklab(rgb: [f32; 3]) -> [f32; 3] {
     ]
 }
 
+#[allow(clippy::excessive_precision)]
 fn oklab_to_linear_rgb(lab: [f32; 3]) -> [f32; 3] {
     let l = lab[0];
     let a = lab[1];
