@@ -13,8 +13,6 @@ use tauri_app::image_pipeline::{prepare_samples, quality_preset, SampleParams};
 use tauri_app::kmeans::{run_kmeans, KMeansConfig};
 use tauri_app::value_analysis::{generate_value_analysis, ValueAnalysisResult};
 use tauri_app::value_study::{generate_value_study, ValueStudyResult};
-use tauri_plugin_dialog;
-use tauri_plugin_shell;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
