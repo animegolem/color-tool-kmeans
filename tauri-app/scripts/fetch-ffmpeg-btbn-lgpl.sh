@@ -28,10 +28,17 @@ mkdir -p "$extract_dir"
 case "$url" in
   *.zip)
     if ! command -v unzip >/dev/null 2>&1; then
-      echo "unzip is required to extract zip archives."
-      exit 1
+      if command -v python3 >/dev/null 2>&1; then
+        python3 -m zipfile -e "$archive" "$extract_dir"
+      elif command -v python >/dev/null 2>&1; then
+        python -m zipfile -e "$archive" "$extract_dir"
+      else
+        echo "unzip (or python) is required to extract zip archives."
+        exit 1
+      fi
+    else
+      unzip -q "$archive" -d "$extract_dir"
     fi
-    unzip -q "$archive" -d "$extract_dir"
     ;;
   *.tar.xz|*.tar.gz|*.tgz|*.tar.bz2)
     tar -xf "$archive" -C "$extract_dir"
