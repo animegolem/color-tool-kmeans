@@ -615,14 +615,19 @@
     if (videoCurrentTime > 0 && Math.abs(videoElement.currentTime - videoCurrentTime) > 0.01) {
       videoElement.currentTime = videoCurrentTime;
     }
-    void logEvent(`video:loadeddata ready=${videoElement.readyState}`);
+    const support = videoElement.canPlayType('video/mp4; codecs="avc1.64001f, mp4a.40.2"');
+    void logEvent(
+      `video:loadeddata ready=${videoElement.readyState} support=${support || 'unknown'}`
+    );
   }
 
   function handleVideoError() {
     const error = videoElement?.error;
     const code = error?.code ?? 'unknown';
     const message = error?.message ?? 'unknown';
-    void logEvent(`video:load:error code=${code} message=${message}`);
+    void logEvent(
+      `video:load:error code=${code} message=${message} src=${videoSrcUrl ?? 'none'}`
+    );
   }
 
   function handleStripSeek(event: PointerEvent) {
@@ -987,7 +992,6 @@
                 >
                   <video
                     bind:this={videoElement}
-                    src={videoSrcUrl}
                     poster={videoDisplayUrl ?? undefined}
                     muted
                     playsinline
@@ -996,7 +1000,9 @@
                     onloadeddata={handleVideoLoadedData}
                     onseeked={handleVideoSeeked}
                     onerror={handleVideoError}
-                  ></video>
+                  >
+                    <source src={videoSrcUrl} type="video/mp4" />
+                  </video>
                 </div>
               {:else}
                 <div class="preview-placeholder">Loading video frame…</div>

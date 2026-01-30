@@ -142,6 +142,58 @@ fn prune_event_logs(cache_dir: &Path, keep: usize, current: &Path) {
     }
 }
 
+fn prune_video_cache(cache_dir: &Path, keep_frames: usize, keep_strips: usize) {
+    let Ok(entries) = fs::read_dir(cache_dir) else {
+        return;
+    };
+    let mut frames: Vec<(PathBuf, std::time::SystemTime)> = Vec::new();
+    let mut strips: Vec<(PathBuf, std::time::SystemTime)> = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = match path.file_name().map(|n| n.to_string_lossy()) {
+            Some(name) => name,
+            None => continue,
+        };
+        if !name.ends_with(".png") {
+            continue;
+        }
+        if name.starts_with("video-frame-") {
+            let modified = entry
+                .metadata()
+                .and_then(|meta| meta.modified())
+                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+            frames.push((path, modified));
+        } else if name.starts_with("video-strip-") {
+            let modified = entry
+                .metadata()
+                .and_then(|meta| meta.modified())
+                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+            strips.push((path, modified));
+        }
+    }
+
+    frames.sort_by_key(|(_, modified)| *modified);
+    strips.sort_by_key(|(_, modified)| *modified);
+
+    let mut to_remove = frames.len().saturating_sub(keep_frames);
+    for (path, _) in frames {
+        if to_remove == 0 {
+            break;
+        }
+        let _ = fs::remove_file(&path);
+        to_remove -= 1;
+    }
+
+    let mut to_remove = strips.len().saturating_sub(keep_strips);
+    for (path, _) in strips {
+        if to_remove == 0 {
+            break;
+        }
+        let _ = fs::remove_file(&path);
+        to_remove -= 1;
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ValueStudyRequest {
@@ -591,6 +643,7 @@ fn main() {
             let logger = EventLog { path: log_path };
             logger.append("[system] app setup");
             prune_event_logs(&cache_dir, 5, &logger.path);
+            prune_video_cache(&cache_dir, 80, 10);
             app.manage(logger);
             let heartbeat_path = app.state::<EventLog>().path.clone();
             std::thread::spawn(move || {
