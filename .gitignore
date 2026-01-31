@@ -39,5 +39,6 @@ bench-assets/
 bench-reports/*
 !bench-reports/README.md
 tauri-app/.ffmpeg-build/
+tauri-app/src-tauri/bin/
 tauri-app/src-tauri/bin/ffmpeg-*
 tauri-app/src-tauri/bin/ffprobe-*
