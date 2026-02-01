@@ -4,11 +4,13 @@ import { svgToPngBlob } from './png';
 
 const DEG_TO_RAD = Math.PI / 180;
 
+export type PolarMode = 'oklch' | 'okhsv' | 'hsv';
+
 export interface CircleGraphOptions {
   symbolScale: number;
   showAxisLabels?: boolean;
   showStroke?: boolean;
-  useHsl?: boolean;
+  mode?: PolarMode;
   size?: number;
 }
 
@@ -23,28 +25,42 @@ export function generateCircleGraphSvg(
   options: CircleGraphOptions
 ): CircleGraphResult {
   const size = options.size ?? 620;
-  const radius = size / 2 - 12;
   const center = size / 2;
-  const useHsl = options.useHsl === true;
-  const chromaValues = clusters.map((cluster) => getChroma(cluster, useHsl));
-  const maxChroma = Math.max(1e-6, ...chromaValues);
-  const maxSymbolRadius = radius * 0.3 * (options.symbolScale || 1);
+  const radius = center - 12;
   const padding = 8;
-  const effectiveRadius = Math.max(0, radius - maxSymbolRadius - padding);
+  const effectiveRadius = Math.max(0, radius - padding);
+  const mode: PolarMode = options.mode ?? 'oklch';
+
+  const gamut = mode === 'oklch' || mode === 'okhsv' ? buildOklchGamutOutline(18) : null;
+  const maxChroma = mode === 'oklch' ? Math.max(1e-6, ...(gamut ?? []).map((p) => p.c)) : 1;
+  const hueChromaLut =
+    mode === 'okhsv' ? buildHueChromaLut(gamut ?? [], 360, Math.max(1e-6, maxChroma)) : null;
+
+  const maxSymbolRadius = Math.max(3.5, effectiveRadius * 0.3 * (options.symbolScale || 1));
   const layout = clusters.map((cluster) =>
-    buildLayoutEntry(cluster, effectiveRadius, maxSymbolRadius, center, maxChroma, useHsl)
+    buildLayoutEntry(cluster, effectiveRadius, maxSymbolRadius, center, mode, maxChroma, hueChromaLut)
   );
 
   const svgParts: string[] = [];
-  const axisGroup = svgGroup([
-    svgCircle({
-      cx: center,
-      cy: center,
-      r: effectiveRadius,
-      fill: 'none',
-      stroke: 'rgba(16,17,17,0.85)',
-      'stroke-width': 1
-    }),
+  const axisGroup: string[] = [];
+  if (mode === 'oklch' && gamut) {
+    const outlinePath = buildOutlinePath(gamut, effectiveRadius, center, maxChroma);
+    axisGroup.push(
+      `<path d="${outlinePath}" fill="none" stroke="rgba(16,17,17,0.85)" stroke-width="1" />`
+    );
+  } else {
+    axisGroup.push(
+      svgCircle({
+        cx: center,
+        cy: center,
+        r: effectiveRadius,
+        fill: 'none',
+        stroke: 'rgba(16,17,17,0.85)',
+        'stroke-width': 1
+      })
+    );
+  }
+  axisGroup.push(
     svgLine({
       x1: center - effectiveRadius,
       y1: center,
@@ -61,14 +77,14 @@ export function generateCircleGraphSvg(
       stroke: 'rgba(16,17,17,0.85)',
       'stroke-width': 1
     })
-  ]);
+  );
 
-  svgParts.push(axisGroup);
+  svgParts.push(svgGroup(axisGroup));
 
   if (options.showAxisLabels !== false) {
     const axisLabelRadius = effectiveRadius + 24;
     const hueText = '<- Hue ->';
-    const secondary = '<- Chroma ->';
+    const secondary = mode === 'oklch' ? '<- Chroma ->' : '<- Saturation ->';
     svgParts.push(
       svgText(
         {
@@ -118,8 +134,8 @@ export function generateCircleGraphSvg(
       height: size,
       content: svgParts.join(''),
       attrs: {
-        'data-color-model': useHsl ? 'hsl' : 'oklch',
-        'data-chroma-normalization': 'per-image'
+        'data-color-model': mode,
+        'data-chroma-normalization': mode === 'oklch' ? 'gamut' : mode === 'okhsv' ? 'gamut-hue' : 'unit'
       }
     }),
     width: size,
@@ -142,53 +158,155 @@ interface LayoutEntry {
   rgb: AnalysisCluster['rgb'];
 }
 
+interface PolarValue {
+  hue: number;
+  radiusRatio: number;
+}
+
 function buildLayoutEntry(
   cluster: AnalysisCluster,
   effectiveRadius: number,
   maxSymbolRadius: number,
   center: number,
+  mode: PolarMode,
   maxChroma: number,
-  useHsl: boolean
+  hueChromaLut: number[] | null
 ): LayoutEntry {
-  const hue = getHue(cluster, useHsl);
-  const chroma = getChroma(cluster, useHsl);
-  const symbolRadius = Math.max(3.5, Math.sqrt(Math.max(cluster.share, 0)) * maxSymbolRadius);
-  const angle = hue * DEG_TO_RAD - Math.PI / 2;
-  const r = effectiveRadius * (chroma / maxChroma);
+  const polar = getPolarValue(cluster, mode, maxChroma, hueChromaLut);
+  const angle = polar.hue * DEG_TO_RAD - Math.PI / 2;
+  const r = effectiveRadius * Math.max(0, Math.min(1, polar.radiusRatio));
   return {
     x: center + r * Math.cos(angle),
     y: center + r * Math.sin(angle),
-    symbolRadius,
+    symbolRadius: Math.max(3.5, Math.sqrt(Math.max(cluster.share, 0)) * maxSymbolRadius),
     rgb: cluster.rgb
   };
 }
 
-function getHue(cluster: AnalysisCluster, useHsl: boolean): number {
-  if (useHsl) {
-    return rgbToHsl(cluster.rgb).h;
+function getPolarValue(
+  cluster: AnalysisCluster,
+  mode: PolarMode,
+  maxChroma: number,
+  hueChromaLut: number[] | null
+): PolarValue {
+  if (mode === 'hsv') {
+    const hsv = cluster.hsv ?? rgbToHsv(cluster.rgb);
+    return { hue: hsv[0], radiusRatio: hsv[1] };
   }
-  if (cluster.oklch && cluster.oklch.length >= 3) {
-    return cluster.oklch[2];
+  const oklch = cluster.oklch ?? [0, 0, 0];
+  const hue = oklch[2] ?? 0;
+  const chroma = oklch[1] ?? 0;
+  if (mode === 'okhsv') {
+    const maxHueChroma = hueChromaLut ? hueChromaLut[wrapHueIndex(hue)] : maxChroma;
+    const radiusRatio = maxHueChroma > 0 ? chroma / maxHueChroma : 0;
+    return { hue, radiusRatio };
   }
-  return cluster.hsv?.[0] ?? 0;
+  return { hue, radiusRatio: maxChroma > 0 ? chroma / maxChroma : 0 };
 }
 
-function getChroma(cluster: AnalysisCluster, useHsl: boolean): number {
-  if (useHsl) {
-    return rgbToHsl(cluster.rgb).s;
-  }
-  if (cluster.oklch && cluster.oklch.length >= 3) {
-    return cluster.oklch[1];
-  }
-  return cluster.hsv?.[1] ?? 0;
+function wrapHueIndex(hue: number): number {
+  const normalized = ((hue % 360) + 360) % 360;
+  return Math.round(normalized) % 360;
 }
 
-function contrastStroke(rgb: { r: number; g: number; b: number }): string {
-  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
-  return luminance > 0.5 ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.85)';
+function buildOutlinePath(
+  points: Array<{ h: number; c: number }>,
+  radius: number,
+  center: number,
+  maxChroma: number
+): string {
+  if (!points.length) return '';
+  const coords = points.map((point) => {
+    const angle = point.h * DEG_TO_RAD - Math.PI / 2;
+    const r = radius * (point.c / maxChroma);
+    const x = center + r * Math.cos(angle);
+    const y = center + r * Math.sin(angle);
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  });
+  return `M ${coords[0]} L ${coords.slice(1).join(' ')} Z`;
 }
 
-function rgbToHsl(rgb: { r: number; g: number; b: number }): { h: number; s: number; l: number } {
+function buildOklchGamutOutline(steps: number): Array<{ h: number; c: number }> {
+  const edges: Array<[[number, number, number], [number, number, number]]> = [
+    [[1, 0, 0], [1, 1, 0]],
+    [[1, 1, 0], [0, 1, 0]],
+    [[0, 1, 0], [0, 1, 1]],
+    [[0, 1, 1], [0, 0, 1]],
+    [[0, 0, 1], [1, 0, 1]],
+    [[1, 0, 1], [1, 0, 0]]
+  ];
+  const points: Array<{ h: number; c: number }> = [];
+  for (const [start, end] of edges) {
+    for (let i = 0; i <= steps; i += 1) {
+      const t = i / steps;
+      const rgb = [
+        start[0] + (end[0] - start[0]) * t,
+        start[1] + (end[1] - start[1]) * t,
+        start[2] + (end[2] - start[2]) * t
+      ];
+      const lab = linearSrgbToOklab(rgb.map(srgbToLinear) as [number, number, number]);
+      const lch = oklabToOklch(lab);
+      points.push({ h: lch[2], c: lch[1] });
+    }
+  }
+  return points;
+}
+
+function buildHueChromaLut(points: Array<{ h: number; c: number }>, bins: number, fallback: number) {
+  const lut = new Array(bins).fill(0);
+  for (const point of points) {
+    const idx = wrapHueIndex(point.h) % bins;
+    lut[idx] = Math.max(lut[idx], point.c);
+  }
+  let last = 0;
+  for (let i = 0; i < bins; i += 1) {
+    if (lut[i] === 0) {
+      lut[i] = last;
+    } else {
+      last = lut[i];
+    }
+  }
+  for (let i = bins - 1; i >= 0; i -= 1) {
+    if (lut[i] === 0) {
+      lut[i] = last || fallback;
+    } else {
+      last = lut[i];
+    }
+  }
+  return lut.map((value) => (value <= 0 ? fallback : value));
+}
+
+function srgbToLinear(value: number): number {
+  if (value <= 0.04045) {
+    return value / 12.92;
+  }
+  return Math.pow((value + 0.055) / 1.055, 2.4);
+}
+
+function linearSrgbToOklab(rgb: [number, number, number]): [number, number, number] {
+  const [r, g, b] = rgb;
+  const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+  const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+  const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+  const l_ = Math.cbrt(l);
+  const m_ = Math.cbrt(m);
+  const s_ = Math.cbrt(s);
+  return [
+    0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_,
+    1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_,
+    0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_
+  ];
+}
+
+function oklabToOklch(lab: [number, number, number]): [number, number, number] {
+  const [l, a, b] = lab;
+  const c = Math.sqrt(a * a + b * b);
+  let h = Math.atan2(b, a) * (180 / Math.PI);
+  if (h < 0) h += 360;
+  return [l, c, h];
+}
+
+function rgbToHsv(rgb: { r: number; g: number; b: number }): [number, number, number] {
   const r = rgb.r / 255;
   const g = rgb.g / 255;
   const b = rgb.b / 255;
@@ -196,10 +314,7 @@ function rgbToHsl(rgb: { r: number; g: number; b: number }): { h: number; s: num
   const min = Math.min(r, g, b);
   const delta = max - min;
   let h = 0;
-  let s = 0;
-  const l = (max + min) / 2;
   if (delta > 0) {
-    s = delta / (1 - Math.abs(2 * l - 1));
     if (max === r) {
       h = ((g - b) / delta) % 6;
     } else if (max === g) {
@@ -210,5 +325,11 @@ function rgbToHsl(rgb: { r: number; g: number; b: number }): { h: number; s: num
     h *= 60;
     if (h < 0) h += 360;
   }
-  return { h, s, l };
+  const s = max === 0 ? 0 : delta / max;
+  return [h, s, max];
+}
+
+function contrastStroke(rgb: { r: number; g: number; b: number }): string {
+  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+  return luminance > 0.5 ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.85)';
 }

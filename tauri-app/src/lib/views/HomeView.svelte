@@ -76,6 +76,8 @@
   let videoStripId = $state<string | null>(null);
   let videoElement = $state<HTMLVideoElement | null>(null);
   let restoringVideoState = false;
+  let videoScrollLock: { top: number; token: number | null } | null = null;
+  let analysisScrollLock: { top: number; token: number | null } | null = null;
 
   let dropRef = $state<HTMLElement | null>(null);
 
@@ -166,7 +168,7 @@
       symbolScale: currentParams.symbolScale,
       showAxisLabels: currentParams.showAxisLabels,
       showStroke: currentParams.showClusterOutline,
-      useHsl: currentParams.useHslPolar,
+      mode: currentParams.polarMode,
       size: 420
     });
   });
@@ -253,6 +255,7 @@
 
   function handleScrubStart(_event: PointerEvent) {
     isScrubbing = true;
+    captureAnalysisScroll();
   }
 
   function handleScrubEnd() {
@@ -412,6 +415,7 @@
     videoStripPath = null;
     videoStripPending = false;
     videoStripId = null;
+    videoScrollLock = null;
     if (videoElement) {
       videoElement.pause();
       videoElement.currentTime = 0;
@@ -563,6 +567,7 @@
 
   function stepVideoFrames(step: number) {
     if (videoDuration <= 0) return;
+    captureVideoScroll();
     const fps = videoFps && videoFps > 0 ? videoFps : 24;
     const delta = step / fps;
     const next = Math.min(Math.max(videoCurrentTime + delta, 0), videoDuration);
@@ -576,6 +581,7 @@
 
   function handleVideoScrubStart() {
     videoScrubbing = true;
+    captureVideoScroll();
   }
 
   function handleVideoMetadata() {
@@ -632,6 +638,7 @@
 
   function handleStripSeek(event: PointerEvent) {
     if (videoDuration <= 0) return;
+    captureVideoScroll();
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
     const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
@@ -646,6 +653,9 @@
 
   function handleVideoScrubInput(event: Event) {
     const nextTime = Number((event.target as HTMLInputElement).value);
+    if (!videoScrollLock) {
+      captureVideoScroll();
+    }
     videoCurrentTime = nextTime;
     if (videoElement) {
       videoElement.currentTime = nextTime;
@@ -674,6 +684,9 @@
     const quality = currentParams.quality ?? 2;
     const maxDimension = maxDimensionForQuality(quality);
     const token = ++videoDecodeToken;
+    if (videoScrollLock) {
+      videoScrollLock.token = token;
+    }
     videoDecodeTimer = setTimeout(async () => {
       if (!videoSelection?.path || token !== videoDecodeToken) return;
       try {
@@ -704,6 +717,7 @@
         lastRequestKey = null;
         scheduleAnalysisWith({ ...entry, dataset }, currentParams);
         pushVideoState();
+        restoreVideoScroll(token);
         void logEvent(`video:frame:done t=${requestTime.toFixed(2)}`);
       } catch (error) {
         if (token !== videoDecodeToken) return;
@@ -715,8 +729,47 @@
     }, 250);
   }
 
+  function captureVideoScroll() {
+    if (typeof document === 'undefined') return;
+    const scroller = document.scrollingElement ?? document.documentElement;
+    videoScrollLock = { top: scroller.scrollTop, token: null };
+  }
+
+  function restoreVideoScroll(token: number) {
+    if (!videoScrollLock || videoScrollLock.token !== token) return;
+    if (typeof document === 'undefined') return;
+    const targetTop = videoScrollLock.top;
+    videoScrollLock = null;
+    Promise.resolve().then(() => {
+      requestAnimationFrame(() => {
+        const scroller = document.scrollingElement ?? document.documentElement;
+        scroller.scrollTop = targetTop;
+      });
+    });
+  }
+
+  function captureAnalysisScroll() {
+    if (typeof document === 'undefined') return;
+    const scroller = document.scrollingElement ?? document.documentElement;
+    analysisScrollLock = { top: scroller.scrollTop, token: null };
+  }
+
+  function restoreAnalysisScroll(token: number) {
+    if (!analysisScrollLock || analysisScrollLock.token !== token) return;
+    if (typeof document === 'undefined') return;
+    const targetTop = analysisScrollLock.top;
+    analysisScrollLock = null;
+    Promise.resolve().then(() => {
+      requestAnimationFrame(() => {
+        const scroller = document.scrollingElement ?? document.documentElement;
+        scroller.scrollTop = targetTop;
+      });
+    });
+  }
+
   function cancelPending() {
     currentToken += 1;
+    analysisScrollLock = null;
     if (debounceTimer) {
       clearTimeout(debounceTimer);
       debounceTimer = null;
@@ -734,6 +787,7 @@
       clusters: paramSnapshot.clusters,
       quality: paramSnapshot.quality,
       ignoreTopN: paramSnapshot.ignoreTopN,
+      mergeThreshold: paramSnapshot.mergeThreshold,
       tol: 1e-3,
       maxIter: 40,
       seed: 1,
@@ -754,6 +808,9 @@
   async function runAnalysis(image: SelectedImage, paramSnapshot: AnalysisParams) {
     currentToken += 1;
     const token = currentToken;
+    if (analysisScrollLock) {
+      analysisScrollLock.token = token;
+    }
     setAnalysisPending();
     spinnerVisible = false;
     if (spinnerTimer) {
@@ -778,6 +835,7 @@
       }
       recordDevEvent({ computeVariant: response.variant }, 'analysis');
       setAnalysisSuccess(response, image.id);
+      restoreAnalysisScroll(token);
     } catch (err) {
       if (token !== currentToken) {
         return;
@@ -786,6 +844,7 @@
       console.error('[home] analysis failed', err);
       const message = mapErrorToMessage(err);
       setAnalysisError(message);
+      restoreAnalysisScroll(token);
     } finally {
       if (token === currentToken) {
         if (spinnerTimer) {
@@ -1151,22 +1210,29 @@
             <header class="analysis-header">
               <div>
                 <h2>Polar Chart</h2>
-                <span>Hue · Chroma</span>
+                <span>{$params.polarMode === 'oklch' ? 'Hue · Chroma' : 'Hue · Saturation'}</span>
               </div>
               <div class="toggle-group">
                 <button
                   type="button"
-                  class:active={!$params.useHslPolar}
-                  onclick={() => ($params.useHslPolar = false)}
+                  class:active={$params.polarMode === 'oklch'}
+                  onclick={() => ($params.polarMode = 'oklch')}
                 >
                   OKLCH
                 </button>
                 <button
                   type="button"
-                  class:active={$params.useHslPolar}
-                  onclick={() => ($params.useHslPolar = true)}
+                  class:active={$params.polarMode === 'okhsv'}
+                  onclick={() => ($params.polarMode = 'okhsv')}
                 >
-                  HSL
+                  OKHSV
+                </button>
+                <button
+                  type="button"
+                  class:active={$params.polarMode === 'hsv'}
+                  onclick={() => ($params.polarMode = 'hsv')}
+                >
+                  HSV
                 </button>
               </div>
             </header>
@@ -1360,6 +1426,20 @@
           max="100"
           step="1"
           bind:value={$params.ignoreTopN}
+          onpointerdown={handleScrubStart}
+          onpointerup={handleScrubEnd}
+          onpointercancel={handleScrubEnd}
+          onblur={handleScrubEnd}
+        />
+      </label>
+      <label>
+        <span>Color merge threshold (ΔE OKLab): <strong>{$params.mergeThreshold.toFixed(2)}</strong></span>
+        <input
+          type="range"
+          min="0"
+          max="0.1"
+          step="0.01"
+          bind:value={$params.mergeThreshold}
           onpointerdown={handleScrubStart}
           onpointerup={handleScrubEnd}
           onpointercancel={handleScrubEnd}

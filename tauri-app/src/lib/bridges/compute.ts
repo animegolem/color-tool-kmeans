@@ -9,6 +9,7 @@ const DEFAULT_MAX_SAMPLES = 300_000;
 const DEFAULT_SEED = 1;
 const DEFAULT_QUALITY = 2;
 const DEFAULT_IGNORE_TOP_N = 0;
+const DEFAULT_MERGE_THRESHOLD = 0;
 
 export interface AnalyzeOptions extends AnalysisParams {
   tol?: number;
@@ -196,6 +197,7 @@ function createTauriComputeBridge(): ComputeBridge | null {
         k: params.clusters,
         quality: params.quality ?? DEFAULT_QUALITY,
         ignoreTopN: params.ignoreTopN ?? DEFAULT_IGNORE_TOP_N,
+        mergeThreshold: params.mergeThreshold ?? DEFAULT_MERGE_THRESHOLD,
         minLum: 0,
         tol: params.tol ?? DEFAULT_TOLERANCE,
         maxIter: params.maxIter ?? DEFAULT_MAX_ITER,

@@ -28,6 +28,8 @@ struct AnalyzeRequest {
     quality: Option<i8>,
     #[serde(default, alias = "ignoreTopN", alias = "ignore_top_n")]
     ignore_top_n: usize,
+    #[serde(default, alias = "mergeThreshold", alias = "merge_threshold")]
+    merge_threshold: f32,
     #[serde(default, alias = "min_lum")]
     min_lum: u8,
     #[serde(default = "default_tol")]
@@ -54,6 +56,81 @@ fn default_max_samples() -> usize {
 }
 fn default_value_levels() -> usize {
     3
+}
+
+#[derive(Debug, Clone, Copy)]
+struct RawCluster {
+    centroid: [f32; 3],
+    count: usize,
+}
+
+fn merge_clusters_by_threshold(clusters: Vec<RawCluster>, threshold: f32) -> Vec<RawCluster> {
+    let count = clusters.len();
+    if count < 2 || threshold <= 0.0 {
+        return clusters;
+    }
+    let threshold_sq = threshold * threshold;
+    let mut parents: Vec<usize> = (0..count).collect();
+
+    fn find_root(parents: &mut [usize], node: usize) -> usize {
+        if parents[node] != node {
+            let root = find_root(parents, parents[node]);
+            parents[node] = root;
+        }
+        parents[node]
+    }
+
+    fn union(parents: &mut [usize], a: usize, b: usize) {
+        let root_a = find_root(parents, a);
+        let root_b = find_root(parents, b);
+        if root_a != root_b {
+            parents[root_b] = root_a;
+        }
+    }
+
+    for i in 0..count {
+        let ci = clusters[i].centroid;
+        for j in (i + 1)..count {
+            let cj = clusters[j].centroid;
+            let dx = ci[0] - cj[0];
+            let dy = ci[1] - cj[1];
+            let dz = ci[2] - cj[2];
+            let dist_sq = dx * dx + dy * dy + dz * dz;
+            if dist_sq <= threshold_sq {
+                union(&mut parents, i, j);
+            }
+        }
+    }
+
+    let mut sums = vec![[0.0f32; 3]; count];
+    let mut totals = vec![0usize; count];
+    for idx in 0..count {
+        let root = find_root(&mut parents, idx);
+        let cluster = clusters[idx];
+        totals[root] += cluster.count;
+        let weight = cluster.count as f32;
+        sums[root][0] += cluster.centroid[0] * weight;
+        sums[root][1] += cluster.centroid[1] * weight;
+        sums[root][2] += cluster.centroid[2] * weight;
+    }
+
+    let mut merged = Vec::with_capacity(count);
+    for idx in 0..count {
+        let total = totals[idx];
+        if total == 0 {
+            continue;
+        }
+        let inv = 1.0 / (total as f32);
+        let centroid = [
+            sums[idx][0] * inv,
+            sums[idx][1] * inv,
+            sums[idx][2] * inv,
+        ];
+        merged.push(RawCluster { centroid, count: total });
+    }
+
+    merged.sort_by(|a, b| b.count.cmp(&a.count));
+    merged
 }
 
 #[derive(Debug, Serialize, Clone, Copy)]
@@ -354,8 +431,8 @@ async fn analyze_image(req: AnalyzeRequest, _app: AppHandle) -> Result<AnalyzeRe
     let result = run_kmeans(&dataset, &cfg);
     let duration_ms = start.elapsed().as_secs_f64() * 1000.0;
 
-    // 4) Build clusters; convert centroid to RGB and HSV
-    let mut clusters: Vec<ClusterOut> = result
+    // 4) Build clusters; apply merge threshold; convert centroid to RGB and HSV
+    let mut raw_clusters: Vec<RawCluster> = result
         .centroids
         .iter()
         .zip(result.counts.iter())
@@ -363,24 +440,46 @@ async fn analyze_image(req: AnalyzeRequest, _app: AppHandle) -> Result<AnalyzeRe
             if count == 0 {
                 return None;
             }
-            let rgb_u8 = color::oklab_to_srgb8_gamut_mapped(*centroid);
+            Some(RawCluster {
+                centroid: *centroid,
+                count,
+            })
+        })
+        .collect();
+    let merge_threshold = req.merge_threshold.clamp(0.0, 0.2);
+    if merge_threshold > 0.0 {
+        let before_count = raw_clusters.len();
+        raw_clusters = merge_clusters_by_threshold(raw_clusters, merge_threshold);
+        let after_count = raw_clusters.len();
+        println!(
+            "[analyze_image] merge_threshold={:.3} clusters={} -> {}",
+            merge_threshold, before_count, after_count
+        );
+    } else {
+        raw_clusters.sort_by(|a, b| b.count.cmp(&a.count));
+    }
+
+    let mut clusters: Vec<ClusterOut> = raw_clusters
+        .into_iter()
+        .map(|cluster| {
+            let rgb_u8 = color::oklab_to_srgb8_gamut_mapped(cluster.centroid);
             let rgb = RgbValue {
                 r: rgb_u8[0],
                 g: rgb_u8[1],
                 b: rgb_u8[2],
             };
-            let oklab = *centroid;
-            let oklch = color::oklab_to_oklch(*centroid);
+            let oklab = cluster.centroid;
+            let oklch = color::oklab_to_oklch(cluster.centroid);
             let hsv = color::rgb8_to_hsv(rgb_u8);
-            Some(ClusterOut {
-                count,
-                share: (count as f64) / (samples.sampled_pixels as f64),
-                centroid_space: *centroid,
+            ClusterOut {
+                count: cluster.count,
+                share: (cluster.count as f64) / (samples.sampled_pixels as f64),
+                centroid_space: cluster.centroid,
                 oklab,
                 oklch,
                 rgb,
                 hsv,
-            })
+            }
         })
         .collect();
     clusters.sort_by(|a, b| b.count.cmp(&a.count));
@@ -389,12 +488,18 @@ async fn analyze_image(req: AnalyzeRequest, _app: AppHandle) -> Result<AnalyzeRe
         clusters = clusters.into_iter().skip(ignore_top_n).collect();
     }
 
+    let variant = if merge_threshold > 0.0 {
+        "inhouse+merge"
+    } else {
+        "inhouse"
+    };
+
     Ok(AnalyzeResponse {
         clusters,
         iterations: result.iterations,
         duration_ms,
         total_samples: samples.sampled_pixels,
-        variant: "inhouse".into(),
+        variant: variant.into(),
     })
 }
 
@@ -683,4 +788,84 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_pattern_path(name: &str) -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("test-patterns")
+            .join(name)
+    }
+
+    fn run_merge_on(path: PathBuf, threshold: f32) -> (usize, usize) {
+        assert!(path.exists(), "missing test pattern: {:?}", path);
+        let params = SampleParams {
+            path,
+            stride: 2,
+            min_lum: 0,
+            max_samples: 120_000,
+            max_dimension: Some(512),
+            seed: 7,
+        };
+        let samples = prepare_samples(&params).expect("samples");
+        let dataset: Vec<[f32; 3]> = if let Some(lab) = &samples.samples_oklab {
+            lab.clone()
+        } else {
+            samples
+                .samples
+                .iter()
+                .map(|&rgb| color::rgb8_to_oklab(rgb))
+                .collect()
+        };
+        let k = 12.min(dataset.len().max(1));
+        let cfg = KMeansConfig {
+            k,
+            max_iters: 40,
+            tol: 1e-3,
+            seed: 1,
+            warm_start: None,
+            mini_batch: None,
+        };
+        let result = run_kmeans(&dataset, &cfg);
+        let raw_clusters: Vec<RawCluster> = result
+            .centroids
+            .iter()
+            .zip(result.counts.iter())
+            .filter_map(|(centroid, &count)| {
+                if count == 0 {
+                    return None;
+                }
+                Some(RawCluster {
+                    centroid: *centroid,
+                    count,
+                })
+            })
+            .collect();
+        let before = raw_clusters.len();
+        let merged = merge_clusters_by_threshold(raw_clusters, threshold);
+        let after = merged.len();
+        println!("[merge-test] {:?} before={} after={}", params.path, before, after);
+        (before, after)
+    }
+
+    #[test]
+    fn merge_threshold_on_grey_pattern() {
+        let (before, after) = run_merge_on(test_pattern_path("grey.gif"), 0.1);
+        assert!(before >= 1);
+        assert!(after >= 1);
+        assert!(after <= before);
+    }
+
+    #[test]
+    fn merge_threshold_on_hsl_lightness_pattern() {
+        let (before, after) = run_merge_on(test_pattern_path("hsl_ligthness.png"), 0.06);
+        assert!(before >= 1);
+        assert!(after >= 1);
+        assert!(after <= before);
+    }
 }

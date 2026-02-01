@@ -50,7 +50,7 @@
         symbolScale: paramSnapshot.symbolScale,
         showAxisLabels: paramSnapshot.showAxisLabels,
         showStroke: paramSnapshot.showClusterOutline,
-        useHsl: paramSnapshot.useHslPolar
+        mode: paramSnapshot.polarMode
       });
       const blob = new Blob([svg], { type: 'image/svg+xml' });
       const bridge = await getFsBridge();
@@ -70,7 +70,7 @@
         symbolScale: paramSnapshot.symbolScale,
         showAxisLabels: paramSnapshot.showAxisLabels,
         showStroke: paramSnapshot.showClusterOutline,
-        useHsl: paramSnapshot.useHslPolar
+        mode: paramSnapshot.polarMode
       });
       const blob = await svgToPngBlob(svg, width, height, Math.max(1, Math.min(4, graphScale)));
       const bridge = await getFsBridge();

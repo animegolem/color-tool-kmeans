@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use image::imageops::FilterType;
-use image::{DynamicImage, ImageReader, RgbImage};
+use image::{DynamicImage, ImageReader, RgbaImage};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use serde::Serialize;
@@ -103,9 +103,9 @@ pub fn prepare_samples(params: &SampleParams) -> Result<SampleResult> {
         .with_guessed_format()?
         .decode()?;
 
-    let rgb = to_rgb_with_downscale(img, params.max_dimension);
-    let (width, height) = rgb.dimensions();
-    let samples = sample_pixels(&rgb, params);
+    let rgba = to_rgba_with_downscale(img, params.max_dimension);
+    let (width, height) = rgba.dimensions();
+    let samples = sample_pixels(&rgba, params);
     let samples_oklab = samples
         .iter()
         .map(|rgb| crate::color::rgb8_to_oklab(*rgb))
@@ -123,22 +123,22 @@ pub fn prepare_samples(params: &SampleParams) -> Result<SampleResult> {
     })
 }
 
-fn to_rgb_with_downscale(img: DynamicImage, limit: Option<u32>) -> RgbImage {
-    let rgb = img.to_rgb8();
+fn to_rgba_with_downscale(img: DynamicImage, limit: Option<u32>) -> RgbaImage {
+    let rgba = img.to_rgba8();
     if let Some(max_dim) = limit {
-        let (w, h) = rgb.dimensions();
+        let (w, h) = rgba.dimensions();
         let current_max = w.max(h);
         if current_max > max_dim {
             let scale = max_dim as f32 / current_max as f32;
             let dst_w = ((w as f32) * scale).round().max(1.0) as u32;
             let dst_h = ((h as f32) * scale).round().max(1.0) as u32;
-            return image::imageops::resize(&rgb, dst_w, dst_h, FilterType::Lanczos3);
+            return image::imageops::resize(&rgba, dst_w, dst_h, FilterType::Lanczos3);
         }
     }
-    rgb
+    rgba
 }
 
-fn sample_pixels(img: &RgbImage, params: &SampleParams) -> Vec<[u8; 3]> {
+fn sample_pixels(img: &RgbaImage, params: &SampleParams) -> Vec<[u8; 3]> {
     let stride = params.stride.max(1) as usize;
     let min_lum = params.min_lum as f32 / 255.0;
     let max_samples = if params.max_samples == 0 {
@@ -157,7 +157,10 @@ fn sample_pixels(img: &RgbImage, params: &SampleParams) -> Vec<[u8; 3]> {
     for y in (0..height as usize).step_by(stride) {
         for x in (0..width as usize).step_by(stride) {
             let pixel = img.get_pixel(x as u32, y as u32);
-            let [r, g, b] = pixel.0;
+            let [r, g, b, a] = pixel.0;
+            if a == 0 {
+                continue;
+            }
             if min_lum > 0.0 {
                 let linear = crate::color::srgb8_to_linear([r, g, b]);
                 let lum = LUMA_R * linear[0] + LUMA_G * linear[1] + LUMA_B * linear[2];

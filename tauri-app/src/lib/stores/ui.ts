@@ -7,10 +7,11 @@ export interface AnalysisParams {
   clusters: number;
   quality: number;
   ignoreTopN: number;
+  mergeThreshold: number;
   symbolScale: number;
   showClusterOutline: boolean;
   showAxisLabels: boolean;
-  useHslPolar: boolean;
+  polarMode: 'oklch' | 'okhsv' | 'hsv';
   hueLightnessSizeMode: 'frequency' | 'chroma';
   histogramSort: 'frequency' | 'hue' | 'lightness';
 }
@@ -51,10 +52,11 @@ export const params = writable<AnalysisParams>({
   clusters: 25,
   quality: 2,
   ignoreTopN: 0,
+  mergeThreshold: 0.04,
   symbolScale: 1,
   showClusterOutline: false,
   showAxisLabels: true,
-  useHslPolar: true,
+  polarMode: 'hsv',
   hueLightnessSizeMode: 'chroma',
   histogramSort: 'frequency'
 });
