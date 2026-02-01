@@ -47,3 +47,4 @@
 
 ## Agent-Specific Notes
 - Respect this document and any nested AGENTS.md. Keep changes minimal and focused. When adding assets or planning docs, place them in the directories above and keep the repo fully offline at runtime.
+- Use `RAG/INDEX.md` as the single entry point for current status (auto-generated via pre-commit).

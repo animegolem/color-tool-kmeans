@@ -6,12 +6,12 @@ tags:
   - testing
   - color-science
   - fixtures
-kanban_status: planned
+kanban_status: completed
 depends_on: AI-EPIC-018
 parent_epic: [[AI-EPIC-018-color-math-test-harness]]
 confidence_score: 0.53
 date_created: 2026-02-01
-date_completed:
+date_completed: 2026-02-01
 ---
 
 # AI-IMP-091-gold-standard-fixtures
@@ -41,12 +41,12 @@ We need external, authoritative fixtures so conversions are tested against a ref
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Define fixture schema (RGB input + OKLab/OKLCH/HSV outputs).
-- [ ] Generate fixture JSON using external reference math.
-- [ ] Add Rust test that loads fixture JSON and validates outputs with tolerance.
-- [ ] Add TS test that loads the same fixture JSON and validates outputs.
-- [ ] Document tolerance values and reference source in test header.
-- [ ] Ensure fixtures are deterministic and committed (offline-friendly).
+- [x] Define fixture schema (RGB input + OKLab/OKLCH/HSV outputs).
+- [x] Generate fixture JSON using external reference math.
+- [x] Add Rust test that loads fixture JSON and validates outputs with tolerance.
+- [x] Add TS test that loads the same fixture JSON and validates outputs.
+- [x] Document tolerance values and reference source in test header.
+- [x] Ensure fixtures are deterministic and committed (offline-friendly).
 
 ### Acceptance Criteria
 **Scenario:** Gold-standard validation.
@@ -55,4 +55,5 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 **THEN** all values match within the documented tolerance.
 
 ### Issues Encountered
-{LOC|20}
+- Fixture generation required a temporary Python venv with `colour-science`; generated JSON committed to repo.
+- Hue comparisons are skipped for near‑zero chroma/saturation because hue is unstable at grayscale.

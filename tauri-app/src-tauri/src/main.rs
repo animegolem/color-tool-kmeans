@@ -88,10 +88,10 @@ fn merge_clusters_by_threshold(clusters: Vec<RawCluster>, threshold: f32) -> Vec
         }
     }
 
-    for i in 0..count {
-        let ci = clusters[i].centroid;
-        for j in (i + 1)..count {
-            let cj = clusters[j].centroid;
+    for (i, cluster_i) in clusters.iter().enumerate() {
+        let ci = cluster_i.centroid;
+        for (j, cluster_j) in clusters.iter().enumerate().skip(i + 1) {
+            let cj = cluster_j.centroid;
             let dx = ci[0] - cj[0];
             let dy = ci[1] - cj[1];
             let dz = ci[2] - cj[2];
@@ -104,9 +104,8 @@ fn merge_clusters_by_threshold(clusters: Vec<RawCluster>, threshold: f32) -> Vec
 
     let mut sums = vec![[0.0f32; 3]; count];
     let mut totals = vec![0usize; count];
-    for idx in 0..count {
+    for (idx, cluster) in clusters.iter().enumerate() {
         let root = find_root(&mut parents, idx);
-        let cluster = clusters[idx];
         totals[root] += cluster.count;
         let weight = cluster.count as f32;
         sums[root][0] += cluster.centroid[0] * weight;
@@ -121,12 +120,11 @@ fn merge_clusters_by_threshold(clusters: Vec<RawCluster>, threshold: f32) -> Vec
             continue;
         }
         let inv = 1.0 / (total as f32);
-        let centroid = [
-            sums[idx][0] * inv,
-            sums[idx][1] * inv,
-            sums[idx][2] * inv,
-        ];
-        merged.push(RawCluster { centroid, count: total });
+        let centroid = [sums[idx][0] * inv, sums[idx][1] * inv, sums[idx][2] * inv];
+        merged.push(RawCluster {
+            centroid,
+            count: total,
+        });
     }
 
     merged.sort_by(|a, b| b.count.cmp(&a.count));
@@ -849,7 +847,10 @@ mod tests {
         let before = raw_clusters.len();
         let merged = merge_clusters_by_threshold(raw_clusters, threshold);
         let after = merged.len();
-        println!("[merge-test] {:?} before={} after={}", params.path, before, after);
+        println!(
+            "[merge-test] {:?} before={} after={}",
+            params.path, before, after
+        );
         (before, after)
     }
 

@@ -774,10 +774,10 @@ fn write_explain_report(
     }
 
     let mut jaccard = vec![vec![0.0f64; rust_len]; js_len];
-    for i in 0..js_len {
-        for j in 0..rust_len {
+    for (i, row_total) in row_totals.iter().enumerate().take(js_len) {
+        for (j, col_total) in col_totals.iter().enumerate().take(rust_len) {
             let intersection = confusion[i][j] as f64;
-            let union = (row_totals[i] + col_totals[j] - confusion[i][j]) as f64;
+            let union = (row_total + col_total - confusion[i][j]) as f64;
             jaccard[i][j] = if union <= 0.0 {
                 0.0
             } else {
