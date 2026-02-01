@@ -10,8 +10,8 @@ tags:
 kanban_status: planned
 depends_on: []
 confidence_score: 0.86
-created_date: 2025-09-21
-close_date:
+date_created: 2025-09-21
+date_completed:
 --- 
 
 # AI-IMP-010-ci_di_and_precommit

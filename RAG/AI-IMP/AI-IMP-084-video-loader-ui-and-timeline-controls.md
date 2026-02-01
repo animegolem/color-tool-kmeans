@@ -8,9 +8,10 @@ tags:
   - svelte
 kanban_status: completed
 depends_on: AI-EPIC-016
+parent_epic: [[AI-EPIC-016-video-input-and-frame-analysis]]
 confidence_score: 0.5
-created_date: 2026-01-30
-close_date: 2026-01-30
+date_created: 2026-01-30
+date_completed: 2026-01-30
 ---
 
 # AI-IMP-084-video-loader-ui-and-timeline-controls

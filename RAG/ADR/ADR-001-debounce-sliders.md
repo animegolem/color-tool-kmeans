@@ -1,11 +1,12 @@
 ---
-node_id: ADR-001
+node_id:
 tags:
-  - performance
-  - javascript
+  -
 status: draft
-depends_on: none
-created_date: 2025-09-20
+depends_on:
+created_date: {{date}}
+last_modified: {{date}}
+related_files: []
 ---
 
 # ADR-001-debounce-sliders

@@ -9,9 +9,10 @@ tags:
   - okhsv
 kanban_status: completed
 depends_on: AI-EPIC-017
+parent_epic: [[AI-EPIC-017-color-merge-threshold-and-visualization-polish]]
 confidence_score: 0.58
-created_date: 2026-01-31
-close_date: 2026-02-01
+date_created: 2026-01-31
+date_completed: 2026-02-01
 ---
 
 # AI-IMP-088-polar-graph-model-updates

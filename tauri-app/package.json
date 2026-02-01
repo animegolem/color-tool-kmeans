@@ -26,6 +26,7 @@
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.9.0",
     "eslint-plugin-svelte": "^2.46.1",
+    "fast-check": "^3.18.0",
     "prettier": "^3.3.2",
     "prettier-plugin-svelte": "^3.4.0",
     "svelte-check": "^4.3.2",

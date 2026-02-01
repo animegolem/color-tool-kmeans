@@ -8,8 +8,8 @@ kanban_status: completed
 depends_on:
   - AI-EPIC-008
 confidence_score: 0.7
-created_date: 2026-01-19
-close_date:
+date_created: 2026-01-19
+date_completed:
 ---
 
 # AI-IMP-070-oklab-oklch-conversions-and-gamut-mapping

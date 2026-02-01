@@ -9,7 +9,7 @@ tags:
   - visualization
 date_created: 2026-01-19
 date_completed: 2026-01-21
-kanban-status: completed
+kanban_status: completed
 AI_IMP_spawned: 
 ---
 

@@ -10,8 +10,8 @@ depends_on:
   - AI-EPIC-008
   - AI-IMP-070
 confidence_score: 0.65
-created_date: 2026-01-19
-close_date:
+date_created: 2026-01-19
+date_completed:
 ---
 
 # AI-IMP-071-quality-sampling-and-final-assignment

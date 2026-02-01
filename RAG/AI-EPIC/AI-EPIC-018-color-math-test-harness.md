@@ -11,7 +11,7 @@ tags:
   - kmeans
 date_created: 2026-02-01
 date_completed:
-kanban-status: planned
+kanban_status: planned
 AI_IMP_spawned: AI-IMP-090, AI-IMP-091, AI-IMP-092
 ---
 

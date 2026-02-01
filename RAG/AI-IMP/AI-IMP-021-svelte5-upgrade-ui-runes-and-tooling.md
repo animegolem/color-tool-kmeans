@@ -9,9 +9,10 @@ tags:
   - Tooling
 kanban_status: completed
 depends_on: [AI-EPIC-002-tauri_rust_compute_pivot, AI-IMP-011-tauri-svelte-scaffold]
+parent_epic: [[AI-EPIC-002]]
 confidence_score: 0.88
-created_date: 2025-09-21
-close_date: 2025-09-25
+date_created: 2025-09-21
+date_completed: 2025-09-25
 ---
 
 # AI-IMP-021-svelte5-upgrade-ui-runes-and-tooling

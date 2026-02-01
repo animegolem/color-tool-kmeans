@@ -11,8 +11,8 @@ depends_on:
   - AI-IMP-070
   - AI-IMP-071
 confidence_score: 0.55
-created_date: 2026-01-19
-close_date: 2026-01-19
+date_created: 2026-01-19
+date_completed: 2026-01-19
 ---
 
 # AI-IMP-073-cli-bench-alignment-or-deprecation

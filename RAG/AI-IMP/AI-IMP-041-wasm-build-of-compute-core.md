@@ -9,9 +9,10 @@ tags:
   - Epic-004
 kanban_status: completed
 depends_on: [AI-EPIC-004, AI-IMP-013, AI-IMP-014, AI-IMP-031, AI-IMP-033]
+parent_epic: [[AI-EPIC-004]]
 confidence_score: 0.85
-created_date: 2025-09-25
-close_date: 2025-09-26
+date_created: 2025-09-25
+date_completed: 2025-09-26
 ---
 
 # AI-IMP-041-wasm-build-of-compute-core

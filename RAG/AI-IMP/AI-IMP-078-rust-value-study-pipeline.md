@@ -9,8 +9,8 @@ kanban_status: completed
 depends_on:
   - AI-EPIC-010
 confidence_score: 0.56
-created_date: 2026-01-21
-close_date: 2026-01-21
+date_created: 2026-01-21
+date_completed: 2026-01-21
 ---
 
 # AI-IMP-078-rust-value-study-pipeline

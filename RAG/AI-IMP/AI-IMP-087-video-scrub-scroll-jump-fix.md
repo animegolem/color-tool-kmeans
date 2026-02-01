@@ -7,9 +7,10 @@ tags:
   - ui
 kanban_status: completed
 depends_on: AI-EPIC-017
+parent_epic: [[AI-EPIC-017-color-merge-threshold-and-visualization-polish]]
 confidence_score: 0.58
-created_date: 2026-01-31
-close_date: 2026-01-31
+date_created: 2026-01-31
+date_completed: 2026-01-31
 ---
 
 # AI-IMP-087-video-scrub-scroll-jump-fix

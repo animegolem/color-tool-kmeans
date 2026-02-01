@@ -8,9 +8,10 @@ tags:
   - Math
 kanban_status: completed
 depends_on: [AI-EPIC-002-tauri_rust_compute_pivot, AI-IMP-012]
+parent_epic: [[AI-EPIC-002]]
 confidence_score: 0.8
-created_date: 2025-09-21
-close_date:
+date_created: 2025-09-21
+date_completed:
 --- 
 
 # AI-IMP-013-rust-color-spaces

@@ -298,14 +298,14 @@ function buildHueChromaLut(points: Array<{ h: number; c: number }>, bins: number
   return lut.map((value) => (value <= 0 ? fallback : value));
 }
 
-function srgbToLinear(value: number): number {
+export function srgbToLinear(value: number): number {
   if (value <= 0.04045) {
     return value / 12.92;
   }
   return Math.pow((value + 0.055) / 1.055, 2.4);
 }
 
-function linearSrgbToOklab(rgb: [number, number, number]): [number, number, number] {
+export function linearSrgbToOklab(rgb: [number, number, number]): [number, number, number] {
   const [r, g, b] = rgb;
   const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
   const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
@@ -320,7 +320,7 @@ function linearSrgbToOklab(rgb: [number, number, number]): [number, number, numb
   ];
 }
 
-function oklabToOklch(lab: [number, number, number]): [number, number, number] {
+export function oklabToOklch(lab: [number, number, number]): [number, number, number] {
   const [l, a, b] = lab;
   const c = Math.sqrt(a * a + b * b);
   let h = Math.atan2(b, a) * (180 / Math.PI);
@@ -328,7 +328,7 @@ function oklabToOklch(lab: [number, number, number]): [number, number, number] {
   return [l, c, h];
 }
 
-function rgbToHsv(rgb: { r: number; g: number; b: number }): [number, number, number] {
+export function rgbToHsv(rgb: { r: number; g: number; b: number }): [number, number, number] {
   const r = rgb.r / 255;
   const g = rgb.g / 255;
   const b = rgb.b / 255;

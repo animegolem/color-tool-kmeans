@@ -9,8 +9,8 @@ depends_on:
   - AI-EPIC-009
   - AI-IMP-072
 confidence_score: 0.55
-created_date: 2026-01-19
-close_date: 2026-01-19
+date_created: 2026-01-19
+date_completed: 2026-01-19
 ---
 
 # AI-IMP-076-export-updates-for-oklch-metadata

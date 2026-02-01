@@ -10,9 +10,10 @@ tags:
   - deprecated
 kanban_status: completed
 depends_on: [AI-EPIC-002, AI-EPIC-003, AI-IMP-012, AI-IMP-013, AI-IMP-014, AI-IMP-031, AI-IMP-032, AI-IMP-033]
+parent_epic: [[AI-EPIC-002]]
 confidence_score: 0.9
-created_date: 2025-09-25
-close_date: 2025-09-25
+date_created: 2025-09-25
+date_completed: 2025-09-25
 --- 
 
 

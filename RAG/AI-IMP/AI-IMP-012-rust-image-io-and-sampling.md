@@ -8,9 +8,10 @@ tags:
   - Sampling
 kanban_status: completed
 depends_on: [AI-EPIC-002-tauri_rust_compute_pivot, AI-IMP-011]
+parent_epic: [[AI-EPIC-002]]
 confidence_score: 0.85
-created_date: 2025-09-21
-close_date: 2025-09-21
+date_created: 2025-09-21
+date_completed: 2025-09-21
 --- 
 
 # AI-IMP-012-rust-image-io-and-sampling

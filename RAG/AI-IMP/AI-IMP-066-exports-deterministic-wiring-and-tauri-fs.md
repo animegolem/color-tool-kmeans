@@ -8,9 +8,10 @@ tags:
   - Epic-007
 kanban_status: planned
 depends_on: [AI-EPIC-007, AI-IMP-051]
+parent_epic: [[AI-EPIC-007-tauri-ui-graphs-exports]]
 confidence_score: 0.86
-created_date: 2025-11-21
-close_date:
+date_created: 2025-11-21
+date_completed:
 ---
 
 

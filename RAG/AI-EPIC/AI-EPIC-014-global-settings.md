@@ -8,7 +8,7 @@ tags:
   - persistence
 date_created: 2026-01-22
 date_completed:
-kanban-status: planned
+kanban_status: planned
 AI_IMP_spawned:
 ---
 

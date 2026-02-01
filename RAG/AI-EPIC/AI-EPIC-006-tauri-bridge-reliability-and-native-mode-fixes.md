@@ -10,7 +10,7 @@ tags:
   - critical-bug
 date_created: 2025-10-08
 date_completed: 2026-01-21
-kanban-status: completed
+kanban_status: completed
 AI_IMP_spawned:
 ---
 

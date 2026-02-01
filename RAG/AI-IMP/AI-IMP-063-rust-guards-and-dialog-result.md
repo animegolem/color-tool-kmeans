@@ -10,8 +10,8 @@ depends_on:
   - ADR-002
   - AI-EPIC-006
 confidence_score: 0.82
-created_date: 2025-10-10
-close_date:
+date_created: 2025-10-10
+date_completed:
 ---
 
 ## Rust Guardrails: Path Validation and Dialog Result

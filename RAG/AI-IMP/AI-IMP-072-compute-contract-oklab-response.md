@@ -11,8 +11,8 @@ depends_on:
   - AI-IMP-070
   - AI-IMP-071
 confidence_score: 0.6
-created_date: 2026-01-19
-close_date:
+date_created: 2026-01-19
+date_completed:
 ---
 
 # AI-IMP-072-compute-contract-oklab-response

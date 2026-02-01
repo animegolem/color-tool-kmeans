@@ -11,8 +11,8 @@ depends_on:
   - AI-EPIC-006
   - AI-EPIC-007
 confidence_score: 0.85
-created_date: 2025-10-10
-close_date: 2025-11-20
+date_created: 2025-10-10
+date_completed: 2025-11-20
 ---
 
 ## HomeView: Error Propagation, Native Badge, and Dev Detection Banner

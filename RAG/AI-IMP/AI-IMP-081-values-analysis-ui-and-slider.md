@@ -10,8 +10,8 @@ depends_on:
   - AI-EPIC-015
   - AI-IMP-080
 confidence_score: 0.49
-created_date: 2026-01-22
-close_date: 2026-01-22
+date_created: 2026-01-22
+date_completed: 2026-01-22
 ---
 
 # AI-IMP-081-values-analysis-ui-and-slider

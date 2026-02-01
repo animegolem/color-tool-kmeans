@@ -9,7 +9,7 @@ tags:
   - ui
 date_created: 2026-01-22
 date_completed: 2026-01-22
-kanban-status: completed
+kanban_status: completed
 depends_on:
   - AI-EPIC-010
 AI_IMP_spawned:

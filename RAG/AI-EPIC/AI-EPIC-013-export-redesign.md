@@ -8,7 +8,7 @@ tags:
   - multi-image
 date_created: 2026-01-22
 date_completed:
-kanban-status: planned
+kanban_status: planned
 depends_on:
   - AI-EPIC-011
 AI_IMP_spawned:

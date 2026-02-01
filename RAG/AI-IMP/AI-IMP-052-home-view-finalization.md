@@ -8,9 +8,10 @@ tags:
   - Epic-005
 kanban_status: planned
 depends_on: [AI-EPIC-005, AI-IMP-051]
+parent_epic: [[AI-EPIC-005]]
 confidence_score: 0.85
-created_date: 2025-09-29
-close_date:
+date_created: 2025-09-29
+date_completed:
 ---
 
 # AI-IMP-052-home-view-finalization

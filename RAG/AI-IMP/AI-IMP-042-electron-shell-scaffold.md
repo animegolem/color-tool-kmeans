@@ -9,9 +9,10 @@ tags:
   - Epic-004
 kanban_status: completed
 depends_on: [AI-EPIC-004]
+parent_epic: [[AI-EPIC-004]]
 confidence_score: 0.84
-created_date: 2025-09-25
-close_date: 2025-09-26
+date_created: 2025-09-25
+date_completed: 2025-09-26
 ---
 
 # AI-IMP-042-electron-shell-scaffold

@@ -12,8 +12,8 @@ tags:
   - gamut
   - kmeans
 date_created: 2026-01-31
-date_completed:
-kanban-status: planned
+date_completed: 2026-02-01
+kanban_status: completed
 AI_IMP_spawned: AI-IMP-086, AI-IMP-087, AI-IMP-088, AI-IMP-089
 ---
 
@@ -41,20 +41,20 @@ Artists need a way to collapse overly granular k-means results into fewer percep
 ## Requirements
 
 ### Functional Requirements
-- [ ] FR-1: The system shall expose a Color Merge Threshold slider on the Colors tab.
-- [ ] FR-2: The analysis pipeline shall merge centroids within the threshold using Oklab distance and weighted averages.
-- [ ] FR-3: The UI shall reflect merged clusters in all graphs and exports.
-- [ ] FR-4: Video scrubbing shall preserve current scroll position during frame refresh.
-- [ ] FR-5: The OKLCH polar view shall render a gamut-bounded shape derived from RGB cube edges.
-- [ ] FR-6: The HSL polar mode shall be replaced with HSV, and a separate OKHSV polar option added.
-- [ ] FR-7: Axis labels shall update correctly for each polar mode; the polar circle shall fill the card more effectively without changing data mapping; bubble scaling shall not resize the chart radius.
-- [ ] FR-8: A global gamut overlay toggle shall apply to all polar charts and Hue × Lightness.
+- [x] FR-1: The system shall expose a Color Merge Threshold slider on the Colors tab.
+- [x] FR-2: The analysis pipeline shall merge centroids within the threshold using Oklab distance and weighted averages.
+- [x] FR-3: The UI shall reflect merged clusters in all graphs and exports.
+- [x] FR-4: Video scrubbing shall preserve current scroll position during frame refresh.
+- [x] FR-5: The OKLCH polar view shall render a gamut-bounded shape derived from RGB cube edges.
+- [x] FR-6: The HSL polar mode shall be replaced with HSV, and a separate OKHSV polar option added.
+- [x] FR-7: Axis labels shall update correctly for each polar mode; the polar circle shall fill the card more effectively without changing data mapping; bubble scaling shall not resize the chart radius.
+- [x] FR-8: A global gamut overlay toggle shall apply to all polar charts and Hue × Lightness.
 
 ### Non-Functional Requirements
-- [ ] NFR-1: Merge threshold computation must be deterministic for identical inputs.
-- [ ] NFR-2: Merge and overlay rendering must keep UI responsive for K up to 2000.
-- [ ] NFR-3: Gamut overlays must be low-opacity and not occlude cluster data.
-- [ ] NFR-4: All changes must remain fully offline and compatible with current export pipeline.
+- [x] NFR-1: Merge threshold computation must be deterministic for identical inputs.
+- [x] NFR-2: Merge and overlay rendering must keep UI responsive for K up to 2000.
+- [x] NFR-3: Gamut overlays must be low-opacity and not occlude cluster data.
+- [x] NFR-4: All changes must remain fully offline and compatible with current export pipeline.
 
 ## Implementation Breakdown
 
@@ -65,4 +65,7 @@ Artists need a way to collapse overly granular k-means results into fewer percep
 - AI-IMP-089: Global gamut overlay toggle for polar + Hue × Lightness
 
 ### Completed Tickets
-- None
+- AI-IMP-086: Color merge threshold (Oklab) post-process
+- AI-IMP-087: Video scrub scroll-jump fix
+- AI-IMP-088: Polar graph model updates (OKLCH gamut shape + OKHSV + HSV swap)
+- AI-IMP-089: Global gamut overlay toggle for polar + Hue × Lightness

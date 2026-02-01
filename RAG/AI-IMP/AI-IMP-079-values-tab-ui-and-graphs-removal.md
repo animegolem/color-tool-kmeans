@@ -10,8 +10,8 @@ depends_on:
   - AI-EPIC-010
   - AI-IMP-078
 confidence_score: 0.53
-created_date: 2026-01-21
-close_date: 2026-01-21
+date_created: 2026-01-21
+date_completed: 2026-01-21
 ---
 
 # AI-IMP-079-values-tab-ui-and-graphs-removal

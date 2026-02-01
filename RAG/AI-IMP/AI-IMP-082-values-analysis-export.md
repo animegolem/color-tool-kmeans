@@ -11,8 +11,8 @@ depends_on:
   - AI-IMP-080
   - AI-IMP-081
 confidence_score: 0.47
-created_date: 2026-01-22
-close_date: 2026-01-22
+date_created: 2026-01-22
+date_completed: 2026-01-22
 ---
 
 # AI-IMP-082-values-analysis-export
