@@ -6,11 +6,11 @@ tags:
   - ui
   - gamut
   - oklab
-kanban_status: planned
+kanban_status: completed
 depends_on: AI-EPIC-017
 confidence_score: 0.55
 created_date: 2026-01-31
-close_date:
+close_date: 2026-02-01
 ---
 
 # AI-IMP-089-gamut-overlay-toggle
@@ -40,11 +40,11 @@ Introduce a global toggle that overlays the valid gamut boundary for all polar c
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add global `showGamutOverlay` state and UI toggle.
-- [ ] Render gamut overlay in polar charts when enabled.
-- [ ] Render OKLCH gamut overlay in Hue × Lightness when enabled.
-- [ ] Update Hue × Lightness subtitle to “rendered in OKLCH.”
-- [ ] Validate overlay visibility at typical opacity (e.g., 10–20%).
+- [x] Add global `showGamutOverlay` state and UI toggle.
+- [x] Render gamut overlay in polar charts when enabled.
+- [x] Render OKLCH gamut overlay in Hue × Lightness when enabled.
+- [x] Update Hue × Lightness subtitle to “rendered in OKLCH.”
+- [x] Validate overlay visibility at typical opacity (e.g., 10–20%).
 
 ### Acceptance Criteria
 **Scenario:** User wants to see the valid gamut area.
@@ -53,4 +53,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 **THEN** all polar charts and Hue × Lightness show a low‑opacity gamut overlay.
 
 ### Issues Encountered
-{LOC|20}
+- Overlay sampled from RGB cube edges to keep cost low; if we need fuller coverage, expand sampling density later.

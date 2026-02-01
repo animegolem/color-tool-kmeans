@@ -28,7 +28,8 @@
     clearAnalysisError,
     openZoomOverlay,
     videoState,
-    setVideoState
+    setVideoState,
+    showGamutOverlay
   } from '../stores/ui';
   import { analyzeImage } from '../compute/bridge';
   import { TauriComputeError } from '../bridges/compute';
@@ -168,6 +169,7 @@
       symbolScale: currentParams.symbolScale,
       showAxisLabels: currentParams.showAxisLabels,
       showStroke: currentParams.showClusterOutline,
+      showGamutOverlay: $showGamutOverlay,
       mode: currentParams.polarMode,
       size: 420
     });
@@ -179,6 +181,7 @@
       symbolScale: currentParams.symbolScale,
       showAxisLabels: currentParams.showAxisLabels,
       showStroke: currentParams.showClusterOutline,
+      showGamutOverlay: $showGamutOverlay,
       sizeMode: currentParams.hueLightnessSizeMode,
       width: 420,
       height: 240
@@ -1254,7 +1257,7 @@
             <header class="analysis-header">
               <div>
                 <h2>Hue × Lightness</h2>
-                <span>Hue · Lightness</span>
+                <span>Rendered in OKLCH</span>
               </div>
               <div class="toggle-group">
                 <button
@@ -1467,6 +1470,10 @@
       <label class="choice">
         <input type="checkbox" bind:checked={$params.showAxisLabels} />
         Axis labels
+      </label>
+      <label class="choice">
+        <input type="checkbox" bind:checked={$showGamutOverlay} />
+        Gamut overlay
       </label>
     </div>
   </section>

@@ -7,11 +7,11 @@ tags:
   - polar
   - oklab
   - okhsv
-kanban_status: in_progress
+kanban_status: completed
 depends_on: AI-EPIC-017
 confidence_score: 0.58
 created_date: 2026-01-31
-close_date:
+close_date: 2026-02-01
 ---
 
 # AI-IMP-088-polar-graph-model-updates
@@ -50,7 +50,7 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 - [x] Expand effective radius and adjust padding so the circle fills the frame without changing mapping.
 - [x] Ensure symbolScale only changes bubble size (no radius growth/shrink).
 - [x] Update SVG data attributes for clarity (`data-color-model`).
-- [ ] Validate with a color wheel image and compare expected distribution.
+- [x] Validate with a color wheel image and compare expected distribution.
 
 ### Acceptance Criteria
 **Scenario:** User switches polar modes on the Colors tab.
@@ -63,3 +63,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 
 ### Issues Encountered
 - OKHSV mode currently normalizes OKLCH chroma by per‑hue gamut outline; revisit if we want a full OKHSV formula.
+- Transparency handling fixed in the sampling pipeline so alpha=0 pixels no longer bias polar plots.

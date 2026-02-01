@@ -5,6 +5,7 @@
     analysisResult,
     params,
     selectedFile,
+    showGamutOverlay,
     valueAnalysisLevels,
     valueAnalysisNotanMode,
     setValueAnalysisPending,
@@ -46,10 +47,12 @@
   async function saveCircleGraphSvg() {
     if (!result) return;
     await performSave(async () => {
+      const overlay = get(showGamutOverlay);
       const { svg } = generateCircleGraphSvg(result.clusters, {
         symbolScale: paramSnapshot.symbolScale,
         showAxisLabels: paramSnapshot.showAxisLabels,
         showStroke: paramSnapshot.showClusterOutline,
+        showGamutOverlay: overlay,
         mode: paramSnapshot.polarMode
       });
       const blob = new Blob([svg], { type: 'image/svg+xml' });
@@ -66,10 +69,12 @@
   async function saveCircleGraphPng() {
     if (!result) return;
     await performSave(async () => {
+      const overlay = get(showGamutOverlay);
       const { svg, width, height } = generateCircleGraphSvg(result.clusters, {
         symbolScale: paramSnapshot.symbolScale,
         showAxisLabels: paramSnapshot.showAxisLabels,
         showStroke: paramSnapshot.showClusterOutline,
+        showGamutOverlay: overlay,
         mode: paramSnapshot.polarMode
       });
       const blob = await svgToPngBlob(svg, width, height, Math.max(1, Math.min(4, graphScale)));
