@@ -104,7 +104,7 @@ export function generateCircleGraphSvg(
   svgParts.push(svgGroup(axisGroup));
 
   if (options.showAxisLabels !== false) {
-    const axisLabelRadius = effectiveRadius + 14;
+    const axisLabelRadius = Math.max(0, effectiveRadius - 36);
     const hueText = '<- Hue ->';
     const secondary = mode === 'oklch' ? '<- Chroma ->' : '<- Saturation ->';
     svgParts.push(
