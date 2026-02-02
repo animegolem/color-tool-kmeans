@@ -7,12 +7,12 @@ tags:
   - polar
   - axis
   - labels
-kanban_status: planned
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-019-polar-field-and-merge-stability]]
 confidence_score: 0.72
 date_created: 2026-02-02
-date_completed:
+date_completed: 2026-02-02
 ---
 
 # AI-IMP-094-polar-axis-label-placement
@@ -46,4 +46,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 **THEN** the axis labels remain fully visible and readable.
 
 ### Issues Encountered
-{LOC|20}
+- Labels clipped when placed outside ring; moved inside with fixed inward offset.

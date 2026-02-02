@@ -5,10 +5,10 @@ tags:
   - Implementation
   - UI
   - Preferences
-  - Epic-007
+  - Epic-014
 kanban_status: planned
-depends_on: [AI-EPIC-007]
-parent_epic: [[AI-EPIC-007-tauri-ui-graphs-exports]]
+depends_on: [AI-EPIC-014]
+parent_epic: [[AI-EPIC-014-global-settings]]
 confidence_score: 0.84
 date_created: 2025-11-21
 date_completed:
@@ -71,4 +71,3 @@ AND the UI remains usable without crash or blocking dialogs.
 
 ### Issues Encountered 
 {LOC|20}
-

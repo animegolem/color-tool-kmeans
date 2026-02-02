@@ -22,38 +22,30 @@
 ### [[AI-EPIC-013-export-redesign|EPIC-013: Export redesign]]
 > Current exports are individual artifacts (PNG chart, SVG chart, CSV data). Users need composite exports combining original image with analysis grap...
 
+**IMPs:**
+- [[AI-IMP-066-exports-deterministic-wiring-and-tauri-fs|IMP-066]] - planned
+- [[AI-IMP-068-accessibility-and-keyboard-shortcuts-for-graphs-and-exports|IMP-068]] - planned
+
 ---
 
 ### [[AI-EPIC-014-global-settings|EPIC-014: Global settings]]
 > User preferences (default clusters, quality, save location, add/replace behavior) reset on app restart. Need persistent settings via tauri-plugin-s...
 
----
-
-### [[AI-EPIC-019-polar-field-and-merge-stability|EPIC-019: Polar field and merge stability]]
-> Artists are seeing unstable merge behavior (threshold chaining that collapses many clusters into one), clipped/awkward axis labels in the polar cha...
+**IMPs:**
+- [[AI-IMP-067-preferences-store-and-export-view-persistence|IMP-067]] - planned
 
 ---
 
 ## Anomalies
 
 ### Orphaned IMPs (no epic dependency)
-- [[AI-IMP-010-ci-di-and-precommit|IMP-010]] - planned, no epic dependency found
-- [[AI-IMP-065-circle-graph-renderer-parity-and-font-embedding|IMP-065]] - planned, no epic dependency found
-- [[AI-IMP-085-frame-decode-and-analysis-integration|IMP-085]] - in-progress, no epic dependency found
-- [[AI-IMP-093-merge-threshold-stability|IMP-093]] - planned, no epic dependency found
-- [[AI-IMP-094-polar-axis-label-placement|IMP-094]] - planned, no epic dependency found
-- [[AI-IMP-095-color-field-overlay|IMP-095]] - planned, no epic dependency found
-
-### Status Mismatches
-- [[AI-IMP-066-exports-deterministic-wiring-and-tauri-fs|IMP-066]] - open but parent epic AI-EPIC-007 is completed
-- [[AI-IMP-067-preferences-store-and-export-view-persistence|IMP-067]] - open but parent epic AI-EPIC-007 is completed
-- [[AI-IMP-068-accessibility-and-keyboard-shortcuts-for-graphs-and-exports|IMP-068]] - open but parent epic AI-EPIC-007 is completed
+- [[AI-IMP-065-circle-graph-renderer-parity-and-font-embedding|IMP-065]] - cancelled, no epic dependency found
 
 ---
 
 ## Completed
 <details>
-<summary>9 Epics, 22 IMPs completed</summary>
+<summary>10 Epics, 22 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006: Tauri bridge reliability and native mode fixes]] (2026-01-21)
 - [[AI-EPIC-007-tauri-ui-graphs-exports|EPIC-007: Tauri ui graphs exports]] (2026-01-21)
@@ -64,5 +56,6 @@
 - [[AI-EPIC-016-video-input-and-frame-analysis|EPIC-016: Video input and frame analysis]]
 - [[AI-EPIC-017-color-merge-threshold-and-visualization-polish|EPIC-017: Color merge threshold and visualization polish]] (2026-02-01)
 - [[AI-EPIC-018-color-math-test-harness|EPIC-018: Color math test harness]] (2026-02-01)
+- [[AI-EPIC-019-polar-field-and-merge-stability|EPIC-019: Polar field and merge stability]] (2026-02-02)
 
 </details>

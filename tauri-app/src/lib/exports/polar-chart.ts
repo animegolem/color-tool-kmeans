@@ -10,7 +10,6 @@ export interface CircleGraphOptions {
   symbolScale: number;
   showAxisLabels?: boolean;
   showStroke?: boolean;
-  showGamutOverlay?: boolean;
   mode?: PolarMode;
   size?: number;
 }
@@ -35,8 +34,9 @@ export function generateCircleGraphSvg(
   const gamut = mode === 'oklch' || mode === 'okhsv' ? buildOklchGamutOutline(18) : null;
   const maxChroma = mode === 'oklch' ? Math.max(1e-6, ...(gamut ?? []).map((p) => p.c)) : 1;
   const hueChromaLut =
-    mode === 'okhsv' ? buildHueChromaLut(gamut ?? [], 360, Math.max(1e-6, maxChroma)) : null;
-  const showGamutOverlay = options.showGamutOverlay ?? false;
+    mode === 'oklch' || mode === 'okhsv'
+      ? buildHueChromaLut(gamut ?? [], 360, Math.max(1e-6, maxChroma))
+      : null;
 
   const maxSymbolRadius = Math.max(3.5, effectiveRadius * 0.3 * (options.symbolScale || 1));
   const layout = clusters.map((cluster) =>
@@ -46,25 +46,6 @@ export function generateCircleGraphSvg(
   const svgParts: string[] = [];
   const axisGroup: string[] = [];
   const overlayGroup: string[] = [];
-  if (showGamutOverlay) {
-    if ((mode === 'oklch' || mode === 'okhsv') && gamut) {
-      const overlayPath = buildOutlinePath(gamut, effectiveRadius, center, maxChroma);
-      overlayGroup.push(`<path d="${overlayPath}" fill="rgba(16,17,17,0.08)" stroke="none" />`);
-    } else {
-      overlayGroup.push(
-        svgCircle({
-          cx: center,
-          cy: center,
-          r: effectiveRadius,
-          fill: 'rgba(16,17,17,0.08)',
-          stroke: 'none'
-        })
-      );
-    }
-  }
-  if (overlayGroup.length) {
-    svgParts.push(svgGroup(overlayGroup));
-  }
   if (mode === 'oklch' && gamut) {
     const outlinePath = buildOutlinePath(gamut, effectiveRadius, center, maxChroma);
     axisGroup.push(
@@ -225,6 +206,7 @@ function getPolarValue(
   }
   return { hue, radiusRatio: maxChroma > 0 ? chroma / maxChroma : 0 };
 }
+
 
 function wrapHueIndex(hue: number): number {
   const normalized = ((hue % 360) + 360) % 360;

@@ -7,12 +7,12 @@ tags:
   - merge
   - oklab
   - stability
-kanban_status: planned
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-019-polar-field-and-merge-stability]]
 confidence_score: 0.58
 date_created: 2026-02-02
-date_completed:
+date_completed: 2026-02-02
 ---
 
 # AI-IMP-093-merge-threshold-stability
@@ -52,4 +52,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 **THEN** clusters do not collapse into a single dominant cluster.
 
 ### Issues Encountered
-{LOC|20}
+- Transitive chaining in single-linkage merge caused collapse; replaced with radius-guarded merge.

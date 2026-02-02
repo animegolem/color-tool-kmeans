@@ -5,10 +5,10 @@ tags:
   - Implementation
   - UI
   - Exports
-  - Epic-007
+  - Epic-013
 kanban_status: planned
-depends_on: [AI-EPIC-007, AI-IMP-051]
-parent_epic: [[AI-EPIC-007-tauri-ui-graphs-exports]]
+depends_on: [AI-EPIC-013, AI-IMP-051]
+parent_epic: [[AI-EPIC-013-export-redesign]]
 confidence_score: 0.86
 date_created: 2025-11-21
 date_completed:
@@ -72,4 +72,3 @@ THEN the resulting files are byte-identical across runs (ignoring any explicitly
 
 ### Issues Encountered 
 {LOC|20}
-

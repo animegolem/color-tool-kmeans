@@ -5,10 +5,10 @@ tags:
   - Implementation
   - UI
   - Accessibility
-  - Epic-007
+  - Epic-013
 kanban_status: planned
-depends_on: [AI-EPIC-007, AI-IMP-052, AI-IMP-053, AI-IMP-054, AI-IMP-065, AI-IMP-066, AI-IMP-067]
-parent_epic: [[AI-EPIC-007-tauri-ui-graphs-exports]]
+depends_on: [AI-EPIC-013, AI-IMP-066, AI-IMP-067]
+parent_epic: [[AI-EPIC-013-export-redesign]]
 confidence_score: 0.83
 date_created: 2025-11-21
 date_completed:
@@ -72,4 +72,3 @@ AND no hidden or background controls trap focus behind the overlay.
 
 ### Issues Encountered 
 {LOC|20}
-

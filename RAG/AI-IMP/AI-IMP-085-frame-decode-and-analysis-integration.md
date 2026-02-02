@@ -6,13 +6,14 @@ tags:
   - video
   - analysis
   - tauri
-kanban_status: in-progress
+kanban_status: completed
 depends_on:
   - AI-EPIC-016
   - AI-IMP-083
+parent_epic: [[AI-EPIC-016-video-input-and-frame-analysis]]
 confidence_score: 0.5
 date_created: 2026-01-30
-date_completed:
+date_completed: 2026-02-02
 ---
 
 # AI-IMP-085-frame-decode-and-analysis-integration
@@ -55,4 +56,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 - **GIVEN** decode fails **WHEN** a frame is requested **THEN** the UI shows a non-blocking error state and remains responsive.
 
 ### Issues Encountered
-- Pending manual validation: user to confirm scrub/stop updates analysis on macOS/Windows/Linux.
+- Manual validation completed during v0.8 push; scrub/stop updates analysis without hangs.

@@ -91,7 +91,6 @@ export const analysisResult = derived([analysisById, activeImageId], ([$analysis
 });
 export const analysisError = writable<string | null>(null);
 
-export const showGamutOverlay = writable<boolean>(false);
 
 export type ValueStudyState = 'idle' | 'pending' | 'ready' | 'error';
 

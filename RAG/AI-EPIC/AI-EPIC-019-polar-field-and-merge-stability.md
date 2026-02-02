@@ -14,9 +14,9 @@ tags:
   - axis
   - polish
 date_created: 2026-02-02
-date_completed:
-kanban_status: planned
-AI_IMP_spawned:
+date_completed: 2026-02-02
+kanban_status: completed
+AI_IMP_spawned: AI-IMP-093, AI-IMP-094, AI-IMP-095
 ---
 
 # AI-EPIC-019-polar-field-and-merge-stability
@@ -40,17 +40,17 @@ Artists are seeing unstable merge behavior (threshold chaining that collapses ma
 ## Requirements
 
 ### Functional Requirements
-- [ ] FR-1: Implement a merge strategy that prevents transitive "chaining" collapse (e.g., complete-linkage with radius guards).
-- [ ] FR-2: Preserve cluster counts and centroid weighting when merges occur.
-- [ ] FR-3: Move polar axis labels inside the ring so they never clip.
-- [ ] FR-4: Replace the "gamut" overlay with a color field slice per mode (OKLCH/OKHSV/HSV).
-- [ ] FR-5: Use image-weighted mean lightness as the default slice for OKLCH/OKHSV color field.
-- [ ] FR-6: Rename the toggle to reflect the color field intent.
+- [x] FR-1: Implement a merge strategy that prevents transitive "chaining" collapse (e.g., complete-linkage with radius guards).
+- [x] FR-2: Preserve cluster counts and centroid weighting when merges occur.
+- [x] FR-3: Move polar axis labels inside the ring so they never clip.
+- [x] FR-4: Replace the "gamut" overlay with a color field slice per mode (OKLCH/OKHSV/HSV). (Removed after review)
+- [x] FR-5: Use image-weighted mean lightness as the default slice for OKLCH/OKHSV color field. (Removed after review)
+- [x] FR-6: Rename the toggle to reflect the color field intent. (Removed after review)
 
 ### Non-Functional Requirements
-- [ ] NFR-1: Color field rendering must not add noticeable UI lag at common cluster sizes.
-- [ ] NFR-2: Merge behavior remains deterministic for identical inputs.
-- [ ] NFR-3: All features operate offline with no external dependencies.
+- [x] NFR-1: Color field rendering must not add noticeable UI lag at common cluster sizes. (Removed after review)
+- [x] NFR-2: Merge behavior remains deterministic for identical inputs.
+- [x] NFR-3: All features operate offline with no external dependencies.
 
 ## Implementation Breakdown
-TBD: create IMPS for merge refactor, axis label placement, and color field overlay.
+Completed: AI-IMP-093, AI-IMP-094, AI-IMP-095.
