@@ -10,7 +10,7 @@ tags:
   - ui
 date_created: 2026-01-30
 date_completed:
-kanban_status: in-progress
+kanban_status: completed
 AI_IMP_spawned:
 ---
 

@@ -1868,6 +1868,10 @@
     font-size: 14px;
   }
 
+  .grid > label > span {
+    min-height: 2.6em;
+  }
+
   input {
     padding: 8px 10px;
     border: 1px solid var(--line);

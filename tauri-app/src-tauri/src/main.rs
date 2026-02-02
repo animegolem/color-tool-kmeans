@@ -64,71 +64,116 @@ struct RawCluster {
     count: usize,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct MergeCluster {
+    centroid: [f32; 3],
+    count: usize,
+    radius: f32,
+}
+
 fn merge_clusters_by_threshold(clusters: Vec<RawCluster>, threshold: f32) -> Vec<RawCluster> {
     let count = clusters.len();
     if count < 2 || threshold <= 0.0 {
         return clusters;
     }
-    let threshold_sq = threshold * threshold;
-    let mut parents: Vec<usize> = (0..count).collect();
 
-    fn find_root(parents: &mut [usize], node: usize) -> usize {
-        if parents[node] != node {
-            let root = find_root(parents, parents[node]);
-            parents[node] = root;
+    let mut working: Vec<MergeCluster> = clusters
+        .into_iter()
+        .map(|cluster| MergeCluster {
+            centroid: cluster.centroid,
+            count: cluster.count,
+            radius: 0.0,
+        })
+        .collect();
+
+    loop {
+        let len = working.len();
+        if len < 2 {
+            break;
         }
-        parents[node]
-    }
 
-    fn union(parents: &mut [usize], a: usize, b: usize) {
-        let root_a = find_root(parents, a);
-        let root_b = find_root(parents, b);
-        if root_a != root_b {
-            parents[root_b] = root_a;
-        }
-    }
-
-    for (i, cluster_i) in clusters.iter().enumerate() {
-        let ci = cluster_i.centroid;
-        for (j, cluster_j) in clusters.iter().enumerate().skip(i + 1) {
-            let cj = cluster_j.centroid;
-            let dx = ci[0] - cj[0];
-            let dy = ci[1] - cj[1];
-            let dz = ci[2] - cj[2];
-            let dist_sq = dx * dx + dy * dy + dz * dz;
-            if dist_sq <= threshold_sq {
-                union(&mut parents, i, j);
+        let mut pairs: Vec<(f32, usize, usize)> = Vec::new();
+        for i in 0..len {
+            let ci = working[i].centroid;
+            for j in (i + 1)..len {
+                let cj = working[j].centroid;
+                let dist = centroid_distance(ci, cj);
+                let guarded = dist + working[i].radius + working[j].radius;
+                if guarded <= threshold {
+                    pairs.push((dist, i, j));
+                }
             }
         }
-    }
 
-    let mut sums = vec![[0.0f32; 3]; count];
-    let mut totals = vec![0usize; count];
-    for (idx, cluster) in clusters.iter().enumerate() {
-        let root = find_root(&mut parents, idx);
-        totals[root] += cluster.count;
-        let weight = cluster.count as f32;
-        sums[root][0] += cluster.centroid[0] * weight;
-        sums[root][1] += cluster.centroid[1] * weight;
-        sums[root][2] += cluster.centroid[2] * weight;
-    }
-
-    let mut merged = Vec::with_capacity(count);
-    for idx in 0..count {
-        let total = totals[idx];
-        if total == 0 {
-            continue;
+        if pairs.is_empty() {
+            break;
         }
-        let inv = 1.0 / (total as f32);
-        let centroid = [sums[idx][0] * inv, sums[idx][1] * inv, sums[idx][2] * inv];
-        merged.push(RawCluster {
-            centroid,
-            count: total,
+
+        pairs.sort_by(|a, b| {
+            a.0.partial_cmp(&b.0)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.1.cmp(&b.1))
+                .then_with(|| a.2.cmp(&b.2))
         });
+
+        let mut merged_flags = vec![false; len];
+        let mut next: Vec<MergeCluster> = Vec::with_capacity(len);
+
+        for (_dist, i, j) in pairs {
+            if merged_flags[i] || merged_flags[j] {
+                continue;
+            }
+            let a = working[i];
+            let b = working[j];
+            let total = (a.count + b.count) as f32;
+            let inv = 1.0 / total;
+            let centroid = [
+                (a.centroid[0] * a.count as f32 + b.centroid[0] * b.count as f32) * inv,
+                (a.centroid[1] * a.count as f32 + b.centroid[1] * b.count as f32) * inv,
+                (a.centroid[2] * a.count as f32 + b.centroid[2] * b.count as f32) * inv,
+            ];
+            let radius = {
+                let dist_a = centroid_distance(a.centroid, centroid);
+                let dist_b = centroid_distance(b.centroid, centroid);
+                (a.radius + dist_a).max(b.radius + dist_b)
+            };
+            next.push(MergeCluster {
+                centroid,
+                count: a.count + b.count,
+                radius,
+            });
+            merged_flags[i] = true;
+            merged_flags[j] = true;
+        }
+
+        for (idx, cluster) in working.iter().enumerate() {
+            if !merged_flags[idx] {
+                next.push(*cluster);
+            }
+        }
+
+        if next.len() == len {
+            break;
+        }
+        working = next;
     }
 
+    let mut merged: Vec<RawCluster> = working
+        .into_iter()
+        .map(|cluster| RawCluster {
+            centroid: cluster.centroid,
+            count: cluster.count,
+        })
+        .collect();
     merged.sort_by(|a, b| b.count.cmp(&a.count));
     merged
+}
+
+fn centroid_distance(a: [f32; 3], b: [f32; 3]) -> f32 {
+    let dx = a[0] - b[0];
+    let dy = a[1] - b[1];
+    let dz = a[2] - b[2];
+    (dx * dx + dy * dy + dz * dz).sqrt()
 }
 
 #[derive(Debug, Serialize, Clone, Copy)]

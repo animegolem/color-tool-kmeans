@@ -7,9 +7,12 @@ tags:
   - Graphs
   - Exports
   - Epic-007
-kanban_status: in-progress
-depends_on: [AI-EPIC-007, AI-IMP-052]
-parent_epic: [[AI-EPIC-007-tauri-ui-graphs-exports]]
+kanban_status: planned
+depends_on:
+  - AI-EPIC-007
+  - AI-IMP-052
+parent_epic:
+  - - AI-EPIC-007-tauri-ui-graphs-exports
 confidence_score: 0.86
 date_created: 2025-11-21
 date_completed:

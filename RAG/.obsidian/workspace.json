@@ -11,26 +11,17 @@
             "id": "0dc0f33a23ed7bba",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
-            }
-          },
-          {
-            "id": "d205fddbd2b74c49",
-            "type": "leaf",
-            "state": {
-              "type": "release-notes",
+              "type": "markdown",
               "state": {
-                "currentVersion": "1.11.5"
+                "file": "INDEX.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-book-up",
-              "title": "Release Notes 1.11.5"
+              "icon": "lucide-file",
+              "title": "INDEX"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -189,9 +180,18 @@
       "bases:Create new base": false
     }
   },
-  "active": "d205fddbd2b74c49",
+  "active": "0dc0f33a23ed7bba",
   "lastOpenFiles": [
+    "AI-IMP/AI-IMP-095-color-field-overlay.md",
+    "AI-IMP/AI-IMP-094-polar-axis-label-placement.md",
+    "AI-IMP/AI-IMP-093-merge-threshold-stability.md",
+    "AI-EPIC/AI-EPIC-019-polar-field-and-merge-stability.md",
+    "AI-IMP/AI-IMP-065-circle-graph-renderer-parity-and-font-embedding.md",
     "INDEX.md",
+    "AI-IMP/AI-IMP-066-exports-deterministic-wiring-and-tauri-fs.md",
+    "AI-EPIC/AI-EPIC-018-color-math-test-harness.md",
+    "AI-EPIC/AI-EPIC-016-video-input-and-frame-analysis.md",
+    "AI-EPIC/AI-EPIC-008-oklab-golden-path-compute-pipeline.md",
     "global-conventions.md",
     "AI-EPIC/AI-EPIC-014-global-settings.md"
   ]
