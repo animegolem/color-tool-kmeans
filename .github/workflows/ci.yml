@@ -15,6 +15,11 @@ jobs:
         with:
           node-version: 20
 
+      - name: Install dependencies (tauri-app)
+        run: |
+          cd tauri-app
+          npm install --no-audit --no-fund
+
       - name: Enforce Svelte runes event syntax
         run: |
           if rg --files-with-matches --glob "*.svelte" "on:[a-zA-Z]" tauri-app/src >/dev/null; then
@@ -26,6 +31,16 @@ jobs:
         run: |
           cd tauri-app
           ./scripts/fetch-ffmpeg-btbn-lgpl.sh x86_64-unknown-linux-gnu https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-lgpl.tar.xz
+
+      - name: Run TS gamut boundary test
+        run: |
+          cd tauri-app
+          npm test -- src/lib/exports/__tests__/gamut-boundary.spec.ts
+
+      - name: Run k-means snapshot test
+        run: |
+          cd tauri-app/src-tauri
+          cargo test --no-default-features --test kmeans_snapshots
 
       - name: Electron app tests
         if: ${{ hashFiles('electron-app/package.json') != '' }}

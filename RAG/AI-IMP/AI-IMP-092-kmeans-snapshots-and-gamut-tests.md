@@ -7,12 +7,12 @@ tags:
   - kmeans
   - gamut
   - snapshots
-kanban_status: planned
+kanban_status: completed
 depends_on: AI-EPIC-018
 parent_epic: [[AI-EPIC-018-color-math-test-harness]]
 confidence_score: 0.49
 date_created: 2026-02-01
-date_completed:
+date_completed: 2026-02-01
 ---
 
 # AI-IMP-092-kmeans-snapshots-and-gamut-tests
@@ -43,13 +43,13 @@ We need deterministic snapshots for k-means output (to catch centroid regression
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Select 1–2 reference images in `test-patterns/` and document them in the test file.
-- [ ] Add Rust snapshot test that runs k-means with fixed seed and compares output JSON.
-- [ ] Commit snapshot JSON files with centroid list + counts/shares.
-- [ ] Add TS gamut-boundary test that samples random sRGB colors and asserts inside polygon.
-- [ ] Document tolerance / boundary sampling density used in the test.
-- [ ] Gate snapshot verification to Linux CI (x86_64) to avoid SIMD drift.
-- [ ] Run tests locally to confirm deterministic outputs.
+- [x] Select 1–2 reference images in `test-patterns/` and document them in the test file.
+- [x] Add Rust snapshot test that runs k-means with fixed seed and compares output JSON.
+- [x] Commit snapshot JSON files with centroid list + counts/shares.
+- [x] Add TS gamut-boundary test that samples random sRGB colors and asserts inside polygon.
+- [x] Document tolerance / boundary sampling density used in the test.
+- [x] Gate snapshot verification to Linux CI (x86_64) to avoid SIMD drift.
+- [x] Run tests locally to confirm deterministic outputs.
 
 ### Acceptance Criteria
 **Scenario:** K-means regression detection.
@@ -63,4 +63,5 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 **THEN** all points lie inside the boundary within tolerance.
 
 ### Issues Encountered
-{LOC|20}
+- Image decoder does not include GIF support; snapshot set uses `hsl_ligthness.png` only.
+- Snapshots are generated with `--no-default-features` (SIMD disabled) and `SNAPSHOT_FORCE=1` for cross-arch stability.

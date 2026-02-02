@@ -248,7 +248,7 @@ function buildOutlinePath(
   return `M ${coords[0]} L ${coords.slice(1).join(' ')} Z`;
 }
 
-function buildOklchGamutOutline(steps: number): Array<{ h: number; c: number }> {
+export function buildOklchGamutOutline(steps: number): Array<{ h: number; c: number }> {
   const edges: Array<[[number, number, number], [number, number, number]]> = [
     [[1, 0, 0], [1, 1, 0]],
     [[1, 1, 0], [0, 1, 0]],

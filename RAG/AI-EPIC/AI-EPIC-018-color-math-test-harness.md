@@ -10,8 +10,8 @@ tags:
   - hsv
   - kmeans
 date_created: 2026-02-01
-date_completed:
-kanban_status: in-progress
+date_completed: 2026-02-01
+kanban_status: completed
 AI_IMP_spawned: AI-IMP-090, AI-IMP-091, AI-IMP-092
 ---
 
@@ -38,18 +38,16 @@ Introduce a tiered test harness: (1) property-based round-trip tests for critica
 ### Functional Requirements
 - [x] FR-1: Add property-based round-trip tests for RGB↔OKLab and RGB↔HSV/OKHSV as defined.
 - [x] FR-2: Add gold-standard fixtures (JSON) generated from an external reference and validate conversion outputs.
-- [ ] FR-3: Add deterministic k-means snapshot tests on reference images with fixed seed/config.
-- [ ] FR-4: Add gamut boundary integrity tests (valid sRGB samples must lie inside the boundary).
+- [x] FR-3: Add deterministic k-means snapshot tests on reference images with fixed seed/config.
+- [x] FR-4: Add gamut boundary integrity tests (valid sRGB samples must lie inside the boundary).
 
 ### Non-Functional Requirements
-- [ ] NFR-1: Tests must run offline with deterministic outputs.
-- [ ] NFR-2: Total CI runtime impact < 3 minutes.
-- [ ] NFR-3: Tolerances must be documented and consistent across Rust/TS.
+- [x] NFR-1: Tests must run offline with deterministic outputs.
+- [x] NFR-2: Total CI runtime impact < 3 minutes.
+- [x] NFR-3: Tolerances must be documented and consistent across Rust/TS.
 
 ## Implementation Breakdown
-### Planned Tickets
-- AI-IMP-092: K-means snapshots + gamut boundary integrity tests
-
 ### Completed Tickets
 - AI-IMP-090: Round-trip property tests (Rust + TS parity)
 - AI-IMP-091: Gold-standard fixtures and verification tests
+- AI-IMP-092: K-means snapshots + gamut boundary integrity tests

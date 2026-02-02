@@ -13,16 +13,6 @@
 
 ---
 
-### [[AI-EPIC-018-color-math-test-harness|EPIC-018: Color math test harness]]
-> Current color-space math, polar projections, and k-means outputs are validated mostly by visual inspection, which is subjective and prone to regres...
-
-**IMPs:**
-- [[AI-IMP-090-roundtrip-property-tests|IMP-090]] - completed
-- [[AI-IMP-091-gold-standard-fixtures|IMP-091]] - completed
-- [[AI-IMP-092-kmeans-snapshots-and-gamut-tests|IMP-092]] - planned
-
----
-
 ## Planned
 
 ### [[AI-EPIC-010-multi-image-input|EPIC-010: Multi image input]]
@@ -66,7 +56,7 @@
 
 ## Completed
 <details>
-<summary>7 Epics, 21 IMPs completed</summary>
+<summary>8 Epics, 22 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006: Tauri bridge reliability and native mode fixes]] (2026-01-21)
 - [[AI-EPIC-007-tauri-ui-graphs-exports|EPIC-007: Tauri ui graphs exports]] (2026-01-21)
@@ -75,5 +65,6 @@
 - [[AI-EPIC-010-values-tab-and-value-study-grid|EPIC-010: Values tab and value study grid]] (2026-01-21)
 - [[AI-EPIC-015-values-analysis-squint-and-range|EPIC-015: Values analysis squint and range]] (2026-01-22)
 - [[AI-EPIC-017-color-merge-threshold-and-visualization-polish|EPIC-017: Color merge threshold and visualization polish]] (2026-02-01)
+- [[AI-EPIC-018-color-math-test-harness|EPIC-018: Color math test harness]] (2026-02-01)
 
 </details>

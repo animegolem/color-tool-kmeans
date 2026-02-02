@@ -11,17 +11,26 @@
             "id": "0dc0f33a23ed7bba",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          },
+          {
+            "id": "d205fddbd2b74c49",
+            "type": "leaf",
+            "state": {
+              "type": "release-notes",
               "state": {
-                "file": "INDEX.md",
-                "mode": "source",
-                "source": false
+                "currentVersion": "1.11.5"
               },
-              "icon": "lucide-file",
-              "title": "INDEX"
+              "icon": "lucide-book-up",
+              "title": "Release Notes 1.11.5"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -94,7 +103,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "INDEX.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +112,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for INDEX"
+              "title": "Backlinks"
             }
           },
           {
@@ -113,12 +121,11 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "INDEX.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from INDEX"
+              "title": "Outgoing links"
             }
           },
           {
@@ -156,13 +163,12 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "INDEX.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of INDEX"
+              "title": "Outline"
             }
           }
         ]
@@ -183,10 +189,10 @@
       "bases:Create new base": false
     }
   },
-  "active": "0dc0f33a23ed7bba",
+  "active": "d205fddbd2b74c49",
   "lastOpenFiles": [
-    "global-conventions.md",
     "INDEX.md",
+    "global-conventions.md",
     "AI-EPIC/AI-EPIC-014-global-settings.md"
   ]
 }
