@@ -24,6 +24,7 @@ yarn-debug.log*
 Thumbs.db
 .idea/
 .vscode/
+.obsidian/
 
 # Generated assets
 figma_curl.txt
