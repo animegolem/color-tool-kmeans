@@ -8,6 +8,6 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
-    "types": ["svelte", "vite/client"]
+    "types": ["svelte", "vite/client", "node"]
   }
 }
