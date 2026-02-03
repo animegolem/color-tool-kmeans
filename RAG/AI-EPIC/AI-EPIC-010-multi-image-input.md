@@ -1,4 +1,3 @@
-# AI-EPIC
 ---
 node_id: AI-EPIC-010
 tags:
@@ -12,52 +11,54 @@ date_completed:
 kanban_status: planned
 AI_IMP_spawned:
 ---
-
 # AI-EPIC-010-multi-image-input
 
 ## Problem Statement/Feature Scope
-Users need to load, manage, and compare multiple images (up to 16) without manually juggling tabs or screenshots. Current UI supports single active image despite store architecture already supporting ID-keyed caching.
+Users need to load, manage, and compare multiple references (images and optionally videos) without juggling external tabs. The current UI only supports a single active image even though store architecture supports ID-keyed caching. We need a lightweight, session-scoped library for quick switching, with an optional single-root folder tree per run.
 
 ## Proposed Solution(s)
-- Add image tabs/slots UI (horizontal tab bar or thumbnail strip)
-- Enable drag-drop of multiple files at once
-- Support clipboard paste (Ctrl/Cmd+V)
-- Global setting for add vs replace behavior (MKVToolNix-style: add to set, replace current, prompt each time)
-- Leverage existing per-image analysis caching in stores
+- Add a right-side drawer (“Library”) that can expand/collapse without disrupting the main layout.
+- Provide a session-scoped library list (“Imported”) and a lightweight “Active” list for quick switching.
+- Support multi-file drag/drop into the main view or drawer.
+- Support clipboard paste for images (Ctrl/Cmd+V) in the main view.
+- Optional: allow selecting a single root folder per session (via folder picker) and render a collapsible file tree within that root.
+- Keep state ephemeral: no persistence across app restarts (re-pick root each run).
+- Leverage existing per-image analysis caching in stores for instant switching.
 
 ## Path(s) Not Taken
-- Infinite image loading (capped at 16 for 4x4 grid export compatibility)
-- Modal-based image management (tabs are more immediate)
+- Persistent library across sessions (explicitly out of scope).
+- Full disk browser / multiple-root tree (avoid extra permission scope complexity).
+- Modal-based image management (drawer is more immediate).
 
 ## Success Metrics
-1. User can drag 3+ images and each appears as separate tab
-2. Switching tabs preserves analysis state without re-running
-3. Clipboard paste loads image into app
-4. Add/replace setting honored consistently
+1. User can drag 3+ images and each appears in the library list.
+2. Switching active item preserves analysis state without re-running.
+3. Clipboard paste loads an image into the library.
+4. User can open a folder (single root) and browse subfolders for import in-session.
 
 ## Requirements
 
 ### Functional Requirements
-- [ ] FR-1: Image tab bar component displaying loaded images (up to 16 slots)
-- [ ] FR-2: Multi-file drag-drop handling loads each file as new tab
-- [ ] FR-3: Clipboard paste (Ctrl/Cmd+V) loads image from clipboard
-- [ ] FR-4: Global setting: add to set / replace current / prompt each time
-- [ ] FR-5: Tab switching preserves analysis state (verify existing store)
-- [ ] FR-6: Close button on tabs to unload individual images
-- [ ] FR-7: Maximum 16 images enforced with user feedback
+- [ ] FR-1: Library drawer with “Imported” list and “Active” list; can expand/collapse.
+- [ ] FR-2: Multi-file drag-drop loads each file into Imported list.
+- [ ] FR-3: Clipboard paste (Ctrl/Cmd+V) loads image into Imported list.
+- [ ] FR-4: Optional single-root folder picker for session-scoped tree browsing.
+- [ ] FR-5: Switching active item preserves analysis state (verify existing store).
+- [ ] FR-6: Remove (X) action per item to unload from library (no disk delete).
+- [ ] FR-7: Optional filter by type (image/video) when both are present.
 
 ### Non-Functional Requirements
-- [ ] NFR-1: Tab switching should be instant (no re-analysis)
-- [ ] NFR-2: Memory usage stays reasonable with 16 loaded images
+- [ ] NFR-1: Switching active item should be instant (no re-analysis).
+- [ ] NFR-2: Drawer interactions should not cause layout jumps or scroll resets.
 
 ## Implementation Breakdown
 
 ### Planned Tickets
-- AI-IMP-080: Image tab bar UI component
-- AI-IMP-081: Multi-file drag-drop handling
-- AI-IMP-082: Clipboard paste support
-- AI-IMP-083: Add/replace behavior setting + UI
-- AI-IMP-084: Tab switching state verification
+- AI-IMP-096: Library drawer UI (Imported + Active lists)
+- AI-IMP-097: Multi-file drag-drop handling into library
+- AI-IMP-098: Clipboard paste support (images)
+- AI-IMP-099: Session-scoped root folder tree (single root) + basic filter
+- AI-IMP-100: Active item switching state verification + removal behavior
 
 ### Completed Tickets
 
@@ -66,4 +67,4 @@ Store foundation already exists:
 - `images: ImageEntry[]`
 - `activeImageId: string | null`
 - `analysisById: Record<string, AnalysisResult>`
-- Recent commit: "prepare for multiple image inputs"
+- Recent commits: video ingestion + per-image caching already in place

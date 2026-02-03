@@ -25,6 +25,7 @@ Thumbs.db
 .idea/
 .vscode/
 .obsidian/
+*.base
 
 # Generated assets
 figma_curl.txt
