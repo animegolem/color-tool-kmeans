@@ -20,8 +20,9 @@ EPICS_COMPLETED=$(mktemp)
 IMPS_BY_EPIC=$(mktemp)
 ORPHAN_IMPS=$(mktemp)
 STATUS_MISMATCHES=$(mktemp)
+LARGE_FILES=$(mktemp)
 
-trap 'rm -f "$EPICS_IN_PROGRESS" "$EPICS_PLANNED" "$EPICS_COMPLETED" "$IMPS_BY_EPIC" "$ORPHAN_IMPS" "$STATUS_MISMATCHES"' EXIT
+trap 'rm -f "$EPICS_IN_PROGRESS" "$EPICS_PLANNED" "$EPICS_COMPLETED" "$IMPS_BY_EPIC" "$ORPHAN_IMPS" "$STATUS_MISMATCHES" "$LARGE_FILES"' EXIT
 
 # -----------------------------------------------------------------------------
 # normalize_frontmatter: Fix field name variations in-place
@@ -225,6 +226,29 @@ for file in "$RAG_DIR/AI-IMP"/*.md; do
 done
 
 # -----------------------------------------------------------------------------
+# Collect large files (report only)
+# -----------------------------------------------------------------------------
+echo "[generate-index] Scanning large files..."
+
+ROOT_DIR="$(cd "$RAG_DIR/.." && pwd)"
+
+while IFS= read -r -d '' file; do
+  path="$ROOT_DIR/$file"
+  [[ -f "$path" ]] || continue
+
+  case "$file" in
+    RAG/INDEX.md|**/package-lock.json|tauri-app/src-tauri/tests/fixtures/color_golden.json|*.png|*.jpg|*.jpeg|*.gif|*.svg|*.ico|*.bin|*.exe|*.dll|*.so|*.dylib|*.woff*|*.ttf|*.otf|*.pdf|*.mp4|*.mov|*.zip|*.tar*|*.gz|*.xz)
+      continue
+      ;;
+  esac
+
+  lines=$(wc -l < "$path" | tr -d ' ')
+  if [[ "$lines" -gt 300 ]]; then
+    printf '%s\t%s\n' "$lines" "$file" >> "$LARGE_FILES"
+  fi
+done < <(git -C "$ROOT_DIR" ls-files -z)
+
+# -----------------------------------------------------------------------------
 # Generate INDEX.md
 # -----------------------------------------------------------------------------
 echo "[generate-index] Generating INDEX.md..."
@@ -287,6 +311,24 @@ EOF
       echo "---"
       echo ""
     done < "$EPICS_PLANNED"
+  fi
+
+  # Large Files section
+  if [[ -s "$LARGE_FILES" ]]; then
+    echo "## Size Watch (over 600 LOC)"
+    echo ""
+    echo "Generated from tracked files; binary assets excluded."
+    echo ""
+    sort -rn "$LARGE_FILES" | awk -F '\t' '$1 > 600 { print "- " $2 " (" $1 " LOC)" }'
+    echo ""
+    echo "## Size Watch (over 300 LOC)"
+    echo ""
+    echo "Generated from tracked files; binary assets excluded."
+    echo ""
+    sort -rn "$LARGE_FILES" | awk -F '\t' '$1 > 300 && $1 <= 600 { print "- " $2 " (" $1 " LOC)" }'
+    echo ""
+    echo "---"
+    echo ""
   fi
 
   # Anomalies section

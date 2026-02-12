@@ -23,6 +23,8 @@
         "title": "Color Tool",
         "width": 1280,
         "height": 860,
+        "minWidth": 1040,
+        "minHeight": 720,
         "decorations": true
       }
     ]

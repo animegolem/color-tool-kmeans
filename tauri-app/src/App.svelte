@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { View } from './lib/stores/ui';
-  import { currentView, setView } from './lib/stores/ui';
+  import { currentView, setView, libraryDrawerOpen } from './lib/stores/ui';
   import { isTauriEnv } from './lib/bridges/tauri';
   import HomeView from './lib/views/HomeView.svelte';
   import ValuesView from './lib/views/ValuesView.svelte';
@@ -128,7 +128,7 @@
   });
 </script>
 
-<main>
+<main class:home-active={$currentView === 'home'} class:library-open={$currentView === 'home' && $libraryDrawerOpen}>
   <nav class="nav">
     {#each navItems as item}
       <button class:active={$currentView === item.key} onclick={() => handleNavClick(item.key)}>
@@ -146,6 +146,39 @@
       <ExportsView />
     {/if}
   </section>
+
+  {#if $currentView === 'home'}
+    <aside class:open={$libraryDrawerOpen} class="library-rail" aria-label="Library rail">
+      <button
+        type="button"
+        class:open={$libraryDrawerOpen}
+        class="library-toggle"
+        aria-label={$libraryDrawerOpen ? 'Close library' : 'Open library'}
+        aria-expanded={$libraryDrawerOpen}
+        aria-controls="library-drawer"
+        onclick={() => libraryDrawerOpen.set(!$libraryDrawerOpen)}
+      >
+        <span aria-hidden="true">⟨</span>
+      </button>
+      {#if $libraryDrawerOpen}
+        <aside id="library-drawer" class="library-drawer" aria-label="Library drawer">
+          <div class="library-drawer__content">
+            <header class="library-drawer__header">
+              <h3>Library</h3>
+            </header>
+            <div class="library-section">
+              <div class="library-section__title">Imported</div>
+              <div class="library-section__empty">No items yet.</div>
+            </div>
+            <div class="library-section">
+              <div class="library-section__title">Active</div>
+              <div class="library-section__empty">No active items.</div>
+            </div>
+          </div>
+        </aside>
+      {/if}
+    </aside>
+  {/if}
 
   <ZoomOverlay />
 </main>

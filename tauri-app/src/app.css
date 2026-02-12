@@ -11,6 +11,12 @@
   --shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
   /* Accent from style guide */
   --accent: #866051;
+  --home-content-max: 1120px;
+  --library-panel: 200px;
+  --library-toggle-size: 36px;
+  --library-toggle-lane: 56px;
+  --library-rail-closed: var(--library-toggle-lane);
+  --library-rail-open: calc(var(--library-toggle-lane) + var(--library-panel));
 }
 
 * {
@@ -36,17 +42,22 @@ button {
 
 main {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .nav {
   width: 200px;
+  min-width: 200px;
+  max-width: 200px;
+  height: 100%;
   background: var(--panel);
   border-right: 1px solid var(--line);
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow-y: auto;
 }
 
 .nav button {
@@ -65,8 +76,101 @@ main {
 
 .view-container {
   flex: 1;
+  height: 100%;
   padding: 32px 56px;
   overflow-y: auto;
+  min-width: 0;
+  position: relative;
+}
+
+.library-rail {
+  position: relative;
+  width: var(--library-rail-closed);
+  min-width: var(--library-rail-closed);
+  max-width: var(--library-rail-closed);
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  transition: min-width 0.16s ease, max-width 0.16s ease;
+}
+
+.library-rail.open {
+  min-width: var(--library-rail-open);
+  max-width: var(--library-rail-open);
+}
+
+.library-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--library-panel);
+  height: 100%;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  z-index: 2;
+}
+
+.library-drawer__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 16px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.library-drawer__header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.library-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.library-section__title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(33, 33, 32, 0.6);
+}
+
+.library-section__empty {
+  font-size: 13px;
+  color: rgba(33, 33, 32, 0.5);
+}
+
+.library-toggle {
+  position: absolute;
+  top: 50%;
+  left: calc((var(--library-toggle-lane) - var(--library-toggle-size)) / 2);
+  transform: translateY(-50%);
+  border: none;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  border-radius: 999px;
+  width: var(--library-toggle-size);
+  height: var(--library-toggle-size);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.library-toggle span {
+  display: block;
+  font-size: 16px;
+  color: rgba(33, 33, 32, 0.7);
+  transform: rotate(0deg);
+  transition: transform 0.2s ease;
+}
+
+.library-toggle.open span {
+  transform: rotate(180deg);
 }
 
 /* Scrollbar style (per Style Guide) */

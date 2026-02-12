@@ -1470,12 +1470,14 @@
       </label>
     </div>
   </section>
+
 </section>
 
 <style>
   .home {
     max-width: 1120px;
     margin: 0 auto;
+    container-type: inline-size;
   }
 
   .dev-banner {
@@ -1653,6 +1655,13 @@
   }
 
   @media (max-width: 980px) {
+    .analysis-layout {
+      grid-template-columns: 1fr;
+      align-items: stretch;
+    }
+  }
+
+  @container (max-width: 980px) {
     .analysis-layout {
       grid-template-columns: 1fr;
       align-items: stretch;
@@ -1894,4 +1903,5 @@
     font: inherit;
     cursor: pointer;
   }
+
 </style>

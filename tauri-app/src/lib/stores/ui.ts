@@ -17,6 +17,7 @@ export interface AnalysisParams {
 }
 
 export const currentView = writable<View>('home');
+export const libraryDrawerOpen = writable<boolean>(false);
 
 export type ImageSource = { kind: 'path'; path: string } | { kind: 'blob' };
 
