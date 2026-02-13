@@ -1,42 +1,95 @@
 <script lang="ts">
   import { params } from '../../stores/ui';
+
+  interface Props {
+    onScrubStart: (event: PointerEvent) => void;
+    onScrubEnd: () => void;
+  }
+
+  let { onScrubStart, onScrubEnd }: Props = $props();
 </script>
 
 <section class="controls">
   <h2>Parameters</h2>
   <div class="grid">
     <label>
-      <span>Clusters</span>
-      <input type="number" min="1" max="400" bind:value={$params.clusters} />
+      <span>Number of clusters: <strong>{$params.clusters}</strong></span>
+      <input
+        type="range"
+        min="1"
+        max="2000"
+        step="1"
+        bind:value={$params.clusters}
+        onpointerdown={onScrubStart}
+        onpointerup={onScrubEnd}
+        onpointercancel={onScrubEnd}
+        onblur={onScrubEnd}
+      />
+      <input class="number-input" type="number" min="1" max="2000" step="1" bind:value={$params.clusters} />
     </label>
     <label>
-      <span>Stride</span>
-      <input type="number" min="1" max="16" bind:value={$params.stride} />
+      <span>Speed ← → Quality: <strong>{$params.quality}</strong></span>
+      <input
+        type="range"
+        min="0"
+        max="4"
+        step="1"
+        bind:value={$params.quality}
+        onpointerdown={onScrubStart}
+        onpointerup={onScrubEnd}
+        onpointercancel={onScrubEnd}
+        onblur={onScrubEnd}
+      />
     </label>
     <label>
-      <span>Min. luminosity</span>
-      <input type="number" min="0" max="255" bind:value={$params.minLum} />
+      <span>Exclude top clusters: <strong>{$params.ignoreTopN}</strong></span>
+      <input
+        type="range"
+        min="0"
+        max="100"
+        step="1"
+        bind:value={$params.ignoreTopN}
+        onpointerdown={onScrubStart}
+        onpointerup={onScrubEnd}
+        onpointercancel={onScrubEnd}
+        onblur={onScrubEnd}
+      />
     </label>
     <label>
-      <span>Color space</span>
-      <select bind:value={$params.colorSpace}>
-        <option value="RGB">RGB</option>
-        <option value="HSL">HSL</option>
-        <option value="YUV">YUV</option>
-        <option value="CIELAB">CIELAB</option>
-        <option value="CIELUV">CIELUV</option>
-      </select>
+      <span>Color merge threshold (ΔE OKLab): <strong>{$params.mergeThreshold.toFixed(2)}</strong></span>
+      <input
+        type="range"
+        min="0"
+        max="0.1"
+        step="0.01"
+        bind:value={$params.mergeThreshold}
+        onpointerdown={onScrubStart}
+        onpointerup={onScrubEnd}
+        onpointercancel={onScrubEnd}
+        onblur={onScrubEnd}
+      />
     </label>
     <label>
-      <span>Axis</span>
-      <select bind:value={$params.axis}>
-        <option value="HSL">HSL</option>
-        <option value="HLS">HLS</option>
-      </select>
+      <span>Symbol size: <strong>{$params.symbolScale.toFixed(1)}</strong></span>
+      <input
+        type="range"
+        min="0.5"
+        max="2"
+        step="0.1"
+        bind:value={$params.symbolScale}
+        onpointerdown={onScrubStart}
+        onpointerup={onScrubEnd}
+        onpointercancel={onScrubEnd}
+        onblur={onScrubEnd}
+      />
     </label>
-    <label>
-      <span>Symbol scale</span>
-      <input type="number" min="0.5" max="2" step="0.1" bind:value={$params.symbolScale} />
+    <label class="choice">
+      <input type="checkbox" bind:checked={$params.showClusterOutline} />
+      Cluster outline
+    </label>
+    <label class="choice">
+      <input type="checkbox" bind:checked={$params.showAxisLabels} />
+      Axis labels
     </label>
   </div>
 </section>
@@ -68,12 +121,34 @@
     font-size: 14px;
   }
 
-  input,
-  select {
+  .grid > label > span {
+    min-height: 2.6em;
+  }
+
+  input {
     padding: 8px 10px;
     border: 1px solid var(--line);
     border-radius: 6px;
     font: inherit;
     background: #fff;
+  }
+
+  input[type='range'] {
+    width: 100%;
+  }
+
+  .number-input {
+    margin-top: 8px;
+    width: 120px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    font: inherit;
+  }
+
+  .choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
 </style>

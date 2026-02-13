@@ -1,6 +1,14 @@
 import { z } from 'zod';
-import type { ValueStudyResult } from '../stores/ui';
 import { isTauriEnv, tauriInvoke } from './tauri';
+
+export interface ValueStudyResult {
+  tiles: string[];
+  neutral: string;
+  width: number;
+  height: number;
+  percentileLow: number;
+  percentileHigh: number;
+}
 
 type ValueStudyErrorCode = 'not-tauri' | 'invoke-failed' | 'invalid-response';
 

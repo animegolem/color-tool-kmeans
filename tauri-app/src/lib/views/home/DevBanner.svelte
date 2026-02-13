@@ -1,8 +1,19 @@
 <script lang="ts">
-  import type { DevBannerDetails } from './dev-banner-types';
+  import { tauriDetectionInfo, getBridgeOverride } from '../../bridges/tauri';
 
-  export let data: DevBannerDetails;
-  export let onDismiss: () => void;
+  interface DevBannerDetails {
+    detection: ReturnType<typeof tauriDetectionInfo>;
+    override: string | null;
+    fsBridge?: string;
+    computeVariant?: string;
+  }
+
+  interface Props {
+    data: DevBannerDetails;
+    onDismiss: () => void;
+  }
+
+  let { data, onDismiss }: Props = $props();
 </script>
 
 <aside class="dev-banner" role="status" aria-label="Tauri detection summary">

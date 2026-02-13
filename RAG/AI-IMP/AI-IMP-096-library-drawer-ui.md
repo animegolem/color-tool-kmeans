@@ -6,12 +6,12 @@ tags:
   - UI
   - Input
   - Epic-010
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-EPIC-010]
 parent_epic: [[AI-EPIC-010-multi-image-input]]
 confidence_score: 0.72
 date_created: 2026-02-03
-date_completed:
+date_completed: 2026-02-12
 ---
 
 # AI-IMP-096-library-drawer-ui
@@ -42,10 +42,10 @@ We need a right-side library drawer that can expand/collapse without disrupting 
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add a UI store boolean for library drawer open/closed.
-- [ ] Render drawer shell with “Imported” and “Active” sections (empty states allowed).
-- [ ] Add right-edge toggle button that opens/closes the drawer.
-- [ ] Ensure drawer open/close does not shift main layout or reset scroll.
+- [x] Add a UI store boolean for library drawer open/closed.
+- [x] Render drawer shell with “Imported” and “Active” sections (empty states allowed).
+- [x] Add right-edge toggle button that opens/closes the drawer.
+- [x] Ensure drawer open/close does not shift main layout or reset scroll.
 
 ### Acceptance Criteria
 **Scenario: Drawer toggle**
@@ -58,4 +58,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 **THEN** “Imported” and “Active” sections are visible with placeholder content.
 
 ### Issues Encountered
-{LOC|20}
+Layout approach changed mid-implementation. The right-side rail/toggle pattern proved fragile with scroll and resize behavior; a new header-bar driven layout is needed. A follow-up IMP was created to implement the revised header-based toggle and right sidebar positioning.

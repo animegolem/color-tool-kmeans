@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { convertFileSrc } from '@tauri-apps/api/core';
-  import type { SelectedImage, ValueAnalysisResult, ValueAnalysisState } from '../stores/ui';
+  import type { SelectedImage, ValueAnalysisResult, ValueAnalysisState, ImageEntry } from '../stores/ui';
   import {
     selectedFile,
     valueAnalysisLevels,
@@ -11,10 +11,16 @@
     setValueAnalysisPending,
     setValueAnalysisSuccess,
     setValueAnalysisError,
-    openZoomOverlay
+    openZoomOverlay,
+    setFile,
+    clearFile
   } from '../stores/ui';
+  import { getFsBridge } from '../bridges/fs';
+  import { isTauriEnv, getBridgeOverride } from '../bridges/tauri';
+  import { loadImageDataset } from '../compute/image-loader';
   import { requestValueAnalysis } from '../bridges/value-analysis';
   import { logEvent } from '../bridges/log';
+  import { openImageZoom as zoomImage } from '../utils/zoom';
 
   let file = $state<SelectedImage | null>(null);
   let analysis = $state<ValueAnalysisResult | null>(null);
@@ -87,7 +93,7 @@
 
 
   function openImageZoom(src: string, alt: string) {
-    openZoomOverlay({ kind: 'image', src, alt });
+    zoomImage(src, alt, openZoomOverlay);
   }
 
   function handleZoomKeydown(event: KeyboardEvent, src: string, alt: string) {
@@ -170,6 +176,48 @@
     }
   }
 
+  async function handleUpload() {
+    try {
+      const bridge = await getFsBridge();
+      const selection = await bridge.openImageFile();
+      if (!selection) return;
+
+      const nativeMode = (isTauriEnv() || getBridgeOverride() === 'tauri') && !!selection.path;
+
+      let dataset;
+      if (nativeMode) {
+        (globalThis as any).__ACTIVE_IMAGE_PATH__ = selection.path;
+        dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
+      } else {
+        dataset = await loadImageDataset(selection.blob);
+      }
+
+      const previewUrl = nativeMode && selection.path
+        ? convertFileSrc(selection.path)
+        : selection.blob && selection.blob.size > 0
+          ? URL.createObjectURL(selection.blob)
+          : null;
+
+      const source: ImageEntry['source'] = nativeMode && selection.path
+        ? { kind: 'path', path: selection.path }
+        : { kind: 'blob' };
+
+      const entry: ImageEntry = {
+        id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+        name: selection.name || selection.path || 'image',
+        path: selection.path,
+        size: selection.size,
+        source,
+        previewUrl
+      };
+
+      clearFile();
+      setFile(entry, dataset);
+    } catch (e) {
+      console.error('[values] Upload failed', e);
+    }
+  }
+
   onMount(() => {
     const unsubs = [
       selectedFile.subscribe((value) => {
@@ -249,13 +297,12 @@
 </script>
 
 <section class="values">
-  <header>
-    <h1>Values</h1>
-    <p class="note">Value analysis derived from OkLab lightness.</p>
-  </header>
-
   {#if !file}
-    <div class="empty">Select an image to view the values analysis.</div>
+    <div class="empty empty--upload">
+      <p>No image loaded.</p>
+      <button class="upload" onclick={handleUpload}>Upload image</button>
+      <p class="formats">PNG, JPEG, WebP</p>
+    </div>
   {:else if !renderAnalysis}
     {#if status === 'pending'}
       <div class="empty">Generating values analysis...</div>
@@ -686,6 +733,32 @@
     padding: 16px;
     background: var(--panel);
     border-radius: 8px;
+    color: rgba(33, 33, 32, 0.6);
+  }
+
+  .empty--upload {
+    text-align: center;
+    padding: 56px 16px;
+    border: 2px dashed var(--accent);
+    background: rgba(130, 76, 50, 0.06);
+  }
+
+  .empty--upload p {
+    margin: 0;
+  }
+
+  .upload {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
+    margin-top: 12px;
+  }
+
+  .formats {
+    margin-top: 12px;
+    font-size: 12px;
     color: rgba(33, 33, 32, 0.6);
   }
 

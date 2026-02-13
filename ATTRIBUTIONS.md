@@ -34,6 +34,9 @@ This project vendors UI assets locally for offline use:
 - Icons and UI elements (CC BY) from Figma Community files:
   - https://www.figma.com/community/file/1380235722331273046
   - https://www.figma.com/community/file/1035203688168086460
+- Sidebar layout toggle icons derived from VS Code Codicons
+  License: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+  Source: https://github.com/microsoft/vscode-codicons
 
 ---
 
