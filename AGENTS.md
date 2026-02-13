@@ -48,3 +48,26 @@
 ## Agent-Specific Notes
 - Respect this document and any nested AGENTS.md. Keep changes minimal and focused. When adding assets or planning docs, place them in the directories above and keep the repo fully offline at runtime.
 - Use `RAG/INDEX.md` as the single entry point for current status (auto-generated via pre-commit).
+
+## Current Architecture Snapshot (IMP-101 Baseline)
+- App shell is now a 3-column/2-row grid in `tauri-app/src/App.svelte` + `tauri-app/src/app.css`:
+  - Columns: left nav, center channel, right library rail.
+  - Rows: fixed in-app header + scrollable view body.
+- Header controls are global and live in `App.svelte` (not per-view):
+  - Left toggle collapses nav (`navCollapsed` store).
+  - Center shows active view + selected media label + `Clear`.
+  - Right toggle opens/closes library rail (`libraryDrawerOpen` store).
+- `HomeView.svelte` was refactored into smaller modules under `tauri-app/src/lib/views/home/`:
+  - `VideoPanel.svelte`, `AnalysisCards.svelte`, `ParameterControls.svelte`, `DevBanner.svelte`
+  - Controller modules: `video-controller.svelte.ts`, `analysis-runner.svelte.ts`, `file-ingestion.svelte.ts`
+- Library UI is scaffold-only in current state (placeholder sections); ingestion behavior remains tracked by IMP-097/098/099/100.
+- Sidebar icon assets exist in both:
+  - planning refs: `RAG/assets/layout-sidebar-*.svg`
+  - runtime assets: `tauri-app/src/lib/assets/layout-sidebar-*.svg`
+
+## Implementation Guardrails (Layout Work)
+- Do not reintroduce the legacy floating toggle lane pattern from IMP-096.
+- Keep header/body/rail reflow coupled via shared grid sizing; avoid overlay behavior that causes card overlap.
+- When layout behavior changes, validate both:
+  - wide desktop mode (two-column analysis cards)
+  - narrow mode (cards stack without overlap/clipping).

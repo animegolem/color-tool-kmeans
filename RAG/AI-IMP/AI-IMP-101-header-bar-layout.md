@@ -5,13 +5,13 @@ tags:
   - Implementation
   - UI
   - Layout
-  - Epic-010
-kanban_status: planned
-depends_on: [AI-EPIC-010, AI-IMP-096]
-parent_epic: [[AI-EPIC-010-multi-image-input]]
+  - Epic-020
+kanban_status: completed
+depends_on: [AI-EPIC-020, AI-IMP-096]
+parent_epic: [[AI-EPIC-020-multi-image-input]]
 confidence_score: 0.62
 date_created: 2026-02-12
-date_completed:
+date_completed: 2026-02-13
 ---
 
 # AI-IMP-101-header-bar-layout
@@ -50,17 +50,17 @@ The right sidebar toggle pattern is still unstable and visually awkward. We will
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add global header bar structure and wiring in `App.svelte`.
-- [ ] Render mode title, file label, and Clear action in the header.
-- [ ] Add left/right toggle icons in the header, wired to `libraryDrawerOpen`.
-- [ ] Convert shell layout to a header + body grid so header and body share column sizing.
-- [ ] Ensure main content scrolls while header and side rails stay fixed.
-- [ ] Remove legacy floating toggle lane styles/markup from `App.svelte` + `app.css`.
-- [ ] Make right sidebar fully right-justified + full-height; no content overlap at any width.
-- [ ] Add/verify responsive breakpoints so analysis cards stack before overlap.
-- [ ] Update/remove any redundant file label/clear UI from `HomeView.svelte`.
-- [ ] Record `HomeView.svelte` extraction candidates as follow-up items if encountered during implementation.
-- [ ] Add attribution for the SVG icons.
+- [x] Add global header bar structure and wiring in `App.svelte`.
+- [x] Render mode title, file label, and Clear action in the header.
+- [x] Add left/right toggle icons in the header, wired to `libraryDrawerOpen`.
+- [x] Convert shell layout to a header + body grid so header and body share column sizing.
+- [x] Ensure main content scrolls while header and side rails stay fixed.
+- [x] Remove legacy floating toggle lane styles/markup from `App.svelte` + `app.css`.
+- [x] Make right sidebar fully right-justified + full-height; no content overlap at any width.
+- [x] Add/verify responsive breakpoints so analysis cards stack before overlap.
+- [x] Update/remove any redundant file label/clear UI from `HomeView.svelte`.
+- [x] Record `HomeView.svelte` extraction candidates as follow-up items if encountered during implementation.
+- [x] Add attribution for the SVG icons.
 
 ### Acceptance Criteria
 **Scenario: Header toggle**
@@ -89,4 +89,5 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 **THEN** the right rail stays fully right-justified, full-height, and does not float over main content.
 
 ### Issues Encountered
-{LOC|20}
+- Implemented header-shell grid layout in `App.svelte`/`app.css`; removed floating lane behavior and moved toggles to header endcaps.
+- Extracted `HomeView` responsibilities into `views/home/*` modules during delivery (video, analysis, ingestion, parameter controls).

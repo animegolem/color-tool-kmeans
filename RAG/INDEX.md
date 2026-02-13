@@ -4,19 +4,6 @@
 
 ## Planned
 
-### [[AI-EPIC-010-multi-image-input|EPIC-010: Multi image input]]
-> Users need to load, manage, and compare multiple references (images and optionally videos) without juggling external tabs. The current UI only supp...
-
-**IMPs:**
-- [[AI-IMP-096-library-drawer-ui|IMP-096]] - completed
-- [[AI-IMP-097-library-drag-drop|IMP-097]] - planned
-- [[AI-IMP-098-clipboard-paste-images|IMP-098]] - planned
-- [[AI-IMP-099-session-root-folder-tree|IMP-099]] - planned
-- [[AI-IMP-100-active-item-switching-removal|IMP-100]] - planned
-- [[AI-IMP-101-header-bar-layout|IMP-101]] - planned
-
----
-
 ### [[AI-EPIC-011-aggregate-analysis|EPIC-011: Aggregate analysis]]
 > When analyzing color across multiple reference images (e.g., frames from an episode, scene references), users need to see common palette threads. C...
 
@@ -44,36 +31,55 @@
 
 ---
 
+### [[AI-EPIC-020-multi-image-input|EPIC-020: Multi image input]]
+> Users need to load, manage, and compare multiple references (images and optionally videos) without juggling external tabs. The current UI only supp...
+
+**IMPs:**
+- [[AI-IMP-096-library-drawer-ui|IMP-096]] - completed
+- [[AI-IMP-097-library-drag-drop|IMP-097]] - planned
+- [[AI-IMP-098-clipboard-paste-images|IMP-098]] - planned
+- [[AI-IMP-099-session-root-folder-tree|IMP-099]] - planned
+- [[AI-IMP-100-active-item-switching-removal|IMP-100]] - planned
+- [[AI-IMP-101-header-bar-layout|IMP-101]] - completed
+
+---
+
 ## Size Watch (over 600 LOC)
 
 Generated from tracked files; binary assets excluded.
 
 - tauri-app/src-tauri/src/bin/bench_runner.rs (1943 LOC)
-- tauri-app/src-tauri/src/main.rs (917 LOC)
-- tauri-app/src/lib/views/ValuesView.svelte (770 LOC)
 - tauri-app/src-tauri/src/color.rs (706 LOC)
+- tauri-app/src/lib/views/ValuesView.svelte (643 LOC)
 
 ## Size Watch (over 300 LOC)
 
 Generated from tracked files; binary assets excluded.
 
-- tauri-app/src/lib/views/HomeView.svelte (597 LOC)
+- tauri-app/src/lib/views/HomeView.svelte (598 LOC)
 - tauri-app/src-tauri/src/kmeans.rs (581 LOC)
 - tauri-app/src-tauri/src/value_analysis.rs (569 LOC)
 - tauri-app/src/lib/exports/value-analysis.ts (499 LOC)
-- tauri-app/src/lib/views/home/video-controller.svelte.ts (479 LOC)
+- tauri-app/src/lib/views/home/video-controller.svelte.ts (490 LOC)
 - RAG/scripts/generate-index.sh (383 LOC)
-- tauri-app/src-tauri/src/value_study.rs (349 LOC)
+- tauri-app/src/app.css (347 LOC)
+- tauri-app/src-tauri/src/commands.rs (346 LOC)
 - tauri-app/src/lib/exports/polar-chart.ts (339 LOC)
-- tauri-app/src/app.css (339 LOC)
 - tauri-app/src-tauri/src/ffmpeg.rs (330 LOC)
 - tauri-app/src/lib/stores/ui.ts (321 LOC)
 
 ---
 
+## Anomalies
+
+### Orphaned IMPs (no epic dependency)
+- [[AI-IMP-103-state-regressions-cross-tab-flow|IMP-103]] - in-progress, no epic dependency found
+
+---
+
 ## Completed
 <details>
-<summary>10 Epics, 24 IMPs completed</summary>
+<summary>10 Epics, 25 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006: Tauri bridge reliability and native mode fixes]] (2026-01-21)
 - [[AI-EPIC-007-tauri-ui-graphs-exports|EPIC-007: Tauri ui graphs exports]] (2026-01-21)

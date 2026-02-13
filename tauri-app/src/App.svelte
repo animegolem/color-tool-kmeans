@@ -197,9 +197,11 @@
         <span class="header-view-desc">{activeViewDesc}</span>
       </div>
       {#if fileLabel}
-        <span class="header-separator" aria-hidden="true">&middot;</span>
-        <span class="header-file-label" title={fileLabel}>{fileLabel}</span>
-        <button type="button" class="header-clear" onclick={handleClear}>Clear</button>
+        <div class="header-file-group">
+          <span class="header-separator" aria-hidden="true">&middot;</span>
+          <span class="header-file-label" title={fileLabel}>{fileLabel}</span>
+          <button type="button" class="header-clear" onclick={handleClear}>Clear</button>
+        </div>
       {/if}
     </div>
 

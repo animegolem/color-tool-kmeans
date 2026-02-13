@@ -5,10 +5,10 @@ tags:
   - Implementation
   - UI
   - Input
-  - Epic-010
+  - Epic-020
 kanban_status: planned
-depends_on: [AI-EPIC-010, AI-IMP-096]
-parent_epic: [[AI-EPIC-010-multi-image-input]]
+depends_on: [AI-EPIC-020, AI-IMP-096]
+parent_epic: [[AI-EPIC-020-multi-image-input]]
 confidence_score: 0.68
 date_created: 2026-02-03
 date_completed:

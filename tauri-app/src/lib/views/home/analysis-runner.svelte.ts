@@ -55,8 +55,10 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
 
   function captureAnalysisScroll() {
     if (typeof document === 'undefined') return;
-    const scroller = document.scrollingElement ?? document.documentElement;
-    analysisScrollLock = { top: scroller.scrollTop, token: null };
+    const el = document.querySelector('.view-container');
+    if (el instanceof HTMLElement) {
+      analysisScrollLock = { top: el.scrollTop, token: null };
+    }
   }
 
   function restoreAnalysisScroll(token: number) {
@@ -66,8 +68,10 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
     analysisScrollLock = null;
     Promise.resolve().then(() => {
       requestAnimationFrame(() => {
-        const scroller = document.scrollingElement ?? document.documentElement;
-        scroller.scrollTop = targetTop;
+        const el = document.querySelector('.view-container');
+        if (el instanceof HTMLElement) {
+          el.scrollTop = targetTop;
+        }
       });
     });
   }

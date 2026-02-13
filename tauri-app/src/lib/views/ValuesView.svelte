@@ -1,38 +1,18 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import { convertFileSrc } from '@tauri-apps/api/core';
-  import type { SelectedImage, ValueAnalysisResult, ValueAnalysisState, ImageEntry } from '../stores/ui';
-  import {
-    selectedFile,
-    valueAnalysisLevels,
-    valueAnalysisResult,
-    valueAnalysisState,
-    valueAnalysisError,
-    setValueAnalysisPending,
-    setValueAnalysisSuccess,
-    setValueAnalysisError,
-    openZoomOverlay,
-    setFile,
-    clearFile
-  } from '../stores/ui';
+  import type { ImageEntry } from '../stores/ui';
+  import { openZoomOverlay, setFile, clearFile } from '../stores/ui';
   import { getFsBridge } from '../bridges/fs';
   import { isTauriEnv, getBridgeOverride } from '../bridges/tauri';
   import { loadImageDataset } from '../compute/image-loader';
-  import { requestValueAnalysis } from '../bridges/value-analysis';
   import { logEvent } from '../bridges/log';
   import { openImageZoom as zoomImage } from '../utils/zoom';
+  import { createValueAnalysisRunner } from './values/value-analysis-runner.svelte';
 
-  let file = $state<SelectedImage | null>(null);
-  let analysis = $state<ValueAnalysisResult | null>(null);
-  let displayAnalysis = $state<ValueAnalysisResult | null>(null);
-  let displayImageId = $state<string | null>(null);
-  let status = $state<ValueAnalysisState>('idle');
-  let error = $state<string | null>(null);
-  let levels = $state(3);
-  let lastMaskKey = '';
+  const runner = createValueAnalysisRunner();
 
-  const renderAnalysis = $derived.by(() => analysis ?? displayAnalysis);
-  const effectiveNotanMode = $derived.by(() => levels === 2);
+  const renderAnalysis = $derived.by(() => runner.analysis);
 
   const neutralSrc = $derived.by(() => {
     if (!renderAnalysis?.neutral) return '';
@@ -45,7 +25,7 @@
   });
 
   const isRefreshing = $derived.by(
-    () => status === 'pending' && analysis === null && displayAnalysis !== null
+    () => runner.status === 'pending' && runner.analysis === null
   );
 
   const histogramBins = $derived.by(() => {
@@ -89,9 +69,6 @@
     });
   });
 
-
-
-
   function openImageZoom(src: string, alt: string) {
     zoomImage(src, alt, openZoomOverlay);
   }
@@ -121,11 +98,6 @@
     return 'Low contrast';
   }
 
-  function updateLevels() {
-    valueAnalysisLevels.set(levels);
-    void logEvent(`values:levels ${levels}`);
-  }
-
   function bucketTone(value: number) {
     const shade = Math.round(Math.max(0, Math.min(1, value)) * 255);
     return `rgb(${shade}, ${shade}, ${shade})`;
@@ -139,41 +111,6 @@
     return `${formatPercent(bucket.lower)}-${formatPercent(bucket.upper)} | ${formatPercent(
       bucket.share
     )}`;
-  }
-
-  async function ensureValueAnalysis(
-    currentFile: SelectedImage,
-    requestedLevels: number,
-    requestedNotanMode: boolean
-  ) {
-    if (!currentFile.path) {
-      setValueAnalysisError(
-        currentFile.id,
-        requestedLevels,
-        requestedNotanMode,
-        'Value analysis requires a native file path.'
-      );
-      return;
-    }
-    const startedAt = performance.now();
-    void logEvent(`values:analysis:start levels=${requestedLevels} twoTone=${requestedNotanMode}`);
-    setValueAnalysisPending(currentFile.id, requestedLevels, requestedNotanMode);
-    try {
-      const result = await requestValueAnalysis(
-        currentFile.path,
-        currentFile.id,
-        requestedLevels,
-        requestedNotanMode
-      );
-      const duration = Math.round(performance.now() - startedAt);
-      void logEvent(`values:analysis:success ms=${duration}`);
-      setValueAnalysisSuccess(currentFile.id, requestedLevels, requestedNotanMode, result);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      const duration = Math.round(performance.now() - startedAt);
-      void logEvent(`values:analysis:error ms=${duration} message=${message}`);
-      setValueAnalysisError(currentFile.id, requestedLevels, requestedNotanMode, message);
-    }
   }
 
   async function handleUpload() {
@@ -218,96 +155,32 @@
     }
   }
 
-  onMount(() => {
-    const unsubs = [
-      selectedFile.subscribe((value) => {
-        file = value;
-        const nextId = value?.id ?? null;
-        if (displayImageId && nextId !== displayImageId) {
-          displayAnalysis = null;
-        }
-        displayImageId = nextId;
-      }),
-      valueAnalysisResult.subscribe((value) => {
-        const startedAt = performance.now();
-        void logEvent(
-          `values:analysis:subscribe:start has=${value ? 'yes' : 'no'} map=${
-            value?.bucketMapData?.length ?? 0
-          }`
-        );
-        analysis = value;
-        if (value && file) {
-          displayAnalysis = value;
-          displayImageId = file.id;
-        }
-        const duration = Math.round(performance.now() - startedAt);
-        void logEvent(`values:analysis:subscribe:done ms=${duration}`);
-      }),
-      valueAnalysisState.subscribe((value) => {
-        status = value;
-      }),
-      valueAnalysisError.subscribe((value) => {
-        error = value;
-      }),
-      valueAnalysisLevels.subscribe((value) => {
-        levels = value;
-      })
-    ];
-    void logEvent('values:view:mount');
-    queueMicrotask(() => {
-      void logEvent('values:view:mount:tick');
-    });
-    void tick().then(() => {
-      void logEvent('values:view:mount:afterDOM');
-    });
-    const rafHandle = window.requestAnimationFrame(() => {
-      void logEvent('values:view:mount:raf');
-    });
-    const afterTick = window.setTimeout(() => {
-      void logEvent('values:view:mount:after100ms');
-    }, 100);
-    return () => {
-      unsubs.forEach((unsub) => unsub());
-      window.cancelAnimationFrame(rafHandle);
-      window.clearTimeout(afterTick);
-      void logEvent('values:view:unmount');
-    };
+  onMount(() => runner.mount());
+
+  $effect(() => {
+    if (!runner.file) return;
+    if (runner.status !== 'idle') return;
+    if (runner.hasCurrentAnalysis) return;
+    void runner.ensureAnalysis(runner.file, runner.levels, runner.effectiveNotanMode);
   });
 
   $effect(() => {
-    if (!file) return;
-    if (status !== 'idle') return;
-    if (analysis) return;
-    void ensureValueAnalysis(file, levels, effectiveNotanMode);
-  });
-
-  $effect(() => {
-    const analysis = renderAnalysis;
-    if (!analysis || !analysis.bucketValues.length) {
-      lastMaskKey = '';
-      return;
-    }
-    const mapData = analysis.bucketMapData ?? [];
-    const maskKey = `${mapData.length}:${analysis.previewWidth}x${analysis.previewHeight}:${
-      analysis.bucketValues.length
-    }`;
-    if (maskKey === lastMaskKey) return;
-    lastMaskKey = maskKey;
+    runner.trackMaskKey(renderAnalysis);
   });
 </script>
 
 <section class="values">
-  {#if !file}
+  {#if !runner.file}
     <div class="empty empty--upload">
       <p>No image loaded.</p>
       <button class="upload" onclick={handleUpload}>Upload image</button>
       <p class="formats">PNG, JPEG, WebP</p>
     </div>
   {:else if !renderAnalysis}
-    {#if status === 'pending'}
+    {#if runner.status === 'pending'}
       <div class="empty">Generating values analysis...</div>
-    {:else if status === 'error'}
-      <div class="empty">Values analysis failed. {error ?? 'Unknown error.'}</div>
+    {:else if runner.status === 'error'}
+      <div class="empty">Values analysis failed. {runner.error ?? 'Unknown error.'}</div>
     {:else}
       <div class="empty">Select an image to view the values analysis.</div>
     {/if}
@@ -316,15 +189,15 @@
       <div class="preview-pair">
         <div class="preview-card">
           <span>Original</span>
-          {#if file.previewUrl}
+          {#if runner.file.previewUrl}
             <img
               class="preview zoomable"
-              src={file.previewUrl}
-              alt={file.name}
+              src={runner.file.previewUrl}
+              alt={runner.file.name}
               role="button"
               tabindex="0"
-              onclick={() => openImageZoom(file.previewUrl ?? '', file.name)}
-              onkeydown={(event) => handleZoomKeydown(event, file.previewUrl ?? '', file.name)}
+              onclick={() => openImageZoom(runner.file.previewUrl ?? '', runner.file.name)}
+              onkeydown={(event) => handleZoomKeydown(event, runner.file.previewUrl ?? '', runner.file.name)}
               onload={() => void logEvent('values:image:original:load')}
               onerror={() => void logEvent('values:image:original:error')}
             />
@@ -410,8 +283,8 @@
         <div class="analysis-controls">
           <label class="levels">
             <span>Levels</span>
-            <input type="range" min="2" max="5" step="1" bind:value={levels} oninput={updateLevels} />
-            <strong>{levels}</strong>
+            <input type="range" min="2" max="5" step="1" bind:value={runner.levels} oninput={runner.updateLevels} />
+            <strong>{runner.levels}</strong>
           </label>
         </div>
       </div>

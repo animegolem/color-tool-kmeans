@@ -265,6 +265,7 @@ export function createVideoController(deps: VideoControllerDeps) {
     if (state.posterPath) {
       videoPosterPath = state.posterPath;
       videoPosterUrl = `${convertFileSrc(state.posterPath)}?t=${Date.now()}`;
+      (globalThis as any).__ACTIVE_IMAGE_PATH__ = state.posterPath;
     }
     restoringVideoState = false;
     if (videoSelection?.path && (videoDuration <= 0 || !videoFps)) {
@@ -394,8 +395,10 @@ export function createVideoController(deps: VideoControllerDeps) {
 
   function captureVideoScroll() {
     if (typeof document === 'undefined') return;
-    const scroller = document.scrollingElement ?? document.documentElement;
-    videoScrollLock = { top: scroller.scrollTop, token: null };
+    const el = document.querySelector('.view-container');
+    if (el instanceof HTMLElement) {
+      videoScrollLock = { top: el.scrollTop, token: null };
+    }
   }
 
   function restoreVideoScroll(token: number) {
@@ -405,8 +408,10 @@ export function createVideoController(deps: VideoControllerDeps) {
     videoScrollLock = null;
     Promise.resolve().then(() => {
       requestAnimationFrame(() => {
-        const scroller = document.scrollingElement ?? document.documentElement;
-        scroller.scrollTop = targetTop;
+        const el = document.querySelector('.view-container');
+        if (el instanceof HTMLElement) {
+          el.scrollTop = targetTop;
+        }
       });
     });
   }
@@ -435,7 +440,13 @@ export function createVideoController(deps: VideoControllerDeps) {
     if (videoSelection?.path === state.path) {
       return;
     }
-    restoreVideoSelection(state);
+    try {
+      restoreVideoSelection(state);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      void logEvent(`video:restore:error message=${message}`);
+      console.error('[video] restoreVideoSelection failed', err);
+    }
   }
 
   function loadSrcEffect() {

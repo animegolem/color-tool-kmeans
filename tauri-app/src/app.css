@@ -140,6 +140,14 @@ main.library-open {
   min-width: 0;
 }
 
+.header-file-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  min-width: 0;
+}
+
 .header-title-group {
   display: flex;
   flex-direction: column;

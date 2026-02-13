@@ -207,6 +207,7 @@
 
   function retryAnalysis() {
     clearAnalysisError();
+    runner.clearLastRequestKey();
     const currentFile = file;
     if (currentFile) {
       runner.scheduleAnalysisWith(currentFile, currentParams, status);

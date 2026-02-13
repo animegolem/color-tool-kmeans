@@ -1,5 +1,5 @@
 ---
-node_id: AI-EPIC-010
+node_id: AI-EPIC-020
 tags:
   - EPIC
   - AI
@@ -11,7 +11,7 @@ date_completed:
 kanban_status: planned
 AI_IMP_spawned:
 ---
-# AI-EPIC-010-multi-image-input
+# AI-EPIC-020-multi-image-input
 
 ## Problem Statement/Feature Scope
 Users need to load, manage, and compare multiple references (images and optionally videos) without juggling external tabs. The current UI only supports a single active image even though store architecture supports ID-keyed caching. We need a lightweight, session-scoped library for quick switching, with an optional single-root folder tree per run.
@@ -54,13 +54,14 @@ Users need to load, manage, and compare multiple references (images and optional
 ## Implementation Breakdown
 
 ### Planned Tickets
-- AI-IMP-096: Library drawer UI (Imported + Active lists)
 - AI-IMP-097: Multi-file drag-drop handling into library
 - AI-IMP-098: Clipboard paste support (images)
 - AI-IMP-099: Session-scoped root folder tree (single root) + basic filter
 - AI-IMP-100: Active item switching state verification + removal behavior
 
 ### Completed Tickets
+- AI-IMP-096: Library drawer UI baseline (superseded by header-shell layout follow-up)
+- AI-IMP-101: Header-bar layout shell and responsive reflow
 
 ## Notes
 Store foundation already exists:

@@ -21,7 +21,10 @@ Color analysis tool using k-means clustering. Primary implementation:
 
 **Views** (`tauri-app/src/lib/views/`):
 - `HomeView.svelte` — orchestration shell (~600 LOC): wires submodules, owns lifecycle/store subscriptions, renders layout with subcomponents
-- `ValuesView.svelte` — value/lightness analysis with multi-level k-means bucketing (~700 LOC)
+- `ValuesView.svelte` — value/lightness analysis with multi-level k-means bucketing
+
+**ValuesView Submodules** (`tauri-app/src/lib/views/values/`):
+- `value-analysis-runner.svelte.ts` — analysis orchestration, store subscriptions, lifecycle management
 - `ExportsView.svelte` — SVG/PNG/CSV export UI (~300 LOC)
 
 **HomeView Submodules** (`tauri-app/src/lib/views/home/`):
@@ -56,7 +59,6 @@ Color analysis tool using k-means clustering. Primary implementation:
 - `ffmpeg.ts` — ffmpeg version check
 - `log.ts` — event logging bridge
 - `value-analysis.ts` — value/lightness analysis Tauri bridge
-- `value-study.ts` — legacy value study Tauri bridge (unused, retained for backend compatibility)
 
 **Compute** (`tauri-app/src/lib/compute/`):
 - `bridge.ts` — routes to native (`analyze_image` command)
@@ -67,7 +69,6 @@ Color analysis tool using k-means clustering. Primary implementation:
 - `hue-lightness.ts` — hue x lightness scatter SVG
 - `histogram.ts` — cluster histogram SVG
 - `value-analysis.ts` — value analysis export
-- `value-study.ts` — legacy value study export
 - `palette.ts`, `svg.ts`, `png.ts`, `font-embed.ts` — shared export utilities
 
 **Assets** (`tauri-app/src/lib/assets/`):
@@ -75,11 +76,15 @@ Color analysis tool using k-means clustering. Primary implementation:
 
 **Native Backend** (`tauri-app/src-tauri/src/`):
 - `lib.rs` — core module exports
+- `main.rs` — Tauri setup, plugin init, command registration
+- `commands.rs` — `#[tauri::command]` handler implementations
+- `commands_types.rs` — request/response DTOs
+- `merge.rs` — cluster merge algorithm (`merge_clusters_by_threshold`)
+- `cache.rs` — event log + cache pruning utilities
 - `kmeans.rs` — k-means clustering (SIMD-enabled via `wide` feature)
 - `color.rs` — OKLab/OKLch color space conversions (perceptual)
 - `image_pipeline.rs` — image sampling and analysis entry point
-- `main.rs` — Tauri commands: `analyze_image`, `open_image_dialog`
-- `value_analysis.rs` / `value_study.rs` — value/lightness analysis
+- `value_analysis.rs` — value/lightness analysis
 - `ffmpeg.rs` — video frame extraction via ffmpeg CLI
 - **Binaries** (`bin/`) — CLI tools: `compute_cli`, `kmeans_baseline`, `rmpc_theme_gen`, `bench_runner`
 
@@ -183,10 +188,6 @@ git config core.hooksPath .githooks
 - **Design**: `figma/` — exported frames; reference designs in `RAG/assets/`
 - **Logs**: `RAG/AI-LOG/` — development session notes
 - **Runbooks**: `TAURI-NATIVE-RUNBOOK.md` — Tauri-specific troubleshooting
-
-## Known Tech Debt
-
-- **Legacy bridge**: `bridges/value-study.ts` and `exports/value-study.ts` are unused by the renderer but retained for backend compatibility. The backend `value_study` Tauri command still exists.
 
 ## Key Technical Notes
 
