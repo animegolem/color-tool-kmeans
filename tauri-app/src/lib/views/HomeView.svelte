@@ -114,6 +114,15 @@
     recordDevEvent
   });
 
+  // Seed dedup key so remount doesn't re-trigger cached analysis
+  {
+    const cachedResult = get(analysisResult);
+    const cachedFile = get(selectedFile);
+    if (cachedResult && cachedFile) {
+      runner.seedLastRequestKey(cachedFile, get(params));
+    }
+  }
+
   // --- File ingestion ---
   const ingestion = createFileIngestion({
     setFile,
@@ -143,7 +152,8 @@
     setBannerMessage: (msg) => { bannerMessage = msg; },
     scheduleAnalysisWith: (f, p) => runner.scheduleAnalysisWith(f, p, status),
     getCurrentParams: () => currentParams,
-    clearLastRequestKey: () => runner.clearLastRequestKey()
+    clearLastRequestKey: () => runner.clearLastRequestKey(),
+    captureAnalysisScroll: () => runner.captureAnalysisScroll()
   });
 
   // --- Derived chart state ---
@@ -372,7 +382,7 @@
             </div>
           </div>
         {/if}
-        {#if status === 'ready' && result && histogram}
+        {#if result && histogram}
           <AnalysisCards
             {result}
             {histogram}
@@ -383,7 +393,7 @@
         {/if}
       </div>
       <div class="analysis-column">
-        {#if status === 'ready' && result}
+        {#if result}
           <AnalysisCards
             {result}
             histogram={null}

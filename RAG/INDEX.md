@@ -50,17 +50,17 @@ Generated from tracked files; binary assets excluded.
 
 - tauri-app/src-tauri/src/bin/bench_runner.rs (1943 LOC)
 - tauri-app/src-tauri/src/color.rs (706 LOC)
-- tauri-app/src/lib/views/ValuesView.svelte (643 LOC)
+- tauri-app/src/lib/views/ValuesView.svelte (638 LOC)
+- tauri-app/src/lib/views/HomeView.svelte (607 LOC)
 
 ## Size Watch (over 300 LOC)
 
 Generated from tracked files; binary assets excluded.
 
-- tauri-app/src/lib/views/HomeView.svelte (598 LOC)
 - tauri-app/src-tauri/src/kmeans.rs (581 LOC)
 - tauri-app/src-tauri/src/value_analysis.rs (569 LOC)
 - tauri-app/src/lib/exports/value-analysis.ts (499 LOC)
-- tauri-app/src/lib/views/home/video-controller.svelte.ts (490 LOC)
+- tauri-app/src/lib/views/home/video-controller.svelte.ts (459 LOC)
 - RAG/scripts/generate-index.sh (383 LOC)
 - tauri-app/src/app.css (347 LOC)
 - tauri-app/src-tauri/src/commands.rs (346 LOC)
@@ -73,7 +73,7 @@ Generated from tracked files; binary assets excluded.
 ## Anomalies
 
 ### Orphaned IMPs (no epic dependency)
-- [[AI-IMP-103-state-regressions-cross-tab-flow|IMP-103]] - in-progress, no epic dependency found
+- [[AI-IMP-103-state-regressions-cross-tab-flow|IMP-103]] - done, no epic dependency found
 
 ---
 

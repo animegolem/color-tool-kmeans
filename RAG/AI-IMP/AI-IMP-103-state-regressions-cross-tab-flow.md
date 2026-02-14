@@ -4,12 +4,12 @@ tags:
   - IMP-LIST
   - Implementation
   - Bugfix
-kanban_status: in-progress
+kanban_status: done
 depends_on: [AI-IMP-102]
 parent_epic:
 confidence_score: 0.90
 date_created: 2026-02-13
-date_completed:
+date_completed: 2026-02-13
 ---
 
 # AI-IMP-103: Fix State Regressions in ValuesView and Cross-Tab Flow
@@ -63,8 +63,28 @@ Views use `{#if}` conditional rendering → destroyed on tab switch. Runner crea
 - [ ] Fix `retryAnalysis` in HomeView to clear `lastRequestKey`
 - [ ] Fix `analysis-runner.svelte.ts` scroll functions to target `.view-container`
 - [ ] Call `cancelPending()` from runner cleanup
+- [x] Seed `lastRequestKey` on mount to prevent spurious re-analysis on tab switch (Fix 7)
+- [x] Unify scroll lock in video-controller and analysis-runner to target `.view-container` (Fix 8)
+- [x] Remove `status === 'ready'` gate from chart `{#if}` blocks to prevent layout jump (Fix 9)
 - [ ] `npm run check` passes
 - [ ] `npm run build` passes
+
+## Follow-up Fixes
+
+### Fix 7: Re-analysis on tab switch (seedLastRequestKey)
+Switching tabs and returning to Home would re-trigger analysis even though params/image hadn't changed. Root cause: `lastRequestKey` was not seeded from cache on mount, so the dedup check always saw a mismatch.
+**Fix:** Seed `lastRequestKey` in `mount()` from `analysisById` cache using the active image ID.
+
+### Fix 8: Video frame scroll preservation (unified scroll lock)
+Stepping video frames caused scroll position to jump. The scroll lock in `analysis-runner.svelte.ts` targeted `document.scrollingElement` (always 0 due to outer grid `overflow: hidden`), and `video-controller.svelte.ts` had no scroll preservation at all.
+**Fix:** Unified scroll lock in both modules targeting `.view-container` via querySelector.
+
+### Fix 9: Chart layout jump during video frame re-analysis
+Stepping video frames caused charts to disappear and reappear (layout jump). Both `{#if}` chart gates in HomeView required `status === 'ready'`, so when `setAnalysisPending()` fired, charts were destroyed and rebuilt after analysis completed.
+**Fix:** Removed `status === 'ready'` from both chart `{#if}` gates. Stale charts persist during re-analysis; spinner overlay communicates "working" state.
+
+### Known: Video element flash on tab switch
+The `<video>` element briefly flashes when switching back to Home with a video loaded. Cosmetic issue, deferred to a future ticket.
 
 ## Acceptance Criteria
 

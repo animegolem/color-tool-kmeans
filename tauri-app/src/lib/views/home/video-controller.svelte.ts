@@ -16,6 +16,7 @@ export interface VideoControllerDeps {
   scheduleAnalysisWith: (file: ImageEntry & { dataset: { width: number; height: number; pixels: Uint8Array } }, params: any) => void;
   getCurrentParams: () => any;
   clearLastRequestKey: () => void;
+  captureAnalysisScroll: () => void;
 }
 
 export function createVideoController(deps: VideoControllerDeps) {
@@ -38,7 +39,6 @@ export function createVideoController(deps: VideoControllerDeps) {
   let videoStripId: string | null = $state(null);
   let videoElement: HTMLVideoElement | null = $state(null);
   let restoringVideoState = false;
-  let videoScrollLock: { top: number; token: number | null } | null = null;
 
   function resetVideoState() {
     videoSelection = null;
@@ -59,7 +59,6 @@ export function createVideoController(deps: VideoControllerDeps) {
     videoStripPath = null;
     videoStripPending = false;
     videoStripId = null;
-    videoScrollLock = null;
     if (videoElement) {
       videoElement.pause();
       videoElement.currentTime = 0;
@@ -148,9 +147,6 @@ export function createVideoController(deps: VideoControllerDeps) {
     const quality = deps.getQuality();
     const maxDimension = deps.maxDimensionForQuality(quality);
     const token = ++videoDecodeToken;
-    if (videoScrollLock) {
-      videoScrollLock.token = token;
-    }
     videoDecodeTimer = setTimeout(async () => {
       if (!videoSelection?.path || token !== videoDecodeToken) return;
       try {
@@ -181,7 +177,6 @@ export function createVideoController(deps: VideoControllerDeps) {
         deps.clearLastRequestKey();
         deps.scheduleAnalysisWith({ ...entry, dataset }, deps.getCurrentParams());
         pushVideoState();
-        restoreVideoScroll(token);
         void logEvent(`video:frame:done t=${requestTime.toFixed(2)}`);
       } catch (error) {
         if (token !== videoDecodeToken) return;
@@ -288,7 +283,7 @@ export function createVideoController(deps: VideoControllerDeps) {
 
   function stepVideoFrames(step: number) {
     if (videoDuration <= 0) return;
-    captureVideoScroll();
+    deps.captureAnalysisScroll();
     const fps = videoFps && videoFps > 0 ? videoFps : 24;
     const delta = step / fps;
     const next = Math.min(Math.max(videoCurrentTime + delta, 0), videoDuration);
@@ -302,7 +297,7 @@ export function createVideoController(deps: VideoControllerDeps) {
 
   function handleVideoScrubStart() {
     videoScrubbing = true;
-    captureVideoScroll();
+    deps.captureAnalysisScroll();
   }
 
   function handleVideoMetadata() {
@@ -362,7 +357,7 @@ export function createVideoController(deps: VideoControllerDeps) {
 
   function handleStripSeek(event: PointerEvent) {
     if (videoDuration <= 0) return;
-    captureVideoScroll();
+    deps.captureAnalysisScroll();
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
     const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
@@ -377,9 +372,6 @@ export function createVideoController(deps: VideoControllerDeps) {
 
   function handleVideoScrubInput(event: Event) {
     const nextTime = Number((event.target as HTMLInputElement).value);
-    if (!videoScrollLock) {
-      captureVideoScroll();
-    }
     videoCurrentTime = nextTime;
     if (videoElement) {
       videoElement.currentTime = nextTime;
@@ -391,29 +383,6 @@ export function createVideoController(deps: VideoControllerDeps) {
     videoScrubbing = false;
     scheduleVideoFrameDecode();
     pushVideoState();
-  }
-
-  function captureVideoScroll() {
-    if (typeof document === 'undefined') return;
-    const el = document.querySelector('.view-container');
-    if (el instanceof HTMLElement) {
-      videoScrollLock = { top: el.scrollTop, token: null };
-    }
-  }
-
-  function restoreVideoScroll(token: number) {
-    if (!videoScrollLock || videoScrollLock.token !== token) return;
-    if (typeof document === 'undefined') return;
-    const targetTop = videoScrollLock.top;
-    videoScrollLock = null;
-    Promise.resolve().then(() => {
-      requestAnimationFrame(() => {
-        const el = document.querySelector('.view-container');
-        if (el instanceof HTMLElement) {
-          el.scrollTop = targetTop;
-        }
-      });
-    });
   }
 
   function formatTime(seconds: number): string {

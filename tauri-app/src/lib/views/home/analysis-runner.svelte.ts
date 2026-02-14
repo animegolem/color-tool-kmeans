@@ -159,11 +159,26 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
     lastRequestKey = null;
   }
 
+  function seedLastRequestKey(file: SelectedImage, paramSnapshot: AnalysisParams) {
+    lastRequestKey = JSON.stringify({
+      id: file.id,
+      clusters: paramSnapshot.clusters,
+      quality: paramSnapshot.quality,
+      ignoreTopN: paramSnapshot.ignoreTopN,
+      mergeThreshold: paramSnapshot.mergeThreshold,
+      tol: 1e-3,
+      maxIter: 40,
+      seed: 1,
+      maxSamples: 300_000
+    });
+  }
+
   return {
     get spinnerVisible() { return spinnerVisible; },
     scheduleAnalysisWith,
     cancelPending,
     captureAnalysisScroll,
-    clearLastRequestKey
+    clearLastRequestKey,
+    seedLastRequestKey
   };
 }
