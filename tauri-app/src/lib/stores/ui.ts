@@ -1,7 +1,9 @@
 import { writable, derived, get } from 'svelte/store';
 import type { ImageDataset } from '../compute/image-loader';
+import type { PrefsV1 } from './prefs';
+import { savePrefs } from './prefs';
 
-export type View = 'home' | 'values' | 'exports';
+export type View = 'home' | 'values' | 'exports' | 'settings';
 
 export interface AnalysisParams {
   clusters: number;
@@ -14,6 +16,9 @@ export interface AnalysisParams {
   polarMode: 'oklch' | 'okhsv' | 'hsv';
   hueLightnessSizeMode: 'frequency' | 'chroma';
   histogramSort: 'frequency' | 'hue' | 'lightness';
+  showHistogram: boolean;
+  showPolarChart: boolean;
+  showHueLightness: boolean;
 }
 
 export const currentView = writable<View>('home');
@@ -60,7 +65,10 @@ export const params = writable<AnalysisParams>({
   showAxisLabels: true,
   polarMode: 'hsv',
   hueLightnessSizeMode: 'chroma',
-  histogramSort: 'frequency'
+  histogramSort: 'frequency',
+  showHistogram: true,
+  showPolarChart: true,
+  showHueLightness: true
 });
 
 export const hasFile = derived(selectedFile, ($file) => $file !== null);
@@ -119,7 +127,7 @@ export interface ValueAnalysisResult {
 }
 
 export const valueAnalysisLevels = writable<number>(3);
-export const valueAnalysisNotanMode = writable<boolean>(true);
+export const valueAnalysisNotanMode = derived(valueAnalysisLevels, ($l) => $l === 2);
 
 function valueAnalysisKey(imageId: string, levels: number, notanMode: boolean) {
   const mode = notanMode && levels === 2 ? 'notan' : 'kmeans';
@@ -213,8 +221,18 @@ export const topClusters = derived(analysisResult, ($result) => {
   return $result.clusters.slice(0, 8);
 });
 
+export const exportScale = writable<number>(2);
+export const exportDir = writable<string | null>(null);
+
+export const clusterMax = writable<number>(2000);
+export const excludeTopMax = writable<number>(100);
+export const showSimplifiedTones = writable<boolean>(true);
+
 export function setView(view: View) {
   currentView.set(view);
+  // Persist view, but restore to 'home' if it was 'settings'
+  const persistView = view === 'settings' ? 'home' : view;
+  void savePrefs({ view: persistView });
 }
 
 function revokeObjectUrl(url: string) {
@@ -319,3 +337,87 @@ export const videoState = writable<VideoState | null>(null);
 export function setVideoState(state: VideoState | null) {
   videoState.set(state);
 }
+
+// --- Preferences hydration & write-back ---
+
+export function hydrateFromPrefs(prefs: PrefsV1) {
+  const view = prefs.view === 'settings' ? 'home' : prefs.view;
+  currentView.set(view);
+  params.set({
+    clusters: prefs.analysis.clusters,
+    quality: prefs.analysis.quality,
+    ignoreTopN: prefs.analysis.ignoreTopN,
+    mergeThreshold: prefs.analysis.mergeThreshold,
+    symbolScale: prefs.analysis.symbolScale,
+    showClusterOutline: prefs.analysis.showClusterOutline,
+    showAxisLabels: prefs.analysis.showAxisLabels,
+    polarMode: prefs.analysis.polarMode as AnalysisParams['polarMode'],
+    hueLightnessSizeMode: prefs.analysis.hueLightnessSizeMode as AnalysisParams['hueLightnessSizeMode'],
+    histogramSort: prefs.analysis.histogramSort as AnalysisParams['histogramSort'],
+    showHistogram: prefs.display.showHistogram,
+    showPolarChart: prefs.display.showPolarChart,
+    showHueLightness: prefs.display.showHueLightness
+  });
+  valueAnalysisLevels.set(prefs.valueAnalysis.levels);
+  exportScale.set(prefs.exportScale);
+  exportDir.set(prefs.exportDir);
+  clusterMax.set(prefs.limits.clusterMax);
+  excludeTopMax.set(prefs.limits.excludeTopMax);
+  showSimplifiedTones.set(prefs.display.showSimplifiedTones);
+}
+
+// Write-back: debounced subscriptions that persist store changes
+let _debounceParams: ReturnType<typeof setTimeout> | null = null;
+let _skipParamsFirst = true;
+params.subscribe((val) => {
+  if (_skipParamsFirst) { _skipParamsFirst = false; return; }
+  if (_debounceParams) clearTimeout(_debounceParams);
+  _debounceParams = setTimeout(() => void savePrefs({
+    analysis: val,
+    display: { showHistogram: val.showHistogram, showPolarChart: val.showPolarChart, showHueLightness: val.showHueLightness, showSimplifiedTones: get(showSimplifiedTones) }
+  }), 500);
+});
+
+let _debounceVaLevels: ReturnType<typeof setTimeout> | null = null;
+let _skipVaLevelsFirst = true;
+valueAnalysisLevels.subscribe((val) => {
+  if (_skipVaLevelsFirst) { _skipVaLevelsFirst = false; return; }
+  if (_debounceVaLevels) clearTimeout(_debounceVaLevels);
+  _debounceVaLevels = setTimeout(() => void savePrefs({ valueAnalysis: { levels: val } }), 500);
+});
+
+let _debounceExportScale: ReturnType<typeof setTimeout> | null = null;
+let _skipExportScaleFirst = true;
+exportScale.subscribe((val) => {
+  if (_skipExportScaleFirst) { _skipExportScaleFirst = false; return; }
+  if (_debounceExportScale) clearTimeout(_debounceExportScale);
+  _debounceExportScale = setTimeout(() => void savePrefs({ exportScale: val }), 500);
+});
+
+let _skipExportDirFirst = true;
+exportDir.subscribe((val) => {
+  if (_skipExportDirFirst) { _skipExportDirFirst = false; return; }
+  void savePrefs({ exportDir: val });
+});
+
+let _debounceClusterMax: ReturnType<typeof setTimeout> | null = null;
+let _skipClusterMaxFirst = true;
+clusterMax.subscribe((val) => {
+  if (_skipClusterMaxFirst) { _skipClusterMaxFirst = false; return; }
+  if (_debounceClusterMax) clearTimeout(_debounceClusterMax);
+  _debounceClusterMax = setTimeout(() => void savePrefs({ limits: { clusterMax: val, excludeTopMax: get(excludeTopMax) } }), 500);
+});
+
+let _debounceExcludeTopMax: ReturnType<typeof setTimeout> | null = null;
+let _skipExcludeTopMaxFirst = true;
+excludeTopMax.subscribe((val) => {
+  if (_skipExcludeTopMaxFirst) { _skipExcludeTopMaxFirst = false; return; }
+  if (_debounceExcludeTopMax) clearTimeout(_debounceExcludeTopMax);
+  _debounceExcludeTopMax = setTimeout(() => void savePrefs({ limits: { clusterMax: get(clusterMax), excludeTopMax: val } }), 500);
+});
+
+let _skipSimplifiedTonesFirst = true;
+showSimplifiedTones.subscribe((val) => {
+  if (_skipSimplifiedTonesFirst) { _skipSimplifiedTonesFirst = false; return; }
+  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: val } });
+});

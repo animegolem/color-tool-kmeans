@@ -8,6 +8,7 @@
   import { loadImageDataset } from '../compute/image-loader';
   import { logEvent } from '../bridges/log';
   import { openImageZoom as zoomImage } from '../utils/zoom';
+  import { showSimplifiedTones } from '../stores/ui';
   import { createValueAnalysisRunner } from './values/value-analysis-runner.svelte';
 
   const runner = createValueAnalysisRunner();
@@ -277,6 +278,7 @@
       </div>
     </div>
 
+    {#if $showSimplifiedTones}
     <div class="analysis-section">
       <div class="analysis-header">
         <div class="analysis-title">Simplified tones</div>
@@ -306,7 +308,7 @@
       </div>
 
       <div class="preview-panel">
-        <div class="preview-card preview-primary">
+        <div class="preview-card">
           <div class="preview-shell">
             {#if previewSrc}
               <img
@@ -330,6 +332,7 @@
         </div>
       </div>
     </div>
+    {/if}
   {/if}
 </section>
 
@@ -586,10 +589,6 @@
     box-shadow: inset 0 0 0 2px rgba(33, 33, 32, 0.35);
   }
 
-  .bucket[aria-pressed='true'] {
-    box-shadow: inset 0 0 0 2px rgba(79, 95, 250, 0.7);
-  }
-
   .bucket-percent {
     font-size: 13px;
     font-weight: 600;
@@ -600,7 +599,6 @@
     display: grid;
     gap: 12px;
   }
-
 
   .empty {
     padding: 16px;

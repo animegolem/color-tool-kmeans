@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { params } from '../../stores/ui';
+  import { params, clusterMax, excludeTopMax } from '../../stores/ui';
 
   interface Props {
     onScrubStart: (event: PointerEvent) => void;
@@ -17,7 +17,7 @@
       <input
         type="range"
         min="1"
-        max="2000"
+        max={$clusterMax}
         step="1"
         bind:value={$params.clusters}
         onpointerdown={onScrubStart}
@@ -25,7 +25,7 @@
         onpointercancel={onScrubEnd}
         onblur={onScrubEnd}
       />
-      <input class="number-input" type="number" min="1" max="2000" step="1" bind:value={$params.clusters} />
+      <input class="number-input" type="number" min="1" max={$clusterMax} step="1" bind:value={$params.clusters} />
     </label>
     <label>
       <span>Speed ← → Quality: <strong>{$params.quality}</strong></span>
@@ -46,7 +46,7 @@
       <input
         type="range"
         min="0"
-        max="100"
+        max={$excludeTopMax}
         step="1"
         bind:value={$params.ignoreTopN}
         onpointerdown={onScrubStart}

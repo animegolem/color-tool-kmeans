@@ -4,10 +4,11 @@ tags:
   - IMP-LIST
   - Implementation
   - Bugfix
-kanban_status: done
-depends_on: [AI-IMP-102]
+kanban_status: completed
+depends_on:
+  - AI-IMP-102
 parent_epic:
-confidence_score: 0.90
+confidence_score: 0.9
 date_created: 2026-02-13
 date_completed: 2026-02-13
 ---

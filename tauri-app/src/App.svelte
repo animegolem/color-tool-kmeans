@@ -7,13 +7,15 @@
   import HomeView from './lib/views/HomeView.svelte';
   import ValuesView from './lib/views/ValuesView.svelte';
   import ExportsView from './lib/views/ExportsView.svelte';
+  import SettingsView from './lib/views/SettingsView.svelte';
   import ZoomOverlay from './lib/components/ZoomOverlay.svelte';
   import { logEvent } from './lib/bridges/log';
 
   const navItems = [
     { key: 'home', label: 'Colors' },
     { key: 'values', label: 'Values' },
-    { key: 'exports', label: 'Exports' }
+    { key: 'exports', label: 'Exports' },
+    { key: 'settings', label: 'Settings' }
   ] as const;
 
   let file = $state<{ name: string } | null>(null);
@@ -27,7 +29,8 @@
   const viewDescriptions: Record<string, string> = {
     home: 'OKLab color data derived by K-Means++ and plotted for analysis.',
     values: 'Value analysis derived from OKLab lightness.',
-    exports: 'Export analysis results as SVG, PNG, or CSV.'
+    exports: 'Export analysis results as SVG, PNG, or CSV.',
+    settings: 'Application preferences and defaults.'
   };
 
   const activeViewDesc = $derived(viewDescriptions[$currentView] ?? '');
@@ -228,6 +231,8 @@
       <HomeView />
     {:else if $currentView === 'values'}
       <ValuesView />
+    {:else if $currentView === 'settings'}
+      <SettingsView />
     {:else}
       <ExportsView />
     {/if}

@@ -9,7 +9,8 @@
     valueAnalysisNotanMode,
     setValueAnalysisPending,
     setValueAnalysisSuccess,
-    setValueAnalysisError
+    setValueAnalysisError,
+    exportScale
   } from '../stores/ui';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
   import { generateValueAnalysisSvg } from '../exports/value-analysis';
@@ -23,7 +24,6 @@
   const file = $derived.by(() => get(selectedFile));
   const result = $derived.by(() => get(analysisResult));
   const paramSnapshot = $derived.by(() => get(params));
-  let graphScale = $state(2);
   let isSaving = $state(false);
   let message = $state<string | null>(null);
   let messageVariant = $state<'info' | 'error'>('info');
@@ -72,7 +72,7 @@
         showStroke: paramSnapshot.showClusterOutline,
         mode: paramSnapshot.polarMode
       });
-      const blob = await svgToPngBlob(svg, width, height, Math.max(1, Math.min(4, graphScale)));
+      const blob = await svgToPngBlob(svg, width, height, Math.max(1, Math.min(4, $exportScale)));
       const bridge = await getFsBridge();
       const { canceled } = await bridge.saveBlob(blob, `${baseName()}-circle.png`);
       if (canceled) {
@@ -187,7 +187,7 @@
         <p>PNG or SVG render of hue + chroma distribution.</p>
         <label class="scale">
           <span>PNG scale</span>
-          <input type="number" min="1" max="4" step="1" bind:value={graphScale} />
+          <input type="number" min="1" max="4" step="1" bind:value={$exportScale} />
           <span class="suffix">×</span>
         </label>
         <div class="actions">

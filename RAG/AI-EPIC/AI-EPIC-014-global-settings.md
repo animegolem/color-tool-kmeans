@@ -7,8 +7,8 @@ tags:
   - settings
   - persistence
 date_created: 2026-01-22
-date_completed:
-kanban_status: planned
+date_completed: 2026-02-14
+kanban_status: completed
 AI_IMP_spawned:
 ---
 
@@ -35,29 +35,32 @@ User preferences (default clusters, quality, save location, add/replace behavior
 ## Requirements
 
 ### Functional Requirements
-- [ ] FR-1: Settings persist across app restarts
-- [ ] FR-2: Default clusters setting (applied on new image)
-- [ ] FR-3: Default quality setting
-- [ ] FR-4: Default save/export location
-- [ ] FR-5: Add/replace behavior setting (for EPIC-010)
-- [ ] FR-6: Settings UI (tab or modal)
-- [ ] FR-7: Reset to defaults option
+- [x] FR-1: Settings persist across app restarts
+- [x] FR-2: Default clusters setting (applied on new image)
+- [x] FR-3: Default quality setting
+- [x] FR-4: Default save/export location
+- [ ] FR-5: Add/replace behavior setting (for EPIC-010) — *deferred; current behavior is always-replace, add/replace toggle can be revisited under EPIC-010*
+- [x] FR-6: Settings UI (tab or modal)
+- [x] FR-7: Reset to defaults option
 
 ### Non-Functional Requirements
-- [ ] NFR-1: Settings load fast on app start (<100ms)
-- [ ] NFR-2: Settings save is non-blocking
+- [x] NFR-1: Settings load fast on app start (<100ms)
+- [x] NFR-2: Settings save is non-blocking
 
 ## Implementation Breakdown
 
 ### Planned Tickets
-(TBD)
 
 ### Completed Tickets
+- [[AI-IMP-067]] — Preferences store & export view persistence (prefs.ts, hydration, write-back, initial SettingsView)
+- [[AI-IMP-104]] — Settings view redesign + notan cache key fix (lean SettingsView, chart toggles, slider limits, derived notan)
 
 ## Notes
 Key files:
-- New: `tauri-app/src/lib/stores/settings.ts`
-- `tauri-app/src-tauri/Cargo.toml` - add tauri-plugin-store
-- `tauri-app/src-tauri/src/main.rs` - register plugin
+- `tauri-app/src/lib/stores/prefs.ts` — PrefsV1 schema, LazyStore load/save/reset
+- `tauri-app/src/lib/stores/ui.ts` — hydrateFromPrefs, write-back subscriptions, all persisted stores
+- `tauri-app/src/lib/views/SettingsView.svelte` — settings-only controls (chart toggles, slider limits, export dir, reset)
+- `tauri-app/src-tauri/Cargo.toml` — tauri-plugin-store
+- `tauri-app/src-tauri/src/main.rs` — plugin registration
 
-Can be worked in parallel with other epics since it's foundational.
+FR-5 (add/replace) is the only open FR — it's an EPIC-010 concern (image library) and can be addressed there when multi-image workflows are finalized.

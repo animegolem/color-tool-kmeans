@@ -38,8 +38,7 @@
   import ParameterControls from './home/ParameterControls.svelte';
   import DevBanner from './home/DevBanner.svelte';
 
-  const isDev = import.meta.env.DEV ?? false;
-  const devEnabled = isDev;
+  const devEnabled = import.meta.env.DEV ?? false;
 
   let bannerMessage = $state<string | null>(null);
   let devBannerVisible = $state(false);
@@ -382,7 +381,7 @@
             </div>
           </div>
         {/if}
-        {#if result && histogram}
+        {#if result && histogram && currentParams.showHistogram}
           <AnalysisCards
             {result}
             {histogram}
@@ -393,12 +392,12 @@
         {/if}
       </div>
       <div class="analysis-column">
-        {#if result}
+        {#if result && (currentParams.showPolarChart || currentParams.showHueLightness)}
           <AnalysisCards
             {result}
             histogram={null}
-            {polarChart}
-            {hueLightnessChart}
+            polarChart={currentParams.showPolarChart ? polarChart : null}
+            hueLightnessChart={currentParams.showHueLightness ? hueLightnessChart : null}
             histogramSortLabel=""
           />
         {/if}
@@ -420,7 +419,7 @@
     >
       <div class="inner">
         <p class="title">Drop anywhere</p>
-        <p class="note">or</p>
+        <p>or</p>
         <div class="upload-group">
           <button class="upload" onclick={ingestion.chooseFile}>Upload image</button>
           <button class="upload upload--ghost" onclick={handleChooseVideo}>Upload video</button>

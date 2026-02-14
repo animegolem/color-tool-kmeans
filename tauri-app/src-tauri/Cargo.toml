@@ -21,6 +21,7 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 tauri = { version = "2.0", features = ["protocol-asset"] }
 tauri-plugin-shell = "2.0"
 tauri-plugin-dialog = "2.0"
+tauri-plugin-store = "2"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 wide = { version = "0.7", optional = true, default-features = false, features = ["std"] }
 kmeans_colors = { version = "0.6", optional = true, default-features = false, features = ["palette_color"] }

@@ -4,6 +4,8 @@ import App from './App.svelte';
 import { isTauriEnv } from './lib/bridges/tauri';
 import { getComputeBridge } from './lib/bridges/compute';
 import { getFsBridge } from './lib/bridges/fs';
+import { loadPrefs } from './lib/stores/prefs';
+import { hydrateFromPrefs } from './lib/stores/ui';
 
 async function logRuntimeBanner() {
   try {
@@ -34,6 +36,9 @@ try {
 } catch {
   // ignore
 }
+
+// Hydrate preferences from persistent store (non-blocking)
+loadPrefs().then(hydrateFromPrefs).catch(() => {});
 
 const target = document.getElementById('app');
 
