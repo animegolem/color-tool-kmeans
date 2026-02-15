@@ -202,6 +202,20 @@ pub async fn value_analysis(
 }
 
 #[tauri::command]
+pub async fn save_file(req: SaveFileRequest) -> Result<SaveFileResponse, String> {
+    let path = std::path::PathBuf::from(&req.path);
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent).map_err(|e| format!("Cannot create directory: {e}"))?;
+        }
+    }
+    std::fs::write(&path, &req.data).map_err(|e| format!("Failed to write file: {e}"))?;
+    Ok(SaveFileResponse {
+        path: path.display().to_string(),
+    })
+}
+
+#[tauri::command]
 pub async fn log_event(req: LogEventRequest, app: AppHandle) -> Result<(), String> {
     let message = req.message.trim();
     if message.is_empty() {

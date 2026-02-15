@@ -49,6 +49,7 @@ fn main() {
             analyze_image,
             value_analysis,
             log_event,
+            save_file,
             open_image_dialog,
             open_video_dialog,
             extract_video_frame,

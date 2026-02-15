@@ -4,7 +4,7 @@ tags:
   - IMP-LIST
   - Implementation
   - {more tags as needed}
-kanban_status: {Legal Values: "backlog", "planned", "in-progress", "completed", "cancelled"}
+kanban_status: {Legal Values: "backlog", "planned", "in-progress", "completed", "cancelled", "deferred"}
 depends_on: {list ADRs, IMPs, etc. Optional. Only fill if needed.}
 parent_epic: {[[AI-EPIC-XXX]] | Auto-populated by generate-index.sh}
 confidence_score: {0.0-1.0}

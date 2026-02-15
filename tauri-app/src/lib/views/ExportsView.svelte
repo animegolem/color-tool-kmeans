@@ -27,11 +27,13 @@
   let isSaving = $state(false);
   let message = $state<string | null>(null);
   let messageVariant = $state<'info' | 'error'>('info');
+  let dismissTimer: ReturnType<typeof setTimeout> | null = null;
   const valueScale = 2;
 
   onMount(() => {
     void logEvent('exports:view:mount');
     return () => {
+      if (dismissTimer) clearTimeout(dismissTimer);
       void logEvent('exports:view:unmount');
     };
   });
@@ -169,8 +171,12 @@
   }
 
   function setStatus(value: string | null, variant: 'info' | 'error') {
+    if (dismissTimer) clearTimeout(dismissTimer);
     message = value;
     messageVariant = variant;
+    if (value && variant === 'info') {
+      dismissTimer = setTimeout(() => { message = null; }, 3000);
+    }
   }
 </script>
 
@@ -216,7 +222,9 @@
     <div class="empty">Select an image and complete analysis to unlock exports.</div>
   {/if}
 
-  {#if message}
+  {#if isSaving}
+    <div class="status status-saving">Saving…</div>
+  {:else if message}
     <div class:status-error={messageVariant === 'error'} class="status">{message}</div>
   {/if}
 </section>
@@ -293,5 +301,14 @@
   .status-error {
     background: rgba(220, 53, 69, 0.1);
     color: #8a1f2b;
+  }
+
+  .status-saving {
+    animation: pulse-opacity 1.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-opacity {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
   }
 </style>

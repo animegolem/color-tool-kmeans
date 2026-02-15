@@ -155,6 +155,19 @@ pub struct VideoStripResponse {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SaveFileRequest {
+    pub path: String,
+    pub data: Vec<u8>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveFileResponse {
+    pub path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LogEventRequest {
     pub message: String,
     pub source: Option<String>,

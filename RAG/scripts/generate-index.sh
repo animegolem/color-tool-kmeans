@@ -16,13 +16,14 @@ TAB=$'\t'
 # Temporary files for collecting data
 EPICS_IN_PROGRESS=$(mktemp)
 EPICS_PLANNED=$(mktemp)
+EPICS_DEFERRED=$(mktemp)
 EPICS_COMPLETED=$(mktemp)
 IMPS_BY_EPIC=$(mktemp)
 ORPHAN_IMPS=$(mktemp)
 STATUS_MISMATCHES=$(mktemp)
 LARGE_FILES=$(mktemp)
 
-trap 'rm -f "$EPICS_IN_PROGRESS" "$EPICS_PLANNED" "$EPICS_COMPLETED" "$IMPS_BY_EPIC" "$ORPHAN_IMPS" "$STATUS_MISMATCHES" "$LARGE_FILES"' EXIT
+trap 'rm -f "$EPICS_IN_PROGRESS" "$EPICS_PLANNED" "$EPICS_DEFERRED" "$EPICS_COMPLETED" "$IMPS_BY_EPIC" "$ORPHAN_IMPS" "$STATUS_MISMATCHES" "$LARGE_FILES"' EXIT
 
 # -----------------------------------------------------------------------------
 # normalize_frontmatter: Fix field name variations in-place
@@ -169,6 +170,9 @@ for file in "$RAG_DIR/AI-EPIC"/*.md; do
     in-progress|in_progress)
       printf '%s\t%s\t%s\t%s\t%s\n' "$filename" "$epic_num" "$title" "$problem" "" >> "$EPICS_IN_PROGRESS"
       ;;
+    deferred)
+      printf '%s\t%s\t%s\t%s\t%s\n' "$filename" "$epic_num" "$title" "$problem" "" >> "$EPICS_DEFERRED"
+      ;;
     planned|backlog|"")
       printf '%s\t%s\t%s\t%s\t%s\n' "$filename" "$epic_num" "$title" "$problem" "" >> "$EPICS_PLANNED"
       ;;
@@ -311,6 +315,32 @@ EOF
       echo "---"
       echo ""
     done < "$EPICS_PLANNED"
+  fi
+
+  # Deferred section
+  if [[ -s "$EPICS_DEFERRED" ]]; then
+    echo "## Deferred"
+    echo ""
+
+    while IFS=$'\t' read -r filename epic_num title problem _; do
+      echo "### [[${filename}|EPIC-${epic_num}: ${title}]]"
+      if [[ -n "$problem" ]]; then
+        echo "> ${problem}"
+      fi
+      echo ""
+
+      # Find IMPs for this epic
+      if grep -q "^${epic_num}${TAB}" "$IMPS_BY_EPIC" 2>/dev/null; then
+        echo "**IMPs:**"
+        grep "^${epic_num}${TAB}" "$IMPS_BY_EPIC" | while IFS=$'\t' read -r _ imp_filename imp_num imp_status; do
+          echo "- [[${imp_filename}|IMP-${imp_num}]] - ${imp_status}"
+        done
+        echo ""
+      fi
+
+      echo "---"
+      echo ""
+    done < "$EPICS_DEFERRED"
   fi
 
   # Large Files section

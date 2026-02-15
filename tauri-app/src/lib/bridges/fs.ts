@@ -1,4 +1,6 @@
+import { get } from 'svelte/store';
 import { isTauriEnv, tauriInvoke, getBridgeOverride } from './tauri';
+import { exportDir } from '../stores/ui';
 
 const BROWSER_ID = 'browser' as const;
 const TAURI_ID = 'tauri' as const;
@@ -23,6 +25,35 @@ export interface FsBridge {
   openVideoFile(): Promise<FileSelection | null>;
   saveBlob(blob: Blob, defaultName: string): Promise<SaveResult>;
   saveTextFile(text: string, defaultName: string): Promise<SaveResult>;
+}
+
+function extLabel(ext: string): string {
+  const map: Record<string, string> = {
+    png: 'PNG Image',
+    svg: 'SVG Image',
+    csv: 'CSV File',
+    ase: 'Adobe Swatch'
+  };
+  return map[ext.toLowerCase()] ?? 'File';
+}
+
+async function nativeSaveBlob(blob: Blob, defaultName: string): Promise<SaveResult> {
+  const { save } = await import('@tauri-apps/plugin-dialog');
+  const dir = get(exportDir);
+  const defaultPath = dir ? `${dir}/${defaultName}` : defaultName;
+  const ext = defaultName.split('.').pop() ?? '';
+  const filePath = await save({
+    title: 'Save export',
+    defaultPath,
+    filters: [{ name: extLabel(ext), extensions: [ext] }]
+  });
+  if (!filePath) return { canceled: true };
+  const buffer = await blob.arrayBuffer();
+  const data = Array.from(new Uint8Array(buffer));
+  await tauriInvoke('save_file', { req: { path: filePath, data } });
+  const savedDir = filePath.replace(/[\\/][^\\/]+$/, '');
+  if (savedDir !== get(exportDir)) exportDir.set(savedDir);
+  return { canceled: false, path: filePath };
 }
 
 function createTauriFsBridge(): FsBridge | null {
@@ -58,10 +89,11 @@ function createTauriFsBridge(): FsBridge | null {
       }
     },
     async saveBlob(blob, defaultName) {
-      return browserSaveBlob(blob, defaultName);
+      return nativeSaveBlob(blob, defaultName);
     },
     async saveTextFile(text, defaultName) {
-      return browserSaveText(text, defaultName);
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      return nativeSaveBlob(blob, defaultName);
     }
   } satisfies FsBridge;
 }
@@ -119,6 +151,8 @@ function createBrowserFsBridge(): FsBridge {
         input.click();
       });
     },
+    // Browser bridge uses anchor.click() download hack — fire-and-forget,
+    // cannot detect save failure. Acceptable for dev/preview mode only.
     async saveBlob(blob, defaultName) {
       browserSaveBlob(blob, defaultName);
       return { canceled: false } satisfies SaveResult;
