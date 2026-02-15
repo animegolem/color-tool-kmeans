@@ -5,6 +5,7 @@
     analysisResult,
     params,
     selectedFile,
+    videoState,
     valueAnalysisLevels,
     valueAnalysisNotanMode,
     setValueAnalysisPending,
@@ -13,22 +14,57 @@
     exportScale
   } from '../stores/ui';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
+  import { generateHistogramSvg } from '../exports/histogram';
+  import { generateHueLightnessSvg } from '../exports/hue-lightness';
+  import { generatePaletteSvg, generatePaletteCsv } from '../exports/palette';
   import { generateValueAnalysisSvg } from '../exports/value-analysis';
-  import { generatePaletteCsv } from '../exports/palette';
+  import { toDataUrl } from '../exports/value-analysis';
+  import { svgToTile, imageToTile, composeTiles } from '../exports/compositor';
+  import type { CompositorTile } from '../exports/compositor';
   import { getFsBridge } from '../bridges/fs';
   import { svgToPngBlob } from '../exports/png';
   import { requestValueAnalysis } from '../bridges/value-analysis';
   import { convertFileSrc } from '@tauri-apps/api/core';
   import { logEvent } from '../bridges/log';
 
+  // --- Store-derived state ---
   const file = $derived.by(() => get(selectedFile));
   const result = $derived.by(() => get(analysisResult));
   const paramSnapshot = $derived.by(() => get(params));
+
+  // --- Checkbox state ---
+  let colorsSourceImage = $state(true);
+  let colorsPolarChart = $state(true);
+  let colorsHistogram = $state(true);
+  let colorsHueLightness = $state(true);
+  let colorsPaletteStrip = $state(false);
+  let colorsHistogramAll = $state(false);
+  let colorsVideoBarcode = $state(false);
+
+  const videoStrip = $derived.by(() => {
+    const vs = get(videoState);
+    return vs?.stripPath ? { path: vs.stripPath, url: convertFileSrc(vs.stripPath) } : null;
+  });
+
+  let valuesNeutral = $state(true);
+  let valuesIncludeOriginal = $state(true);
+  let valuesRangeFinder = $state(true);
+  let valuesHistogram = $state(true);
+  let valuesSimplified = $state(true);
+
+  // --- Save state ---
   let isSaving = $state(false);
   let message = $state<string | null>(null);
   let messageVariant = $state<'info' | 'error'>('info');
   let dismissTimer: ReturnType<typeof setTimeout> | null = null;
-  const valueScale = 2;
+
+  const colorsAnyChecked = $derived(
+    colorsSourceImage || colorsPolarChart || colorsHistogram ||
+    colorsHueLightness || colorsPaletteStrip || colorsVideoBarcode
+  );
+  const valuesAnyChecked = $derived(
+    valuesNeutral || valuesRangeFinder || valuesHistogram || valuesSimplified
+  );
 
   onMount(() => {
     void logEvent('exports:view:mount');
@@ -45,56 +81,83 @@
     return withoutExt.replace(/[^A-Za-z0-9-_]+/g, '-');
   }
 
-  async function saveCircleGraphSvg() {
-    if (!result) return;
-    await performSave(async () => {
+  // --- Tile builders ---
+  async function buildColorsTiles(): Promise<CompositorTile[]> {
+    const tiles: CompositorTile[] = [];
+    if (!file || !result) return tiles;
+
+    if (colorsSourceImage && file.previewUrl) {
+      const dataUrl = await toDataUrl(file.previewUrl);
+      tiles.push(imageToTile(dataUrl, file.dataset.width, file.dataset.height, 'source-image'));
+    }
+
+    if (colorsPolarChart) {
       const { svg } = generateCircleGraphSvg(result.clusters, {
         symbolScale: paramSnapshot.symbolScale,
         showAxisLabels: paramSnapshot.showAxisLabels,
         showStroke: paramSnapshot.showClusterOutline,
         mode: paramSnapshot.polarMode
       });
-      const blob = new Blob([svg], { type: 'image/svg+xml' });
-      const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-circle.svg`);
-      if (canceled) {
-        setStatus('Export canceled.', 'info');
-      } else {
-        setStatus('Circle graph SVG saved.', 'info');
-      }
-    });
-  }
+      tiles.push(svgToTile(svg, 'polar-chart'));
+    }
 
-  async function saveCircleGraphPng() {
-    if (!result) return;
-    await performSave(async () => {
-      const { svg, width, height } = generateCircleGraphSvg(result.clusters, {
+    if (colorsHistogram) {
+      if (colorsHistogramAll) {
+        const sortModes: Array<'frequency' | 'hue' | 'lightness'> = ['frequency', 'hue', 'lightness'];
+        for (const mode of sortModes) {
+          const { svg } = generateHistogramSvg(result.clusters, { sortBy: mode });
+          tiles.push(svgToTile(svg, `histogram-${mode}`));
+        }
+      } else {
+        const { svg } = generateHistogramSvg(result.clusters, {
+          sortBy: paramSnapshot.histogramSort
+        });
+        tiles.push(svgToTile(svg, 'histogram'));
+      }
+    }
+
+    if (colorsHueLightness) {
+      const { svg } = generateHueLightnessSvg(result.clusters, {
         symbolScale: paramSnapshot.symbolScale,
         showAxisLabels: paramSnapshot.showAxisLabels,
         showStroke: paramSnapshot.showClusterOutline,
-        mode: paramSnapshot.polarMode
+        sizeMode: paramSnapshot.hueLightnessSizeMode
       });
-      const blob = await svgToPngBlob(svg, width, height, Math.max(1, Math.min(4, $exportScale)));
-      const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-circle.png`);
-      if (canceled) {
-        setStatus('Export canceled.', 'info');
-      } else {
-        setStatus('Circle graph PNG saved.', 'info');
-      }
-    });
+      tiles.push(svgToTile(svg, 'hue-lightness'));
+    }
+
+    if (colorsPaletteStrip) {
+      const { svg } = generatePaletteSvg(result.clusters, { maxClusters: 15 });
+      tiles.push(svgToTile(svg, 'palette-strip'));
+    }
+
+    if (colorsVideoBarcode && videoStrip) {
+      const dataUrl = await toDataUrl(videoStrip.url);
+      const img = await loadImageDimensions(dataUrl);
+      tiles.push(imageToTile(dataUrl, img.width, img.height, 'video-barcode'));
+    }
+
+    return tiles;
   }
 
-  async function savePaletteCsv() {
+  // --- Composite exports ---
+  async function exportColorsComposite() {
     if (!result) return;
     await performSave(async () => {
-      const csv = generatePaletteCsv(result.clusters);
+      const tiles = await buildColorsTiles();
+      if (tiles.length === 0) {
+        setStatus('No items selected for export.', 'info');
+        return;
+      }
+      const { svg, width, height } = composeTiles(tiles);
+      const scale = Math.max(1, Math.min(4, $exportScale));
+      const blob = await svgToPngBlob(svg, width, height, scale);
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveTextFile(csv, `${baseName()}-palette.csv`);
+      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-colors.png`);
       if (canceled) {
         setStatus('Export canceled.', 'info');
       } else {
-        setStatus('Palette CSV saved.', 'info');
+        setStatus('Colors composite PNG saved.', 'info');
       }
     });
   }
@@ -109,13 +172,13 @@
       setValueAnalysisSuccess(file.id, levels, notanMode, loaded);
       return loaded;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      setValueAnalysisError(file.id, levels, notanMode, message);
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      setValueAnalysisError(file.id, levels, notanMode, msg);
       throw error;
     }
   }
 
-  async function saveValueAnalysisPng() {
+  async function exportValuesComposite() {
     if (!file) return;
     await performSave(async () => {
       const levels = get(valueAnalysisLevels);
@@ -142,9 +205,16 @@
         bucketValues: currentStudy.bucketValues,
         boundaries: currentStudy.boundaries,
         counts: currentStudy.counts,
-        levels: currentStudy.levels
+        histogramBins: currentStudy.histogramBins,
+        levels: currentStudy.levels,
+        includeNeutral: valuesNeutral,
+        includeOriginal: valuesIncludeOriginal,
+        includeRangeFinder: valuesRangeFinder,
+        includeHistogram: valuesHistogram,
+        includeSimplified: valuesSimplified
       });
-      const blob = await svgToPngBlob(svg, width, height, valueScale);
+      const scale = Math.max(1, Math.min(4, $exportScale));
+      const blob = await svgToPngBlob(svg, width, height, scale);
       const bridge = await getFsBridge();
       const { canceled } = await bridge.saveBlob(blob, `${baseName()}-values.png`);
       if (canceled) {
@@ -155,6 +225,114 @@
     });
   }
 
+  // --- Individual saves ---
+  async function saveIndividualPng(
+    generator: () => { svg: string; width: number; height: number },
+    suffix: string
+  ) {
+    await performSave(async () => {
+      const { svg, width, height } = generator();
+      const scale = Math.max(1, Math.min(4, $exportScale));
+      const blob = await svgToPngBlob(svg, width, height, scale);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-${suffix}.png`);
+      if (canceled) {
+        setStatus('Export canceled.', 'info');
+      } else {
+        setStatus(`${suffix} PNG saved.`, 'info');
+      }
+    });
+  }
+
+  function polarGenerator() {
+    return generateCircleGraphSvg(result!.clusters, {
+      symbolScale: paramSnapshot.symbolScale,
+      showAxisLabels: paramSnapshot.showAxisLabels,
+      showStroke: paramSnapshot.showClusterOutline,
+      mode: paramSnapshot.polarMode
+    });
+  }
+
+  function histogramGenerator() {
+    return generateHistogramSvg(result!.clusters, {
+      sortBy: paramSnapshot.histogramSort
+    });
+  }
+
+  function hueLightnessGenerator() {
+    return generateHueLightnessSvg(result!.clusters, {
+      symbolScale: paramSnapshot.symbolScale,
+      showAxisLabels: paramSnapshot.showAxisLabels,
+      showStroke: paramSnapshot.showClusterOutline,
+      sizeMode: paramSnapshot.hueLightnessSizeMode
+    });
+  }
+
+  function paletteGenerator() {
+    return generatePaletteSvg(result!.clusters);
+  }
+
+  function loadImageDimensions(src: string): Promise<{ width: number; height: number }> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onerror = () => reject(new Error('Failed to load image dimensions.'));
+      img.src = src;
+    });
+  }
+
+  async function saveVideoBarcodeImage() {
+    if (!videoStrip) return;
+    await performSave(async () => {
+      const dataUrl = await toDataUrl(videoStrip!.url);
+      const img = await loadImageDimensions(dataUrl);
+      const tile = imageToTile(dataUrl, img.width, img.height, 'video-barcode');
+      const { svg, width, height } = composeTiles([tile]);
+      const scale = Math.max(1, Math.min(4, $exportScale));
+      const blob = await svgToPngBlob(svg, width, height, scale);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-video-barcode.png`);
+      if (canceled) {
+        setStatus('Export canceled.', 'info');
+      } else {
+        setStatus('Video barcode PNG saved.', 'info');
+      }
+    });
+  }
+
+  async function saveSourceImagePng() {
+    if (!file?.previewUrl) return;
+    await performSave(async () => {
+      const dataUrl = await toDataUrl(file!.previewUrl!);
+      const tile = imageToTile(dataUrl, file!.dataset.width, file!.dataset.height, 'source');
+      const { svg, width, height } = composeTiles([tile]);
+      const scale = Math.max(1, Math.min(4, $exportScale));
+      const blob = await svgToPngBlob(svg, width, height, scale);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-source.png`);
+      if (canceled) {
+        setStatus('Export canceled.', 'info');
+      } else {
+        setStatus('Source image PNG saved.', 'info');
+      }
+    });
+  }
+
+  async function savePaletteCsv() {
+    if (!result) return;
+    await performSave(async () => {
+      const csv = generatePaletteCsv(result!.clusters);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveTextFile(csv, `${baseName()}-palette.csv`);
+      if (canceled) {
+        setStatus('Export canceled.', 'info');
+      } else {
+        setStatus('Palette CSV saved.', 'info');
+      }
+    });
+  }
+
+  // --- Save infrastructure ---
   async function performSave(action: () => Promise<void>) {
     if (isSaving) return;
     isSaving = true;
@@ -163,8 +341,8 @@
       await action();
     } catch (error) {
       console.error('[exports] failed to save file', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      setStatus(`Failed to save file: ${message}`, 'error');
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      setStatus(`Failed to save file: ${msg}`, 'error');
     } finally {
       isSaving = false;
     }
@@ -183,40 +361,129 @@
 <section class="exports">
   <header>
     <h1>Exports</h1>
-    <p class="note">Generate circle graph PNG/SVG and palette CSV after analysis.</p>
   </header>
 
   {#if file && result}
-    <div class="cards">
-      <article>
-        <h2>Circle Graph</h2>
-        <p>PNG or SVG render of hue + chroma distribution.</p>
-        <label class="scale">
-          <span>PNG scale</span>
-          <input type="number" min="1" max="4" step="1" bind:value={$exportScale} />
-          <span class="suffix">×</span>
+    <div class="builder-section">
+      <h2>Colors</h2>
+      <div class="builder-items">
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={colorsSourceImage} />
+          <span>Source Image</span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={isSaving || !file.previewUrl} onclick={saveSourceImagePng}>↓</button>
         </label>
-        <div class="actions">
-          <button class="primary" onclick={saveCircleGraphPng} disabled={isSaving}>Save PNG</button>
-          <button onclick={saveCircleGraphSvg} disabled={isSaving}>Save SVG</button>
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={colorsPolarChart} />
+          <span>Polar Chart</span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={() => saveIndividualPng(polarGenerator, 'polar')}>↓</button>
+        </label>
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={colorsHistogram} />
+          <span>Cluster Histogram</span>
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <span class="sub-toggle" onclick={(e) => e.stopPropagation()}>
+            <label class="sub-toggle-inner" title="Include frequency, hue, and lightness sort modes">
+              <input type="checkbox" bind:checked={colorsHistogramAll} disabled={!colorsHistogram} />
+              <span class="sub-toggle-label">All sorts</span>
+            </label>
+          </span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={() => saveIndividualPng(histogramGenerator, 'histogram')}>↓</button>
+        </label>
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={colorsHueLightness} />
+          <span>Hue × Lightness</span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={() => saveIndividualPng(hueLightnessGenerator, 'hue-lightness')}>↓</button>
+        </label>
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={colorsPaletteStrip} />
+          <span>Palette Strip (top 15)</span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={() => saveIndividualPng(paletteGenerator, 'palette')}>↓</button>
+        </label>
+        <label class="builder-item" class:disabled={!videoStrip}>
+          <input type="checkbox" bind:checked={colorsVideoBarcode} disabled={!videoStrip} />
+          <span>Video Barcode</span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={isSaving || !videoStrip} onclick={saveVideoBarcodeImage}>↓</button>
+        </label>
+      </div>
+      <button class="composite-btn" disabled={isSaving || !colorsAnyChecked} onclick={exportColorsComposite}>
+        Export Colors Composite
+      </button>
+    </div>
+
+    <div class="builder-section">
+      <h2>Values</h2>
+      <div class="builder-items">
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={valuesNeutral} />
+          <span>Neutral Values</span>
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <span class="sub-toggle" onclick={(e) => e.stopPropagation()}>
+            <label class="sub-toggle-inner" title="Include original image alongside neutral">
+              <input type="checkbox" bind:checked={valuesIncludeOriginal} disabled={!valuesNeutral} />
+              <span class="sub-toggle-label">Include original</span>
+            </label>
+          </span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={exportValuesComposite}>↓</button>
+        </label>
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={valuesRangeFinder} />
+          <span>Range Finder</span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={exportValuesComposite}>↓</button>
+        </label>
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={valuesHistogram} />
+          <span>Values Histogram</span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={exportValuesComposite}>↓</button>
+        </label>
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={valuesSimplified} />
+          <span>Simplified Values</span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={exportValuesComposite}>↓</button>
+        </label>
+        <div class="builder-item placeholder">
+          <span>Notan Studies</span>
+          <span class="spacer"></span>
+          <span class="badge">IMP-107</span>
         </div>
-      </article>
-      <article>
-        <h2>Values Analysis</h2>
-        <p>Original + neutral values, range bar, and notan preview.</p>
-        <div class="actions">
-          <button class="primary" onclick={saveValueAnalysisPng} disabled={isSaving}>
-            Save PNG
-          </button>
+      </div>
+      <button class="composite-btn" disabled={isSaving || !valuesAnyChecked} onclick={exportValuesComposite}>
+        Export Values Composite
+      </button>
+    </div>
+
+    <div class="builder-section">
+      <h2>Data</h2>
+      <div class="builder-items">
+        <div class="data-row">
+          <span>Palette CSV</span>
+          <span class="spacer"></span>
+          <button disabled={isSaving} onclick={savePaletteCsv}>Save CSV</button>
         </div>
-      </article>
-      <article>
-        <h2>Palette CSV</h2>
-        <p>Ranked palette with RGB + OKLab/OKLCH metadata.</p>
-        <div class="actions">
-          <button onclick={savePaletteCsv} disabled={isSaving}>Save CSV</button>
+        <div class="data-row placeholder">
+          <span>Palette .ase</span>
+          <span class="spacer"></span>
+          <span class="badge">IMP-106</span>
         </div>
-      </article>
+      </div>
+      <div class="scale-control">
+        <label>
+          <span>PNG Scale</span>
+          <span class="scale-value">{$exportScale}×</span>
+          <input type="range" min="1" max="4" step="1" bind:value={$exportScale} />
+        </label>
+      </div>
     </div>
   {:else}
     <div class="empty">Select an image and complete analysis to unlock exports.</div>
@@ -230,18 +497,172 @@
 </section>
 
 <style>
-  .cards {
+  .exports {
     display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 20px;
   }
 
-  article {
-    flex: 1 1 260px;
-    border-radius: 12px;
+  .builder-section {
     background: var(--panel);
+    border-radius: 12px;
     padding: 20px;
     box-shadow: var(--shadow);
+  }
+
+  .builder-section h2 {
+    margin: 0 0 12px 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .builder-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .builder-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .builder-item.placeholder,
+  .builder-item.disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .builder-item input[type='checkbox'] {
+    margin: 0;
+  }
+
+  .sub-toggle {
+    margin-left: 4px;
+  }
+
+  .sub-toggle-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: rgba(33, 33, 32, 0.55);
+  }
+
+  .sub-toggle-inner input[type='checkbox'] {
+    margin: 0;
+  }
+
+  .sub-toggle-inner input:disabled {
+    cursor: not-allowed;
+  }
+
+  .sub-toggle-label {
+    white-space: nowrap;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  .item-download {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    padding: 0;
+    color: inherit;
+    flex-shrink: 0;
+  }
+
+  .item-download:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .composite-btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--accent, #4f5ffa);
+    background: var(--accent, #4f5ffa);
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .composite-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .data-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+  }
+
+  .data-row.placeholder {
+    opacity: 0.5;
+  }
+
+  .data-row button {
+    border-radius: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--line);
+    background: transparent;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .data-row button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(33, 33, 32, 0.08);
+    color: rgba(33, 33, 32, 0.5);
+  }
+
+  .scale-control {
+    margin-top: 16px;
+    border-top: 1px solid var(--line, rgba(33, 33, 32, 0.1));
+    padding-top: 12px;
+  }
+
+  .scale-control label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .scale-value {
+    font-weight: 600;
+    min-width: 24px;
+  }
+
+  .scale-control input[type='range'] {
+    flex: 1;
+    max-width: 160px;
   }
 
   .empty {
@@ -251,47 +672,8 @@
     color: rgba(33, 33, 32, 0.6);
   }
 
-  .actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 12px;
-  }
-
-  button {
-    border-radius: 6px;
-    padding: 8px 16px;
-    border: 1px solid var(--line);
-    background: transparent;
-  }
-
-  button.primary {
-    background: var(--accent, #4f5ffa);
-    color: #fff;
-    border-color: var(--accent, #4f5ffa);
-  }
-
-  .scale {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 12px;
-  }
-
-  .scale input {
-    width: 56px;
-    padding: 6px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--line);
-    font: inherit;
-  }
-
-  .suffix {
-    font-size: 12px;
-    opacity: 0.7;
-  }
-
   .status {
-    margin-top: 18px;
+    margin-top: 2px;
     padding: 12px;
     border-radius: 8px;
     background: rgba(79, 95, 250, 0.12);

@@ -1,21 +1,12 @@
-function supportsOffscreen(): boolean {
-  return typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap === 'function';
-}
-
-export async function svgToPngBlob(svg: string, width: number, height: number, scale = 1): Promise<Blob> {
+export async function svgToPngBlob(
+  svg: string,
+  width: number,
+  height: number,
+  scale = 1
+): Promise<Blob> {
   const svgBlob = new Blob([svg], { type: 'image/svg+xml' });
-  if (supportsOffscreen()) {
-    const canvas = new OffscreenCanvas(width * scale, height * scale);
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Unable to acquire OffscreenCanvas 2D context');
-    ctx.scale(scale, scale);
-    const bitmap = await createImageBitmap(svgBlob);
-    ctx.drawImage(bitmap, 0, 0);
-    return canvas.convertToBlob({ type: 'image/png' });
-  }
-
+  const url = URL.createObjectURL(svgBlob);
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(svgBlob);
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
@@ -29,14 +20,17 @@ export async function svgToPngBlob(svg: string, width: number, height: number, s
       }
       ctx.scale(scale, scale);
       ctx.drawImage(img, 0, 0);
-      canvas.toBlob((blob) => {
-        URL.revokeObjectURL(url);
-        if (blob) {
-          resolve(blob);
-        } else {
-          reject(new Error('Failed to convert canvas to PNG blob'));
-        }
-      }, 'image/png');
+      canvas.toBlob(
+        (blob) => {
+          URL.revokeObjectURL(url);
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to convert canvas to PNG blob'));
+          }
+        },
+        'image/png'
+      );
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);

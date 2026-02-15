@@ -22,19 +22,22 @@ function contrastStroke(rgb: { r: number; g: number; b: number }): string {
 export interface PaletteOptions {
   rowHeight?: number;
   width?: number;
+  maxClusters?: number;
 }
 
 export function generatePaletteSvg(clusters: AnalysisCluster[], options: PaletteOptions = {}): { svg: string; width: number; height: number } {
   const rowHeight = options.rowHeight ?? DEFAULT_ROW_HEIGHT;
   const width = options.width ?? 320;
-  const rows = clusters.map((cluster, index) => {
+  const maxClusters = options.maxClusters;
+  const limited = maxClusters ? clusters.slice(0, maxClusters) : clusters;
+  const rows = limited.map((cluster, index) => {
     const hex = rgbToHex(cluster.rgb);
     const rgbLabel = `[${cluster.rgb.r}:${cluster.rgb.g}:${cluster.rgb.b}] · ${cluster.count} px · ${(cluster.share * 100).toFixed(2)}%`;
     return {
       hex,
       rgbLabel,
       y: index * rowHeight,
-      textColor: contrastStroke(cluster.rgb)
+      textColor: 'rgba(33,33,32,0.85)'
     };
   });
   const height = rows.length * rowHeight;

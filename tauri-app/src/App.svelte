@@ -11,6 +11,14 @@
   import ZoomOverlay from './lib/components/ZoomOverlay.svelte';
   import { logEvent } from './lib/bridges/log';
 
+  $effect(() => {
+    const _view = $currentView;
+    const el = document.querySelector('.view-container');
+    if (el instanceof HTMLElement) {
+      el.scrollTop = 0;
+    }
+  });
+
   const navItems = [
     { key: 'home', label: 'Colors' },
     { key: 'values', label: 'Values' },
