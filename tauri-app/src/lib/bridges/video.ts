@@ -23,6 +23,7 @@ export interface VideoStripRequest {
   thumbCount: number;
   thumbWidth: number;
   thumbHeight: number;
+  stripMode?: 'filmstrip' | 'barcode';
 }
 
 export interface VideoStripResponse {

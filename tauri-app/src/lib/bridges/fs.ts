@@ -56,6 +56,26 @@ async function nativeSaveBlob(blob: Blob, defaultName: string): Promise<SaveResu
   return { canceled: false, path: filePath };
 }
 
+export async function saveFromPath(
+  sourcePath: string,
+  defaultName: string
+): Promise<SaveResult> {
+  const { save } = await import('@tauri-apps/plugin-dialog');
+  const dir = get(exportDir);
+  const defaultPath = dir ? `${dir}/${defaultName}` : defaultName;
+  const ext = defaultName.split('.').pop() ?? '';
+  const filePath = await save({
+    title: 'Save export',
+    defaultPath,
+    filters: [{ name: extLabel(ext), extensions: [ext] }]
+  });
+  if (!filePath) return { canceled: true };
+  await tauriInvoke('copy_file', { req: { source: sourcePath, dest: filePath } });
+  const savedDir = filePath.replace(/[\\/][^\\/]+$/, '');
+  if (savedDir !== get(exportDir)) exportDir.set(savedDir);
+  return { canceled: false, path: filePath };
+}
+
 function createTauriFsBridge(): FsBridge | null {
   if (!isTauriEnv()) return null;
   return {

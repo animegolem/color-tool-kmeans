@@ -17,6 +17,7 @@ export interface VideoControllerDeps {
   getCurrentParams: () => any;
   clearLastRequestKey: () => void;
   captureAnalysisScroll: () => void;
+  getVideoStripMode: () => 'filmstrip' | 'barcode';
 }
 
 export function createVideoController(deps: VideoControllerDeps) {
@@ -97,30 +98,56 @@ export function createVideoController(deps: VideoControllerDeps) {
     };
   }
 
+  const BARCODE_MAX_FRAMES = 30_000;
+  const BARCODE_REJECT_FRAMES = 90_000;
+  const BARCODE_HEIGHT = 120;
+
   function scheduleVideoStripGeneration() {
     if (!videoSelection?.path || videoStripPending || videoDuration <= 0 || videoStripPath) return;
     if (!deps.isNativeModeActive()) return;
+
+    const mode = deps.getVideoStripMode();
     const stripId =
       videoStripId ?? (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
     videoStripId = stripId;
     videoStripPending = true;
-    const thumbCount = 60;
-    const thumbWidth = 64;
-    const thumbHeight = 36;
-    void logEvent(`video:strip:start count=${thumbCount}`);
+
+    let thumbCount: number;
+    let thumbWidth: number;
+    let thumbHeight: number;
+
+    if (mode === 'barcode') {
+      const fps = videoFps && videoFps > 0 ? videoFps : 24;
+      const totalFrames = Math.round(videoDuration * fps);
+      if (totalFrames > BARCODE_REJECT_FRAMES) {
+        videoStripPending = false;
+        void logEvent(`video:strip:skip mode=barcode frames=${totalFrames} (exceeds limit)`);
+        return;
+      }
+      thumbCount = totalFrames > BARCODE_MAX_FRAMES ? BARCODE_MAX_FRAMES : totalFrames;
+      thumbWidth = 1;
+      thumbHeight = BARCODE_HEIGHT;
+    } else {
+      thumbCount = 60;
+      thumbWidth = 64;
+      thumbHeight = 36;
+    }
+
+    void logEvent(`video:strip:start mode=${mode} count=${thumbCount}`);
     extractVideoStrip({
       path: videoSelection.path,
       stripId,
       duration: videoDuration,
       thumbCount,
       thumbWidth,
-      thumbHeight
+      thumbHeight,
+      stripMode: mode
     })
       .then((response) => {
         videoStripPath = response.path;
         videoStripUrl = `${convertFileSrc(response.path)}?t=${Date.now()}`;
         pushVideoState();
-        void logEvent('video:strip:done');
+        void logEvent(`video:strip:done mode=${mode}`);
       })
       .catch((error) => {
         const message = error instanceof Error ? error.message : String(error);
@@ -129,6 +156,14 @@ export function createVideoController(deps: VideoControllerDeps) {
       .finally(() => {
         videoStripPending = false;
       });
+  }
+
+  function regenerateStrip() {
+    if (!videoSelection?.path || videoDuration <= 0) return;
+    videoStripPath = null;
+    videoStripUrl = null;
+    videoStripId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    scheduleVideoStripGeneration();
   }
 
   function scheduleVideoFrameDecode() {
@@ -441,6 +476,7 @@ export function createVideoController(deps: VideoControllerDeps) {
     get videoDisplayUrl() { return videoPosterUrl ?? null; },
     loadVideoSelection,
     clearVideoSelection,
+    regenerateStrip,
     stepVideoFrames,
     handleVideoScrubStart,
     handleVideoScrubEnd,

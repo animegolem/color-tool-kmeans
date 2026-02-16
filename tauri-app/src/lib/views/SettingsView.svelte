@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { params, clusterMax, excludeTopMax, showSimplifiedTones, exportDir } from '../stores/ui';
+  import { params, clusterMax, excludeTopMax, showSimplifiedTones, exportDir, videoStripMode } from '../stores/ui';
   import { hydrateFromPrefs } from '../stores/ui';
   import { resetPrefs, DEFAULTS } from '../stores/prefs';
   import { open } from '@tauri-apps/plugin-dialog';
@@ -82,6 +82,21 @@
       <input type="checkbox" bind:checked={$showSimplifiedTones} />
       Show simplified tones
     </label>
+  </div>
+
+  <div class="group">
+    <h2>Video</h2>
+    <div class="field">
+      <span class="field-label">Strip Style</span>
+      <label class="choice">
+        <input type="radio" name="videoStripMode" value="filmstrip" bind:group={$videoStripMode} />
+        Filmstrip (scene thumbnails)
+      </label>
+      <label class="choice">
+        <input type="radio" name="videoStripMode" value="barcode" bind:group={$videoStripMode} />
+        Barcode (per-frame color)
+      </label>
+    </div>
   </div>
 
   <div class="group">

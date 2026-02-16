@@ -92,6 +92,12 @@ pub async fn ffprobe_details<R: Runtime>(
     Ok((duration, fps))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StripMode {
+    Filmstrip,
+    Barcode,
+}
+
 #[derive(Debug, Clone)]
 pub struct StripExtractRequest {
     pub input_path: PathBuf,
@@ -100,6 +106,7 @@ pub struct StripExtractRequest {
     pub thumb_width: u32,
     pub thumb_height: u32,
     pub output_path: PathBuf,
+    pub strip_mode: StripMode,
 }
 
 pub async fn extract_strip_png<R: Runtime>(
@@ -109,21 +116,53 @@ pub async fn extract_strip_png<R: Runtime>(
     if req.input_path.as_os_str().is_empty() {
         return Err("Missing input path".into());
     }
-    if req.thumb_count == 0 || req.thumb_width == 0 || req.thumb_height == 0 {
+    if req.thumb_count == 0 || req.thumb_height == 0 {
         return Err("Invalid thumbnail dimensions".into());
     }
+    if req.strip_mode == StripMode::Filmstrip && req.thumb_width == 0 {
+        return Err("Invalid thumbnail width".into());
+    }
     ensure_parent_dir(&req.output_path)?;
-    let fps = if req.duration_seconds > 0.0 {
-        (req.thumb_count as f32 / req.duration_seconds).max(0.1)
-    } else {
-        0.1
+
+    let filter = match req.strip_mode {
+        StripMode::Barcode => {
+            // Barcode: scale each frame to 1px wide, then tile into Nx1.
+            // When thumb_count < total frames, a fps filter was already applied
+            // by the caller via the thumb_count param, so we subsample implicitly.
+            let needs_fps = req.duration_seconds > 0.0 && req.thumb_count > 0 && {
+                let total_approx = req.duration_seconds * 30.0; // conservative estimate
+                (req.thumb_count as f32) < total_approx * 0.95
+            };
+            if needs_fps {
+                let fps = (req.thumb_count as f32 / req.duration_seconds).max(0.1);
+                format!(
+                    "fps={fps:.5},scale=1:{h}:flags=area,tile={count}x1",
+                    h = req.thumb_height,
+                    count = req.thumb_count
+                )
+            } else {
+                format!(
+                    "scale=1:{h}:flags=area,tile={count}x1",
+                    h = req.thumb_height,
+                    count = req.thumb_count
+                )
+            }
+        }
+        StripMode::Filmstrip => {
+            let fps = if req.duration_seconds > 0.0 {
+                (req.thumb_count as f32 / req.duration_seconds).max(0.1)
+            } else {
+                0.1
+            };
+            format!(
+                "fps={fps:.5},scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,tile={count}x1",
+                w = req.thumb_width,
+                h = req.thumb_height,
+                count = req.thumb_count
+            )
+        }
     };
-    let filter = format!(
-        "fps={fps:.5},scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,tile={count}x1",
-        w = req.thumb_width,
-        h = req.thumb_height,
-        count = req.thumb_count
-    );
+
     let (command, path) = build_ffmpeg_command(app)?;
     let output = command
         .args([

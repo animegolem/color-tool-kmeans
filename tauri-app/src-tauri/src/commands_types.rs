@@ -145,6 +145,8 @@ pub struct VideoStripRequest {
     pub thumb_count: u32,
     pub thumb_width: u32,
     pub thumb_height: u32,
+    #[serde(default)]
+    pub strip_mode: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -163,6 +165,19 @@ pub struct SaveFileRequest {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SaveFileResponse {
+    pub path: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CopyFileRequest {
+    pub source: String,
+    pub dest: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CopyFileResponse {
     pub path: String,
 }
 

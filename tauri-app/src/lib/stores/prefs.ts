@@ -24,6 +24,7 @@ export interface PrefsV1 {
     showPolarChart: boolean;
     showHueLightness: boolean;
     showSimplifiedTones: boolean;
+    videoStripMode: 'filmstrip' | 'barcode';
   };
   limits: {
     clusterMax: number;
@@ -55,7 +56,8 @@ export const DEFAULTS: PrefsV1 = {
     showHistogram: true,
     showPolarChart: true,
     showHueLightness: true,
-    showSimplifiedTones: true
+    showSimplifiedTones: true,
+    videoStripMode: 'filmstrip'
   },
   limits: {
     clusterMax: 2000,
@@ -107,6 +109,7 @@ function deepMerge(defaults: PrefsV1, partial: Record<string, unknown>): PrefsV1
     if (typeof d.showPolarChart === 'boolean') result.display.showPolarChart = d.showPolarChart;
     if (typeof d.showHueLightness === 'boolean') result.display.showHueLightness = d.showHueLightness;
     if (typeof d.showSimplifiedTones === 'boolean') result.display.showSimplifiedTones = d.showSimplifiedTones;
+    if (d.videoStripMode === 'filmstrip' || d.videoStripMode === 'barcode') result.display.videoStripMode = d.videoStripMode;
   }
 
   if (partial.limits && typeof partial.limits === 'object') {

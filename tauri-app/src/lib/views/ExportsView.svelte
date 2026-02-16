@@ -21,7 +21,7 @@
   import { toDataUrl } from '../exports/value-analysis';
   import { svgToTile, imageToTile, composeTiles } from '../exports/compositor';
   import type { CompositorTile } from '../exports/compositor';
-  import { getFsBridge } from '../bridges/fs';
+  import { getFsBridge, saveFromPath } from '../bridges/fs';
   import { svgToPngBlob } from '../exports/png';
   import { requestValueAnalysis } from '../bridges/value-analysis';
   import { convertFileSrc } from '@tauri-apps/api/core';
@@ -225,6 +225,131 @@
     });
   }
 
+  // --- Individual value saves ---
+  async function ensureValuesData() {
+    const levels = get(valueAnalysisLevels);
+    const notanMode = get(valueAnalysisNotanMode);
+    return loadValueAnalysisForExport(levels, notanMode);
+  }
+
+  async function saveNeutralImage() {
+    if (!file) return;
+    await performSave(async () => {
+      const currentStudy = await ensureValuesData();
+      if (valuesIncludeOriginal) {
+        const originalSrc = file!.previewUrl || '';
+        if (!originalSrc) throw new Error('Original image preview unavailable for export.');
+        const neutralSrc = convertFileSrc(currentStudy.neutral);
+        const { svg, width, height } = await generateValueAnalysisSvg({
+          originalSrc,
+          neutralSrc,
+          previewSrc: '',
+          neutralWidth: currentStudy.neutralWidth,
+          neutralHeight: currentStudy.neutralHeight,
+          previewWidth: currentStudy.previewWidth,
+          previewHeight: currentStudy.previewHeight,
+          p10: currentStudy.p10,
+          p90: currentStudy.p90,
+          p01: currentStudy.p01,
+          p99: currentStudy.p99,
+          bucketValues: currentStudy.bucketValues,
+          boundaries: currentStudy.boundaries,
+          counts: currentStudy.counts,
+          histogramBins: currentStudy.histogramBins,
+          levels: currentStudy.levels,
+          background: 'none',
+          includeNeutral: true,
+          includeOriginal: true,
+          includeRangeFinder: false,
+          includeHistogram: false,
+          includeSimplified: false
+        });
+        const scale = Math.max(1, Math.min(4, $exportScale));
+        const blob = await svgToPngBlob(svg, width, height, scale);
+        const bridge = await getFsBridge();
+        const { canceled } = await bridge.saveBlob(blob, `${baseName()}-neutral.png`);
+        if (canceled) setStatus('Export canceled.', 'info');
+        else setStatus('Neutral values PNG saved.', 'info');
+      } else {
+        const { canceled } = await saveFromPath(currentStudy.neutral, `${baseName()}-neutral.png`);
+        if (canceled) setStatus('Export canceled.', 'info');
+        else setStatus('Neutral image saved.', 'info');
+      }
+    });
+  }
+
+  async function buildValuesSectionSvg(
+    section: 'rangeFinder' | 'histogram' | 'simplified'
+  ): Promise<{ svg: string; width: number; height: number }> {
+    const currentStudy = await ensureValuesData();
+    const originalSrc = file!.previewUrl || '';
+    const neutralSrc = convertFileSrc(currentStudy.neutral);
+    const previewSrc = convertFileSrc(currentStudy.preview);
+    return generateValueAnalysisSvg({
+      originalSrc,
+      neutralSrc,
+      previewSrc,
+      neutralWidth: currentStudy.neutralWidth,
+      neutralHeight: currentStudy.neutralHeight,
+      previewWidth: currentStudy.previewWidth,
+      previewHeight: currentStudy.previewHeight,
+      p10: currentStudy.p10,
+      p90: currentStudy.p90,
+      p01: currentStudy.p01,
+      p99: currentStudy.p99,
+      bucketValues: currentStudy.bucketValues,
+      boundaries: currentStudy.boundaries,
+      counts: currentStudy.counts,
+      histogramBins: currentStudy.histogramBins,
+      levels: currentStudy.levels,
+      background: 'none',
+      includeNeutral: false,
+      includeOriginal: false,
+      includeRangeFinder: section === 'rangeFinder',
+      includeHistogram: section === 'histogram',
+      includeSimplified: section === 'simplified'
+    });
+  }
+
+  async function saveRangeFinderPng() {
+    if (!file) return;
+    await performSave(async () => {
+      const { svg, width, height } = await buildValuesSectionSvg('rangeFinder');
+      const scale = Math.max(1, Math.min(4, $exportScale));
+      const blob = await svgToPngBlob(svg, width, height, scale);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-range-finder.png`);
+      if (canceled) setStatus('Export canceled.', 'info');
+      else setStatus('Range finder PNG saved.', 'info');
+    });
+  }
+
+  async function saveValuesHistogramPng() {
+    if (!file) return;
+    await performSave(async () => {
+      const { svg, width, height } = await buildValuesSectionSvg('histogram');
+      const scale = Math.max(1, Math.min(4, $exportScale));
+      const blob = await svgToPngBlob(svg, width, height, scale);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-values-histogram.png`);
+      if (canceled) setStatus('Export canceled.', 'info');
+      else setStatus('Values histogram PNG saved.', 'info');
+    });
+  }
+
+  async function saveSimplifiedPng() {
+    if (!file) return;
+    await performSave(async () => {
+      const { svg, width, height } = await buildValuesSectionSvg('simplified');
+      const scale = Math.max(1, Math.min(4, $exportScale));
+      const blob = await svgToPngBlob(svg, width, height, scale);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-simplified.png`);
+      if (canceled) setStatus('Export canceled.', 'info');
+      else setStatus('Simplified values PNG saved.', 'info');
+    });
+  }
+
   // --- Individual saves ---
   async function saveIndividualPng(
     generator: () => { svg: string; width: number; height: number },
@@ -284,37 +409,20 @@
   async function saveVideoBarcodeImage() {
     if (!videoStrip) return;
     await performSave(async () => {
-      const dataUrl = await toDataUrl(videoStrip!.url);
-      const img = await loadImageDimensions(dataUrl);
-      const tile = imageToTile(dataUrl, img.width, img.height, 'video-barcode');
-      const { svg, width, height } = composeTiles([tile]);
-      const scale = Math.max(1, Math.min(4, $exportScale));
-      const blob = await svgToPngBlob(svg, width, height, scale);
-      const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-video-barcode.png`);
-      if (canceled) {
-        setStatus('Export canceled.', 'info');
-      } else {
-        setStatus('Video barcode PNG saved.', 'info');
-      }
+      const { canceled } = await saveFromPath(videoStrip!.path, `${baseName()}-video-barcode.png`);
+      if (canceled) setStatus('Export canceled.', 'info');
+      else setStatus('Video barcode PNG saved.', 'info');
     });
   }
 
   async function saveSourceImagePng() {
-    if (!file?.previewUrl) return;
+    if (!file?.path) return;
     await performSave(async () => {
-      const dataUrl = await toDataUrl(file!.previewUrl!);
-      const tile = imageToTile(dataUrl, file!.dataset.width, file!.dataset.height, 'source');
-      const { svg, width, height } = composeTiles([tile]);
-      const scale = Math.max(1, Math.min(4, $exportScale));
-      const blob = await svgToPngBlob(svg, width, height, scale);
-      const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-source.png`);
-      if (canceled) {
-        setStatus('Export canceled.', 'info');
-      } else {
-        setStatus('Source image PNG saved.', 'info');
-      }
+      const ext = file!.name?.match(/\.(jpe?g|png|webp|bmp)$/i)?.[1]?.toLowerCase() ?? 'png';
+      const normalizedExt = ext === 'jpeg' ? 'jpg' : ext;
+      const { canceled } = await saveFromPath(file!.path!, `${baseName()}-source.${normalizedExt}`);
+      if (canceled) setStatus('Export canceled.', 'info');
+      else setStatus('Source image saved.', 'info');
     });
   }
 
@@ -432,25 +540,25 @@
             </label>
           </span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={exportValuesComposite}>↓</button>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={saveNeutralImage}>↓</button>
         </label>
         <label class="builder-item">
           <input type="checkbox" bind:checked={valuesRangeFinder} />
           <span>Range Finder</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={exportValuesComposite}>↓</button>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={saveRangeFinderPng}>↓</button>
         </label>
         <label class="builder-item">
           <input type="checkbox" bind:checked={valuesHistogram} />
           <span>Values Histogram</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={exportValuesComposite}>↓</button>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={saveValuesHistogramPng}>↓</button>
         </label>
         <label class="builder-item">
           <input type="checkbox" bind:checked={valuesSimplified} />
           <span>Simplified Values</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={exportValuesComposite}>↓</button>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={saveSimplifiedPng}>↓</button>
         </label>
         <div class="builder-item placeholder">
           <span>Notan Studies</span>
@@ -629,7 +737,7 @@
     cursor: pointer;
   }
 
-  .data-row button:disabled {
+  .data-row button[disabled] {
     opacity: 0.4;
     cursor: not-allowed;
   }

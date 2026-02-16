@@ -50,6 +50,7 @@ fn main() {
             value_analysis,
             log_event,
             save_file,
+            copy_file,
             open_image_dialog,
             open_video_dialog,
             extract_video_frame,

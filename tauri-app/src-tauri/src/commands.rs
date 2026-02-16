@@ -216,6 +216,22 @@ pub async fn save_file(req: SaveFileRequest) -> Result<SaveFileResponse, String>
 }
 
 #[tauri::command]
+pub async fn copy_file(req: CopyFileRequest) -> Result<CopyFileResponse, String> {
+    let source = std::path::PathBuf::from(&req.source);
+    let dest = std::path::PathBuf::from(&req.dest);
+    if let Some(parent) = dest.parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("Cannot create directory: {e}"))?;
+        }
+    }
+    std::fs::copy(&source, &dest).map_err(|e| format!("Failed to copy file: {e}"))?;
+    Ok(CopyFileResponse {
+        path: dest.display().to_string(),
+    })
+}
+
+#[tauri::command]
 pub async fn log_event(req: LogEventRequest, app: AppHandle) -> Result<(), String> {
     let message = req.message.trim();
     if message.is_empty() {
@@ -336,9 +352,25 @@ pub async fn extract_video_strip(
     if safe_id.is_empty() {
         return Err("Invalid strip id".into());
     }
-    let thumb_count = req.thumb_count.clamp(8, 120);
-    let thumb_width = req.thumb_width.clamp(32, 240);
-    let thumb_height = req.thumb_height.clamp(24, 200);
+    let is_barcode = req.strip_mode.as_deref() == Some("barcode");
+    let strip_mode = if is_barcode {
+        ffmpeg::StripMode::Barcode
+    } else {
+        ffmpeg::StripMode::Filmstrip
+    };
+    let (thumb_count, thumb_width, thumb_height) = if is_barcode {
+        (
+            req.thumb_count.clamp(1, 30_000),
+            1_u32,
+            req.thumb_height.clamp(60, 300),
+        )
+    } else {
+        (
+            req.thumb_count.clamp(8, 120),
+            req.thumb_width.clamp(32, 240),
+            req.thumb_height.clamp(24, 200),
+        )
+    };
     let output_path = cache_dir.join(format!("video-strip-{safe_id}.png"));
     let strip_req = ffmpeg::StripExtractRequest {
         input_path: PathBuf::from(&req.path),
@@ -347,6 +379,7 @@ pub async fn extract_video_strip(
         thumb_width,
         thumb_height,
         output_path: output_path.clone(),
+        strip_mode,
     };
     ffmpeg::extract_strip_png(&app, &strip_req).await?;
     Ok(VideoStripResponse {

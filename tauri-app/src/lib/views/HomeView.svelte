@@ -21,7 +21,8 @@
     openZoomOverlay,
     videoState,
     setVideoState,
-    setFile
+    setFile,
+    videoStripMode
   } from '../stores/ui';
   import { isTauriEnv, getBridgeOverride, tauriDetectionInfo } from '../bridges/tauri';
   import { getFfmpegVersion } from '../bridges/ffmpeg';
@@ -152,7 +153,8 @@
     scheduleAnalysisWith: (f, p) => runner.scheduleAnalysisWith(f, p, status),
     getCurrentParams: () => currentParams,
     clearLastRequestKey: () => runner.clearLastRequestKey(),
-    captureAnalysisScroll: () => runner.captureAnalysisScroll()
+    captureAnalysisScroll: () => runner.captureAnalysisScroll(),
+    getVideoStripMode: () => get(videoStripMode)
   });
 
   // --- Derived chart state ---
@@ -263,7 +265,8 @@
       analysisState.subscribe((value) => { status = value; }),
       analysisResult.subscribe((value) => { result = value; }),
       analysisError.subscribe((value) => { analysisErr = value; }),
-      videoState.subscribe((state) => { video.handleVideoStateChange(state); })
+      videoState.subscribe((state) => { video.handleVideoStateChange(state); }),
+      (() => { let first = true; return videoStripMode.subscribe(() => { if (first) { first = false; return; } video.regenerateStrip(); }); })()
     ];
     let dragDepth = 0;
     let hideTimer: ReturnType<typeof setTimeout> | null = null;

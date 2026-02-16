@@ -227,6 +227,8 @@ export const exportDir = writable<string | null>(null);
 export const clusterMax = writable<number>(2000);
 export const excludeTopMax = writable<number>(100);
 export const showSimplifiedTones = writable<boolean>(true);
+export type VideoStripMode = 'filmstrip' | 'barcode';
+export const videoStripMode = writable<VideoStripMode>('filmstrip');
 
 export function setView(view: View) {
   currentView.set(view);
@@ -364,6 +366,7 @@ export function hydrateFromPrefs(prefs: PrefsV1) {
   clusterMax.set(prefs.limits.clusterMax);
   excludeTopMax.set(prefs.limits.excludeTopMax);
   showSimplifiedTones.set(prefs.display.showSimplifiedTones);
+  videoStripMode.set(prefs.display.videoStripMode ?? 'filmstrip');
 }
 
 // Write-back: debounced subscriptions that persist store changes
@@ -374,7 +377,7 @@ params.subscribe((val) => {
   if (_debounceParams) clearTimeout(_debounceParams);
   _debounceParams = setTimeout(() => void savePrefs({
     analysis: val,
-    display: { showHistogram: val.showHistogram, showPolarChart: val.showPolarChart, showHueLightness: val.showHueLightness, showSimplifiedTones: get(showSimplifiedTones) }
+    display: { showHistogram: val.showHistogram, showPolarChart: val.showPolarChart, showHueLightness: val.showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: get(videoStripMode) }
   }), 500);
 });
 
@@ -419,5 +422,11 @@ excludeTopMax.subscribe((val) => {
 let _skipSimplifiedTonesFirst = true;
 showSimplifiedTones.subscribe((val) => {
   if (_skipSimplifiedTonesFirst) { _skipSimplifiedTonesFirst = false; return; }
-  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: val } });
+  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: val, videoStripMode: get(videoStripMode) } });
+});
+
+let _skipVideoStripModeFirst = true;
+videoStripMode.subscribe((val) => {
+  if (_skipVideoStripModeFirst) { _skipVideoStripModeFirst = false; return; }
+  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: val } });
 });
