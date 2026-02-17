@@ -7,6 +7,8 @@ export interface HistogramOptions {
   height?: number;
   maxBars?: number;
   sortBy?: 'frequency' | 'hue' | 'lightness';
+  hPadding?: number;
+  fontSize?: number;
 }
 
 export interface HistogramResult {
@@ -23,9 +25,10 @@ export function generateHistogramSvg(
   const height = options.height ?? 180;
   const maxBars = options.maxBars ?? 120;
   const sortBy = options.sortBy ?? 'frequency';
-  const padding = 16;
-  const plotWidth = Math.max(1, width - padding * 2);
-  const plotHeight = Math.max(1, height - padding * 2);
+  const hPad = options.hPadding ?? 16;
+  const vPad = 16;
+  const plotWidth = Math.max(1, width - hPad * 2);
+  const plotHeight = Math.max(1, height - vPad * 2);
   const sorted = [...clusters];
   if (sortBy === 'hue') {
     sorted.sort((a, b) => getHue(a) - getHue(b));
@@ -41,8 +44,8 @@ export function generateHistogramSvg(
   const parts: string[] = [];
   parts.push(
     svgRect({
-      x: padding,
-      y: padding,
+      x: hPad,
+      y: vPad,
       width: plotWidth,
       height: plotHeight,
       fill: 'none',
@@ -53,8 +56,8 @@ export function generateHistogramSvg(
 
   bars.forEach((cluster, index) => {
     const barHeight = (cluster.count / maxCount) * plotHeight;
-    const x = padding + index * barWidth;
-    const y = padding + (plotHeight - barHeight);
+    const x = hPad + index * barWidth;
+    const y = vPad + (plotHeight - barHeight);
     parts.push(
       svgRect({
         x: x.toFixed(2),
@@ -69,10 +72,10 @@ export function generateHistogramSvg(
   parts.push(
     svgText(
       {
-        x: padding,
+        x: hPad,
         y: height - 4,
         'font-family': 'Fira Sans',
-        'font-size': 11,
+        'font-size': options.fontSize ?? 11,
         fill: 'rgba(16,17,17,0.55)'
       },
       `Top ${bars.length} clusters • ${formatSortLabel(sortBy)}`

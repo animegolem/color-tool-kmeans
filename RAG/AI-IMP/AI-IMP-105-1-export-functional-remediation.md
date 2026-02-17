@@ -9,7 +9,7 @@ tags:
 kanban_status: completed
 depends_on:
   - AI-IMP-105
-parent_epic: AI-EPIC-013
+parent_epic: [[AI-EPIC-013-export-redesign]]
 confidence_score: 0.85
 date_created: 2026-02-15
 date_completed: 2026-02-15

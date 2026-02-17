@@ -185,6 +185,7 @@ git config core.hooksPath .githooks
 
 - **Epics**: `RAG/AI-EPIC/` — active: EPIC-010 through EPIC-014; completed: EPIC-006 through EPIC-009, EPIC-015 through EPIC-019 (archived in `RAG/AI-EPIC-ARCHIVED/`)
 - **Tickets**: `RAG/AI-IMP/` — implementation checklists & acceptance criteria
+- **Sub-tickets**: Use `AI-IMP-NNN-N` naming (e.g., `AI-IMP-105-1`). Sub-tickets set `depends_on` to their parent IMP and `parent_epic` to the epic ID.
 - **Design**: `figma/` — exported frames; reference designs in `RAG/assets/`
 - **Logs**: `RAG/AI-LOG/` — development session notes
 - **Runbooks**: `TAURI-NATIVE-RUNBOOK.md` — Tauri-specific troubleshooting

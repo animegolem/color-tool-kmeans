@@ -10,7 +10,7 @@ tags:
 kanban_status: planned
 depends_on:
   - AI-IMP-105-1
-parent_epic: AI-EPIC-013
+parent_epic: [[AI-EPIC-013-export-redesign]]
 confidence_score: 0.6
 date_created: 2026-02-15
 date_completed:

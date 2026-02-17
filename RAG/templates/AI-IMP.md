@@ -1,5 +1,5 @@
 ---
-node_id: AI-IMP-*
+node_id: AI-IMP-*  # For sub-tickets use AI-IMP-NNN-N (e.g., AI-IMP-105-1)
 tags:
   - IMP-LIST
   - Implementation

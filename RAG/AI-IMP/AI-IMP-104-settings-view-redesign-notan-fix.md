@@ -9,7 +9,7 @@ tags:
 kanban_status: completed
 depends_on:
   - "[[AI-IMP-103]]"
-parent_epic: "[[AI-EPIC-010]]"
+parent_epic: [[AI-EPIC-010-values-tab-and-value-study-grid]]
 confidence_score: 0.9
 date_created: 2026-02-14
 date_completed: 2026-02-14

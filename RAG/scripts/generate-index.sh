@@ -22,8 +22,9 @@ IMPS_BY_EPIC=$(mktemp)
 ORPHAN_IMPS=$(mktemp)
 STATUS_MISMATCHES=$(mktemp)
 LARGE_FILES=$(mktemp)
+ILLEGAL_STATUS=$(mktemp)
 
-trap 'rm -f "$EPICS_IN_PROGRESS" "$EPICS_PLANNED" "$EPICS_DEFERRED" "$EPICS_COMPLETED" "$IMPS_BY_EPIC" "$ORPHAN_IMPS" "$STATUS_MISMATCHES" "$LARGE_FILES"' EXIT
+trap 'rm -f "$EPICS_IN_PROGRESS" "$EPICS_PLANNED" "$EPICS_DEFERRED" "$EPICS_COMPLETED" "$IMPS_BY_EPIC" "$ORPHAN_IMPS" "$STATUS_MISMATCHES" "$LARGE_FILES" "$ILLEGAL_STATUS"' EXIT
 
 # -----------------------------------------------------------------------------
 # normalize_frontmatter: Fix field name variations in-place
@@ -176,6 +177,9 @@ for file in "$RAG_DIR/AI-EPIC"/*.md; do
     planned|backlog|"")
       printf '%s\t%s\t%s\t%s\t%s\n' "$filename" "$epic_num" "$title" "$problem" "" >> "$EPICS_PLANNED"
       ;;
+    *)
+      printf '%s\t%s\t%s\n' "$filename" "$epic_num" "$status" >> "$ILLEGAL_STATUS"
+      ;;
   esac
 done
 
@@ -188,7 +192,7 @@ for file in "$RAG_DIR/AI-IMP"/*.md; do
   [[ -f "$file" ]] || continue
 
   filename=$(basename "$file" .md)
-  imp_num=$(echo "$filename" | grep -oE '[0-9]+' | head -1)
+  imp_num=$(echo "$filename" | sed 's/^AI-IMP-//' | grep -oE '^[0-9]+(-[0-9]+)?')
 
   # Normalize field names
   normalize_frontmatter "$file"
@@ -196,10 +200,25 @@ for file in "$RAG_DIR/AI-IMP"/*.md; do
   # Extract fields
   status=$(extract_frontmatter_field "$file" "kanban_status")
   status=$(echo "$status" | tr '[:upper:]' '[:lower:]')
+
+  # Validate IMP status
+  case "$status" in
+    completed|complete|in-progress|in_progress|deferred|planned|backlog|cancelled|"") ;;
+    *)
+      printf '%s\t%s\t%s\n' "$filename" "$imp_num" "$status" >> "$ILLEGAL_STATUS"
+      ;;
+  esac
+
   depends_on=$(extract_frontmatter_field "$file" "depends_on")
 
   # Find parent epic
   parent_epic=$(get_epic_from_depends_on "$depends_on")
+
+  # Fallback to parent_epic frontmatter field (handles sub-tickets whose depends_on points to parent IMP)
+  if [[ -z "$parent_epic" ]]; then
+    parent_epic_field=$(extract_frontmatter_field "$file" "parent_epic")
+    parent_epic=$(echo "$parent_epic_field" | grep -oE 'AI-EPIC-[0-9]+' | head -1 || true)
+  fi
 
   # Add backlink if we found an epic
   if [[ -n "$parent_epic" ]]; then
@@ -362,7 +381,7 @@ EOF
   fi
 
   # Anomalies section
-  if [[ -s "$ORPHAN_IMPS" ]] || [[ -s "$STATUS_MISMATCHES" ]]; then
+  if [[ -s "$ORPHAN_IMPS" ]] || [[ -s "$STATUS_MISMATCHES" ]] || [[ -s "$ILLEGAL_STATUS" ]]; then
     echo "## Anomalies"
     echo ""
 
@@ -379,6 +398,14 @@ EOF
       while IFS=$'\t' read -r imp_filename imp_num status reason; do
         echo "- [[${imp_filename}|IMP-${imp_num}]] - ${reason}"
       done < "$STATUS_MISMATCHES"
+      echo ""
+    fi
+
+    if [[ -s "$ILLEGAL_STATUS" ]]; then
+      echo "### Illegal Status Values"
+      while IFS=$'\t' read -r fname fnum fstatus _; do
+        echo "- [[${fname}|${fnum}]] — unrecognized status: \`${fstatus}\`"
+      done < "$ILLEGAL_STATUS"
       echo ""
     fi
 

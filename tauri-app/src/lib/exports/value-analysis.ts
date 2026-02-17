@@ -325,25 +325,25 @@ export async function generateValueAnalysisSvg(
   };
 }
 
-function formatPercent(value: number) {
+export function formatPercent(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
 
-function grayFill(value: number) {
+export function grayFill(value: number) {
   const shade = Math.round(clamp01(value) * 255);
   return `rgb(${shade},${shade},${shade})`;
 }
 
-function bucketTextColor(value: number) {
+export function bucketTextColor(value: number) {
   return value <= 0.52 ? 'rgba(248,242,227,0.9)' : 'rgba(33,33,32,0.85)';
 }
 
-function clamp01(value: number) {
+export function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
 
-function svgImage({
+export function svgImage({
   href,
   x,
   y,
@@ -367,13 +367,13 @@ function svgImage({
   })} />`;
 }
 
-function serializeAttrs(attrs: Record<string, string | number>): string {
+export function serializeAttrs(attrs: Record<string, string | number>): string {
   return Object.entries(attrs)
     .map(([key, value]) => `${key}=\"${escapeAttr(String(value))}\"`)
     .join(' ');
 }
 
-function escapeAttr(input: string): string {
+export function escapeAttr(input: string): string {
   return input.replace(/&/g, '&amp;').replace(/\"/g, '&quot;');
 }
 

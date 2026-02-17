@@ -221,8 +221,7 @@ pub async fn copy_file(req: CopyFileRequest) -> Result<CopyFileResponse, String>
     let dest = std::path::PathBuf::from(&req.dest);
     if let Some(parent) = dest.parent() {
         if !parent.exists() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("Cannot create directory: {e}"))?;
+            std::fs::create_dir_all(parent).map_err(|e| format!("Cannot create directory: {e}"))?;
         }
     }
     std::fs::copy(&source, &dest).map_err(|e| format!("Failed to copy file: {e}"))?;

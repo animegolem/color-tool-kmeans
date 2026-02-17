@@ -8,7 +8,7 @@ tags:
   - color-picker
 date_created: 2026-01-22
 date_completed:
-kanban_status: planned
+kanban_status: deferred
 AI_IMP_spawned:
 ---
 

@@ -19,8 +19,9 @@
   import { generatePaletteSvg, generatePaletteCsv } from '../exports/palette';
   import { generateValueAnalysisSvg } from '../exports/value-analysis';
   import { toDataUrl } from '../exports/value-analysis';
-  import { svgToTile, imageToTile, composeTiles } from '../exports/compositor';
-  import type { CompositorTile } from '../exports/compositor';
+  import { generateNotanStudySvg, type NotanCellData } from '../exports/notan-study';
+  import { svgToTile, imageToTile } from '../exports/compositor';
+  import { composeColorStudy, type ColorStudyInput } from '../exports/color-study-compositor';
   import { getFsBridge, saveFromPath } from '../bridges/fs';
   import { svgToPngBlob } from '../exports/png';
   import { requestValueAnalysis } from '../bridges/value-analysis';
@@ -51,6 +52,7 @@
   let valuesRangeFinder = $state(true);
   let valuesHistogram = $state(true);
   let valuesSimplified = $state(true);
+  let valuesNotanStudy = $state(false);
 
   // --- Save state ---
   let isSaving = $state(false);
@@ -63,7 +65,7 @@
     colorsHueLightness || colorsPaletteStrip || colorsVideoBarcode
   );
   const valuesAnyChecked = $derived(
-    valuesNeutral || valuesRangeFinder || valuesHistogram || valuesSimplified
+    valuesNeutral || valuesRangeFinder || valuesHistogram || valuesSimplified || valuesNotanStudy
   );
 
   onMount(() => {
@@ -82,13 +84,14 @@
   }
 
   // --- Tile builders ---
-  async function buildColorsTiles(): Promise<CompositorTile[]> {
-    const tiles: CompositorTile[] = [];
-    if (!file || !result) return tiles;
+  async function buildColorStudyInput(): Promise<ColorStudyInput> {
+    const input: ColorStudyInput = {};
+    if (!file || !result) return input;
 
     if (colorsSourceImage && file.previewUrl) {
       const dataUrl = await toDataUrl(file.previewUrl);
-      tiles.push(imageToTile(dataUrl, file.dataset.width, file.dataset.height, 'source-image'));
+      const img = await loadImageDimensions(dataUrl);
+      input.sourceImage = imageToTile(dataUrl, img.width, img.height, 'source-image');
     }
 
     if (colorsPolarChart) {
@@ -98,21 +101,22 @@
         showStroke: paramSnapshot.showClusterOutline,
         mode: paramSnapshot.polarMode
       });
-      tiles.push(svgToTile(svg, 'polar-chart'));
+      input.polarChart = svgToTile(svg, 'polar-chart');
     }
 
     if (colorsHistogram) {
+      const primarySort = paramSnapshot.histogramSort;
+      const { svg } = generateHistogramSvg(result.clusters, { sortBy: primarySort, hPadding: 0 });
+      input.histogram = svgToTile(svg, 'histogram');
+
       if (colorsHistogramAll) {
-        const sortModes: Array<'frequency' | 'hue' | 'lightness'> = ['frequency', 'hue', 'lightness'];
-        for (const mode of sortModes) {
-          const { svg } = generateHistogramSvg(result.clusters, { sortBy: mode });
-          tiles.push(svgToTile(svg, `histogram-${mode}`));
-        }
-      } else {
-        const { svg } = generateHistogramSvg(result.clusters, {
-          sortBy: paramSnapshot.histogramSort
-        });
-        tiles.push(svgToTile(svg, 'histogram'));
+        const allModes: Array<'frequency' | 'hue' | 'lightness'> = ['frequency', 'hue', 'lightness'];
+        input.secondaryHistograms = allModes
+          .filter(m => m !== primarySort)
+          .map(mode => svgToTile(
+            generateHistogramSvg(result!.clusters, { sortBy: mode, hPadding: 0, fontSize: 22 }).svg,
+            `histogram-${mode}`
+          ));
       }
     }
 
@@ -123,33 +127,34 @@
         showStroke: paramSnapshot.showClusterOutline,
         sizeMode: paramSnapshot.hueLightnessSizeMode
       });
-      tiles.push(svgToTile(svg, 'hue-lightness'));
+      input.hueLightness = svgToTile(svg, 'hue-lightness');
     }
 
     if (colorsPaletteStrip) {
-      const { svg } = generatePaletteSvg(result.clusters, { maxClusters: 15 });
-      tiles.push(svgToTile(svg, 'palette-strip'));
+      const { svg } = generatePaletteSvg(result.clusters, { maxClusters: 20 });
+      input.paletteStrip = svgToTile(svg, 'palette-strip');
     }
 
     if (colorsVideoBarcode && videoStrip) {
       const dataUrl = await toDataUrl(videoStrip.url);
       const img = await loadImageDimensions(dataUrl);
-      tiles.push(imageToTile(dataUrl, img.width, img.height, 'video-barcode'));
+      input.videoBarcode = imageToTile(dataUrl, img.width, img.height, 'video-barcode');
     }
 
-    return tiles;
+    return input;
   }
 
   // --- Composite exports ---
   async function exportColorsComposite() {
     if (!result) return;
     await performSave(async () => {
-      const tiles = await buildColorsTiles();
-      if (tiles.length === 0) {
+      const input = await buildColorStudyInput();
+      const hasContent = Object.values(input).some(v => v !== undefined);
+      if (!hasContent) {
         setStatus('No items selected for export.', 'info');
         return;
       }
-      const { svg, width, height } = composeTiles(tiles);
+      const { svg, width, height } = composeColorStudy(input);
       const scale = Math.max(1, Math.min(4, $exportScale));
       const blob = await svgToPngBlob(svg, width, height, scale);
       const bridge = await getFsBridge();
@@ -350,6 +355,34 @@
     });
   }
 
+  async function saveNotanStudyPng() {
+    if (!file) return;
+    await performSave(async () => {
+      const [level2, level3, level4, level5] = await Promise.all([
+        loadValueAnalysisForExport(2, true),
+        loadValueAnalysisForExport(3, false),
+        loadValueAnalysisForExport(4, false),
+        loadValueAnalysisForExport(5, false)
+      ]);
+      const toCell = (study: typeof level2): NotanCellData => ({
+        previewSrc: convertFileSrc(study.preview),
+        previewWidth: study.previewWidth,
+        previewHeight: study.previewHeight,
+        bucketValues: study.bucketValues,
+        counts: study.counts
+      });
+      const { svg, width, height } = await generateNotanStudySvg({
+        cells: [toCell(level2), toCell(level3), toCell(level4), toCell(level5)]
+      });
+      const scale = Math.max(1, Math.min(4, $exportScale));
+      const blob = await svgToPngBlob(svg, width, height, scale);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-notan-study.png`);
+      if (canceled) setStatus('Export canceled.', 'info');
+      else setStatus('Notan study PNG saved.', 'info');
+    });
+  }
+
   // --- Individual saves ---
   async function saveIndividualPng(
     generator: () => { svg: string; width: number; height: number },
@@ -509,7 +542,7 @@
         </label>
         <label class="builder-item">
           <input type="checkbox" bind:checked={colorsPaletteStrip} />
-          <span>Palette Strip (top 15)</span>
+          <span>Palette Strip (top 20)</span>
           <span class="spacer"></span>
           <button class="item-download" title="Save PNG" disabled={isSaving} onclick={() => saveIndividualPng(paletteGenerator, 'palette')}>↓</button>
         </label>
@@ -560,11 +593,13 @@
           <span class="spacer"></span>
           <button class="item-download" title="Save PNG" disabled={isSaving} onclick={saveSimplifiedPng}>↓</button>
         </label>
-        <div class="builder-item placeholder">
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={valuesNotanStudy} />
           <span>Notan Studies</span>
           <span class="spacer"></span>
-          <span class="badge">IMP-107</span>
-        </div>
+          <button class="item-download" title="Save PNG" disabled={isSaving}
+                  onclick={saveNotanStudyPng}>↓</button>
+        </label>
       </div>
       <button class="composite-btn" disabled={isSaving || !valuesAnyChecked} onclick={exportValuesComposite}>
         Export Values Composite
@@ -638,7 +673,6 @@
     font-size: 14px;
   }
 
-  .builder-item.placeholder,
   .builder-item.disabled {
     cursor: default;
     opacity: 0.5;
