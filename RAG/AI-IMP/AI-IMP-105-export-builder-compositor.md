@@ -6,12 +6,12 @@ tags:
   - UI
   - Exports
   - Epic-013
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-EPIC-013, AI-IMP-066]
 parent_epic: [[AI-EPIC-013-export-redesign]]
 confidence_score: 0.85
 date_created: 2026-02-14
-date_completed:
+date_completed: 2026-02-16
 ---
 
 
@@ -78,20 +78,20 @@ Per-item `[↓]` download icons allow quick individual chart export without comp
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Design and implement compositor module: tile input format, adaptive grid layout algorithm, SVG composition.
-- [ ] Rewrite ExportsView.svelte with Colors/Values/Data sections and checkbox state management.
-- [ ] Wire histogram SVG/PNG generation into the builder as a selectable tile.
-- [ ] Wire hue-lightness SVG/PNG generation into the builder as a selectable tile.
-- [ ] Wire polar chart SVG/PNG generation into the builder as a selectable tile.
-- [ ] Add source image as a selectable tile in the Colors section.
-- [ ] Add palette strip as a selectable tile in the Colors section.
-- [ ] Implement "Export Colors Composite" button that composes checked Colors items via compositor.
-- [ ] Implement "Export Values Composite" button that composes checked Values items via compositor.
-- [ ] Add per-item download icons `[↓]` for individual chart exports.
-- [ ] Integrate PNG scale slider into compositor output resolution.
-- [ ] Add placeholder slots for .ase export (wired by IMP-106) and notan study (wired by IMP-107).
-- [ ] Verify composite export produces clean grid layout for 1, 2, 3, 4, and 5+ selected items.
-- [ ] Run `npm run test`, `npm run lint`, `npm run check`, and pre-commit hooks successfully.
+- [x] Design and implement compositor module: tile input format, adaptive grid layout algorithm, SVG composition.
+- [x] Rewrite ExportsView.svelte with Colors/Values/Data sections and checkbox state management.
+- [x] Wire histogram SVG/PNG generation into the builder as a selectable tile.
+- [x] Wire hue-lightness SVG/PNG generation into the builder as a selectable tile.
+- [x] Wire polar chart SVG/PNG generation into the builder as a selectable tile.
+- [x] Add source image as a selectable tile in the Colors section.
+- [x] Add palette strip as a selectable tile in the Colors section.
+- [x] Implement "Export Colors Composite" button that composes checked Colors items via compositor.
+- [x] Implement "Export Values Composite" button that composes checked Values items via compositor.
+- [x] Add per-item download icons `[↓]` for individual chart exports.
+- [x] Integrate PNG scale slider into compositor output resolution.
+- [x] Add placeholder slots for .ase export (wired by IMP-106) and notan study (wired by IMP-107).
+- [x] Verify composite export produces clean grid layout for 1, 2, 3, 4, and 5+ selected items.
+- [x] Run `npm run test`, `npm run lint`, `npm run check`, and pre-commit hooks successfully.
 
 ### Acceptance Criteria
 **Scenario: Builder UI renders with available items**

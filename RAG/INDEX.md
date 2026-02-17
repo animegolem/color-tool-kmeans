@@ -11,9 +11,9 @@
 - [[AI-IMP-066-exports-deterministic-wiring-and-tauri-fs|IMP-066]] - completed
 - [[AI-IMP-105-1-export-functional-remediation|IMP-105-1]] - completed
 - [[AI-IMP-105-2-export-aesthetic-template-layout|IMP-105-2]] - planned
-- [[AI-IMP-105-export-builder-compositor|IMP-105]] - planned
+- [[AI-IMP-105-export-builder-compositor|IMP-105]] - completed
 - [[AI-IMP-106-artist-palette-ase|IMP-106]] - planned
-- [[AI-IMP-107-values-notan-study-export|IMP-107]] - planned
+- [[AI-IMP-107-values-notan-study-export|IMP-107]] - completed
 - [[AI-IMP-108-context-menu-infrastructure|IMP-108]] - planned
 
 ---
@@ -56,7 +56,7 @@
 Generated from tracked files; binary assets excluded.
 
 - tauri-app/src-tauri/src/bin/bench_runner.rs (1943 LOC)
-- tauri-app/src/lib/views/ExportsView.svelte (838 LOC)
+- tauri-app/src/lib/views/ExportsView.svelte (874 LOC)
 - tauri-app/src-tauri/src/color.rs (706 LOC)
 - tauri-app/src/lib/views/ValuesView.svelte (641 LOC)
 - tauri-app/src/lib/views/HomeView.svelte (610 LOC)
@@ -80,7 +80,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>11 Epics, 33 IMPs completed</summary>
+<summary>11 Epics, 35 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006: Tauri bridge reliability and native mode fixes]] (2026-01-21)
 - [[AI-EPIC-007-tauri-ui-graphs-exports|EPIC-007: Tauri ui graphs exports]] (2026-01-21)

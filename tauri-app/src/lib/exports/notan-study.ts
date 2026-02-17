@@ -96,6 +96,55 @@ export async function generateNotanStudySvg(
   };
 }
 
+export async function generateSingleCellSvg(
+  cell: NotanCellData,
+  background?: string
+): Promise<NotanStudyResult> {
+  const bg = background ?? '#f8f2e3';
+  const cellWidth = Math.max(1, cell.previewWidth);
+  const cellHeight = Math.max(1, cell.previewHeight);
+  const scale = Math.max(1, cellWidth / 280);
+
+  const margin = Math.round(32 * scale);
+  const fontSmall = Math.round(12 * scale);
+  const bucketStripHeight = Math.round(36 * scale);
+  const bucketStripGap = Math.round(2 * scale);
+  const bucketStripRadius = Math.round(12 * scale);
+  const notanGap = Math.round(8 * scale);
+  const imageRadius = Math.round(8 * scale);
+
+  const totalWidth = cellWidth + margin * 2;
+  const innerHeight = bucketStripHeight + notanGap + cellHeight;
+  const totalHeight = innerHeight + margin * 2;
+
+  const dataUrl = await toDataUrl(cell.previewSrc);
+
+  const content: string[] = [];
+  content.push(svgRect({ x: 0, y: 0, width: totalWidth, height: totalHeight, fill: bg }));
+  content.push(renderCell({
+    cell,
+    dataUrl,
+    x: margin,
+    y: margin,
+    width: cellWidth,
+    height: cellHeight,
+    scale,
+    fontSmall,
+    bucketStripHeight,
+    bucketStripGap,
+    bucketStripRadius,
+    notanGap,
+    imageRadius,
+    cellIndex: 0
+  }));
+
+  return {
+    svg: svgDocument({ width: totalWidth, height: totalHeight, content: content.join('') }),
+    width: totalWidth,
+    height: totalHeight
+  };
+}
+
 function renderCell(opts: {
   cell: NotanCellData;
   dataUrl: string;

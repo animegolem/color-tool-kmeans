@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateNotanStudySvg, type NotanCellData, type NotanStudyInput } from '../notan-study';
+import { generateNotanStudySvg, generateSingleCellSvg, type NotanCellData, type NotanStudyInput } from '../notan-study';
 
 // Minimal 1×1 PNG data URL for testing (avoids needing real images)
 const TINY_PNG =
@@ -147,5 +147,58 @@ describe('generateNotanStudySvg', () => {
     // All 4 images still rendered
     const imageCount = (result.svg.match(/<image /g) ?? []).length;
     expect(imageCount).toBe(4);
+  });
+});
+
+describe('generateSingleCellSvg', () => {
+  it('produces valid SVG with 1 image element', async () => {
+    const cell = makeCell([0.2, 0.8], [280, 720]);
+    const result = await generateSingleCellSvg(cell);
+    expect(result.svg).toContain('<?xml version="1.0"');
+    expect(result.svg).toContain('<svg');
+    expect(result.svg).toContain('</svg>');
+    const imageCount = (result.svg.match(/<image /g) ?? []).length;
+    expect(imageCount).toBe(1);
+  });
+
+  it('has tight dimensions matching cell width', async () => {
+    const cell = makeCell([0.3, 0.7], [400, 600]);
+    const result = await generateSingleCellSvg(cell);
+    // Width = previewWidth + 2*margin; with 400px cell, scale ~1.43, margin ~46
+    // Total width ≈ 400 + 92 = 492
+    expect(result.width).toBeLessThan(600);
+    expect(result.width).toBeGreaterThan(400);
+    // Height should include bucket strip + gap + preview + margins
+    expect(result.height).toBeGreaterThan(result.width * 0.5);
+  });
+
+  it('uses default background #f8f2e3', async () => {
+    const cell = makeCell([0.5], [1000]);
+    const result = await generateSingleCellSvg(cell);
+    expect(result.svg).toContain('#f8f2e3');
+  });
+
+  it('respects custom background', async () => {
+    const cell = makeCell([0.5], [1000]);
+    const result = await generateSingleCellSvg(cell, '#ffffff');
+    expect(result.svg).toContain('#ffffff');
+    expect(result.svg).not.toContain('#f8f2e3');
+  });
+
+  it('is deterministic', async () => {
+    const cell = makeCell([0.2, 0.5, 0.8], [300, 400, 300]);
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () => generateSingleCellSvg(cell))
+    );
+    expect(new Set(results.map(r => r.svg)).size).toBe(1);
+  });
+
+  it('contains clip-path definitions', async () => {
+    const cell = makeCell([0.2, 0.8], [500, 500]);
+    const result = await generateSingleCellSvg(cell);
+    expect(result.svg).toContain('clipPath');
+    // 1 bucket clip + 1 image clip
+    const clipPathCount = (result.svg.match(/<clipPath/g) ?? []).length;
+    expect(clipPathCount).toBe(2);
   });
 });

@@ -7,12 +7,12 @@ tags:
   - Values
   - Notan
   - Epic-013
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-EPIC-013, AI-IMP-105]
 parent_epic: [[AI-EPIC-013-export-redesign]]
 confidence_score: 0.82
 date_created: 2026-02-14
-date_completed:
+date_completed: 2026-02-16
 ---
 
 
@@ -59,16 +59,16 @@ Implementation uses the existing `requestValueAnalysis()` bridge to generate eac
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Implement `generateNotanStudySvg()` that produces a 2×2 grid SVG for levels 2, 3, 4, 5.
-- [ ] Each cell renders: level label, tone bar with proportional segments and percentage labels, simplified image.
-- [ ] Tone bar segments use grayscale values matching the value analysis output for each level.
-- [ ] Request value analysis data for all four levels (2, 3, 4, 5) via existing bridge.
-- [ ] Handle loading state: show progress or placeholder while analysis runs for each level.
-- [ ] Wire notan study as a selectable tile in the ExportsView Values section with `[↓]` individual download.
-- [ ] Integrate with compositor for inclusion in Values composite export.
-- [ ] Add unit tests for tone bar percentage calculation and grid layout structure.
-- [ ] Verify output matches `RAG/assets/Values-Export-Notan-Only.png` reference layout.
-- [ ] Run `npm run test`, `npm run lint`, `npm run check`, and pre-commit hooks successfully.
+- [x] Implement `generateNotanStudySvg()` that produces a 2×2 grid SVG for levels 2, 3, 4, 5.
+- [x] Each cell renders: level label, tone bar with proportional segments and percentage labels, simplified image.
+- [x] Tone bar segments use grayscale values matching the value analysis output for each level.
+- [x] Request value analysis data for all four levels (2, 3, 4, 5) via existing bridge.
+- [x] Handle loading state: show progress or placeholder while analysis runs for each level.
+- [x] Wire notan study as a selectable tile in the ExportsView Values section with `[↓]` individual download.
+- [x] Integrate with compositor for inclusion in Values composite export.
+- [x] Add unit tests for tone bar percentage calculation and grid layout structure.
+- [x] Verify output matches `RAG/assets/Values-Export-Notan-Only.png` reference layout.
+- [x] Run `npm run test`, `npm run lint`, `npm run check`, and pre-commit hooks successfully.
 
 ### Acceptance Criteria
 **Scenario: Export notan study**

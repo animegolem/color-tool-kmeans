@@ -19,7 +19,8 @@
   import { generatePaletteSvg, generatePaletteCsv } from '../exports/palette';
   import { generateValueAnalysisSvg } from '../exports/value-analysis';
   import { toDataUrl } from '../exports/value-analysis';
-  import { generateNotanStudySvg, type NotanCellData } from '../exports/notan-study';
+  import { generateNotanStudySvg, generateSingleCellSvg, type NotanCellData } from '../exports/notan-study';
+  import { composeValueStudy } from '../exports/value-study-compositor';
   import { svgToTile, imageToTile } from '../exports/compositor';
   import { composeColorStudy, type ColorStudyInput } from '../exports/color-study-compositor';
   import { getFsBridge, saveFromPath } from '../bridges/fs';
@@ -52,7 +53,7 @@
   let valuesRangeFinder = $state(true);
   let valuesHistogram = $state(true);
   let valuesSimplified = $state(true);
-  let valuesNotanStudy = $state(false);
+  let valuesAllStudies = $state(false);
 
   // --- Save state ---
   let isSaving = $state(false);
@@ -65,7 +66,7 @@
     colorsHueLightness || colorsPaletteStrip || colorsVideoBarcode
   );
   const valuesAnyChecked = $derived(
-    valuesNeutral || valuesRangeFinder || valuesHistogram || valuesSimplified || valuesNotanStudy
+    valuesNeutral || valuesRangeFinder || valuesHistogram || valuesSimplified
   );
 
   onMount(() => {
@@ -195,7 +196,8 @@
       }
       const neutralSrc = convertFileSrc(currentStudy.neutral);
       const previewSrc = convertFileSrc(currentStudy.preview);
-      const { svg, width, height } = await generateValueAnalysisSvg({
+
+      const baseInput = {
         originalSrc,
         neutralSrc,
         previewSrc,
@@ -211,13 +213,74 @@
         boundaries: currentStudy.boundaries,
         counts: currentStudy.counts,
         histogramBins: currentStudy.histogramBins,
-        levels: currentStudy.levels,
-        includeNeutral: valuesNeutral,
-        includeOriginal: valuesIncludeOriginal,
-        includeRangeFinder: valuesRangeFinder,
-        includeHistogram: valuesHistogram,
-        includeSimplified: valuesSimplified
-      });
+        levels: currentStudy.levels
+      };
+
+      let svg: string;
+      let width: number;
+      let height: number;
+
+      if (valuesSimplified) {
+        // 2-column composite: analysis left, simplified/notan right
+        const col1Result = await generateValueAnalysisSvg({
+          ...baseInput,
+          includeNeutral: valuesNeutral,
+          includeOriginal: valuesIncludeOriginal,
+          includeRangeFinder: valuesRangeFinder,
+          includeHistogram: valuesHistogram,
+          includeSimplified: false
+        });
+
+        let col2Result: { svg: string; width: number; height: number };
+        if (valuesAllStudies) {
+          const [level2, level3, level4, level5] = await Promise.all([
+            loadValueAnalysisForExport(2, true),
+            loadValueAnalysisForExport(3, false),
+            loadValueAnalysisForExport(4, false),
+            loadValueAnalysisForExport(5, false)
+          ]);
+          const toCell = (study: typeof level2): NotanCellData => ({
+            previewSrc: convertFileSrc(study.preview),
+            previewWidth: study.previewWidth,
+            previewHeight: study.previewHeight,
+            bucketValues: study.bucketValues,
+            counts: study.counts
+          });
+          col2Result = await generateNotanStudySvg({
+            cells: [toCell(level2), toCell(level3), toCell(level4), toCell(level5)]
+          });
+        } else {
+          col2Result = await generateSingleCellSvg({
+            previewSrc,
+            previewWidth: currentStudy.previewWidth,
+            previewHeight: currentStudy.previewHeight,
+            bucketValues: currentStudy.bucketValues,
+            counts: currentStudy.counts
+          });
+        }
+
+        const composed = composeValueStudy({
+          col1Svg: col1Result.svg,
+          col2Svg: col2Result.svg
+        });
+        svg = composed.svg;
+        width = composed.width;
+        height = composed.height;
+      } else {
+        // Single-column fallback (no simplified)
+        const result = await generateValueAnalysisSvg({
+          ...baseInput,
+          includeNeutral: valuesNeutral,
+          includeOriginal: valuesIncludeOriginal,
+          includeRangeFinder: valuesRangeFinder,
+          includeHistogram: valuesHistogram,
+          includeSimplified: false
+        });
+        svg = result.svg;
+        width = result.width;
+        height = result.height;
+      }
+
       const scale = Math.max(1, Math.min(4, $exportScale));
       const blob = await svgToPngBlob(svg, width, height, scale);
       const bridge = await getFsBridge();
@@ -352,34 +415,6 @@
       const { canceled } = await bridge.saveBlob(blob, `${baseName()}-simplified.png`);
       if (canceled) setStatus('Export canceled.', 'info');
       else setStatus('Simplified values PNG saved.', 'info');
-    });
-  }
-
-  async function saveNotanStudyPng() {
-    if (!file) return;
-    await performSave(async () => {
-      const [level2, level3, level4, level5] = await Promise.all([
-        loadValueAnalysisForExport(2, true),
-        loadValueAnalysisForExport(3, false),
-        loadValueAnalysisForExport(4, false),
-        loadValueAnalysisForExport(5, false)
-      ]);
-      const toCell = (study: typeof level2): NotanCellData => ({
-        previewSrc: convertFileSrc(study.preview),
-        previewWidth: study.previewWidth,
-        previewHeight: study.previewHeight,
-        bucketValues: study.bucketValues,
-        counts: study.counts
-      });
-      const { svg, width, height } = await generateNotanStudySvg({
-        cells: [toCell(level2), toCell(level3), toCell(level4), toCell(level5)]
-      });
-      const scale = Math.max(1, Math.min(4, $exportScale));
-      const blob = await svgToPngBlob(svg, width, height, scale);
-      const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-notan-study.png`);
-      if (canceled) setStatus('Export canceled.', 'info');
-      else setStatus('Notan study PNG saved.', 'info');
     });
   }
 
@@ -590,15 +625,16 @@
         <label class="builder-item">
           <input type="checkbox" bind:checked={valuesSimplified} />
           <span>Simplified Values</span>
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <span class="sub-toggle" onclick={(e) => e.stopPropagation()}>
+            <label class="sub-toggle-inner" title="Include all 4 notan study levels (2-5)">
+              <input type="checkbox" bind:checked={valuesAllStudies} disabled={!valuesSimplified} />
+              <span class="sub-toggle-label">All studies</span>
+            </label>
+          </span>
           <span class="spacer"></span>
           <button class="item-download" title="Save PNG" disabled={isSaving} onclick={saveSimplifiedPng}>↓</button>
-        </label>
-        <label class="builder-item">
-          <input type="checkbox" bind:checked={valuesNotanStudy} />
-          <span>Notan Studies</span>
-          <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={isSaving}
-                  onclick={saveNotanStudyPng}>↓</button>
         </label>
       </div>
       <button class="composite-btn" disabled={isSaving || !valuesAnyChecked} onclick={exportValuesComposite}>
