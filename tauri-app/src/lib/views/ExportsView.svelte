@@ -17,6 +17,8 @@
   import { generateHistogramSvg } from '../exports/histogram';
   import { generateHueLightnessSvg } from '../exports/hue-lightness';
   import { generatePaletteSvg, generatePaletteCsv } from '../exports/palette';
+  import { generateAseBlob } from '../exports/palette-ase';
+  import { generatePaletteJson } from '../exports/palette-web';
   import { generateValueAnalysisSvg } from '../exports/value-analysis';
   import { toDataUrl } from '../exports/value-analysis';
   import { generateNotanStudySvg, generateSingleCellSvg, type NotanCellData } from '../exports/notan-study';
@@ -508,6 +510,34 @@
     });
   }
 
+  async function savePaletteAse() {
+    if (!result) return;
+    await performSave(async () => {
+      const blob = generateAseBlob(result!.clusters);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-palette.ase`);
+      if (canceled) {
+        setStatus('Export canceled.', 'info');
+      } else {
+        setStatus('Palette .ase saved.', 'info');
+      }
+    });
+  }
+
+  async function savePaletteJson() {
+    if (!result) return;
+    await performSave(async () => {
+      const json = generatePaletteJson(result!.clusters);
+      const bridge = await getFsBridge();
+      const { canceled } = await bridge.saveTextFile(json, `${baseName()}-palette.json`);
+      if (canceled) {
+        setStatus('Export canceled.', 'info');
+      } else {
+        setStatus('Palette JSON saved.', 'info');
+      }
+    });
+  }
+
   // --- Save infrastructure ---
   async function performSave(action: () => Promise<void>) {
     if (isSaving) return;
@@ -650,10 +680,15 @@
           <span class="spacer"></span>
           <button disabled={isSaving} onclick={savePaletteCsv}>Save CSV</button>
         </div>
-        <div class="data-row placeholder">
+        <div class="data-row">
           <span>Palette .ase</span>
           <span class="spacer"></span>
-          <span class="badge">IMP-106</span>
+          <button disabled={isSaving} onclick={savePaletteAse}>Save .ase</button>
+        </div>
+        <div class="data-row">
+          <span>Palette JSON</span>
+          <span class="spacer"></span>
+          <button disabled={isSaving} onclick={savePaletteJson}>Save JSON</button>
         </div>
       </div>
       <div class="scale-control">
@@ -793,9 +828,6 @@
     font-size: 14px;
   }
 
-  .data-row.placeholder {
-    opacity: 0.5;
-  }
 
   .data-row button {
     border-radius: 6px;
@@ -810,14 +842,6 @@
   .data-row button[disabled] {
     opacity: 0.4;
     cursor: not-allowed;
-  }
-
-  .badge {
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 10px;
-    background: rgba(33, 33, 32, 0.08);
-    color: rgba(33, 33, 32, 0.5);
   }
 
   .scale-control {

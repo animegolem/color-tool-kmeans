@@ -32,7 +32,8 @@ function extLabel(ext: string): string {
     png: 'PNG Image',
     svg: 'SVG Image',
     csv: 'CSV File',
-    ase: 'Adobe Swatch'
+    ase: 'Adobe Swatch',
+    json: 'JSON File'
   };
   return map[ext.toLowerCase()] ?? 'File';
 }
