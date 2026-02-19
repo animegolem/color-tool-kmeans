@@ -6,66 +6,92 @@ tags:
   - ui
   - multi-image
   - input
+  - library
 date_created: 2026-01-22
 date_completed:
-kanban_status: planned
+kanban_status: in-progress
 AI_IMP_spawned:
 ---
 # AI-EPIC-020-multi-image-input
 
 ## Problem Statement/Feature Scope
-Users need to load, manage, and compare multiple references (images and optionally videos) without juggling external tabs. The current UI only supports a single active image even though store architecture supports ID-keyed caching. We need a lightweight, session-scoped library for quick switching, with an optional single-root folder tree per run.
+Users need to load, manage, and compare multiple references (images and videos) without juggling external tabs. The current UI only supports a single active image even though store architecture supports ID-keyed caching. We need a Library sidebar with a **Media Bucket** section (always visible, showing loaded media) and an optional **Folder Browser** (IDE-style file tree). The Library must be accessible from all views (Colors, Values, Exports).
 
 ## Proposed Solution(s)
-- Add a right-side drawer (“Library”) that can expand/collapse without disrupting the main layout.
-- Provide a session-scoped library list (“Imported”) and a lightweight “Active” list for quick switching.
-- Support multi-file drag/drop into the main view or drawer.
+- Right-side **Library** sidebar that can expand/collapse without disrupting the main CSS Grid layout.
+- **Media Bucket** section: shows all loaded media as thumbnails, supports click-to-switch and per-item removal.
+- **Unified media ingest**: single "Add media" button replaces separate image/video upload buttons; multi-file drag-drop (including on Tauri).
 - Support clipboard paste for images (Ctrl/Cmd+V) in the main view.
-- Optional: allow selecting a single root folder per session (via folder picker) and render a collapsible file tree within that root.
-- Keep state ephemeral: no persistence across app restarts (re-pick root each run).
+- Optional **Folder Browser**: IDE-style collapsible file tree for a session-scoped root folder with image thumbnails. Stretch feature — may be deprecated if lift is disproportionate.
+- Keep state ephemeral: no persistence across app restarts.
 - Leverage existing per-image analysis caching in stores for instant switching.
 
 ## Path(s) Not Taken
 - Persistent library across sessions (explicitly out of scope).
 - Full disk browser / multiple-root tree (avoid extra permission scope complexity).
-- Modal-based image management (drawer is more immediate).
+- Modal-based image management (sidebar is more immediate).
+- Video controls on Values view deferred to IMP-110 (future).
 
 ## Success Metrics
-1. User can drag 3+ images and each appears in the library list.
+1. User can drag 3+ images and each appears in the Media Bucket.
 2. Switching active item preserves analysis state without re-running.
-3. Clipboard paste loads an image into the library.
-4. User can open a folder (single root) and browse subfolders for import in-session.
+3. Clipboard paste loads an image into the Media Bucket.
+4. Library sidebar is accessible and functional from Colors, Values, and Exports views.
 
 ## Requirements
 
 ### Functional Requirements
-- [ ] FR-1: Library drawer with “Imported” list and “Active” list; can expand/collapse.
-- [ ] FR-2: Multi-file drag-drop loads each file into Imported list.
-- [ ] FR-3: Clipboard paste (Ctrl/Cmd+V) loads image into Imported list.
-- [ ] FR-4: Optional single-root folder picker for session-scoped tree browsing.
+- [x] FR-1: Library sidebar with Media Bucket section; accessible from all views. Can expand/collapse.
+- [ ] FR-2: Unified media ingest (merged upload button, multi-file drag-drop) populates Media Bucket.
+- [ ] FR-3: Clipboard paste (Ctrl/Cmd+V) loads image into Media Bucket.
+- [ ] FR-4: Folder Browser: IDE-style file tree for session-scoped folder, with image thumbnails. Stretch feature.
 - [ ] FR-5: Switching active item preserves analysis state (verify existing store).
-- [ ] FR-6: Remove (X) action per item to unload from library (no disk delete).
+- [ ] FR-6: Remove (X) action per item to unload from Media Bucket (no disk delete).
 - [ ] FR-7: Optional filter by type (image/video) when both are present.
+- [ ] FR-8: Library sidebar accessible from Colors, Values, and Exports views.
 
 ### Non-Functional Requirements
 - [ ] NFR-1: Switching active item should be instant (no re-analysis).
-- [ ] NFR-2: Drawer interactions should not cause layout jumps or scroll resets.
+- [ ] NFR-2: Sidebar interactions should not cause layout jumps or scroll resets.
 
 ## Implementation Breakdown
 
-### Planned Tickets
-- AI-IMP-097: Multi-file drag-drop handling into library
-- AI-IMP-098: Clipboard paste support (images)
-- AI-IMP-099: Session-scoped root folder tree (single root) + basic filter
-- AI-IMP-100: Active item switching state verification + removal behavior
-
 ### Completed Tickets
-- AI-IMP-096: Library drawer UI baseline (superseded by header-shell layout follow-up)
-- AI-IMP-101: Header-bar layout shell and responsive reflow
+- AI-IMP-096: Library Drawer Shell
+- AI-IMP-101: Header Bar Layout
+
+### Planned Tickets (Priority Order)
+
+| IMP | Title | Status | Priority |
+|-----|-------|--------|----------|
+| 100 | Media Bucket Navigation & Removal | Planned | P1 - Core |
+| 097 | Media Ingest (Unified Upload + Multi-Drop) | Planned | P1 - Core |
+| 109 | Library Sidebar on All Views | Planned | P2 |
+| 098 | Clipboard Paste to Media Bucket | Planned | P3 - Nice-to-have |
+| 099 | Folder Browser (IDE File Tree) | Planned | P4 - Stretch |
+| 110 | Video Controls on Values View | Planned | P4 - Future |
+
+### Dependency Graph
+
+```
+COMPLETED: IMP-096 (drawer shell), IMP-101 (header bar)
+         |
+    IMP-100 (Media Bucket Navigation)  <-  P1, Core
+         |
+    IMP-097 (Media Ingest)             <-  P1, Core
+         |
+    IMP-109 (Sidebar All Views)        <-  P2
+         |
+    IMP-098 (Clipboard Paste)          <-  P3, Nice-to-have
+    IMP-099 (Folder Browser)           <-  P4, Stretch (may deprecate)
+    IMP-110 (Video on Values)          <-  P4, Future
+```
+
+> **Note**: Folder Browser (IMP-099) is stretch and may be deprecated if lift is disproportionate.
 
 ## Notes
 Store foundation already exists:
 - `images: ImageEntry[]`
 - `activeImageId: string | null`
 - `analysisById: Record<string, AnalysisResult>`
-- Recent commits: video ingestion + per-image caching already in place
+- Video ingestion + per-image caching already in place
