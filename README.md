@@ -89,7 +89,7 @@ Video features require ffmpeg and ffprobe binaries.
 
 - **"Could not connect to localhost"** in packaged debug builds: Start the dev server (`npm run dev`) or use the release bundle.
 - **Linux/NVIDIA crash**: Use `WEBKIT_DISABLE_DMABUF_RENDERER=1` (and optionally `GDK_BACKEND=x11`).
-- **Force native path**: In DevTools console: `localStorage.setItem('bridge.force', 'tauri'); location.reload();`
+
 
 ## Credits
 

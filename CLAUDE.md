@@ -88,7 +88,7 @@ Color analysis tool using k-means clustering. Primary implementation:
 - `ffmpeg.rs` — video frame extraction via ffmpeg CLI
 - **Binaries** (`bin/`) — CLI tools: `compute_cli`, `kmeans_baseline`, `rmpc_theme_gen`, `bench_runner`
 
-**Key Design Pattern**: Detection-based bridge selection. Native Tauri API required. Force native with `localStorage.setItem('bridge.force','tauri')`.
+**Key Design Pattern**: Detection-based bridge selection. Native Tauri API required.
 
 ## Development Commands
 
@@ -194,7 +194,6 @@ git config core.hooksPath .githooks
 
 ### Tauri-Specific Issues (see `TAURI-NATIVE-RUNBOOK.md`)
 - Native analysis requires filesystem path — Upload button preferred over drag-drop
-- Dev sessions may not inject Tauri API globals; force with `localStorage.setItem('bridge.force','tauri')`
 - Packaged debug builds default to `devUrl` — run Vite first or use release bundle
 
 ### Security (Tauri)

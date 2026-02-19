@@ -2,7 +2,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import type { AnalysisParams, ImageEntry, SelectedImage } from '../../stores/ui';
 import type { FileSelection } from '../../bridges/fs';
 import { getFsBridge } from '../../bridges/fs';
-import { isTauriEnv, getBridgeOverride } from '../../bridges/tauri';
+import { isTauriEnv } from '../../bridges/tauri';
 import { loadImageDataset } from '../../compute/image-loader';
 import { logEvent } from '../../bridges/log';
 
@@ -90,8 +90,7 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     deps.cancelPending();
     try {
       let dataset;
-      const nativeMode =
-        (isTauriEnv() || getBridgeOverride() === 'tauri') && !!fileSelection.path;
+      const nativeMode = isTauriEnv() && !!fileSelection.path;
       if (nativeMode) {
         (globalThis as any).__ACTIVE_IMAGE_PATH__ = fileSelection.path;
         dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
@@ -158,7 +157,7 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     event.preventDefault();
     dragging = false;
     draggingWindow = false;
-    if (isTauriEnv() || getBridgeOverride() === 'tauri') {
+    if (isTauriEnv()) {
       return;
     }
     const files = event.dataTransfer?.files;

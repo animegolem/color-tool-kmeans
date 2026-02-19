@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isTauriEnv, tauriInvoke, tauriDetectionInfo, getBridgeOverride } from './tauri';
+import { isTauriEnv, tauriInvoke, tauriDetectionInfo } from './tauri';
 import type { ImageDataset } from '../compute/image-loader';
 import type { AnalysisParams, AnalysisResult } from '../stores/ui';
 
@@ -259,16 +259,6 @@ async function ensureBridgeReady(): Promise<void> {
   if (bridgeReadyPromise) return bridgeReadyPromise;
 
   bridgeReadyPromise = (async () => {
-    // Event-based readiness: return immediately if not Tauri or if forced
-    const forced = getBridgeOverride() === 'tauri';
-    if (!forced && !isTauriEnv()) {
-      // Poll briefly for Tauri globals to appear in dev; cap at ~300ms
-      const start = Date.now();
-      while (Date.now() - start < 300) {
-        if (isTauriEnv()) break;
-        await new Promise((r) => setTimeout(r, 20));
-      }
-    }
     console.info('[bridges] ensureBridgeReady complete; proceeding to bridge selection');
   })();
 

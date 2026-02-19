@@ -24,7 +24,7 @@
     setFile,
     videoStripMode
   } from '../stores/ui';
-  import { isTauriEnv, getBridgeOverride, tauriDetectionInfo } from '../bridges/tauri';
+  import { isTauriEnv, tauriDetectionInfo } from '../bridges/tauri';
   import { getFfmpegVersion } from '../bridges/ffmpeg';
   import { logEvent } from '../bridges/log';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
@@ -56,24 +56,21 @@
 
   interface DevBannerDetails {
     detection: ReturnType<typeof tauriDetectionInfo>;
-    override: string | null;
     fsBridge?: string;
     computeVariant?: string;
   }
 
   function isNativeModeActive(): boolean {
-    return isTauriEnv() || getBridgeOverride() === 'tauri';
+    return isTauriEnv();
   }
 
   function ensureDevBannerDetails(): DevBannerDetails {
     const base = devBannerData ?? {
-      detection: tauriDetectionInfo(),
-      override: getBridgeOverride()
+      detection: tauriDetectionInfo()
     };
     return {
       ...base,
-      detection: tauriDetectionInfo(),
-      override: getBridgeOverride()
+      detection: tauriDetectionInfo()
     };
   }
 
@@ -89,7 +86,6 @@
       devBannerVisible = true;
       console.info('[dev] tauri detection', {
         detection: details.detection,
-        override: details.override,
         fsBridge: details.fsBridge ?? 'pending',
         computeBridge: details.computeVariant ?? 'pending'
       });

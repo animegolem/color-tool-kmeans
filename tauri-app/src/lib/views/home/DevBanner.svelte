@@ -1,9 +1,8 @@
 <script lang="ts">
-  import { tauriDetectionInfo, getBridgeOverride } from '../../bridges/tauri';
+  import { tauriDetectionInfo } from '../../bridges/tauri';
 
   interface DevBannerDetails {
     detection: ReturnType<typeof tauriDetectionInfo>;
-    override: string | null;
     fsBridge?: string;
     computeVariant?: string;
   }
@@ -24,10 +23,6 @@
     </button>
   </div>
   <div class="dev-banner__grid">
-    <div>
-      <span class="dev-banner__label">Override</span>
-      <span>{data.override ?? 'none'}</span>
-    </div>
     <div>
       <span class="dev-banner__label">FS bridge</span>
       <span>{data.fsBridge ?? 'pending'}</span>

@@ -4,7 +4,7 @@
   import type { ImageEntry } from '../stores/ui';
   import { openZoomOverlay, setFile, clearFile } from '../stores/ui';
   import { getFsBridge } from '../bridges/fs';
-  import { isTauriEnv, getBridgeOverride } from '../bridges/tauri';
+  import { isTauriEnv } from '../bridges/tauri';
   import { loadImageDataset } from '../compute/image-loader';
   import { logEvent } from '../bridges/log';
   import { openImageZoom as zoomImage } from '../utils/zoom';
@@ -120,7 +120,7 @@
       const selection = await bridge.openImageFile();
       if (!selection) return;
 
-      const nativeMode = (isTauriEnv() || getBridgeOverride() === 'tauri') && !!selection.path;
+      const nativeMode = isTauriEnv() && !!selection.path;
 
       let dataset;
       if (nativeMode) {
