@@ -50,10 +50,10 @@ describe('generateNotanStudySvg', () => {
     expect(imageCount).toBe(4);
   });
 
-  it('contains bucket strip rects for all cells', async () => {
+  it('contains bucket strip segments for all cells', async () => {
     const result = await generateNotanStudySvg(makeInput());
-    // Total bucket segments: 2 + 3 + 4 + 5 = 14
-    // Plus 4 background rects for bucket containers + 1 background rect
+    // Total bucket segments: 2 + 3 + 4 + 5 = 14 (plain <rect> inside clip groups)
+    // Plus 4 background rects for bucket containers + 1 background rect = 19 rects minimum
     const rectCount = (result.svg.match(/<rect /g) ?? []).length;
     expect(rectCount).toBeGreaterThanOrEqual(14 + 4 + 1);
   });
@@ -110,20 +110,17 @@ describe('generateNotanStudySvg', () => {
     expect(Number(widthMatch![1])).toBe(result.width);
     expect(Number(heightMatch![1])).toBe(result.height);
 
-    // Width should be roughly: margin*2 + cellWidth*2 + gap
-    // With 400px cells and scale ~1.43: margin ~46, gap ~34
-    // Total width ≈ 46*2 + 400*2 + 34 = 926
-    expect(result.width).toBeGreaterThan(800);
-    expect(result.width).toBeLessThan(1200);
+    // Fixed canvas width (1200px), height from aspect ratio
+    expect(result.width).toBe(1200);
 
-    // Height should be taller than width (2 rows of cells + strips)
+    // Height should include 2 rows of cells + strips + margins
     expect(result.height).toBeGreaterThan(result.width * 0.6);
   });
 
-  it('contains clip-path definitions for rounded corners', async () => {
+  it('contains clip-path definitions for bucket strips and images', async () => {
     const result = await generateNotanStudySvg(makeInput());
     expect(result.svg).toContain('clipPath');
-    // 4 bucket clips + 4 image clips = 8 clip-paths
+    // 4 bucket strip clips + 4 image clips = 8
     const clipPathCount = (result.svg.match(/<clipPath/g) ?? []).length;
     expect(clipPathCount).toBe(8);
   });
@@ -164,10 +161,8 @@ describe('generateSingleCellSvg', () => {
   it('has tight dimensions matching cell width', async () => {
     const cell = makeCell([0.3, 0.7], [400, 600]);
     const result = await generateSingleCellSvg(cell);
-    // Width = previewWidth + 2*margin; with 400px cell, scale ~1.43, margin ~46
-    // Total width ≈ 400 + 92 = 492
-    expect(result.width).toBeLessThan(600);
-    expect(result.width).toBeGreaterThan(400);
+    // Fixed canvas width (750px)
+    expect(result.width).toBe(750);
     // Height should include bucket strip + gap + preview + margins
     expect(result.height).toBeGreaterThan(result.width * 0.5);
   });
@@ -193,11 +188,11 @@ describe('generateSingleCellSvg', () => {
     expect(new Set(results.map(r => r.svg)).size).toBe(1);
   });
 
-  it('contains clip-path definitions', async () => {
+  it('contains clip-path definitions for bucket strip and image', async () => {
     const cell = makeCell([0.2, 0.8], [500, 500]);
     const result = await generateSingleCellSvg(cell);
     expect(result.svg).toContain('clipPath');
-    // 1 bucket clip + 1 image clip
+    // 1 bucket strip clip + 1 image clip = 2
     const clipPathCount = (result.svg.match(/<clipPath/g) ?? []).length;
     expect(clipPathCount).toBe(2);
   });

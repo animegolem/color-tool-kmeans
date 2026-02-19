@@ -6,11 +6,6 @@
     params,
     selectedFile,
     videoState,
-    valueAnalysisLevels,
-    valueAnalysisNotanMode,
-    setValueAnalysisPending,
-    setValueAnalysisSuccess,
-    setValueAnalysisError,
     exportScale
   } from '../stores/ui';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
@@ -19,17 +14,14 @@
   import { generatePaletteSvg, generatePaletteCsv } from '../exports/palette';
   import { generateAseBlob } from '../exports/palette-ase';
   import { generatePaletteJson } from '../exports/palette-web';
-  import { generateValueAnalysisSvg } from '../exports/value-analysis';
   import { toDataUrl } from '../exports/value-analysis';
-  import { generateNotanStudySvg, generateSingleCellSvg, type NotanCellData } from '../exports/notan-study';
-  import { composeValueStudy } from '../exports/value-study-compositor';
   import { svgToTile, imageToTile } from '../exports/compositor';
   import { composeColorStudy, type ColorStudyInput } from '../exports/color-study-compositor';
   import { getFsBridge, saveFromPath } from '../bridges/fs';
   import { svgToPngBlob } from '../exports/png';
-  import { requestValueAnalysis } from '../bridges/value-analysis';
   import { convertFileSrc } from '@tauri-apps/api/core';
   import { logEvent } from '../bridges/log';
+  import { createValuesExportRunner } from './exports/values-export-runner.svelte';
 
   // --- Store-derived state ---
   const file = $derived.by(() => get(selectedFile));
@@ -70,6 +62,22 @@
   const valuesAnyChecked = $derived(
     valuesNeutral || valuesRangeFinder || valuesHistogram || valuesSimplified
   );
+
+  const valuesRunner = createValuesExportRunner({
+    getFile: () => file,
+    getExportScale: () => $exportScale,
+    getCheckboxState: () => ({
+      valuesNeutral,
+      valuesIncludeOriginal,
+      valuesRangeFinder,
+      valuesHistogram,
+      valuesSimplified,
+      valuesAllStudies
+    }),
+    performSave,
+    baseName,
+    setStatus
+  });
 
   onMount(() => {
     void logEvent('exports:view:mount');
@@ -167,256 +175,6 @@
       } else {
         setStatus('Colors composite PNG saved.', 'info');
       }
-    });
-  }
-
-  async function loadValueAnalysisForExport(levels: number, notanMode: boolean) {
-    if (!file?.path) {
-      throw new Error('Values analysis export requires a native file path.');
-    }
-    setValueAnalysisPending(file.id, levels, notanMode);
-    try {
-      const loaded = await requestValueAnalysis(file.path, file.id, levels, notanMode);
-      setValueAnalysisSuccess(file.id, levels, notanMode, loaded);
-      return loaded;
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Unknown error';
-      setValueAnalysisError(file.id, levels, notanMode, msg);
-      throw error;
-    }
-  }
-
-  async function exportValuesComposite() {
-    if (!file) return;
-    await performSave(async () => {
-      const levels = get(valueAnalysisLevels);
-      const notanMode = get(valueAnalysisNotanMode);
-      const currentStudy = await loadValueAnalysisForExport(levels, notanMode);
-      const originalSrc = file.previewUrl || '';
-      if (!originalSrc) {
-        throw new Error('Original image preview unavailable for export.');
-      }
-      const neutralSrc = convertFileSrc(currentStudy.neutral);
-      const previewSrc = convertFileSrc(currentStudy.preview);
-
-      const baseInput = {
-        originalSrc,
-        neutralSrc,
-        previewSrc,
-        neutralWidth: currentStudy.neutralWidth,
-        neutralHeight: currentStudy.neutralHeight,
-        previewWidth: currentStudy.previewWidth,
-        previewHeight: currentStudy.previewHeight,
-        p10: currentStudy.p10,
-        p90: currentStudy.p90,
-        p01: currentStudy.p01,
-        p99: currentStudy.p99,
-        bucketValues: currentStudy.bucketValues,
-        boundaries: currentStudy.boundaries,
-        counts: currentStudy.counts,
-        histogramBins: currentStudy.histogramBins,
-        levels: currentStudy.levels
-      };
-
-      let svg: string;
-      let width: number;
-      let height: number;
-
-      if (valuesSimplified) {
-        // 2-column composite: analysis left, simplified/notan right
-        const col1Result = await generateValueAnalysisSvg({
-          ...baseInput,
-          includeNeutral: valuesNeutral,
-          includeOriginal: valuesIncludeOriginal,
-          includeRangeFinder: valuesRangeFinder,
-          includeHistogram: valuesHistogram,
-          includeSimplified: false
-        });
-
-        let col2Result: { svg: string; width: number; height: number };
-        if (valuesAllStudies) {
-          const [level2, level3, level4, level5] = await Promise.all([
-            loadValueAnalysisForExport(2, true),
-            loadValueAnalysisForExport(3, false),
-            loadValueAnalysisForExport(4, false),
-            loadValueAnalysisForExport(5, false)
-          ]);
-          const toCell = (study: typeof level2): NotanCellData => ({
-            previewSrc: convertFileSrc(study.preview),
-            previewWidth: study.previewWidth,
-            previewHeight: study.previewHeight,
-            bucketValues: study.bucketValues,
-            counts: study.counts
-          });
-          col2Result = await generateNotanStudySvg({
-            cells: [toCell(level2), toCell(level3), toCell(level4), toCell(level5)]
-          });
-        } else {
-          col2Result = await generateSingleCellSvg({
-            previewSrc,
-            previewWidth: currentStudy.previewWidth,
-            previewHeight: currentStudy.previewHeight,
-            bucketValues: currentStudy.bucketValues,
-            counts: currentStudy.counts
-          });
-        }
-
-        const composed = composeValueStudy({
-          col1Svg: col1Result.svg,
-          col2Svg: col2Result.svg
-        });
-        svg = composed.svg;
-        width = composed.width;
-        height = composed.height;
-      } else {
-        // Single-column fallback (no simplified)
-        const result = await generateValueAnalysisSvg({
-          ...baseInput,
-          includeNeutral: valuesNeutral,
-          includeOriginal: valuesIncludeOriginal,
-          includeRangeFinder: valuesRangeFinder,
-          includeHistogram: valuesHistogram,
-          includeSimplified: false
-        });
-        svg = result.svg;
-        width = result.width;
-        height = result.height;
-      }
-
-      const scale = Math.max(1, Math.min(4, $exportScale));
-      const blob = await svgToPngBlob(svg, width, height, scale);
-      const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-values.png`);
-      if (canceled) {
-        setStatus('Export canceled.', 'info');
-      } else {
-        setStatus('Values analysis PNG saved.', 'info');
-      }
-    });
-  }
-
-  // --- Individual value saves ---
-  async function ensureValuesData() {
-    const levels = get(valueAnalysisLevels);
-    const notanMode = get(valueAnalysisNotanMode);
-    return loadValueAnalysisForExport(levels, notanMode);
-  }
-
-  async function saveNeutralImage() {
-    if (!file) return;
-    await performSave(async () => {
-      const currentStudy = await ensureValuesData();
-      if (valuesIncludeOriginal) {
-        const originalSrc = file!.previewUrl || '';
-        if (!originalSrc) throw new Error('Original image preview unavailable for export.');
-        const neutralSrc = convertFileSrc(currentStudy.neutral);
-        const { svg, width, height } = await generateValueAnalysisSvg({
-          originalSrc,
-          neutralSrc,
-          previewSrc: '',
-          neutralWidth: currentStudy.neutralWidth,
-          neutralHeight: currentStudy.neutralHeight,
-          previewWidth: currentStudy.previewWidth,
-          previewHeight: currentStudy.previewHeight,
-          p10: currentStudy.p10,
-          p90: currentStudy.p90,
-          p01: currentStudy.p01,
-          p99: currentStudy.p99,
-          bucketValues: currentStudy.bucketValues,
-          boundaries: currentStudy.boundaries,
-          counts: currentStudy.counts,
-          histogramBins: currentStudy.histogramBins,
-          levels: currentStudy.levels,
-          background: 'none',
-          includeNeutral: true,
-          includeOriginal: true,
-          includeRangeFinder: false,
-          includeHistogram: false,
-          includeSimplified: false
-        });
-        const scale = Math.max(1, Math.min(4, $exportScale));
-        const blob = await svgToPngBlob(svg, width, height, scale);
-        const bridge = await getFsBridge();
-        const { canceled } = await bridge.saveBlob(blob, `${baseName()}-neutral.png`);
-        if (canceled) setStatus('Export canceled.', 'info');
-        else setStatus('Neutral values PNG saved.', 'info');
-      } else {
-        const { canceled } = await saveFromPath(currentStudy.neutral, `${baseName()}-neutral.png`);
-        if (canceled) setStatus('Export canceled.', 'info');
-        else setStatus('Neutral image saved.', 'info');
-      }
-    });
-  }
-
-  async function buildValuesSectionSvg(
-    section: 'rangeFinder' | 'histogram' | 'simplified'
-  ): Promise<{ svg: string; width: number; height: number }> {
-    const currentStudy = await ensureValuesData();
-    const originalSrc = file!.previewUrl || '';
-    const neutralSrc = convertFileSrc(currentStudy.neutral);
-    const previewSrc = convertFileSrc(currentStudy.preview);
-    return generateValueAnalysisSvg({
-      originalSrc,
-      neutralSrc,
-      previewSrc,
-      neutralWidth: currentStudy.neutralWidth,
-      neutralHeight: currentStudy.neutralHeight,
-      previewWidth: currentStudy.previewWidth,
-      previewHeight: currentStudy.previewHeight,
-      p10: currentStudy.p10,
-      p90: currentStudy.p90,
-      p01: currentStudy.p01,
-      p99: currentStudy.p99,
-      bucketValues: currentStudy.bucketValues,
-      boundaries: currentStudy.boundaries,
-      counts: currentStudy.counts,
-      histogramBins: currentStudy.histogramBins,
-      levels: currentStudy.levels,
-      background: 'none',
-      includeNeutral: false,
-      includeOriginal: false,
-      includeRangeFinder: section === 'rangeFinder',
-      includeHistogram: section === 'histogram',
-      includeSimplified: section === 'simplified'
-    });
-  }
-
-  async function saveRangeFinderPng() {
-    if (!file) return;
-    await performSave(async () => {
-      const { svg, width, height } = await buildValuesSectionSvg('rangeFinder');
-      const scale = Math.max(1, Math.min(4, $exportScale));
-      const blob = await svgToPngBlob(svg, width, height, scale);
-      const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-range-finder.png`);
-      if (canceled) setStatus('Export canceled.', 'info');
-      else setStatus('Range finder PNG saved.', 'info');
-    });
-  }
-
-  async function saveValuesHistogramPng() {
-    if (!file) return;
-    await performSave(async () => {
-      const { svg, width, height } = await buildValuesSectionSvg('histogram');
-      const scale = Math.max(1, Math.min(4, $exportScale));
-      const blob = await svgToPngBlob(svg, width, height, scale);
-      const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-values-histogram.png`);
-      if (canceled) setStatus('Export canceled.', 'info');
-      else setStatus('Values histogram PNG saved.', 'info');
-    });
-  }
-
-  async function saveSimplifiedPng() {
-    if (!file) return;
-    await performSave(async () => {
-      const { svg, width, height } = await buildValuesSectionSvg('simplified');
-      const scale = Math.max(1, Math.min(4, $exportScale));
-      const blob = await svgToPngBlob(svg, width, height, scale);
-      const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-simplified.png`);
-      if (canceled) setStatus('Export canceled.', 'info');
-      else setStatus('Simplified values PNG saved.', 'info');
     });
   }
 
@@ -638,19 +396,19 @@
             </label>
           </span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={saveNeutralImage}>↓</button>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={valuesRunner.saveNeutralImage}>↓</button>
         </label>
         <label class="builder-item">
           <input type="checkbox" bind:checked={valuesRangeFinder} />
           <span>Range Finder</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={saveRangeFinderPng}>↓</button>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={valuesRunner.saveRangeFinderPng}>↓</button>
         </label>
         <label class="builder-item">
           <input type="checkbox" bind:checked={valuesHistogram} />
           <span>Values Histogram</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={saveValuesHistogramPng}>↓</button>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={valuesRunner.saveValuesHistogramPng}>↓</button>
         </label>
         <label class="builder-item">
           <input type="checkbox" bind:checked={valuesSimplified} />
@@ -664,10 +422,10 @@
             </label>
           </span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={saveSimplifiedPng}>↓</button>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={valuesRunner.saveNotanStudyPng}>↓</button>
         </label>
       </div>
-      <button class="composite-btn" disabled={isSaving || !valuesAnyChecked} onclick={exportValuesComposite}>
+      <button class="composite-btn" disabled={isSaving || !valuesAnyChecked} onclick={valuesRunner.exportValuesComposite}>
         Export Values Composite
       </button>
     </div>

@@ -13,7 +13,7 @@ export interface ValueStudyOptions {
   canvasWidth?: number;
 }
 
-const COL1_RATIO = 1.4;
+const COL1_RATIO = 1.2;
 
 function renderTile(tile: CompositorTile, x: number, y: number, w: number, h: number): string {
   return `<svg x="${x}" y="${y}" width="${w}" height="${h}" ` +
