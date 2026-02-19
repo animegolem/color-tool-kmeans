@@ -230,6 +230,12 @@ export async function generateValueAnalysisSvg(
     );
     content.push(
       svgText(
+        { x: MARGIN + CONTENT_WIDTH / 2, y: rangeMetaY, fill: 'rgba(33,33,32,0.7)', 'font-family': FONT_FAMILY, 'font-size': FONT_SMALL, 'font-weight': 600, 'text-anchor': 'middle', 'dominant-baseline': 'hanging' },
+        `${keyLabel(safeP10, safeP90)} · ${contrastLabel(safeP10, safeP90)}`
+      )
+    );
+    content.push(
+      svgText(
         { x: MARGIN + CONTENT_WIDTH, y: rangeMetaY, fill: 'rgba(33,33,32,0.7)', 'font-family': FONT_FAMILY, 'font-size': FONT_SMALL, 'text-anchor': 'end', 'dominant-baseline': 'hanging' },
         `Extremes ${formatPercent(safeP01)}-${formatPercent(safeP99)}`
       )
@@ -330,6 +336,21 @@ export async function generateValueAnalysisSvg(
     width: CANVAS_WIDTH,
     height: totalHeight
   };
+}
+
+export function keyLabel(p10: number, p90: number): string {
+  const mid = (p10 + p90) * 0.5;
+  if (mid <= 0.38) return 'Low key';
+  if (mid >= 0.62) return 'High key';
+  return 'Mid key';
+}
+
+export function contrastLabel(p10: number, p90: number): string {
+  const range = p90 - p10;
+  if (range >= 0.75) return 'Full range';
+  if (range >= 0.6) return 'High contrast';
+  if (range >= 0.4) return 'Medium contrast';
+  return 'Low contrast';
 }
 
 export function formatPercent(value: number) {

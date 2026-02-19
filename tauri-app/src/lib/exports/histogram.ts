@@ -27,8 +27,11 @@ export function generateHistogramSvg(
   const sortBy = options.sortBy ?? 'frequency';
   const hPad = options.hPadding ?? 16;
   const vPad = 16;
+  const fontSize = options.fontSize ?? 11;
+  const captionSpace = fontSize + 6;
+  const bottomPad = Math.max(vPad, captionSpace);
   const plotWidth = Math.max(1, width - hPad * 2);
-  const plotHeight = Math.max(1, height - vPad * 2);
+  const plotHeight = Math.max(1, height - vPad - bottomPad);
   const sorted = [...clusters];
   if (sortBy === 'hue') {
     sorted.sort((a, b) => getHue(a) - getHue(b));
@@ -73,9 +76,9 @@ export function generateHistogramSvg(
     svgText(
       {
         x: hPad,
-        y: height - 4,
+        y: vPad + plotHeight + captionSpace - 2,
         'font-family': 'Fira Sans',
-        'font-size': options.fontSize ?? 11,
+        'font-size': fontSize,
         fill: 'rgba(16,17,17,0.55)'
       },
       `Top ${bars.length} clusters • ${formatSortLabel(sortBy)}`

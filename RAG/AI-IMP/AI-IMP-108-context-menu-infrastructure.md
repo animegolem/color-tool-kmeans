@@ -7,40 +7,25 @@ tags:
   - Exports
   - Context-Menu
   - Epic-013
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-EPIC-013]
 parent_epic: [[AI-EPIC-013-export-redesign]]
 confidence_score: 0.75
 date_created: 2026-02-14
-date_completed:
+date_completed: 2026-02-18
 ---
 
 
 # AI-IMP-108-context-menu-infrastructure
 
-## Summary of Issue #1
-Charts and images in the app have no right-click context menu for quick export. Users must navigate to the Exports view to save individual charts. This stretch ticket adds native context menu infrastructure via Tauri's menu plugin, allowing right-click on chart elements to "Save as PNG" or "Save as SVG" directly. Done means right-clicking any chart in the Colors or Values view shows a native context menu with save options.
+## Summary
+Native WebKit context menus on images and video elements exposed "Save Image", "Copy Image", "Download" actions that bypass the app's export pathing and settings. This ticket suppresses those menus globally in production builds via a single `contextmenu` event listener in `main.ts`. Dev mode retains the browser context menu for devtools access.
 
-### Out of Scope
-- Custom styled (non-native) context menus.
-- Context menu items beyond save (e.g., copy to clipboard, open in new window).
-- Context menus for non-chart elements (e.g., parameter controls, navigation).
+## Implementation
+A global `contextmenu` event listener with `preventDefault()` is added in `tauri-app/src/main.ts`, guarded by `!import.meta.env.DEV` so developers retain right-click → Inspect Element in dev mode.
 
-### Design/Approach
-- Add `tauri-plugin-menu` dependency to `src-tauri/Cargo.toml`.
-- Add menu permission to `src-tauri/capabilities/main.json`.
-- Implement a Rust command that constructs a popup menu with "Save as PNG" and "Save as SVG" items, returns the selected action.
-- On the JS side, intercept `oncontextmenu` on chart container elements, invoke the Tauri menu command, and dispatch the appropriate export action based on the user's selection.
-- Works well on macOS and Windows; Linux/Wayland has some GTK quirks which are acceptable for a stretch feature.
-
-### Files to Touch
-- `tauri-app/src-tauri/Cargo.toml`: add `tauri-plugin-menu` dependency.
-- `tauri-app/src-tauri/capabilities/main.json`: add menu permission.
-- `tauri-app/src-tauri/src/commands.rs`: add popup menu command (~40-50 LOC Rust).
-- `tauri-app/src-tauri/src/main.rs`: register new command.
-- `tauri-app/src/lib/bridges/tauri.ts`: add menu invocation helper (~20 LOC JS).
-- `tauri-app/src/lib/views/HomeView.svelte`: attach context menu handler to chart containers.
-- `tauri-app/src/lib/views/ValuesView.svelte`: attach context menu handler to value analysis images.
+### Files Changed
+- `tauri-app/src/main.ts`: Add global contextmenu suppression (~3 LOC)
 
 ### Implementation Checklist
 
@@ -48,32 +33,26 @@ Charts and images in the app have no right-click context menu for quick export. 
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add `tauri-plugin-menu` to Cargo.toml and verify it builds.
-- [ ] Add menu permission to capabilities/main.json.
-- [ ] Implement Rust command: construct popup menu with "Save as PNG" and "Save as SVG" items, return selected action.
-- [ ] Register command in main.rs.
-- [ ] Add JS bridge helper to invoke popup menu and return selected action.
-- [ ] Attach `oncontextmenu` handler to chart containers in HomeView that shows native menu and triggers export.
-- [ ] Attach `oncontextmenu` handler to value analysis images in ValuesView.
-- [ ] Test on macOS: native menu appears, items trigger correct exports.
-- [ ] Test on Linux: verify menu appears (may have Wayland quirks, document any issues).
-- [ ] Run `cargo fmt --check`, `cargo clippy`, `npm run lint`, `npm run check` successfully.
+- [x] Add global `contextmenu` event listener with `preventDefault()` in `main.ts`.
+- [x] Guard with `!import.meta.env.DEV` so dev mode retains browser context menu.
+- [x] Run `npm run lint`, `npm run check` successfully.
 
 ### Acceptance Criteria
-**Scenario: Right-click chart to save**
-GIVEN color analysis results are displayed in HomeView
-WHEN the user right-clicks on the polar chart
-THEN a native context menu appears with "Save as PNG" and "Save as SVG" options.
+**Scenario: No context menu in production**
+GIVEN the app is running in a packaged (non-dev) build
+WHEN the user right-clicks on any image, video, or chart element
+THEN no context menu appears.
 
-**Scenario: Context menu triggers export**
-GIVEN the context menu is shown on a chart
-WHEN the user selects "Save as PNG"
-THEN a native save dialog appears and the chart is saved as PNG.
+**Scenario: Dev mode retains context menu**
+GIVEN the app is running in dev mode (`npm run tauri dev`)
+WHEN the user right-clicks on any element
+THEN the browser context menu appears (devtools accessible).
 
-**Scenario: Graceful fallback**
-GIVEN the app is running without Tauri (dev/preview mode)
-WHEN the user right-clicks on a chart
-THEN the default browser context menu appears (no errors thrown).
+## Descoped: Original Scope
+The original plan called for `tauri-plugin-menu` integration with native popup menus offering "Save as PNG" / "Save as SVG" on chart elements. This was descoped because:
+- The Exports view already provides full coverage for all export actions.
+- The plugin integration had moderately high lift (Cargo dependency, Rust command, JS bridge, per-view handlers) for low incremental value.
+- Suppressing the leaking WebKit menus addresses the actual UX problem (confusing native save/copy options in packaged builds).
 
 ### Issues Encountered
 {LOC|20}

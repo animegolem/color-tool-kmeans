@@ -30,16 +30,16 @@ export interface NotanStudyResult {
 
 const FONT_FAMILY = 'Fira Sans';
 
-// Fixed layout constants — 1200px canvas for compositor scale-down (matches value-analysis.ts)
-const NOTAN_CANVAS_WIDTH = 1200;
-const NOTAN_MARGIN = 48;
-const NOTAN_CELL_GAP = 30;
-const NOTAN_STRIP_GAP = 3;
-const NOTAN_STRIP_RADIUS = 15;
-const NOTAN_IMAGE_GAP = 9;
-const NOTAN_IMAGE_RADIUS = 9;
+// Fixed layout constants — 1800px canvas for compositor scale-down (pushes label floor to ~5%)
+const NOTAN_CANVAS_WIDTH = 1800;
+const NOTAN_MARGIN = 72;
+const NOTAN_CELL_GAP = 45;
+const NOTAN_STRIP_GAP = 5;
+const NOTAN_STRIP_RADIUS = 23;
+const NOTAN_IMAGE_GAP = 14;
+const NOTAN_IMAGE_RADIUS = 14;
 
-const SINGLE_CANVAS_WIDTH = 750;
+const SINGLE_CANVAS_WIDTH = 1125;
 
 export async function generateNotanStudySvg(
   input: NotanStudyInput
@@ -55,7 +55,7 @@ export async function generateNotanStudySvg(
   const imageDisplayHeight = Math.round(cellWidth * (maxPreviewH / maxPreviewW));
 
   // Strip height proportional to image height (clamped), so ratio stays ~13-14% across aspect ratios
-  const stripHeight = Math.round(Math.max(42, Math.min(56, 0.13 * imageDisplayHeight)));
+  const stripHeight = Math.round(Math.max(63, Math.min(84, 0.13 * imageDisplayHeight)));
   const stripFont = Math.round(stripHeight * 0.35);
 
   const cellInnerHeight = stripHeight + NOTAN_IMAGE_GAP + imageDisplayHeight;
@@ -108,7 +108,7 @@ export async function generateSingleCellSvg(
     cellWidth * (Math.max(1, cell.previewHeight) / Math.max(1, cell.previewWidth))
   );
 
-  const stripHeight = Math.round(Math.max(42, Math.min(56, 0.13 * imageDisplayHeight)));
+  const stripHeight = Math.round(Math.max(63, Math.min(84, 0.13 * imageDisplayHeight)));
   const stripFont = Math.round(stripHeight * 0.35);
 
   const totalWidth = SINGLE_CANVAS_WIDTH;

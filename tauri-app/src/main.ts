@@ -40,6 +40,12 @@ try {
 // Hydrate preferences from persistent store (non-blocking)
 loadPrefs().then(hydrateFromPrefs).catch(() => {});
 
+// Suppress native WebKit context menus in production —
+// images/video expose Save/Copy/Download that bypass app export settings.
+if (!import.meta.env.DEV) {
+  document.addEventListener('contextmenu', (e) => e.preventDefault(), true);
+}
+
 const target = document.getElementById('app');
 
 if (!target) {

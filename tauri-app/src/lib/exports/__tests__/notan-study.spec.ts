@@ -110,8 +110,8 @@ describe('generateNotanStudySvg', () => {
     expect(Number(widthMatch![1])).toBe(result.width);
     expect(Number(heightMatch![1])).toBe(result.height);
 
-    // Fixed canvas width (1200px), height from aspect ratio
-    expect(result.width).toBe(1200);
+    // Fixed canvas width (1800px), height from aspect ratio
+    expect(result.width).toBe(1800);
 
     // Height should include 2 rows of cells + strips + margins
     expect(result.height).toBeGreaterThan(result.width * 0.6);
@@ -161,8 +161,8 @@ describe('generateSingleCellSvg', () => {
   it('has tight dimensions matching cell width', async () => {
     const cell = makeCell([0.3, 0.7], [400, 600]);
     const result = await generateSingleCellSvg(cell);
-    // Fixed canvas width (750px)
-    expect(result.width).toBe(750);
+    // Fixed canvas width (1125px)
+    expect(result.width).toBe(1125);
     // Height should include bucket strip + gap + preview + margins
     expect(result.height).toBeGreaterThan(result.width * 0.5);
   });

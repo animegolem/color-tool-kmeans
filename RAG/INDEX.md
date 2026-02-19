@@ -4,19 +4,6 @@
 
 ## Planned
 
-### [[AI-EPIC-013-export-redesign|EPIC-013: Export redesign]]
-> The Exports view offers only individual artifact downloads (single PNG, SVG, or CSV). Users need a builder-style interface that lets them select wh...
-
-**IMPs:**
-- [[AI-IMP-066-exports-deterministic-wiring-and-tauri-fs|IMP-066]] - completed
-- [[AI-IMP-105-1-export-functional-remediation|IMP-105-1]] - completed
-- [[AI-IMP-105-export-builder-compositor|IMP-105]] - completed
-- [[AI-IMP-106-artist-palette-ase|IMP-106]] - completed
-- [[AI-IMP-107-values-notan-study-export|IMP-107]] - completed
-- [[AI-IMP-108-context-menu-infrastructure|IMP-108]] - planned
-
----
-
 ### [[AI-EPIC-020-multi-image-input|EPIC-020: Multi image input]]
 > Users need to load, manage, and compare multiple references (images and optionally videos) without juggling external tabs. The current UI only supp...
 
@@ -67,8 +54,8 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src-tauri/src/kmeans.rs (581 LOC)
 - tauri-app/src-tauri/src/value_analysis.rs (569 LOC)
 - tauri-app/src/lib/views/home/video-controller.svelte.ts (495 LOC)
+- tauri-app/src/lib/exports/value-analysis.ts (459 LOC)
 - RAG/scripts/generate-index.sh (440 LOC)
-- tauri-app/src/lib/exports/value-analysis.ts (438 LOC)
 - tauri-app/src/lib/stores/ui.ts (432 LOC)
 - tauri-app/src-tauri/src/commands.rs (392 LOC)
 - tauri-app/src-tauri/src/ffmpeg.rs (369 LOC)
@@ -80,13 +67,14 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>11 Epics, 36 IMPs completed</summary>
+<summary>12 Epics, 37 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006: Tauri bridge reliability and native mode fixes]] (2026-01-21)
 - [[AI-EPIC-007-tauri-ui-graphs-exports|EPIC-007: Tauri ui graphs exports]] (2026-01-21)
 - [[AI-EPIC-008-oklab-golden-path-compute-pipeline|EPIC-008: Oklab golden path compute pipeline]] (2026-01-21)
 - [[AI-EPIC-009-ui-simplification-and-oklch-visuals|EPIC-009: Ui simplification and oklch visuals]] (2026-01-21)
 - [[AI-EPIC-010-values-tab-and-value-study-grid|EPIC-010: Values tab and value study grid]] (2026-01-21)
+- [[AI-EPIC-013-export-redesign|EPIC-013: Export redesign]] (2026-02-18)
 - [[AI-EPIC-014-global-settings|EPIC-014: Global settings]] (2026-02-14)
 - [[AI-EPIC-015-values-analysis-squint-and-range|EPIC-015: Values analysis squint and range]] (2026-01-22)
 - [[AI-EPIC-016-video-input-and-frame-analysis|EPIC-016: Video input and frame analysis]]
