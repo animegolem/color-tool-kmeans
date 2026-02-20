@@ -3,7 +3,7 @@ import tsParser from '@typescript-eslint/parser';
 import sveltePlugin from 'eslint-plugin-svelte';
 import svelteParser from 'svelte-eslint-parser';
 
-const IGNORE_GLOBS = ['dist/**', 'node_modules/**', 'src-tauri/target/**', '**/*.js', 'prettier.config.cjs'];
+const IGNORE_GLOBS = ['dist/**', 'node_modules/**', 'src-tauri/target/**', '.ffmpeg-build/**', '**/*.js', 'prettier.config.cjs'];
 const BROWSER_GLOBALS = {
   window: 'readonly',
   document: 'readonly',

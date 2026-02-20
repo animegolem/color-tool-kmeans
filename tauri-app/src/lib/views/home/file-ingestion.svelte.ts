@@ -1,13 +1,15 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import type { AnalysisParams, ImageEntry, SelectedImage } from '../../stores/ui';
 import type { FileSelection } from '../../bridges/fs';
-import { getFsBridge } from '../../bridges/fs';
+import { getFsBridge, isVideoFile, inferMimeType } from '../../bridges/fs';
 import { isTauriEnv } from '../../bridges/tauri';
 import { loadImageDataset } from '../../compute/image-loader';
 import { logEvent } from '../../bridges/log';
 
 export interface FileIngestionDeps {
   setFile: (entry: ImageEntry, dataset: { width: number; height: number; pixels: Uint8Array }) => void;
+  appendFile: (entry: ImageEntry, dataset: { width: number; height: number; pixels: Uint8Array }) => void;
   setAnalysisError: (message: string) => void;
   resetAnalysis: () => void;
   cancelPending: () => void;
@@ -17,6 +19,8 @@ export interface FileIngestionDeps {
   getParams: () => AnalysisParams;
   getStatus: () => string;
   clearVideoSelection: () => void;
+  loadVideoSelection: (sel: FileSelection) => void;
+  openLibraryDrawer: () => void;
 }
 
 export function createFileIngestion(deps: FileIngestionDeps) {
@@ -47,15 +51,13 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     return 3200;
   }
 
-  async function chooseFile() {
+  async function chooseMedia() {
     try {
       const bridge = await getFsBridge();
-      const selection = await bridge.openImageFile();
-      if (!selection) {
-        return;
-      }
+      const selections = await bridge.openMediaFiles('all');
+      if (!selections?.length) return;
       deps.recordDevEvent({ fsBridge: bridge.id }, 'file');
-      await ingestSelection(selection);
+      await processBatch(selections);
     } catch (error) {
       console.error('[home] Failed to open native dialog', error);
       deps.setBannerMessage(
@@ -64,27 +66,40 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     }
   }
 
-  async function chooseVideo() {
-    try {
-      const bridge = await getFsBridge();
-      const selection = await bridge.openVideoFile();
-      if (!selection) {
-        return;
+  async function processBatch(selections: FileSelection[]) {
+    deps.clearVideoSelection();
+    let videoProcessed = false;
+    let skippedVideos = 0;
+    let firstActivated = false;
+
+    for (const sel of selections) {
+      if (isVideoFile(sel)) {
+        if (!videoProcessed) {
+          videoProcessed = true;
+          firstActivated = true;
+          void logEvent(`video:file:loaded name=${sel.name}`);
+          deps.loadVideoSelection(sel);
+        } else {
+          skippedVideos++;
+          await ingestSelection(sel, false);
+        }
+      } else {
+        const activate = !firstActivated;
+        await ingestSelection(sel, activate);
+        firstActivated = true;
       }
-      deps.recordDevEvent({ fsBridge: bridge.id }, 'file');
-      void logEvent(`video:file:loaded name=${selection.name}`);
-      return selection;
-    } catch (error) {
-      console.error('[home] Failed to open video dialog', error);
+    }
+    if (skippedVideos > 0) {
       deps.setBannerMessage(
-        'Could not open the video file dialog. Restart the app or verify Tauri is running.'
+        `${skippedVideos} extra video${skippedVideos > 1 ? 's' : ''} added to library — only the first video is analyzed.`
       );
-      return null;
+    }
+    if (selections.length > 1) {
+      deps.openLibraryDrawer();
     }
   }
 
-  async function ingestSelection(fileSelection: FileSelection) {
-    deps.clearVideoSelection();
+  async function ingestSelection(fileSelection: FileSelection, activate = true) {
     loadToken += 1;
     const token = loadToken;
     deps.cancelPending();
@@ -92,7 +107,9 @@ export function createFileIngestion(deps: FileIngestionDeps) {
       let dataset;
       const nativeMode = isTauriEnv() && !!fileSelection.path;
       if (nativeMode) {
-        (globalThis as any).__ACTIVE_IMAGE_PATH__ = fileSelection.path;
+        if (activate) {
+          (globalThis as any).__ACTIVE_IMAGE_PATH__ = fileSelection.path;
+        }
         dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
       } else {
         dataset = await loadImageDataset(fileSelection.blob);
@@ -113,13 +130,17 @@ export function createFileIngestion(deps: FileIngestionDeps) {
         previewUrl
       };
       deps.setBannerMessage(null);
-      deps.setFile(selected, dataset);
-      const snapshot = deps.getParams();
-      deps.scheduleAnalysisWith(
-        { ...selected, dataset },
-        snapshot,
-        deps.getStatus()
-      );
+      if (activate) {
+        deps.setFile(selected, dataset);
+        const snapshot = deps.getParams();
+        deps.scheduleAnalysisWith(
+          { ...selected, dataset },
+          snapshot,
+          deps.getStatus()
+        );
+      } else {
+        deps.appendFile(selected, dataset);
+      }
     } catch (error) {
       console.error('[home] Failed to decode image', error);
       if (token === loadToken) {
@@ -130,11 +151,28 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     }
   }
 
+  async function setupTauriDragDrop(): Promise<(() => void) | null> {
+    if (!isTauriEnv()) return null;
+    const unlisten = await listen<{ paths?: string[] }>('tauri://drag-drop', (event) => {
+      const paths = event.payload?.paths;
+      if (!paths?.length) return;
+      const selections = paths.map((p) => ({
+        name: p.split(/[\\/]/).pop() ?? 'file',
+        path: p,
+        size: 0,
+        blob: new Blob([], { type: inferMimeType(p.split(/[\\/]/).pop() ?? '') }),
+        mimeType: inferMimeType(p.split(/[\\/]/).pop() ?? '')
+      } satisfies FileSelection));
+      void processBatch(selections);
+    });
+    return unlisten;
+  }
+
   function handleDropzoneKeydown(event: KeyboardEvent) {
     if (event.defaultPrevented) return;
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      void chooseFile();
+      void chooseMedia();
     }
   }
 
@@ -187,9 +225,9 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     set draggingWindow(v: boolean) { draggingWindow = v; },
     get dropRef() { return dropRef; },
     set dropRef(v: HTMLElement | null) { dropRef = v; },
-    chooseFile,
-    chooseVideo,
+    chooseMedia,
     ingestSelection,
+    setupTauriDragDrop,
     handleDropzoneKeydown,
     handleDragOver,
     handleDragLeave,

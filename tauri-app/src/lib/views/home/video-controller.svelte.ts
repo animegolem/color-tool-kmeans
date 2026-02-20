@@ -313,7 +313,6 @@ export function createVideoController(deps: VideoControllerDeps) {
   function clearVideoSelection() {
     resetVideoState();
     pushVideoState();
-    deps.clearFile();
   }
 
   function stepVideoFrames(step: number) {
@@ -437,7 +436,6 @@ export function createVideoController(deps: VideoControllerDeps) {
     if (!state) {
       if (videoSelection) {
         resetVideoState();
-        deps.clearFile();
       }
       return;
     }

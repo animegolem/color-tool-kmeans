@@ -284,6 +284,99 @@ export function setFile(entry: ImageEntry, dataset: ImageDataset) {
   }
 }
 
+export function appendFile(entry: ImageEntry, dataset: ImageDataset) {
+  imageDatasets.set(entry.id, dataset);
+  trackPreviewUrl(entry);
+  images.update((list) => {
+    const index = list.findIndex((item) => item.id === entry.id);
+    if (index === -1) return [...list, entry];
+    const next = list.slice();
+    next[index] = entry;
+    return next;
+  });
+}
+
+export function removeFile(id: string) {
+  const list = get(images);
+  const entry = list.find((item) => item.id === id);
+  if (entry) releaseImage(entry);
+  images.update((items) => items.filter((item) => item.id !== id));
+  analysisById.update((cache) => {
+    const next = { ...cache };
+    delete next[id];
+    return next;
+  });
+  valueAnalysisByKey.update((cache) => {
+    const next: typeof cache = {};
+    for (const [key, val] of Object.entries(cache)) {
+      if (!key.startsWith(id + ':')) next[key] = val;
+    }
+    return next;
+  });
+  valueAnalysisStateByKey.update((cache) => {
+    const next: typeof cache = {};
+    for (const [key, val] of Object.entries(cache)) {
+      if (!key.startsWith(id + ':')) next[key] = val;
+    }
+    return next;
+  });
+  valueAnalysisErrorByKey.update((cache) => {
+    const next: typeof cache = {};
+    for (const [key, val] of Object.entries(cache)) {
+      if (!key.startsWith(id + ':')) next[key] = val;
+    }
+    return next;
+  });
+  if (get(activeImageId) === id) {
+    const remaining = get(images);
+    activeImageId.set(remaining.length > 0 ? remaining[0].id : null);
+    if (remaining.length === 0) resetAnalysis();
+  }
+}
+
+export function switchToFile(id: string) {
+  const list = get(images);
+  const entry = list.find((item) => item.id === id);
+  if (!entry) return;
+
+  if (entry.path) {
+    (globalThis as any).__ACTIVE_IMAGE_PATH__ = entry.path;
+  }
+  setVideoState(null);
+
+  activeImageId.set(id);
+  const cached = get(analysisById)[id] ?? null;
+  if (cached) {
+    analysisState.set('ready');
+    analysisError.set(null);
+  } else {
+    resetAnalysis();
+  }
+}
+
+export function clearActiveSelection() {
+  activeImageId.set(null);
+  resetAnalysis();
+  setVideoState(null);
+  try {
+    delete (globalThis as any).__ACTIVE_IMAGE_PATH__;
+  } catch {
+    // ignore
+  }
+}
+
+export const pendingVideoSwitch = writable<string | null>(null);
+
+export function switchToVideo(id: string) {
+  pendingVideoSwitch.set(id);
+}
+
+export const mediaLoadRequested = writable<number>(0);
+
+export function requestMediaLoad() {
+  mediaLoadRequested.update((n) => n + 1);
+}
+
 export function clearFile() {
   images.update((list) => {
     list.forEach((entry) => releaseImage(entry));

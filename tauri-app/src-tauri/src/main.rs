@@ -51,8 +51,6 @@ fn main() {
             log_event,
             save_file,
             copy_file,
-            open_image_dialog,
-            open_video_dialog,
             extract_video_frame,
             probe_video,
             extract_video_strip,

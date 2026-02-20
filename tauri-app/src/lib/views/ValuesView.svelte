@@ -117,8 +117,9 @@
   async function handleUpload() {
     try {
       const bridge = await getFsBridge();
-      const selection = await bridge.openImageFile();
-      if (!selection) return;
+      const selections = await bridge.openMediaFiles('images');
+      if (!selections?.length) return;
+      const selection = selections[0];
 
       const nativeMode = isTauriEnv() && !!selection.path;
 
@@ -191,17 +192,21 @@
         <div class="preview-card">
           <span>Original</span>
           {#if runner.file.previewUrl}
-            <img
-              class="preview zoomable"
-              src={runner.file.previewUrl}
-              alt={runner.file.name}
+            <div
+              class="zoomable"
               role="button"
               tabindex="0"
               onclick={() => openImageZoom(runner.file.previewUrl ?? '', runner.file.name)}
               onkeydown={(event) => handleZoomKeydown(event, runner.file.previewUrl ?? '', runner.file.name)}
-              onload={() => void logEvent('values:image:original:load')}
-              onerror={() => void logEvent('values:image:original:error')}
-            />
+            >
+              <img
+                class="preview"
+                src={runner.file.previewUrl}
+                alt={runner.file.name}
+                onload={() => void logEvent('values:image:original:load')}
+                onerror={() => void logEvent('values:image:original:error')}
+              />
+            </div>
           {:else}
             <div class="empty">Preview unavailable.</div>
           {/if}
@@ -209,17 +214,21 @@
         <div class="preview-card">
           <span>Neutral values</span>
           {#if neutralSrc}
-            <img
-              class="preview zoomable"
-              src={neutralSrc}
-              alt="Neutral values"
+            <div
+              class="zoomable"
               role="button"
               tabindex="0"
               onclick={() => openImageZoom(neutralSrc, 'Neutral values')}
               onkeydown={(event) => handleZoomKeydown(event, neutralSrc, 'Neutral values')}
-              onload={() => void logEvent('values:image:neutral:load')}
-              onerror={() => void logEvent('values:image:neutral:error')}
-            />
+            >
+              <img
+                class="preview"
+                src={neutralSrc}
+                alt="Neutral values"
+                onload={() => void logEvent('values:image:neutral:load')}
+                onerror={() => void logEvent('values:image:neutral:error')}
+              />
+            </div>
           {:else}
             <div class="empty">Neutral values unavailable.</div>
           {/if}
@@ -311,17 +320,21 @@
         <div class="preview-card">
           <div class="preview-shell">
             {#if previewSrc}
-              <img
-                class="preview zoomable"
-                src={previewSrc}
-                alt="Simplified tones"
+              <div
+                class="zoomable"
                 role="button"
                 tabindex="0"
                 onclick={() => openImageZoom(previewSrc, 'Simplified tones')}
                 onkeydown={(event) => handleZoomKeydown(event, previewSrc, 'Simplified tones')}
-                onload={() => void logEvent('values:image:preview:load')}
-                onerror={() => void logEvent('values:image:preview:error')}
-              />
+              >
+                <img
+                  class="preview"
+                  src={previewSrc}
+                  alt="Simplified tones"
+                  onload={() => void logEvent('values:image:preview:load')}
+                  onerror={() => void logEvent('values:image:preview:error')}
+                />
+              </div>
             {:else}
               <div class="empty">Preview unavailable.</div>
             {/if}

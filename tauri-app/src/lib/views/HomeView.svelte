@@ -9,8 +9,10 @@
   } from '../stores/ui';
   import {
     selectedFile,
+    images,
     params,
     clearFile,
+    appendFile,
     analysisState,
     analysisResult,
     analysisError,
@@ -22,7 +24,10 @@
     videoState,
     setVideoState,
     setFile,
-    videoStripMode
+    videoStripMode,
+    libraryDrawerOpen,
+    pendingVideoSwitch,
+    mediaLoadRequested
   } from '../stores/ui';
   import { isTauriEnv, tauriDetectionInfo } from '../bridges/tauri';
   import { getFfmpegVersion } from '../bridges/ffmpeg';
@@ -122,6 +127,7 @@
   // --- File ingestion ---
   const ingestion = createFileIngestion({
     setFile,
+    appendFile,
     setAnalysisError,
     resetAnalysis: () => {
       analysisState.set('idle');
@@ -133,7 +139,9 @@
     setBannerMessage: (msg) => { bannerMessage = msg; },
     getParams: () => currentParams,
     getStatus: () => status,
-    clearVideoSelection: () => video.clearVideoSelection()
+    clearVideoSelection: () => video.clearVideoSelection(),
+    loadVideoSelection: (sel) => { clearSelection(); video.loadVideoSelection(sel); },
+    openLibraryDrawer: () => libraryDrawerOpen.set(true)
   });
 
   // --- Video controller ---
@@ -229,14 +237,6 @@
     zoomImage(file?.previewUrl, file?.name ?? 'Selected image', openZoomOverlay);
   }
 
-  async function handleChooseVideo() {
-    const selection = await ingestion.chooseVideo();
-    if (selection) {
-      clearSelection();
-      video.loadVideoSelection(selection);
-    }
-  }
-
   // --- FFmpeg check ---
   let ffmpegChecked = false;
   async function checkFfmpegVersion() {
@@ -255,6 +255,8 @@
   onMount(() => {
     void logEvent('home:view:mount');
     void checkFfmpegVersion();
+    let unlistenDragDrop: (() => void) | null = null;
+    ingestion.setupTauriDragDrop().then((fn) => { unlistenDragDrop = fn ?? null; });
     const unsubs = [
       selectedFile.subscribe((value) => { file = value; }),
       params.subscribe((value) => { currentParams = { ...value }; }),
@@ -262,7 +264,22 @@
       analysisResult.subscribe((value) => { result = value; }),
       analysisError.subscribe((value) => { analysisErr = value; }),
       videoState.subscribe((state) => { video.handleVideoStateChange(state); }),
-      (() => { let first = true; return videoStripMode.subscribe(() => { if (first) { first = false; return; } video.regenerateStrip(); }); })()
+      (() => { let first = true; return videoStripMode.subscribe(() => { if (first) { first = false; return; } video.regenerateStrip(); }); })(),
+      pendingVideoSwitch.subscribe((id) => {
+        if (!id) return;
+        pendingVideoSwitch.set(null);
+        const entry = get(images).find((item) => item.id === id);
+        if (!entry?.path) return;
+        clearSelection();
+        video.loadVideoSelection({
+          name: entry.name,
+          path: entry.path,
+          size: entry.size,
+          blob: new Blob([], { type: 'video/mp4' }),
+          mimeType: 'video/mp4'
+        });
+      }),
+      (() => { let first = true; return mediaLoadRequested.subscribe(() => { if (first) { first = false; return; } ingestion.chooseMedia(); }); })()
     ];
     let dragDepth = 0;
     let hideTimer: ReturnType<typeof setTimeout> | null = null;
@@ -311,6 +328,7 @@
       window.removeEventListener('drop', onDrop);
       window.removeEventListener('pointerup', handleScrubEnd);
       window.removeEventListener('pointercancel', handleScrubEnd);
+      if (unlistenDragDrop) unlistenDragDrop();
       void logEvent('home:view:unmount');
     };
   });
@@ -331,6 +349,9 @@
       return;
     }
     if (isScrubbing) {
+      return;
+    }
+    if (status === 'error') {
       return;
     }
     runner.scheduleAnalysisWith(activeFile, paramSnapshot, status);
@@ -419,11 +440,8 @@
       <div class="inner">
         <p class="title">Drop anywhere</p>
         <p>or</p>
-        <div class="upload-group">
-          <button class="upload" onclick={ingestion.chooseFile}>Upload image</button>
-          <button class="upload upload--ghost" onclick={handleChooseVideo}>Upload video</button>
-        </div>
-        <p class="formats">Images: PNG, JPEG, WebP · Videos: MP4.</p>
+        <button class="upload" onclick={ingestion.chooseMedia}>Add media</button>
+        <p class="formats">PNG, JPEG, WebP, BMP, GIF, TIFF, MP4</p>
       </div>
     </div>
   {/if}
@@ -435,7 +453,7 @@
         <div style="display:grid;place-items:center;gap:8px;min-width:280px">
           <div class="spinner" aria-hidden="true" style="display:none"></div>
           <div style="font-size:20px;font-weight:500">Drop Anywhere</div>
-          <div style="font-size:12px;opacity:.8">PNG · JPEG · WebP · MP4</div>
+          <div style="font-size:12px;opacity:.8">PNG · JPEG · WebP · BMP · GIF · TIFF · MP4</div>
         </div>
       </div>
     </div>
@@ -571,25 +589,12 @@
     color: rgba(33, 33, 32, 0.6);
   }
 
-  .upload-group {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
   .upload {
     background: var(--accent);
     color: #fff;
     border: none;
     border-radius: 6px;
     padding: 10px 18px;
-  }
-
-  .upload--ghost {
-    background: transparent;
-    color: var(--accent);
-    border: 1px solid var(--accent);
   }
 
   .retry {

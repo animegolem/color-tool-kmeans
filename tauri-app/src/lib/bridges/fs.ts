@@ -1,4 +1,5 @@
 import { get } from 'svelte/store';
+import { open, save } from '@tauri-apps/plugin-dialog';
 import { isTauriEnv, tauriInvoke } from './tauri';
 import { exportDir } from '../stores/ui';
 
@@ -20,8 +21,7 @@ export interface SaveResult {
 
 export interface FsBridge {
   readonly id: typeof TAURI_ID;
-  openImageFile(): Promise<FileSelection | null>;
-  openVideoFile(): Promise<FileSelection | null>;
+  openMediaFiles(mode?: 'images' | 'videos' | 'all'): Promise<FileSelection[] | null>;
   saveBlob(blob: Blob, defaultName: string): Promise<SaveResult>;
   saveTextFile(text: string, defaultName: string): Promise<SaveResult>;
 }
@@ -38,7 +38,6 @@ function extLabel(ext: string): string {
 }
 
 async function nativeSaveBlob(blob: Blob, defaultName: string): Promise<SaveResult> {
-  const { save } = await import('@tauri-apps/plugin-dialog');
   const dir = get(exportDir);
   const defaultPath = dir ? `${dir}/${defaultName}` : defaultName;
   const ext = defaultName.split('.').pop() ?? '';
@@ -60,7 +59,6 @@ export async function saveFromPath(
   sourcePath: string,
   defaultName: string
 ): Promise<SaveResult> {
-  const { save } = await import('@tauri-apps/plugin-dialog');
   const dir = get(exportDir);
   const defaultPath = dir ? `${dir}/${defaultName}` : defaultName;
   const ext = defaultName.split('.').pop() ?? '';
@@ -76,37 +74,43 @@ export async function saveFromPath(
   return { canceled: false, path: filePath };
 }
 
+function buildFilters(mode: 'images' | 'videos' | 'all') {
+  const IMG = ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'tiff'];
+  const VID = ['mp4'];
+  if (mode === 'images') return [{ name: 'Images', extensions: IMG }];
+  if (mode === 'videos') return [{ name: 'Videos', extensions: VID }];
+  return [
+    { name: 'All Media', extensions: [...IMG, ...VID] },
+    { name: 'Images', extensions: IMG },
+    { name: 'Videos', extensions: VID }
+  ];
+}
+
+export function isVideoFile(sel: FileSelection): boolean {
+  if (sel.mimeType?.startsWith('video/')) return true;
+  return /\.mp4$/i.test(sel.name ?? '');
+}
+
 function createTauriFsBridge(): FsBridge | null {
   if (!isTauriEnv()) return null;
   return {
     id: TAURI_ID,
-    async openImageFile() {
-      const path = await tauriInvoke('open_image_dialog');
-      if (!path) return null;
-      const name = String(path).split(/[\\/]/).pop() ?? 'image';
-      return {
-        name,
-        path: String(path),
-        size: 0,
-        blob: new Blob([], { type: inferMimeType(name) }),
-        mimeType: inferMimeType(name)
-      } satisfies FileSelection;
-    },
-    async openVideoFile() {
-      try {
-        const path = await tauriInvoke('open_video_dialog');
-        if (!path) return null;
-        const name = String(path).split(/[\\/]/).pop() ?? 'video';
+    async openMediaFiles(mode?: 'images' | 'videos' | 'all') {
+      const filters = buildFilters(mode ?? 'all');
+      const result = await open({ multiple: true, filters });
+      if (!result) return null;
+      const paths = Array.isArray(result) ? result : [result];
+      if (paths.length === 0) return null;
+      return paths.map((p) => {
+        const name = String(p).split(/[\\/]/).pop() ?? 'file';
         return {
           name,
-          path: String(path),
+          path: String(p),
           size: 0,
           blob: new Blob([], { type: inferMimeType(name) }),
           mimeType: inferMimeType(name)
         } satisfies FileSelection;
-      } catch {
-        return null;
-      }
+      });
     },
     async saveBlob(blob, defaultName) {
       return nativeSaveBlob(blob, defaultName);
@@ -118,12 +122,14 @@ function createTauriFsBridge(): FsBridge | null {
   } satisfies FsBridge;
 }
 
-function inferMimeType(name: string): string {
+export function inferMimeType(name: string): string {
   const lower = name.toLowerCase();
   if (lower.endsWith('.png')) return 'image/png';
   if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
   if (lower.endsWith('.webp')) return 'image/webp';
   if (lower.endsWith('.bmp')) return 'image/bmp';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.tiff') || lower.endsWith('.tif')) return 'image/tiff';
   if (lower.endsWith('.mp4')) return 'video/mp4';
   return 'application/octet-stream';
 }

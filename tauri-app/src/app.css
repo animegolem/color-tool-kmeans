@@ -257,6 +257,32 @@ main.library-open {
   color: rgba(33, 33, 32, 0.6);
 }
 
+.library-section__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.library-section__add {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: rgba(33, 33, 32, 0.6);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.library-section__add:hover {
+  background: rgba(33, 33, 32, 0.08);
+  color: var(--ink);
+}
+
 .library-section__empty {
   font-size: 13px;
   color: rgba(33, 33, 32, 0.5);

@@ -243,49 +243,6 @@ pub async fn log_event(req: LogEventRequest, app: AppHandle) -> Result<(), Strin
 }
 
 #[tauri::command]
-pub async fn open_image_dialog(app: AppHandle) -> Result<Option<String>, String> {
-    use tauri_plugin_dialog::{DialogExt, FilePath};
-    let (tx, rx) = std::sync::mpsc::channel::<Option<String>>();
-    app.dialog()
-        .file()
-        .add_filter(
-            "Images",
-            &["png", "jpg", "jpeg", "webp", "bmp", "gif", "tiff"],
-        )
-        .pick_file(move |p| {
-            let mapped = p.map(|fp| match fp {
-                FilePath::Path(pb) => pb.display().to_string(),
-                FilePath::Url(u) => u.to_string(),
-            });
-            let _ = tx.send(mapped);
-        });
-    let path = rx
-        .recv()
-        .map_err(|_| String::from("dialog channel closed"))?;
-    Ok(path)
-}
-
-#[tauri::command]
-pub async fn open_video_dialog(app: AppHandle) -> Result<Option<String>, String> {
-    use tauri_plugin_dialog::{DialogExt, FilePath};
-    let (tx, rx) = std::sync::mpsc::channel::<Option<String>>();
-    app.dialog()
-        .file()
-        .add_filter("Videos", &["mp4"])
-        .pick_file(move |p| {
-            let mapped = p.map(|fp| match fp {
-                FilePath::Path(pb) => pb.display().to_string(),
-                FilePath::Url(u) => u.to_string(),
-            });
-            let _ = tx.send(mapped);
-        });
-    let path = rx
-        .recv()
-        .map_err(|_| String::from("dialog channel closed"))?;
-    Ok(path)
-}
-
-#[tauri::command]
 pub async fn extract_video_frame(
     req: VideoFrameRequest,
     app: AppHandle,

@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { View } from './lib/stores/ui';
-  import { currentView, setView, libraryDrawerOpen, navCollapsed, selectedFile, videoState } from './lib/stores/ui';
-  import { clearFile } from './lib/stores/ui';
+  import { currentView, setView, libraryDrawerOpen, navCollapsed, selectedFile, videoState, clearActiveSelection, requestMediaLoad } from './lib/stores/ui';
   import { isTauriEnv } from './lib/bridges/tauri';
   import HomeView from './lib/views/HomeView.svelte';
   import ValuesView from './lib/views/ValuesView.svelte';
   import ExportsView from './lib/views/ExportsView.svelte';
   import SettingsView from './lib/views/SettingsView.svelte';
   import ZoomOverlay from './lib/components/ZoomOverlay.svelte';
+  import MediaBucket from './lib/components/MediaBucket.svelte';
   import { logEvent } from './lib/bridges/log';
 
   $effect(() => {
@@ -55,7 +55,7 @@
   }
 
   function handleClear() {
-    clearFile();
+    clearActiveSelection();
   }
 
   onMount(() => {
@@ -178,7 +178,7 @@
 
 <main
   class:nav-collapsed={$navCollapsed}
-  class:library-open={$currentView === 'home' && $libraryDrawerOpen}
+  class:library-open={$currentView !== 'settings' && $libraryDrawerOpen}
 >
   <nav class="nav" class:collapsed={$navCollapsed}>
     {#each navItems as item}
@@ -216,7 +216,7 @@
       {/if}
     </div>
 
-    {#if $currentView === 'home'}
+    {#if $currentView !== 'settings'}
       <button
         type="button"
         class="header-toggle"
@@ -246,7 +246,7 @@
     {/if}
   </section>
 
-  {#if $currentView === 'home'}
+  {#if $currentView !== 'settings'}
     <aside class:open={$libraryDrawerOpen} class="library-rail" aria-label="Library rail">
       {#if $libraryDrawerOpen}
         <div id="library-drawer" class="library-drawer" aria-label="Library drawer">
@@ -255,12 +255,11 @@
               <h3>Library</h3>
             </header>
             <div class="library-section">
-              <div class="library-section__title">Imported</div>
-              <div class="library-section__empty">No items yet.</div>
-            </div>
-            <div class="library-section">
-              <div class="library-section__title">Active</div>
-              <div class="library-section__empty">No active items.</div>
+              <div class="library-section__title-row">
+                <span class="library-section__title">Media Bucket</span>
+                <button class="library-section__add" onclick={requestMediaLoad} aria-label="Add media">+</button>
+              </div>
+              <MediaBucket />
             </div>
           </div>
         </div>
