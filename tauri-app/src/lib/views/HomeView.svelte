@@ -135,10 +135,6 @@
     setFile,
     appendFile,
     setAnalysisError,
-    resetAnalysis: () => {
-      analysisState.set('idle');
-      analysisError.set(null);
-    },
     cancelPending: runner.cancelPending,
     scheduleAnalysisWith: (f, p, s) => runner.scheduleAnalysisWith(f, p, s),
     recordDevEvent,
@@ -228,11 +224,6 @@
     if (file) {
       runner.scheduleAnalysisWith(file, currentParams, status);
     }
-  }
-
-  function clearSelection() {
-    clearFile();
-    runner.cancelPending();
   }
 
   function retryAnalysis() {
@@ -390,6 +381,11 @@
     if (status === 'error') {
       return;
     }
+    devlog('home:analysis:effect', 'Analysis effect triggered', {
+      imageId: activeFile.id,
+      status,
+      clusters: paramSnapshot.clusters
+    });
     runner.scheduleAnalysisWith(activeFile, paramSnapshot, status);
   });
 </script>
@@ -400,7 +396,7 @@
   {/if}
 
   {#if file || video.videoSelection}
-    <section class="analysis-layout">
+    <section class="analysis-layout" class:two-columns={result && (currentParams.showPolarChart || currentParams.showHueLightness)}>
       <div class="analysis-column">
         {#if video.videoSelection}
           <VideoPanel {video} />
@@ -447,8 +443,8 @@
           />
         {/if}
       </div>
-      <div class="analysis-column">
-        {#if result && (currentParams.showPolarChart || currentParams.showHueLightness)}
+      {#if result && (currentParams.showPolarChart || currentParams.showHueLightness)}
+        <div class="analysis-column">
           <AnalysisCards
             {result}
             histogram={null}
@@ -456,8 +452,8 @@
             hueLightnessChart={currentParams.showHueLightness ? hueLightnessChart : null}
             histogramSortLabel=""
           />
-        {/if}
-      </div>
+        </div>
+      {/if}
     </section>
   {:else}
     <div
@@ -497,7 +493,7 @@
 
   <!-- Loading overlay -->
   {#if status === 'pending' && runner.spinnerVisible}
-    <div class="overlay-root visible" role="dialog" aria-label="Analyzing…">
+    <div class="overlay-root overlay-root--content visible" role="dialog" aria-label="Analyzing…">
       <div class="overlay-panel">
         <div style="display:grid;place-items:center;gap:12px">
           <div class="spinner" aria-label="loading"></div>
@@ -509,7 +505,7 @@
 
   <!-- Drag/drop notice overlay -->
   {#if bannerMessage}
-    <div class="overlay-root visible" role="dialog" aria-label="Notice">
+    <div class="overlay-root overlay-root--content visible" role="dialog" aria-label="Notice">
       <div class="overlay-panel">
         <p style="margin:0">{bannerMessage}</p>
         <div class="overlay-actions" style="margin-top:16px">
@@ -589,29 +585,21 @@
   .analysis-layout {
     margin-top: 20px;
     display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
+    grid-template-columns: 1fr;
     gap: 20px;
-    align-items: center;
+    align-content: start;
+  }
+
+  @container (min-width: 760px) {
+    .analysis-layout.two-columns {
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    }
   }
 
   .analysis-column {
     display: grid;
     gap: 20px;
     align-content: start;
-  }
-
-  @media (max-width: 980px) {
-    .analysis-layout {
-      grid-template-columns: 1fr;
-      align-items: stretch;
-    }
-  }
-
-  @container (max-width: 980px) {
-    .analysis-layout {
-      grid-template-columns: 1fr;
-      align-items: stretch;
-    }
   }
 
   .dropzone .title {

@@ -1,7 +1,7 @@
 import { writable, derived, get } from 'svelte/store';
 import type { ImageDataset } from '../compute/image-loader';
 import type { PrefsV1 } from './prefs';
-import { savePrefs } from './prefs';
+import { DEFAULTS, savePrefs } from './prefs';
 import { devlog, registerResourceCounter } from '../utils/devlog';
 
 export type View = 'home' | 'values' | 'exports' | 'settings';
@@ -17,6 +17,7 @@ export interface AnalysisParams {
   polarMode: 'oklch' | 'okhsv' | 'hsv';
   hueLightnessSizeMode: 'frequency' | 'chroma';
   histogramSort: 'frequency' | 'hue' | 'lightness';
+  snapToReal: boolean;
   showHistogram: boolean;
   showPolarChart: boolean;
   showHueLightness: boolean;
@@ -25,6 +26,7 @@ export interface AnalysisParams {
 export const currentView = writable<View>('home');
 export const libraryDrawerOpen = writable<boolean>(false);
 export const navCollapsed = writable<boolean>(false);
+export const narrowMode = writable<boolean>(false);
 
 export type ImageSource = { kind: 'path'; path: string } | { kind: 'blob' };
 
@@ -67,22 +69,21 @@ export const selectedFile = derived([images, activeImageId], ([$images, $activeI
 });
 
 export const params = writable<AnalysisParams>({
-  clusters: 25,
+  clusters: 45,
   quality: 2,
   ignoreTopN: 0,
-  mergeThreshold: 0.04,
+  mergeThreshold: 0,
   symbolScale: 1,
   showClusterOutline: false,
   showAxisLabels: true,
-  polarMode: 'hsv',
+  snapToReal: true,
+  polarMode: 'okhsv',
   hueLightnessSizeMode: 'chroma',
   histogramSort: 'frequency',
   showHistogram: true,
   showPolarChart: true,
   showHueLightness: true
 });
-
-export const hasFile = derived(selectedFile, ($file) => $file !== null);
 
 export type AnalysisState = 'idle' | 'pending' | 'ready' | 'error';
 
@@ -227,25 +228,37 @@ export function clearAnalysisError() {
   analysisState.set('idle');
 }
 
-export const topClusters = derived(analysisResult, ($result) => {
-  if (!$result) return [] as AnalysisCluster[];
-  return $result.clusters.slice(0, 8);
-});
-
 export const exportScale = writable<number>(2);
 export const exportDir = writable<string | null>(null);
 
-export const clusterMax = writable<number>(2000);
-export const excludeTopMax = writable<number>(100);
+export type GraphExportFormat = 'png' | 'svg';
+export const graphExportFormat = writable<GraphExportFormat>('svg');
+
+export interface ExportChecks {
+  colorsSourceImage: boolean;
+  colorsPolarChart: boolean;
+  colorsHistogram: boolean;
+  colorsHueLightness: boolean;
+  colorsPaletteStrip: boolean;
+  colorsHistogramAll: boolean;
+  colorsVideoBarcode: boolean;
+  valuesNeutral: boolean;
+  valuesIncludeOriginal: boolean;
+  valuesRangeFinder: boolean;
+  valuesHistogram: boolean;
+  valuesSimplified: boolean;
+  valuesAllStudies: boolean;
+}
+export const exportChecks = writable<ExportChecks>({ ...DEFAULTS.exports });
+
+export const clusterMax = writable<number>(200);
+export const excludeTopMax = writable<number>(10);
 export const showSimplifiedTones = writable<boolean>(true);
 export type VideoStripMode = 'filmstrip' | 'barcode';
-export const videoStripMode = writable<VideoStripMode>('filmstrip');
+export const videoStripMode = writable<VideoStripMode>('barcode');
 
 export function setView(view: View) {
   currentView.set(view);
-  // Persist view, but restore to 'home' if it was 'settings'
-  const persistView = view === 'settings' ? 'home' : view;
-  void savePrefs({ view: persistView });
 }
 
 function revokeObjectUrl(url: string) {
@@ -357,8 +370,11 @@ export function removeFile(id: string) {
   });
   if (get(activeImageId) === id) {
     const remaining = get(images);
-    activeImageId.set(remaining.length > 0 ? remaining[0].id : null);
-    if (remaining.length === 0) resetAnalysis();
+    if (remaining.length > 0) {
+      switchToFile(remaining[0].id);
+    } else {
+      clearActiveSelection();
+    }
   }
 }
 
@@ -506,8 +522,6 @@ export function getCachedVideoState(videoPath: string): VideoCacheEntry | null {
 // --- Preferences hydration & write-back ---
 
 export function hydrateFromPrefs(prefs: PrefsV1) {
-  const view = prefs.view === 'settings' ? 'home' : prefs.view;
-  currentView.set(view);
   params.set({
     clusters: prefs.analysis.clusters,
     quality: prefs.analysis.quality,
@@ -516,6 +530,7 @@ export function hydrateFromPrefs(prefs: PrefsV1) {
     symbolScale: prefs.analysis.symbolScale,
     showClusterOutline: prefs.analysis.showClusterOutline,
     showAxisLabels: prefs.analysis.showAxisLabels,
+    snapToReal: prefs.analysis.snapToReal,
     polarMode: prefs.analysis.polarMode as AnalysisParams['polarMode'],
     hueLightnessSizeMode: prefs.analysis.hueLightnessSizeMode as AnalysisParams['hueLightnessSizeMode'],
     histogramSort: prefs.analysis.histogramSort as AnalysisParams['histogramSort'],
@@ -526,10 +541,12 @@ export function hydrateFromPrefs(prefs: PrefsV1) {
   valueAnalysisLevels.set(prefs.valueAnalysis.levels);
   exportScale.set(prefs.exportScale);
   exportDir.set(prefs.exportDir);
+  exportChecks.set({ ...prefs.exports });
   clusterMax.set(prefs.limits.clusterMax);
   excludeTopMax.set(prefs.limits.excludeTopMax);
   showSimplifiedTones.set(prefs.display.showSimplifiedTones);
-  videoStripMode.set(prefs.display.videoStripMode ?? 'filmstrip');
+  videoStripMode.set(prefs.display.videoStripMode ?? 'barcode');
+  graphExportFormat.set(prefs.graphExportFormat ?? 'svg');
 }
 
 // Write-back: debounced subscriptions that persist store changes
@@ -566,6 +583,14 @@ exportDir.subscribe((val) => {
   void savePrefs({ exportDir: val });
 });
 
+let _debounceExportChecks: ReturnType<typeof setTimeout> | null = null;
+let _skipExportChecksFirst = true;
+exportChecks.subscribe((val) => {
+  if (_skipExportChecksFirst) { _skipExportChecksFirst = false; return; }
+  if (_debounceExportChecks) clearTimeout(_debounceExportChecks);
+  _debounceExportChecks = setTimeout(() => void savePrefs({ exports: val }), 500);
+});
+
 let _debounceClusterMax: ReturnType<typeof setTimeout> | null = null;
 let _skipClusterMaxFirst = true;
 clusterMax.subscribe((val) => {
@@ -592,4 +617,12 @@ let _skipVideoStripModeFirst = true;
 videoStripMode.subscribe((val) => {
   if (_skipVideoStripModeFirst) { _skipVideoStripModeFirst = false; return; }
   void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: val } });
+});
+
+let _debounceGraphExportFormat: ReturnType<typeof setTimeout> | null = null;
+let _skipGraphExportFormatFirst = true;
+graphExportFormat.subscribe((val) => {
+  if (_skipGraphExportFormatFirst) { _skipGraphExportFormatFirst = false; return; }
+  if (_debounceGraphExportFormat) clearTimeout(_debounceGraphExportFormat);
+  _debounceGraphExportFormat = setTimeout(() => void savePrefs({ graphExportFormat: val }), 500);
 });

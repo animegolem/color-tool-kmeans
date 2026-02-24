@@ -30,6 +30,7 @@ export interface ValuesExportDeps {
     valuesSimplified: boolean;
     valuesAllStudies: boolean;
   };
+  getGraphExportFormat(): string;
   performSave(action: () => Promise<void>): Promise<void>;
   baseName(): string;
   setStatus(value: string | null, variant: 'info' | 'error'): void;
@@ -253,48 +254,47 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
     });
   }
 
-  async function saveRangeFinderPng() {
+  async function saveRangeFinderChart() {
     const file = deps.getFile();
     if (!file) return;
     await deps.performSave(async () => {
       const { svg, width, height } = await buildValuesSectionSvg('rangeFinder');
-      const scale = Math.max(1, Math.min(4, deps.getExportScale()));
-      const blob = await svgToPngBlob(svg, width, height, scale);
+      const format = deps.getGraphExportFormat();
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${deps.baseName()}-range-finder.png`);
-      if (canceled) deps.setStatus('Export canceled.', 'info');
-      else deps.setStatus('Range finder PNG saved.', 'info');
+      if (format === 'svg') {
+        const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+        const { canceled } = await bridge.saveBlob(blob, `${deps.baseName()}-range-finder.svg`);
+        if (canceled) deps.setStatus('Export canceled.', 'info');
+        else deps.setStatus('Range finder SVG saved.', 'info');
+      } else {
+        const scale = Math.max(1, Math.min(4, deps.getExportScale()));
+        const blob = await svgToPngBlob(svg, width, height, scale);
+        const { canceled } = await bridge.saveBlob(blob, `${deps.baseName()}-range-finder.png`);
+        if (canceled) deps.setStatus('Export canceled.', 'info');
+        else deps.setStatus('Range finder PNG saved.', 'info');
+      }
     });
   }
 
-  async function saveValuesHistogramPng() {
+  async function saveValuesHistogramChart() {
     const file = deps.getFile();
     if (!file) return;
     await deps.performSave(async () => {
       const { svg, width, height } = await buildValuesSectionSvg('histogram');
-      const scale = Math.max(1, Math.min(4, deps.getExportScale()));
-      const blob = await svgToPngBlob(svg, width, height, scale);
+      const format = deps.getGraphExportFormat();
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(
-        blob,
-        `${deps.baseName()}-values-histogram.png`
-      );
-      if (canceled) deps.setStatus('Export canceled.', 'info');
-      else deps.setStatus('Values histogram PNG saved.', 'info');
-    });
-  }
-
-  async function saveSimplifiedPng() {
-    const file = deps.getFile();
-    if (!file) return;
-    await deps.performSave(async () => {
-      const { svg, width, height } = await buildValuesSectionSvg('simplified');
-      const scale = Math.max(1, Math.min(4, deps.getExportScale()));
-      const blob = await svgToPngBlob(svg, width, height, scale);
-      const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${deps.baseName()}-simplified.png`);
-      if (canceled) deps.setStatus('Export canceled.', 'info');
-      else deps.setStatus('Simplified values PNG saved.', 'info');
+      if (format === 'svg') {
+        const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+        const { canceled } = await bridge.saveBlob(blob, `${deps.baseName()}-values-histogram.svg`);
+        if (canceled) deps.setStatus('Export canceled.', 'info');
+        else deps.setStatus('Values histogram SVG saved.', 'info');
+      } else {
+        const scale = Math.max(1, Math.min(4, deps.getExportScale()));
+        const blob = await svgToPngBlob(svg, width, height, scale);
+        const { canceled } = await bridge.saveBlob(blob, `${deps.baseName()}-values-histogram.png`);
+        if (canceled) deps.setStatus('Export canceled.', 'info');
+        else deps.setStatus('Values histogram PNG saved.', 'info');
+      }
     });
   }
 
@@ -343,9 +343,8 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
   return {
     exportValuesComposite,
     saveNeutralImage,
-    saveRangeFinderPng,
-    saveValuesHistogramPng,
-    saveSimplifiedPng,
+    saveRangeFinderPng: saveRangeFinderChart,
+    saveValuesHistogramPng: saveValuesHistogramChart,
     saveNotanStudyPng
   };
 }

@@ -3,6 +3,14 @@ import { svgCircle, svgDocument, svgGroup, svgLine, svgText } from './svg';
 import { svgToPngBlob } from './png';
 
 const DEG_TO_RAD = Math.PI / 180;
+const OKLCH_RED_HUE = oklabToOklch(
+  linearSrgbToOklab([srgbToLinear(1), srgbToLinear(0), srgbToLinear(0)])
+)[2];
+
+function hueToAngle(hue: number, mode: PolarMode): number {
+  const offset = mode === 'hsv' ? 0 : OKLCH_RED_HUE;
+  return (hue - offset) * DEG_TO_RAD - Math.PI / 2;
+}
 
 export type PolarMode = 'oklch' | 'okhsv' | 'hsv';
 
@@ -12,6 +20,7 @@ export interface CircleGraphOptions {
   showStroke?: boolean;
   mode?: PolarMode;
   size?: number;
+  fontSize?: number;
 }
 
 export interface CircleGraphResult {
@@ -47,7 +56,7 @@ export function generateCircleGraphSvg(
   const axisGroup: string[] = [];
   const overlayGroup: string[] = [];
   if (mode === 'oklch' && gamut) {
-    const outlinePath = buildOutlinePath(gamut, effectiveRadius, center, maxChroma);
+    const outlinePath = buildOutlinePath(gamut, effectiveRadius, center, maxChroma, mode);
     axisGroup.push(
       `<path d="${outlinePath}" fill="none" stroke="rgba(16,17,17,0.85)" stroke-width="1" />`
     );
@@ -85,31 +94,40 @@ export function generateCircleGraphSvg(
   svgParts.push(svgGroup(axisGroup));
 
   if (options.showAxisLabels !== false) {
+    const labelFontSize = options.fontSize ?? 15;
     const axisLabelRadius = Math.max(0, effectiveRadius - 36);
     const hueText = '<- Hue ->';
     const secondary = mode === 'oklch' ? '<- Chroma ->' : '<- Saturation ->';
+    const satLabelOffset = 8;
+    const satLabelY = center - axisLabelRadius + 30;
     svgParts.push(
       svgText(
         {
-          x: center,
-          y: center - axisLabelRadius,
+          x: center + satLabelOffset,
+          y: satLabelY,
           'font-family': 'Fira Sans',
-          'font-size': 15,
+          'font-size': labelFontSize,
           fill: 'rgba(16,17,17,0.6)',
           'text-anchor': 'middle',
-          transform: `rotate(90 ${center} ${center - axisLabelRadius})`
+          transform: `rotate(90 ${center + satLabelOffset} ${satLabelY})`
         },
         secondary
       )
     );
+    const hueOffset = 8;
+    const hueR = effectiveRadius - hueOffset;
+    const hueX = center + hueR * Math.SQRT1_2;
+    const hueY = center + hueR * Math.SQRT1_2;
     svgParts.push(
       svgText(
         {
-          x: center + axisLabelRadius * Math.SQRT1_2,
-          y: center + axisLabelRadius * Math.SQRT1_2,
+          x: hueX,
+          y: hueY,
           'font-family': 'Fira Sans',
-          'font-size': 15,
-          fill: 'rgba(16,17,17,0.6)'
+          'font-size': labelFontSize,
+          fill: 'rgba(16,17,17,0.6)',
+          'text-anchor': 'middle',
+          transform: `rotate(-45 ${hueX} ${hueY})`
         },
         hueText
       )
@@ -176,7 +194,7 @@ function buildLayoutEntry(
   hueChromaLut: number[] | null
 ): LayoutEntry {
   const polar = getPolarValue(cluster, mode, maxChroma, hueChromaLut);
-  const angle = polar.hue * DEG_TO_RAD - Math.PI / 2;
+  const angle = hueToAngle(polar.hue, mode);
   const r = effectiveRadius * Math.max(0, Math.min(1, polar.radiusRatio));
   return {
     x: center + r * Math.cos(angle),
@@ -217,11 +235,12 @@ function buildOutlinePath(
   points: Array<{ h: number; c: number }>,
   radius: number,
   center: number,
-  maxChroma: number
+  maxChroma: number,
+  mode: PolarMode
 ): string {
   if (!points.length) return '';
   const coords = points.map((point) => {
-    const angle = point.h * DEG_TO_RAD - Math.PI / 2;
+    const angle = hueToAngle(point.h, mode);
     const r = radius * (point.c / maxChroma);
     const x = center + r * Math.cos(angle);
     const y = center + r * Math.sin(angle);

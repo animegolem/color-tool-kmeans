@@ -91,6 +91,10 @@
       <input type="checkbox" bind:checked={$params.showAxisLabels} />
       Axis labels
     </label>
+    <label class="choice">
+      <input type="checkbox" bind:checked={$params.snapToReal} />
+      Map to real values
+    </label>
   </div>
 </section>
 

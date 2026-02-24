@@ -8,7 +8,7 @@ tags:
   - Epic-020
   - folder-browser
   - stretch
-kanban_status: planned
+kanban_status: deferred
 depends_on: [AI-EPIC-020, AI-IMP-096, AI-IMP-097]
 parent_epic: [[AI-EPIC-020-multi-image-input]]
 confidence_score: 0.50

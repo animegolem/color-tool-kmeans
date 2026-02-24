@@ -12,6 +12,24 @@ use crate::cache::EventLog;
 use crate::commands_types::*;
 use crate::merge::{merge_clusters_by_threshold, RawCluster};
 
+fn snap_centroids_to_nearest(raw_clusters: &mut [RawCluster], samples_oklab: &[[f32; 3]]) {
+    for cluster in raw_clusters.iter_mut() {
+        let mut best_dist = f32::MAX;
+        let mut best = cluster.centroid;
+        for sample in samples_oklab {
+            let dx = cluster.centroid[0] - sample[0];
+            let dy = cluster.centroid[1] - sample[1];
+            let dz = cluster.centroid[2] - sample[2];
+            let d = dx * dx + dy * dy + dz * dz;
+            if d < best_dist {
+                best_dist = d;
+                best = *sample;
+            }
+        }
+        cluster.centroid = best;
+    }
+}
+
 #[tauri::command]
 pub async fn analyze_image(
     req: AnalyzeRequest,
@@ -83,6 +101,10 @@ pub async fn analyze_image(
             })
         })
         .collect();
+    if req.snap_to_real {
+        let oklab = samples.samples_oklab.as_ref().unwrap();
+        snap_centroids_to_nearest(&mut raw_clusters, oklab);
+    }
     let merge_threshold = req.merge_threshold.clamp(0.0, 0.2);
     if merge_threshold > 0.0 {
         let before_count = raw_clusters.len();

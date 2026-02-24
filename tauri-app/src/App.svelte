@@ -1,8 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { View, ImageEntry } from './lib/stores/ui';
-  import { currentView, setView, libraryDrawerOpen, navCollapsed, selectedFile, videoState, setVideoState, clearActiveSelection, requestMediaLoad, setFile } from './lib/stores/ui';
+  import { get } from 'svelte/store';
+  import { currentView, setView, libraryDrawerOpen, navCollapsed, narrowMode, selectedFile, videoState, setVideoState, clearActiveSelection, requestMediaLoad, setFile, appendFile, updateEntryPreview } from './lib/stores/ui';
   import { isTauriEnv, tauriInvoke } from './lib/bridges/tauri';
+  import { getFsBridge, isVideoFile } from './lib/bridges/fs';
+  import { convertFileSrc } from '@tauri-apps/api/core';
+  import { extractVideoFrame } from './lib/bridges/video';
   import HomeView from './lib/views/HomeView.svelte';
   import ValuesView from './lib/views/ValuesView.svelte';
   import ExportsView from './lib/views/ExportsView.svelte';
@@ -26,8 +30,8 @@
     { key: 'settings', label: 'Settings' }
   ] as const;
 
-  let file = $state<{ name: string } | null>(null);
-  let video = $state<{ name: string } | null>(null);
+  const file = $derived($selectedFile ? { name: $selectedFile.name } : null);
+  const video = $derived($videoState ? { name: $videoState.name } : null);
 
   const activeViewLabel = $derived.by(() => {
     const item = navItems.find((i) => i.key === $currentView);
@@ -58,20 +62,106 @@
     clearActiveSelection();
   }
 
-  onMount(() => {
-    const unsubs = [
-      selectedFile.subscribe((value) => {
-        file = value ? { name: value.name } : null;
-      }),
-      videoState.subscribe((value) => {
-        video = value ? { name: value.name } : null;
-      })
-    ];
+  async function globalChooseMedia() {
+    try {
+      const bridge = await getFsBridge();
+      const selections = await bridge.openMediaFiles('all');
+      if (!selections?.length) return;
+      let firstActivated = false;
+      for (const sel of selections) {
+        const nativeMode = isTauriEnv() && !!sel.path;
+        const isVideo = isVideoFile(sel);
+        const previewUrl = isVideo ? null :
+          (nativeMode && sel.path ? convertFileSrc(sel.path) : null);
+        const entryId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+        const entry: ImageEntry = {
+          id: entryId,
+          name: sel.name || sel.path || 'image',
+          path: sel.path,
+          ...(isVideo && sel.path ? { videoPath: sel.path } : {}),
+          size: sel.size,
+          source: nativeMode && sel.path ? { kind: 'path', path: sel.path } : { kind: 'blob' },
+          previewUrl
+        };
+        if (isVideo && sel.path) {
+          extractVideoFrame({ path: sel.path, frameId: `thumb-${entryId}`, timestamp: 0, maxDimension: 200 })
+            .then((res) => updateEntryPreview(entryId, convertFileSrc(res.path)))
+            .catch(() => {});
+        }
+        const emptyDataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
+        if (!firstActivated) {
+          firstActivated = true;
+          if (nativeMode && sel.path) {
+            (globalThis as any).__ACTIVE_IMAGE_PATH__ = sel.path;
+          }
+          setVideoState(null);
+          setFile(entry, emptyDataset);
+        } else {
+          appendFile(entry, emptyDataset);
+        }
+      }
+      if (selections.length > 1) libraryDrawerOpen.set(true);
+      void logEvent('global:media:loaded');
+    } catch (err) {
+      console.error('[app] Failed to open native dialog', err);
+    }
+  }
 
+  function handleUpload() {
+    if ($currentView === 'home') {
+      requestMediaLoad();
+    } else {
+      void globalChooseMedia();
+    }
+    void logEvent('header:upload');
+  }
+
+  function handleMediaAdd() {
+    if ($currentView === 'home') {
+      requestMediaLoad();
+    } else {
+      void globalChooseMedia();
+    }
+  }
+
+  onMount(() => {
     const log = (message: string) => {
       void logEvent(message);
     };
     log(`renderer:mounted visibility=${document.visibilityState}`);
+
+    const narrowMq = window.matchMedia('(max-width: 1080px)');
+    let libraryWasOpen = false;
+    const handleNarrow = (e: MediaQueryList | MediaQueryListEvent) => {
+      if (e.matches) {
+        libraryWasOpen = get(libraryDrawerOpen);
+        narrowMode.set(true);
+        navCollapsed.set(true);
+        libraryDrawerOpen.set(false);
+      } else {
+        narrowMode.set(false);
+        navCollapsed.set(false);
+        if (libraryWasOpen) {
+          libraryDrawerOpen.set(true);
+          libraryWasOpen = false;
+        }
+      }
+    };
+    handleNarrow(narrowMq);
+    narrowMq.addEventListener('change', handleNarrow);
+
+    const closeSidebars = () => {
+      navCollapsed.set(true);
+      libraryDrawerOpen.set(false);
+    };
+    const handleEscSidebar = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || !get(narrowMode)) return;
+      if (!get(navCollapsed) || get(libraryDrawerOpen)) {
+        e.preventDefault();
+        closeSidebars();
+      }
+    };
+    window.addEventListener('keydown', handleEscSidebar);
 
     let zoomLevel = 1;
     const zoomStep = 0.1;
@@ -208,7 +298,8 @@
     }, 5000);
 
     return () => {
-      unsubs.forEach((unsub) => unsub());
+      narrowMq.removeEventListener('change', handleNarrow);
+      window.removeEventListener('keydown', handleEscSidebar);
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('blur', handleBlur);
@@ -226,6 +317,7 @@
 <main
   class:nav-collapsed={$navCollapsed}
   class:library-open={$libraryDrawerOpen}
+  class:narrow-mode={$narrowMode}
 >
   <nav class="nav" class:collapsed={$navCollapsed}>
     {#each navItems as item}
@@ -240,7 +332,10 @@
       type="button"
       class="header-toggle"
       aria-label={$navCollapsed ? 'Show navigation' : 'Hide navigation'}
-      onclick={() => navCollapsed.update((v) => !v)}
+      onclick={() => {
+        if ($narrowMode && $navCollapsed) libraryDrawerOpen.set(false);
+        navCollapsed.update((v) => !v);
+      }}
     >
       {#if $navCollapsed}
         {@html `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M1 3.5V12.5C1 13.879 2.122 15 3.5 15H12.5C13.878 15 15 13.879 15 12.5V3.5C15 2.122 13.878 1 12.5 1H3.5C2.122 1 1 2.122 1 3.5ZM12.5 14H7V2H12.5C13.327 2 14 2.673 14 3.5V12.5C14 13.327 13.327 14 12.5 14ZM2 3.5C2 2.673 2.673 2 3.5 2H6V14H3.5C2.673 14 2 13.327 2 12.5V3.5Z"/></svg>`}
@@ -254,20 +349,25 @@
         <span class="header-view-title">{activeViewLabel}</span>
         <span class="header-view-desc">{activeViewDesc}</span>
       </div>
-      {#if fileLabel}
-        <div class="header-file-group">
+      <div class="header-file-group">
+        {#if fileLabel}
           <span class="header-separator" aria-hidden="true">&middot;</span>
           <span class="header-file-label" title={fileLabel}>{fileLabel}</span>
           <button type="button" class="header-clear" onclick={handleClear}>Clear</button>
-        </div>
-      {/if}
+        {:else}
+          <button type="button" class="header-upload" onclick={handleUpload}>Upload</button>
+        {/if}
+      </div>
     </div>
 
     <button
       type="button"
       class="header-toggle"
       aria-label={$libraryDrawerOpen ? 'Close library' : 'Open library'}
-      onclick={() => libraryDrawerOpen.update((v) => !v)}
+      onclick={() => {
+        if ($narrowMode && !$libraryDrawerOpen) navCollapsed.set(true);
+        libraryDrawerOpen.update((v) => !v);
+      }}
     >
       {#if $libraryDrawerOpen}
         {@html `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M12.5 1C13.881 1 15 2.119 15 3.5V12.5C15 13.881 13.881 15 12.5 15H3.5C2.119 15 1 13.881 1 12.5V3.5C1 2.119 2.119 1 3.5 1H12.5ZM9 14V2H3.5C2.672 2 2 2.672 2 3.5V12.5C2 13.328 2.672 14 3.5 14H9Z"/></svg>`}
@@ -289,24 +389,24 @@
     {/if}
   </section>
 
-  <aside class:open={$libraryDrawerOpen} class="library-rail" aria-label="Library rail">
+  <aside class="library-rail" aria-label="Library rail">
     {#if $libraryDrawerOpen}
       <div id="library-drawer" class="library-drawer" aria-label="Library drawer">
         <div class="library-drawer__content">
           <header class="library-drawer__header">
-            <h3>Library</h3>
+            <h3>Media Bucket</h3>
+            <button class="library-section__add" onclick={handleMediaAdd} aria-label="Add media">+</button>
           </header>
-          <div class="library-section">
-            <div class="library-section__title-row">
-              <span class="library-section__title">Media Bucket</span>
-              <button class="library-section__add" onclick={requestMediaLoad} aria-label="Add media">+</button>
-            </div>
-            <MediaBucket />
-          </div>
+          <MediaBucket />
         </div>
       </div>
     {/if}
   </aside>
+
+  {#if $narrowMode && (!$navCollapsed || $libraryDrawerOpen)}
+    <div class="sidebar-backdrop" role="presentation"
+      onclick={() => { navCollapsed.set(true); libraryDrawerOpen.set(false); }}></div>
+  {/if}
 
   <ZoomOverlay />
 </main>

@@ -7,7 +7,8 @@
   import { isTauriEnv } from '../bridges/tauri';
   import { loadImageDataset } from '../compute/image-loader';
   import { logEvent } from '../bridges/log';
-  import { openImageZoom as zoomImage } from '../utils/zoom';
+  import { openImageZoom as zoomImage, openSvgZoom, handleZoomKeydown as svgZoomKeydown } from '../utils/zoom';
+  import { generateValuesHistogramSvg } from '../exports/values-histogram';
   import { showSimplifiedTones } from '../stores/ui';
   import { createValueAnalysisRunner } from './values/value-analysis-runner.svelte';
 
@@ -29,22 +30,10 @@
     () => runner.status === 'pending' && runner.analysis === null
   );
 
-  const histogramBins = $derived.by(() => {
+  const valuesHistogram = $derived.by(() => {
     const bins = renderAnalysis?.histogramBins ?? [];
-    if (!bins.length) return [];
-    const maxCount = Math.max(...bins, 1);
-    return bins.map((count, idx) => {
-      const value = bins.length > 1 ? idx / (bins.length - 1) : 0;
-      const normalized = maxCount > 0 ? count / maxCount : 0;
-      const heightPct = count === 0 ? 0 : Math.max(2, Math.round(normalized * 100));
-      return {
-        idx,
-        count,
-        value,
-        heightPct,
-        isEmpty: count === 0
-      };
-    });
+    if (!bins.length) return null;
+    return generateValuesHistogramSvg(bins);
   });
 
   const bucketData = $derived.by(() => {
@@ -268,24 +257,22 @@
       </div>
     </div>
 
+    {#if valuesHistogram}
     <div class="histogram-section">
       <div class="histogram-header">
         <div class="histogram-title">Values Histogram</div>
       </div>
-      <div class="histogram-grid" role="list">
-        {#each histogramBins as bin}
-          <div class="histogram-column">
-            <div
-              class="histogram-bar"
-              style={`height: ${bin.heightPct}%; background: ${
-                bin.isEmpty ? 'transparent' : bucketTone(bin.value)
-              };`}
-              title={bin.count ? `${bin.count} samples` : '0'}
-            ></div>
-          </div>
-        {/each}
+      <div
+        class="histogram-chart zoomable"
+        role="button"
+        tabindex="0"
+        onclick={() => openSvgZoom(valuesHistogram?.svg, valuesHistogram?.width, valuesHistogram?.height, openZoomOverlay)}
+        onkeydown={(event) => svgZoomKeydown(event, valuesHistogram?.svg, valuesHistogram?.width, valuesHistogram?.height, openZoomOverlay)}
+      >
+        {@html valuesHistogram.svg}
       </div>
     </div>
+    {/if}
 
     {#if $showSimplifiedTones}
     <div class="analysis-section">
@@ -388,6 +375,7 @@
   }
 
   .preview {
+    display: block;
     width: 100%;
     border-radius: 12px;
     border: 1px solid rgba(33, 33, 32, 0.2);
@@ -514,25 +502,10 @@
     font-weight: 600;
   }
 
-  .histogram-grid {
-    height: 44px;
-    display: grid;
-    grid-template-columns: repeat(16, minmax(0, 1fr));
-    gap: 4px;
-    align-items: end;
-  }
-
-  .histogram-column {
-    height: 100%;
-    display: flex;
-    align-items: flex-end;
-    padding: 0;
-  }
-
-  .histogram-bar {
+  .histogram-chart :global(svg) {
     width: 100%;
-    border-radius: 4px;
-    box-shadow: inset 0 0 0 1px rgba(33, 33, 32, 0.15);
+    height: auto;
+    display: block;
   }
 
   .analysis-section {

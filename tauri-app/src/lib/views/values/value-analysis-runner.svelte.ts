@@ -1,4 +1,4 @@
-import { onMount, tick } from 'svelte';
+import { tick } from 'svelte';
 import { get } from 'svelte/store';
 import type { SelectedImage, ValueAnalysisResult, ValueAnalysisState } from '../../stores/ui';
 import {

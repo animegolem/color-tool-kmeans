@@ -198,6 +198,7 @@ function createTauriComputeBridge(): ComputeBridge | null {
         quality: params.quality ?? DEFAULT_QUALITY,
         ignoreTopN: params.ignoreTopN ?? DEFAULT_IGNORE_TOP_N,
         mergeThreshold: params.mergeThreshold ?? DEFAULT_MERGE_THRESHOLD,
+        snapToReal: params.snapToReal ?? false,
         minLum: 0,
         tol: params.tol ?? DEFAULT_TOLERANCE,
         maxIter: params.maxIter ?? DEFAULT_MAX_ITER,

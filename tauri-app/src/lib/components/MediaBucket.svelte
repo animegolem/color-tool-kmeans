@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { images, activeImageId, switchToFile, switchToVideo, removeFile } from '../stores/ui';
+  import { images, activeImageId, currentView, switchToFile, switchToVideo, removeFile, clearFile } from '../stores/ui';
+
+  const imageIcon = `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.33333 35H31.6667C33.5076 35 35 33.5076 35 31.6667V8.33333C35 6.49238 33.5076 5 31.6667 5H8.33333C6.49238 5 5 6.49238 5 8.33333V31.6667C5 33.5076 6.49238 35 8.33333 35ZM8.33333 35L26.6667 16.6667L35 25M16.6667 14.1667C16.6667 15.5474 15.5474 16.6667 14.1667 16.6667C12.786 16.6667 11.6667 15.5474 11.6667 14.1667C11.6667 12.786 12.786 11.6667 14.1667 11.6667C15.5474 11.6667 16.6667 12.786 16.6667 14.1667Z" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const videoIcon = `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M30.6667 9.33329L21.3334 16L30.6667 22.6666V9.33329Z" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.6667 6.66663H4.00004C2.52728 6.66663 1.33337 7.86053 1.33337 9.33329V22.6666C1.33337 24.1394 2.52728 25.3333 4.00004 25.3333H18.6667C20.1395 25.3333 21.3334 24.1394 21.3334 22.6666V9.33329C21.3334 7.86053 20.1395 6.66663 18.6667 6.66663Z" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
   function isVideoName(name: string): boolean {
     return /\.mp4$/i.test(name);
@@ -7,7 +10,9 @@
 
   function handleClick(id: string) {
     const entry = $images.find((item) => item.id === id);
-    if (entry && isVideoName(entry.name)) {
+    if (!entry) return;
+    if (isVideoName(entry.name) && $currentView === 'exports') return;
+    if (isVideoName(entry.name)) {
       switchToVideo(id);
     } else {
       switchToFile(id);
@@ -35,6 +40,7 @@
       <div
         class="media-bucket__item"
         class:active={item.id === $activeImageId}
+        class:video-disabled={isVideoName(item.name) && $currentView === 'exports'}
         onclick={() => handleClick(item.id)}
         onkeydown={(e) => handleKeydown(e, item.id)}
         role="button"
@@ -43,6 +49,13 @@
       >
         {#if item.previewUrl}
           <img src={item.previewUrl} alt={item.name} />
+          <span class="media-bucket__badge">
+            {#if isVideoName(item.name)}
+              {@html videoIcon}
+            {:else}
+              {@html imageIcon}
+            {/if}
+          </span>
         {:else}
           <div class="media-bucket__placeholder">{item.name.slice(0, 3)}</div>
         {/if}
@@ -54,6 +67,11 @@
       </div>
     {/each}
   </div>
+  {#if $images.length > 1}
+    <button class="media-bucket__clear-all" onclick={clearFile}>
+      Clear All
+    </button>
+  {/if}
 {/if}
 
 <style>
@@ -82,6 +100,11 @@
     transition: border-color 0.15s ease;
   }
 
+  .media-bucket__item.video-disabled {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
   .media-bucket__item:hover {
     border-color: rgba(33, 33, 32, 0.3);
   }
@@ -103,6 +126,23 @@
     text-transform: uppercase;
     color: rgba(33, 33, 32, 0.5);
     user-select: none;
+  }
+
+  .media-bucket__badge {
+    position: absolute;
+    bottom: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    opacity: 0.5;
+    color: #fff;
+    pointer-events: none;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
+  }
+
+  .media-bucket__badge :global(svg) {
+    width: 100%;
+    height: 100%;
   }
 
   .media-bucket__remove {
@@ -131,5 +171,23 @@
 
   .media-bucket__remove:hover {
     background: rgba(180, 40, 40, 0.85);
+  }
+
+  .media-bucket__clear-all {
+    display: block;
+    margin: 6px auto 0;
+    padding: 4px 10px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--accent);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .media-bucket__clear-all:hover {
+    background: var(--accent);
+    color: #fff;
   }
 </style>

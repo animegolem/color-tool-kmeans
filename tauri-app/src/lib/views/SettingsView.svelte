@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { params, clusterMax, excludeTopMax, showSimplifiedTones, exportDir, videoStripMode } from '../stores/ui';
+  import { params, clusterMax, excludeTopMax, showSimplifiedTones, exportDir, videoStripMode, graphExportFormat } from '../stores/ui';
   import { hydrateFromPrefs } from '../stores/ui';
   import { resetPrefs, DEFAULTS } from '../stores/prefs';
   import { open } from '@tauri-apps/plugin-dialog';
@@ -101,6 +101,17 @@
 
   <div class="group">
     <h2>Export</h2>
+    <div class="field">
+      <span class="field-label">Graph export format</span>
+      <label class="choice">
+        <input type="radio" name="graphExportFormat" value="svg" bind:group={$graphExportFormat} />
+        SVG (raw vector)
+      </label>
+      <label class="choice">
+        <input type="radio" name="graphExportFormat" value="png" bind:group={$graphExportFormat} />
+        PNG (rasterized at scale)
+      </label>
+    </div>
     <label>
       <span>Save directory</span>
       <div class="dir-row">

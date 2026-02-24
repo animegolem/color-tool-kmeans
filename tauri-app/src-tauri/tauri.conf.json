@@ -21,10 +21,10 @@
     "windows": [
       {
         "title": "Color Tool",
-        "width": 1280,
+        "width": 1360,
         "height": 860,
-        "minWidth": 1040,
-        "minHeight": 720,
+        "minWidth": 720,
+        "minHeight": 600,
         "decorations": true
       }
     ]

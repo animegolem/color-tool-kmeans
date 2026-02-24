@@ -11,7 +11,7 @@
 - [[AI-IMP-096-library-drawer-ui|IMP-096]] - completed
 - [[AI-IMP-097-media-ingest|IMP-097]] - completed
 - [[AI-IMP-098-clipboard-paste-images|IMP-098]] - completed
-- [[AI-IMP-099-folder-browser|IMP-099]] - planned
+- [[AI-IMP-099-folder-browser|IMP-099]] - deferred
 - [[AI-IMP-100-active-item-switching-removal|IMP-100]] - completed
 - [[AI-IMP-101-header-bar-layout|IMP-101]] - completed
 - [[AI-IMP-109-sidebar-all-views|IMP-109]] - completed
@@ -46,26 +46,26 @@ Generated from tracked files; binary assets excluded.
 
 - tauri-app/src-tauri/src/bin/bench_runner.rs (1943 LOC)
 - tauri-app/src-tauri/src/color.rs (706 LOC)
-- tauri-app/src/lib/views/ExportsView.svelte (656 LOC)
-- tauri-app/src/lib/views/ValuesView.svelte (654 LOC)
-- tauri-app/src/lib/views/HomeView.svelte (647 LOC)
-- tauri-app/src/lib/views/home/video-controller.svelte.ts (645 LOC)
+- tauri-app/src/lib/views/ExportsView.svelte (698 LOC)
+- tauri-app/src/lib/views/home/video-controller.svelte.ts (650 LOC)
+- tauri-app/src/lib/views/HomeView.svelte (635 LOC)
+- tauri-app/src/lib/stores/ui.ts (628 LOC)
+- tauri-app/src/lib/views/ValuesView.svelte (627 LOC)
 
 ## Size Watch (over 300 LOC)
 
 Generated from tracked files; binary assets excluded.
 
-- tauri-app/src/lib/stores/ui.ts (595 LOC)
 - tauri-app/src-tauri/src/kmeans.rs (581 LOC)
 - tauri-app/src-tauri/src/value_analysis.rs (569 LOC)
-- tauri-app/src/lib/exports/value-analysis.ts (459 LOC)
+- tauri-app/src/lib/exports/value-analysis.ts (447 LOC)
 - RAG/scripts/generate-index.sh (440 LOC)
-- tauri-app/src/app.css (373 LOC)
+- tauri-app/src/app.css (423 LOC)
+- tauri-app/src/App.svelte (412 LOC)
+- tauri-app/src-tauri/src/commands.rs (371 LOC)
 - tauri-app/src-tauri/src/ffmpeg.rs (369 LOC)
-- tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (351 LOC)
-- tauri-app/src-tauri/src/commands.rs (349 LOC)
-- tauri-app/src/lib/exports/polar-chart.ts (339 LOC)
-- tauri-app/src/App.svelte (312 LOC)
+- tauri-app/src/lib/exports/polar-chart.ts (358 LOC)
+- tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (350 LOC)
 
 ---
 

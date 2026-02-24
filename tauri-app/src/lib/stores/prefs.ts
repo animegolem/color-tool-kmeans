@@ -1,9 +1,7 @@
 import { LazyStore } from '@tauri-apps/plugin-store';
-import type { View } from './ui';
 
 export interface PrefsV1 {
   version: 1;
-  view: View;
   analysis: {
     clusters: number;
     quality: number;
@@ -12,6 +10,7 @@ export interface PrefsV1 {
     symbolScale: number;
     showClusterOutline: boolean;
     showAxisLabels: boolean;
+    snapToReal: boolean;
     polarMode: string;
     hueLightnessSizeMode: string;
     histogramSort: string;
@@ -30,22 +29,38 @@ export interface PrefsV1 {
     clusterMax: number;
     excludeTopMax: number;
   };
+  exports: {
+    colorsSourceImage: boolean;
+    colorsPolarChart: boolean;
+    colorsHistogram: boolean;
+    colorsHueLightness: boolean;
+    colorsPaletteStrip: boolean;
+    colorsHistogramAll: boolean;
+    colorsVideoBarcode: boolean;
+    valuesNeutral: boolean;
+    valuesIncludeOriginal: boolean;
+    valuesRangeFinder: boolean;
+    valuesHistogram: boolean;
+    valuesSimplified: boolean;
+    valuesAllStudies: boolean;
+  };
   exportScale: number;
   exportDir: string | null;
+  graphExportFormat: 'png' | 'svg';
 }
 
 export const DEFAULTS: PrefsV1 = {
   version: 1,
-  view: 'home',
   analysis: {
-    clusters: 25,
+    clusters: 45,
     quality: 2,
     ignoreTopN: 0,
-    mergeThreshold: 0.04,
+    mergeThreshold: 0,
     symbolScale: 1,
     showClusterOutline: false,
     showAxisLabels: true,
-    polarMode: 'hsv',
+    snapToReal: true,
+    polarMode: 'okhsv',
     hueLightnessSizeMode: 'chroma',
     histogramSort: 'frequency'
   },
@@ -57,14 +72,30 @@ export const DEFAULTS: PrefsV1 = {
     showPolarChart: true,
     showHueLightness: true,
     showSimplifiedTones: true,
-    videoStripMode: 'filmstrip'
+    videoStripMode: 'barcode'
   },
   limits: {
-    clusterMax: 2000,
-    excludeTopMax: 100
+    clusterMax: 200,
+    excludeTopMax: 10
+  },
+  exports: {
+    colorsSourceImage: true,
+    colorsPolarChart: true,
+    colorsHistogram: true,
+    colorsHueLightness: true,
+    colorsPaletteStrip: false,
+    colorsHistogramAll: false,
+    colorsVideoBarcode: false,
+    valuesNeutral: true,
+    valuesIncludeOriginal: true,
+    valuesRangeFinder: true,
+    valuesHistogram: true,
+    valuesSimplified: true,
+    valuesAllStudies: false
   },
   exportScale: 2,
-  exportDir: null
+  exportDir: null,
+  graphExportFormat: 'svg'
 };
 
 let store: LazyStore | null = null;
@@ -78,13 +109,6 @@ function getStore(): LazyStore {
 
 function deepMerge(defaults: PrefsV1, partial: Record<string, unknown>): PrefsV1 {
   const result = { ...defaults };
-
-  if (typeof partial.view === 'string') {
-    const valid: View[] = ['home', 'values', 'exports', 'settings'];
-    if (valid.includes(partial.view as View)) {
-      result.view = partial.view as View;
-    }
-  }
 
   if (partial.analysis && typeof partial.analysis === 'object') {
     const a = partial.analysis as Record<string, unknown>;
@@ -119,12 +143,26 @@ function deepMerge(defaults: PrefsV1, partial: Record<string, unknown>): PrefsV1
     if (typeof lim.excludeTopMax === 'number') result.limits.excludeTopMax = lim.excludeTopMax;
   }
 
+  if (partial.exports && typeof partial.exports === 'object') {
+    const e = partial.exports as Record<string, unknown>;
+    result.exports = { ...defaults.exports };
+    for (const key of Object.keys(defaults.exports) as (keyof PrefsV1['exports'])[]) {
+      if (key in e && typeof e[key] === 'boolean') {
+        (result.exports as Record<string, unknown>)[key] = e[key];
+      }
+    }
+  }
+
   if (typeof partial.exportScale === 'number') {
     result.exportScale = partial.exportScale;
   }
 
   if (partial.exportDir === null || typeof partial.exportDir === 'string') {
     result.exportDir = partial.exportDir as string | null;
+  }
+
+  if (partial.graphExportFormat === 'png' || partial.graphExportFormat === 'svg') {
+    result.graphExportFormat = partial.graphExportFormat;
   }
 
   return result;
@@ -150,13 +188,14 @@ export async function savePrefs(partial: Partial<PrefsV1>): Promise<void> {
     const current = await s.get<Record<string, unknown>>('prefs');
     const base = current && typeof current === 'object' ? deepMerge(DEFAULTS, current) : { ...DEFAULTS };
 
-    if (partial.view !== undefined) base.view = partial.view;
     if (partial.analysis) base.analysis = { ...base.analysis, ...partial.analysis };
     if (partial.valueAnalysis) base.valueAnalysis = { ...base.valueAnalysis, ...partial.valueAnalysis };
     if (partial.display) base.display = { ...base.display, ...partial.display };
     if (partial.limits) base.limits = { ...base.limits, ...partial.limits };
+    if (partial.exports) base.exports = { ...base.exports, ...partial.exports };
     if (partial.exportScale !== undefined) base.exportScale = partial.exportScale;
     if (partial.exportDir !== undefined) base.exportDir = partial.exportDir;
+    if (partial.graphExportFormat !== undefined) base.graphExportFormat = partial.graphExportFormat;
 
     await s.set('prefs', base);
     await s.save();

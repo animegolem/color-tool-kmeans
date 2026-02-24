@@ -45,6 +45,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   let restoringVideoState = false;
   let _currentLoadCid: string | null = null;
   let _loadSrcTimer: ReturnType<typeof setTimeout> | null = null;
+  let _pendingSeekTime: number | null = null;
 
   function videoResourceSnapshot() {
     return {
@@ -358,6 +359,7 @@ export function createVideoController(deps: VideoControllerDeps) {
       videoSrcUrl = deps.buildPreviewUrl(selection, nativeMode);
       videoDuration = cached.duration;
       videoCurrentTime = cached.currentTime;
+      _pendingSeekTime = cached.currentTime > 0 ? cached.currentTime : null;
       videoFps = cached.fps;
       videoFrameId = existingId ?? cached.frameId;
       videoStripId = cached.stripId ??
@@ -405,6 +407,7 @@ export function createVideoController(deps: VideoControllerDeps) {
     videoDuration = state.duration ?? 0;
     videoFps = state.fps ?? null;
     videoCurrentTime = state.currentTime ?? 0;
+    _pendingSeekTime = videoCurrentTime > 0 ? videoCurrentTime : null;
     videoFrameId =
       globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     videoStripId =
@@ -467,9 +470,12 @@ export function createVideoController(deps: VideoControllerDeps) {
         videoDuration = seekEnd;
       }
     }
-    if (videoCurrentTime > 0) {
-      videoElement.currentTime = videoCurrentTime;
+    const seekTarget = _pendingSeekTime ?? (videoCurrentTime > 0 ? videoCurrentTime : null);
+    if (seekTarget !== null && seekTarget > 0) {
+      videoElement.currentTime = seekTarget;
+      videoCurrentTime = seekTarget;
     }
+    _pendingSeekTime = null;
     if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
       videoAspectRatio = videoElement.videoWidth / videoElement.videoHeight;
     }
@@ -491,18 +497,22 @@ export function createVideoController(deps: VideoControllerDeps) {
 
   function handleVideoSeeked() {
     if (!videoElement || videoScrubbing) return;
+    if (_pendingSeekTime !== null) return;
     videoCurrentTime = videoElement.currentTime;
     pushVideoState();
   }
 
   function handleVideoLoadedData() {
     if (!videoElement) return;
+    const seekTarget = _pendingSeekTime ?? (videoCurrentTime > 0 ? videoCurrentTime : null);
     if (
-      videoCurrentTime > 0 &&
-      Math.abs(videoElement.currentTime - videoCurrentTime) > 0.01
+      seekTarget !== null &&
+      Math.abs(videoElement.currentTime - seekTarget) > 0.01
     ) {
-      videoElement.currentTime = videoCurrentTime;
+      videoElement.currentTime = seekTarget;
+      videoCurrentTime = seekTarget;
     }
+    _pendingSeekTime = null;
     const support = videoElement.canPlayType('video/mp4; codecs="avc1.64001f, mp4a.40.2"');
     devlog('video:loadedData', 'Video loaded data', { readyState: videoElement.readyState });
     void logEvent(
@@ -612,17 +622,13 @@ export function createVideoController(deps: VideoControllerDeps) {
   return {
     get videoSelection() { return videoSelection; },
     get videoSrcUrl() { return videoSrcUrl; },
-    get videoPosterUrl() { return videoPosterUrl; },
     get videoDuration() { return videoDuration; },
     get videoCurrentTime() { return videoCurrentTime; },
     set videoCurrentTime(v: number) { videoCurrentTime = v; },
-    get videoScrubbing() { return videoScrubbing; },
-    get videoFps() { return videoFps; },
     get videoAspectRatio() { return videoAspectRatio; },
     get videoProbePending() { return videoProbePending; },
     get videoStripUrl() { return videoStripUrl; },
     get videoStripPending() { return videoStripPending; },
-    get videoElement() { return videoElement; },
     get videoDisplayUrl() { return videoPosterUrl ?? null; },
     loadVideoSelection,
     clearVideoSelection,
@@ -639,7 +645,6 @@ export function createVideoController(deps: VideoControllerDeps) {
     handleVideoStateChange,
     setVideoElementRef,
     loadSrcEffect,
-    formatTime,
-    scheduleVideoFrameDecode
+    formatTime
   };
 }

@@ -1,4 +1,5 @@
 import { svgDocument, svgRect, svgText } from './svg';
+import { generateValuesHistogramBars } from './values-histogram';
 
 export interface ValueAnalysisExportInput {
   originalSrc: string;
@@ -246,25 +247,12 @@ export async function generateValueAnalysisSvg(
 
   // --- Section 3: Values Histogram ---
   if (includeHistogram && histogramBins.length > 0) {
-    const histBinCount = histogramBins.length || 16;
-    const histBarGap = 4;
-    const histBarWidth = (CONTENT_WIDTH - histBarGap * (histBinCount - 1)) / histBinCount;
-    const maxBin = Math.max(...histogramBins, 1);
-    for (let i = 0; i < histogramBins.length; i++) {
-      const binCount = histogramBins[i];
-      const heightPct = binCount / maxBin;
-      const barH = Math.max(1, Math.round(HISTOGRAM_HEIGHT * heightPct));
-      const barX = MARGIN + i * (histBarWidth + histBarGap);
-      const barY = cursorY + HISTOGRAM_HEIGHT - barH;
-      const fill = grayFill(i / (histogramBins.length - 1));
-      content.push(
-        svgRect({
-          x: barX, y: barY,
-          width: Math.max(1, Math.round(histBarWidth)), height: barH,
-          fill, rx: 4
-        })
-      );
-    }
+    content.push(`<g transform="translate(${MARGIN},${cursorY})">${
+      generateValuesHistogramBars(histogramBins, {
+        width: CONTENT_WIDTH, height: HISTOGRAM_HEIGHT,
+        barGap: 4, barRadius: 4, showBarStroke: false
+      })
+    }</g>`);
     cursorY += HISTOGRAM_HEIGHT + SECTION_GAP;
   }
 

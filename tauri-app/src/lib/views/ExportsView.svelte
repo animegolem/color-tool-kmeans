@@ -1,13 +1,19 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { get } from 'svelte/store';
   import {
     analysisResult,
+    analysisState,
     params,
     selectedFile,
     videoState,
-    exportScale
+    exportScale,
+    exportChecks,
+    graphExportFormat,
+    setAnalysisPending,
+    setAnalysisSuccess,
+    setAnalysisError
   } from '../stores/ui';
+  import { analyzeImage } from '../compute/bridge';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
   import { generateHistogramSvg } from '../exports/histogram';
   import { generateHueLightnessSvg } from '../exports/hue-lightness';
@@ -24,30 +30,45 @@
   import { createValuesExportRunner } from './exports/values-export-runner.svelte';
 
   // --- Store-derived state ---
-  const file = $derived.by(() => get(selectedFile));
-  const result = $derived.by(() => get(analysisResult));
-  const paramSnapshot = $derived.by(() => get(params));
+  const file = $derived($selectedFile);
+  const result = $derived($analysisResult);
+  const paramSnapshot = $derived($params);
 
-  // --- Checkbox state ---
-  let colorsSourceImage = $state(true);
-  let colorsPolarChart = $state(true);
-  let colorsHistogram = $state(true);
-  let colorsHueLightness = $state(true);
-  let colorsPaletteStrip = $state(false);
-  let colorsHistogramAll = $state(false);
-  let colorsVideoBarcode = $state(false);
+  // --- Auto-analyze unanalyzed images ---
+  let analysisRunning = $state(false);
 
-  const videoStrip = $derived.by(() => {
-    const vs = get(videoState);
-    return vs?.stripPath ? { path: vs.stripPath, url: convertFileSrc(vs.stripPath) } : null;
+  async function ensureColorAnalysis() {
+    if (!file?.path || result || analysisRunning) return;
+    if ($analysisState === 'pending') return;
+    analysisRunning = true;
+    setAnalysisPending();
+    try {
+      const response = await analyzeImage(
+        file.dataset,
+        { ...paramSnapshot, tol: 1e-3, maxIter: 40, seed: 1, maxSamples: 300_000 }
+      );
+      setAnalysisSuccess(response, file.id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Analysis failed';
+      setAnalysisError(msg);
+    } finally {
+      analysisRunning = false;
+    }
+  }
+
+  $effect(() => {
+    const _file = file;
+    const _result = result;
+    if (_file && !_result) {
+      void ensureColorAnalysis();
+    }
   });
 
-  let valuesNeutral = $state(true);
-  let valuesIncludeOriginal = $state(true);
-  let valuesRangeFinder = $state(true);
-  let valuesHistogram = $state(true);
-  let valuesSimplified = $state(true);
-  let valuesAllStudies = $state(false);
+  // --- Checkbox state (persisted via exportChecks store) ---
+  const videoStrip = $derived.by(() => {
+    const vs = $videoState;
+    return vs?.stripPath ? { path: vs.stripPath, url: convertFileSrc(vs.stripPath) } : null;
+  });
 
   // --- Save state ---
   let isSaving = $state(false);
@@ -56,24 +77,25 @@
   let dismissTimer: ReturnType<typeof setTimeout> | null = null;
 
   const colorsAnyChecked = $derived(
-    colorsSourceImage || colorsPolarChart || colorsHistogram ||
-    colorsHueLightness || colorsPaletteStrip || colorsVideoBarcode
+    $exportChecks.colorsSourceImage || $exportChecks.colorsPolarChart || $exportChecks.colorsHistogram ||
+    $exportChecks.colorsHueLightness || $exportChecks.colorsPaletteStrip || $exportChecks.colorsVideoBarcode
   );
   const valuesAnyChecked = $derived(
-    valuesNeutral || valuesRangeFinder || valuesHistogram || valuesSimplified
+    $exportChecks.valuesNeutral || $exportChecks.valuesRangeFinder || $exportChecks.valuesHistogram || $exportChecks.valuesSimplified
   );
 
   const valuesRunner = createValuesExportRunner({
     getFile: () => file,
     getExportScale: () => $exportScale,
     getCheckboxState: () => ({
-      valuesNeutral,
-      valuesIncludeOriginal,
-      valuesRangeFinder,
-      valuesHistogram,
-      valuesSimplified,
-      valuesAllStudies
+      valuesNeutral: $exportChecks.valuesNeutral,
+      valuesIncludeOriginal: $exportChecks.valuesIncludeOriginal,
+      valuesRangeFinder: $exportChecks.valuesRangeFinder,
+      valuesHistogram: $exportChecks.valuesHistogram,
+      valuesSimplified: $exportChecks.valuesSimplified,
+      valuesAllStudies: $exportChecks.valuesAllStudies
     }),
+    getGraphExportFormat: () => $graphExportFormat,
     performSave,
     baseName,
     setStatus
@@ -99,28 +121,29 @@
     const input: ColorStudyInput = {};
     if (!file || !result) return input;
 
-    if (colorsSourceImage && file.previewUrl) {
+    if ($exportChecks.colorsSourceImage && file.previewUrl) {
       const dataUrl = await toDataUrl(file.previewUrl);
       const img = await loadImageDimensions(dataUrl);
       input.sourceImage = imageToTile(dataUrl, img.width, img.height, 'source-image');
     }
 
-    if (colorsPolarChart) {
+    if ($exportChecks.colorsPolarChart) {
       const { svg } = generateCircleGraphSvg(result.clusters, {
         symbolScale: paramSnapshot.symbolScale,
         showAxisLabels: paramSnapshot.showAxisLabels,
         showStroke: paramSnapshot.showClusterOutline,
-        mode: paramSnapshot.polarMode
+        mode: paramSnapshot.polarMode,
+        fontSize: 20
       });
       input.polarChart = svgToTile(svg, 'polar-chart');
     }
 
-    if (colorsHistogram) {
+    if ($exportChecks.colorsHistogram) {
       const primarySort = paramSnapshot.histogramSort;
-      const { svg } = generateHistogramSvg(result.clusters, { sortBy: primarySort, hPadding: 0 });
+      const { svg } = generateHistogramSvg(result.clusters, { sortBy: primarySort, hPadding: 0, fontSize: 16 });
       input.histogram = svgToTile(svg, 'histogram');
 
-      if (colorsHistogramAll) {
+      if ($exportChecks.colorsHistogramAll) {
         const allModes: Array<'frequency' | 'hue' | 'lightness'> = ['frequency', 'hue', 'lightness'];
         input.secondaryHistograms = allModes
           .filter(m => m !== primarySort)
@@ -131,22 +154,23 @@
       }
     }
 
-    if (colorsHueLightness) {
+    if ($exportChecks.colorsHueLightness) {
       const { svg } = generateHueLightnessSvg(result.clusters, {
         symbolScale: paramSnapshot.symbolScale,
         showAxisLabels: paramSnapshot.showAxisLabels,
         showStroke: paramSnapshot.showClusterOutline,
-        sizeMode: paramSnapshot.hueLightnessSizeMode
+        sizeMode: paramSnapshot.hueLightnessSizeMode,
+        fontSize: 18
       });
       input.hueLightness = svgToTile(svg, 'hue-lightness');
     }
 
-    if (colorsPaletteStrip) {
+    if ($exportChecks.colorsPaletteStrip) {
       const { svg } = generatePaletteSvg(result.clusters, { maxClusters: 20 });
       input.paletteStrip = svgToTile(svg, 'palette-strip');
     }
 
-    if (colorsVideoBarcode && videoStrip) {
+    if ($exportChecks.colorsVideoBarcode && videoStrip) {
       const dataUrl = await toDataUrl(videoStrip.url);
       const img = await loadImageDimensions(dataUrl);
       input.videoBarcode = imageToTile(dataUrl, img.width, img.height, 'video-barcode');
@@ -179,20 +203,25 @@
   }
 
   // --- Individual saves ---
-  async function saveIndividualPng(
+  async function saveIndividualChart(
     generator: () => { svg: string; width: number; height: number },
     suffix: string
   ) {
     await performSave(async () => {
       const { svg, width, height } = generator();
-      const scale = Math.max(1, Math.min(4, $exportScale));
-      const blob = await svgToPngBlob(svg, width, height, scale);
+      const format = $graphExportFormat;
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-${suffix}.png`);
-      if (canceled) {
-        setStatus('Export canceled.', 'info');
+      if (format === 'svg') {
+        const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+        const { canceled } = await bridge.saveBlob(blob, `${baseName()}-${suffix}.svg`);
+        if (canceled) setStatus('Export canceled.', 'info');
+        else setStatus(`${suffix} SVG saved.`, 'info');
       } else {
-        setStatus(`${suffix} PNG saved.`, 'info');
+        const scale = Math.max(1, Math.min(4, $exportScale));
+        const blob = await svgToPngBlob(svg, width, height, scale);
+        const { canceled } = await bridge.saveBlob(blob, `${baseName()}-${suffix}.png`);
+        if (canceled) setStatus('Export canceled.', 'info');
+        else setStatus(`${suffix} PNG saved.`, 'info');
       }
     });
   }
@@ -202,13 +231,15 @@
       symbolScale: paramSnapshot.symbolScale,
       showAxisLabels: paramSnapshot.showAxisLabels,
       showStroke: paramSnapshot.showClusterOutline,
-      mode: paramSnapshot.polarMode
+      mode: paramSnapshot.polarMode,
+      fontSize: 20
     });
   }
 
   function histogramGenerator() {
     return generateHistogramSvg(result!.clusters, {
-      sortBy: paramSnapshot.histogramSort
+      sortBy: paramSnapshot.histogramSort,
+      fontSize: 16
     });
   }
 
@@ -217,7 +248,8 @@
       symbolScale: paramSnapshot.symbolScale,
       showAxisLabels: paramSnapshot.showAxisLabels,
       showStroke: paramSnapshot.showClusterOutline,
-      sizeMode: paramSnapshot.hueLightnessSizeMode
+      sizeMode: paramSnapshot.hueLightnessSizeMode,
+      fontSize: 18
     });
   }
 
@@ -332,45 +364,45 @@
       <h2>Colors</h2>
       <div class="builder-items">
         <label class="builder-item">
-          <input type="checkbox" bind:checked={colorsSourceImage} />
+          <input type="checkbox" bind:checked={$exportChecks.colorsSourceImage} />
           <span>Source Image</span>
           <span class="spacer"></span>
           <button class="item-download" title="Save PNG" disabled={isSaving || !file.previewUrl} onclick={saveSourceImagePng}>↓</button>
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={colorsPolarChart} />
+          <input type="checkbox" bind:checked={$exportChecks.colorsPolarChart} />
           <span>Polar Chart</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={() => saveIndividualPng(polarGenerator, 'polar')}>↓</button>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={() => saveIndividualChart(polarGenerator, 'polar')}>↓</button>
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={colorsHistogram} />
+          <input type="checkbox" bind:checked={$exportChecks.colorsHistogram} />
           <span>Cluster Histogram</span>
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <span class="sub-toggle" onclick={(e) => e.stopPropagation()}>
             <label class="sub-toggle-inner" title="Include frequency, hue, and lightness sort modes">
-              <input type="checkbox" bind:checked={colorsHistogramAll} disabled={!colorsHistogram} />
+              <input type="checkbox" bind:checked={$exportChecks.colorsHistogramAll} disabled={!$exportChecks.colorsHistogram} />
               <span class="sub-toggle-label">All sorts</span>
             </label>
           </span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={() => saveIndividualPng(histogramGenerator, 'histogram')}>↓</button>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={() => saveIndividualChart(histogramGenerator, 'histogram')}>↓</button>
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={colorsHueLightness} />
+          <input type="checkbox" bind:checked={$exportChecks.colorsHueLightness} />
           <span>Hue × Lightness</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={() => saveIndividualPng(hueLightnessGenerator, 'hue-lightness')}>↓</button>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={() => saveIndividualChart(hueLightnessGenerator, 'hue-lightness')}>↓</button>
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={colorsPaletteStrip} />
+          <input type="checkbox" bind:checked={$exportChecks.colorsPaletteStrip} />
           <span>Palette Strip (top 20)</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={() => saveIndividualPng(paletteGenerator, 'palette')}>↓</button>
+          <button class="item-download" title="Save PNG" disabled={isSaving} onclick={() => saveIndividualChart(paletteGenerator, 'palette')}>↓</button>
         </label>
         <label class="builder-item" class:disabled={!videoStrip}>
-          <input type="checkbox" bind:checked={colorsVideoBarcode} disabled={!videoStrip} />
+          <input type="checkbox" bind:checked={$exportChecks.colorsVideoBarcode} disabled={!videoStrip} />
           <span>Video Barcode</span>
           <span class="spacer"></span>
           <button class="item-download" title="Save PNG" disabled={isSaving || !videoStrip} onclick={saveVideoBarcodeImage}>↓</button>
@@ -385,13 +417,13 @@
       <h2>Values</h2>
       <div class="builder-items">
         <label class="builder-item">
-          <input type="checkbox" bind:checked={valuesNeutral} />
+          <input type="checkbox" bind:checked={$exportChecks.valuesNeutral} />
           <span>Neutral Values</span>
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <span class="sub-toggle" onclick={(e) => e.stopPropagation()}>
             <label class="sub-toggle-inner" title="Include original image alongside neutral">
-              <input type="checkbox" bind:checked={valuesIncludeOriginal} disabled={!valuesNeutral} />
+              <input type="checkbox" bind:checked={$exportChecks.valuesIncludeOriginal} disabled={!$exportChecks.valuesNeutral} />
               <span class="sub-toggle-label">Include original</span>
             </label>
           </span>
@@ -399,25 +431,25 @@
           <button class="item-download" title="Save PNG" disabled={isSaving} onclick={valuesRunner.saveNeutralImage}>↓</button>
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={valuesRangeFinder} />
+          <input type="checkbox" bind:checked={$exportChecks.valuesRangeFinder} />
           <span>Range Finder</span>
           <span class="spacer"></span>
           <button class="item-download" title="Save PNG" disabled={isSaving} onclick={valuesRunner.saveRangeFinderPng}>↓</button>
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={valuesHistogram} />
+          <input type="checkbox" bind:checked={$exportChecks.valuesHistogram} />
           <span>Values Histogram</span>
           <span class="spacer"></span>
           <button class="item-download" title="Save PNG" disabled={isSaving} onclick={valuesRunner.saveValuesHistogramPng}>↓</button>
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={valuesSimplified} />
+          <input type="checkbox" bind:checked={$exportChecks.valuesSimplified} />
           <span>Simplified Values</span>
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <span class="sub-toggle" onclick={(e) => e.stopPropagation()}>
             <label class="sub-toggle-inner" title="Include all 4 notan study levels (2-5)">
-              <input type="checkbox" bind:checked={valuesAllStudies} disabled={!valuesSimplified} />
+              <input type="checkbox" bind:checked={$exportChecks.valuesAllStudies} disabled={!$exportChecks.valuesSimplified} />
               <span class="sub-toggle-label">All studies</span>
             </label>
           </span>
@@ -458,7 +490,13 @@
       </div>
     </div>
   {:else}
-    <div class="empty">Select an image and complete analysis to unlock exports.</div>
+    <div class="empty" class:analyzing={file && $analysisState === 'pending'}>
+      {#if file && $analysisState === 'pending'}
+        Analyzing\u2026
+      {:else}
+        Select an image and complete analysis to unlock exports.
+      {/if}
+    </div>
   {/if}
 
   {#if isSaving}
@@ -630,6 +668,10 @@
     background: var(--panel);
     border-radius: 8px;
     color: rgba(33, 33, 32, 0.6);
+  }
+
+  .empty.analyzing {
+    animation: pulse-opacity 1.2s ease-in-out infinite;
   }
 
   .status {

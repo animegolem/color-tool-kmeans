@@ -12,7 +12,6 @@ export interface FileIngestionDeps {
   setFile: (entry: ImageEntry, dataset: { width: number; height: number; pixels: Uint8Array }) => void;
   appendFile: (entry: ImageEntry, dataset: { width: number; height: number; pixels: Uint8Array }) => void;
   setAnalysisError: (message: string) => void;
-  resetAnalysis: () => void;
   cancelPending: () => void;
   scheduleAnalysisWith: (file: SelectedImage, params: AnalysisParams, status: string) => void;
   recordDevEvent: (update: { fsBridge?: string }, type: 'file') => void;

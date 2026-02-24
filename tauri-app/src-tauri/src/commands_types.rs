@@ -41,6 +41,8 @@ pub struct AnalyzeRequest {
     pub seed: u64,
     #[serde(default = "default_max_samples")]
     pub max_samples: usize,
+    #[serde(default, alias = "snap_to_real")]
+    pub snap_to_real: bool,
 }
 
 #[derive(Debug, Serialize, Clone, Copy)]

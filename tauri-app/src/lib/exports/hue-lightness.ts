@@ -9,6 +9,7 @@ export interface HueLightnessOptions {
   sizeMode?: 'frequency' | 'chroma';
   width?: number;
   height?: number;
+  fontSize?: number;
 }
 
 export interface HueLightnessResult {
@@ -99,13 +100,14 @@ export function generateHueLightnessSvg(
   svgParts.push(...circleParts);
 
   if (options.showAxisLabels !== false) {
+    const labelFontSize = options.fontSize ?? 14;
     svgParts.push(
       svgText(
         {
           x: padding + plotWidth / 2,
           y: height - 8,
           'font-family': 'Fira Sans',
-          'font-size': 14,
+          'font-size': labelFontSize,
           fill: 'rgba(16,17,17,0.6)',
           'text-anchor': 'middle'
         },
@@ -118,7 +120,7 @@ export function generateHueLightnessSvg(
           x: 12,
           y: padding + plotHeight / 2,
           'font-family': 'Fira Sans',
-          'font-size': 14,
+          'font-size': labelFontSize,
           fill: 'rgba(16,17,17,0.6)',
           'text-anchor': 'middle',
           transform: `rotate(-90 12 ${padding + plotHeight / 2})`
