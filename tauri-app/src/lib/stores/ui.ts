@@ -299,6 +299,12 @@ export function setFile(entry: ImageEntry, dataset: ImageDataset) {
   }
 }
 
+export function updateEntryPreview(id: string, previewUrl: string) {
+  images.update((list) =>
+    list.map((item) => item.id === id ? { ...item, previewUrl } : item)
+  );
+}
+
 export function appendFile(entry: ImageEntry, dataset: ImageDataset) {
   imageDatasets.set(entry.id, dataset);
   trackPreviewUrl(entry);

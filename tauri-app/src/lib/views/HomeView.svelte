@@ -14,6 +14,7 @@
     params,
     clearFile,
     appendFile,
+    updateEntryPreview,
     analysisState,
     analysisResult,
     analysisError,
@@ -152,7 +153,8 @@
       runner.cancelPending();
       video.loadVideoSelection(sel);
     },
-    openLibraryDrawer: () => libraryDrawerOpen.set(true)
+    openLibraryDrawer: () => libraryDrawerOpen.set(true),
+    updateEntryPreview
   });
 
   // --- Video controller ---

@@ -5,6 +5,7 @@ import type { FileSelection } from '../../bridges/fs';
 import { getFsBridge, isVideoFile, inferMimeType } from '../../bridges/fs';
 import { isTauriEnv } from '../../bridges/tauri';
 import { loadImageDataset } from '../../compute/image-loader';
+import { extractVideoFrame } from '../../bridges/video';
 import { logEvent } from '../../bridges/log';
 
 export interface FileIngestionDeps {
@@ -21,6 +22,7 @@ export interface FileIngestionDeps {
   clearVideoSelection: () => void;
   loadVideoSelection: (sel: FileSelection) => void;
   openLibraryDrawer: () => void;
+  updateEntryPreview: (id: string, previewUrl: string) => void;
 }
 
 export function createFileIngestion(deps: FileIngestionDeps) {
@@ -115,20 +117,37 @@ export function createFileIngestion(deps: FileIngestionDeps) {
         dataset = await loadImageDataset(fileSelection.blob);
       }
       if (token !== loadToken) return;
-      const previewUrl = buildPreviewUrl(fileSelection, nativeMode);
+      const isVideo = isVideoFile(fileSelection);
+      const previewUrl = isVideo ? null : buildPreviewUrl(fileSelection, nativeMode);
       const source: ImageEntry['source'] =
         nativeMode && fileSelection.path
           ? { kind: 'path', path: fileSelection.path }
           : { kind: 'blob' };
+      const entryId =
+        globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
       const selected: ImageEntry = {
-        id:
-          globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+        id: entryId,
         name: fileSelection.name || fileSelection.path || 'image',
         path: fileSelection.path,
+        ...(isVideo && fileSelection.path ? { videoPath: fileSelection.path } : {}),
         size: fileSelection.size,
         source,
         previewUrl
       };
+      // For video files, extract a static thumbnail asynchronously to avoid
+      // WebKit auto-playing MP4 content inside <img> tags (causes renderer crash)
+      if (isVideo && fileSelection.path) {
+        const videoPath = fileSelection.path;
+        const frameId = `thumb-${entryId}`;
+        extractVideoFrame({ path: videoPath, frameId, timestamp: 0, maxDimension: 200 })
+          .then((res) => {
+            const thumbUrl = convertFileSrc(res.path);
+            deps.updateEntryPreview(entryId, thumbUrl);
+          })
+          .catch((err) => {
+            console.warn('[file-ingestion] Video thumbnail extraction failed', err);
+          });
+      }
       deps.setBannerMessage(null);
       if (activate) {
         deps.setFile(selected, dataset);
