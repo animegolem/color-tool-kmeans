@@ -6,6 +6,11 @@ import { getComputeBridge } from './lib/bridges/compute';
 import { getFsBridge } from './lib/bridges/fs';
 import { loadPrefs } from './lib/stores/prefs';
 import { hydrateFromPrefs } from './lib/stores/ui';
+import { registerIpcSink } from './lib/utils/devlog';
+import { logEvent } from './lib/bridges/log';
+
+// Wire devlog → logEvent IPC so all devlog lines reach the terminal via Rust stderr
+registerIpcSink((msg) => void logEvent(msg, 'devlog'));
 
 async function logRuntimeBanner() {
   try {

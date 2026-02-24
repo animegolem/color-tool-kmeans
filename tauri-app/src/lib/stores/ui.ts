@@ -2,6 +2,7 @@ import { writable, derived, get } from 'svelte/store';
 import type { ImageDataset } from '../compute/image-loader';
 import type { PrefsV1 } from './prefs';
 import { savePrefs } from './prefs';
+import { devlog, registerResourceCounter } from '../utils/devlog';
 
 export type View = 'home' | 'values' | 'exports' | 'settings';
 
@@ -31,6 +32,7 @@ export interface ImageEntry {
   id: string;
   name: string;
   path?: string;
+  videoPath?: string;
   size: number;
   source: ImageSource;
   previewUrl: string | null;
@@ -45,6 +47,15 @@ export const activeImageId = writable<string | null>(null);
 
 const imageDatasets = new Map<string, ImageDataset>();
 const objectUrls = new Map<string, string>();
+
+export function getResourceCounts() {
+  return {
+    images: get(images).length,
+    datasets: imageDatasets.size,
+    objectUrls: objectUrls.size
+  };
+}
+registerResourceCounter(getResourceCounts);
 
 export const selectedFile = derived([images, activeImageId], ([$images, $activeId]) => {
   if (!$activeId) return null;
@@ -265,16 +276,20 @@ function releaseImage(entry: ImageEntry) {
 export function setFile(entry: ImageEntry, dataset: ImageDataset) {
   imageDatasets.set(entry.id, dataset);
   trackPreviewUrl(entry);
+  let matched = false;
   images.update((list) => {
     const index = list.findIndex((item) => item.id === entry.id);
     if (index === -1) {
       return [...list, entry];
     }
+    matched = true;
     const next = list.slice();
     next[index] = entry;
     return next;
   });
   activeImageId.set(entry.id);
+  devlog('store:setFile', 'Set file', { id: entry.id, name: entry.name, matched, imagesAfter: get(images).length });
+  devlog.resources('store:setFile');
   const cached = get(analysisById)[entry.id] ?? null;
   if (cached) {
     analysisState.set('ready');
@@ -287,20 +302,27 @@ export function setFile(entry: ImageEntry, dataset: ImageDataset) {
 export function appendFile(entry: ImageEntry, dataset: ImageDataset) {
   imageDatasets.set(entry.id, dataset);
   trackPreviewUrl(entry);
+  let matched = false;
   images.update((list) => {
     const index = list.findIndex((item) => item.id === entry.id);
     if (index === -1) return [...list, entry];
+    matched = true;
     const next = list.slice();
     next[index] = entry;
     return next;
   });
+  devlog('store:appendFile', 'Append file', { id: entry.id, name: entry.name, matched, imagesAfter: get(images).length });
+  devlog.resources('store:appendFile');
 }
 
 export function removeFile(id: string) {
   const list = get(images);
   const entry = list.find((item) => item.id === id);
+  const found = !!entry;
   if (entry) releaseImage(entry);
   images.update((items) => items.filter((item) => item.id !== id));
+  devlog('store:removeFile', 'Remove file', { id, found, remaining: get(images).length });
+  devlog.resources('store:removeFile');
   analysisById.update((cache) => {
     const next = { ...cache };
     delete next[id];
@@ -337,6 +359,7 @@ export function removeFile(id: string) {
 export function switchToFile(id: string) {
   const list = get(images);
   const entry = list.find((item) => item.id === id);
+  devlog('store:switchToFile', 'Switch to file', { id, found: !!entry });
   if (!entry) return;
 
   if (entry.path) {
@@ -355,6 +378,8 @@ export function switchToFile(id: string) {
 }
 
 export function clearActiveSelection() {
+  const hadActiveId = get(activeImageId) !== null;
+  devlog('store:clearActive', 'Clear active selection', { hadActiveId, imagesCount: get(images).length });
   activeImageId.set(null);
   resetAnalysis();
   setVideoState(null);
@@ -365,10 +390,17 @@ export function clearActiveSelection() {
   }
 }
 
-export const pendingVideoSwitch = writable<string | null>(null);
+export interface PendingVideoSwitch {
+  id: string;
+  cid: string;
+}
+
+export const pendingVideoSwitch = writable<PendingVideoSwitch | null>(null);
 
 export function switchToVideo(id: string) {
-  pendingVideoSwitch.set(id);
+  const cid = devlog.cid();
+  devlog('store:switchToVideo', 'Switch to video', { id, cid });
+  pendingVideoSwitch.set({ id, cid });
 }
 
 export const mediaLoadRequested = writable<number>(0);
@@ -378,15 +410,19 @@ export function requestMediaLoad() {
 }
 
 export function clearFile() {
+  const count = get(images).length;
+  devlog('store:clearFile', 'Clear all files', { count });
   images.update((list) => {
     list.forEach((entry) => releaseImage(entry));
     return [];
   });
+  devlog.resources('store:clearFile');
   activeImageId.set(null);
   analysisById.set({});
   valueAnalysisByKey.set({});
   valueAnalysisStateByKey.set({});
   valueAnalysisErrorByKey.set({});
+  videoStateCache.set({});
   resetAnalysis();
   setVideoState(null);
   try {
@@ -431,6 +467,28 @@ export const videoState = writable<VideoState | null>(null);
 
 export function setVideoState(state: VideoState | null) {
   videoState.set(state);
+}
+
+// --- Video state cache (session-scoped) ---
+
+export interface VideoCacheEntry {
+  duration: number;
+  fps: number | null;
+  currentTime: number;
+  stripPath: string | null;
+  stripId: string | null;
+  posterPath: string | null;
+  frameId: string;
+}
+
+export const videoStateCache = writable<Record<string, VideoCacheEntry>>({});
+
+export function cacheVideoState(videoPath: string, entry: VideoCacheEntry) {
+  videoStateCache.update((cache) => ({ ...cache, [videoPath]: entry }));
+}
+
+export function getCachedVideoState(videoPath: string): VideoCacheEntry | null {
+  return get(videoStateCache)[videoPath] ?? null;
 }
 
 // --- Preferences hydration & write-back ---

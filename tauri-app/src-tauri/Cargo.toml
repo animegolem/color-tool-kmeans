@@ -17,8 +17,8 @@ thiserror = "1.0"
 anyhow = "1.0"
 rand = { version = "0.8", features = ["small_rng"] }
 rayon = "1.8"
-image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
-tauri = { version = "2.0", features = ["protocol-asset"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp", "tiff"] }
+tauri = { version = "2.0", features = ["protocol-asset", "devtools"] }
 tauri-plugin-shell = "2.0"
 tauri-plugin-dialog = "2.0"
 tauri-plugin-store = "2"

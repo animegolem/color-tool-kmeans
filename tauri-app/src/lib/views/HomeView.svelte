@@ -10,12 +10,14 @@
   import {
     selectedFile,
     images,
+    activeImageId,
     params,
     clearFile,
     appendFile,
     analysisState,
     analysisResult,
     analysisError,
+    resetAnalysis,
     setAnalysisPending,
     setAnalysisSuccess,
     setAnalysisError,
@@ -24,6 +26,8 @@
     videoState,
     setVideoState,
     setFile,
+    getCachedVideoState,
+    cacheVideoState,
     videoStripMode,
     libraryDrawerOpen,
     pendingVideoSwitch,
@@ -32,6 +36,7 @@
   import { isTauriEnv, tauriDetectionInfo } from '../bridges/tauri';
   import { getFfmpegVersion } from '../bridges/ffmpeg';
   import { logEvent } from '../bridges/log';
+  import { devlog } from '../utils/devlog';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
   import { generateHueLightnessSvg } from '../exports/hue-lightness';
   import { generateHistogramSvg } from '../exports/histogram';
@@ -140,7 +145,13 @@
     getParams: () => currentParams,
     getStatus: () => status,
     clearVideoSelection: () => video.clearVideoSelection(),
-    loadVideoSelection: (sel) => { clearSelection(); video.loadVideoSelection(sel); },
+    loadVideoSelection: (sel) => {
+      activeImageId.set(null);
+      resetAnalysis();
+      try { delete (globalThis as any).__ACTIVE_IMAGE_PATH__; } catch {}
+      runner.cancelPending();
+      video.loadVideoSelection(sel);
+    },
     openLibraryDrawer: () => libraryDrawerOpen.set(true)
   });
 
@@ -158,7 +169,9 @@
     getCurrentParams: () => currentParams,
     clearLastRequestKey: () => runner.clearLastRequestKey(),
     captureAnalysisScroll: () => runner.captureAnalysisScroll(),
-    getVideoStripMode: () => get(videoStripMode)
+    getVideoStripMode: () => get(videoStripMode),
+    getCachedVideoState,
+    cacheVideoState
   });
 
   // --- Derived chart state ---
@@ -253,6 +266,7 @@
 
   // --- Lifecycle ---
   onMount(() => {
+    devlog('home:mount', 'HomeView mounted');
     void logEvent('home:view:mount');
     void checkFfmpegVersion();
     let unlistenDragDrop: (() => void) | null = null;
@@ -263,21 +277,34 @@
       analysisState.subscribe((value) => { status = value; }),
       analysisResult.subscribe((value) => { result = value; }),
       analysisError.subscribe((value) => { analysisErr = value; }),
-      videoState.subscribe((state) => { video.handleVideoStateChange(state); }),
+      videoState.subscribe((state) => {
+        devlog('home:videoState', 'Video state changed', { hasState: state !== null, path: state?.path ?? null });
+        video.handleVideoStateChange(state);
+      }),
       (() => { let first = true; return videoStripMode.subscribe(() => { if (first) { first = false; return; } video.regenerateStrip(); }); })(),
-      pendingVideoSwitch.subscribe((id) => {
-        if (!id) return;
+      pendingVideoSwitch.subscribe((pending) => {
+        if (!pending) return;
+        const { id, cid } = pending;
         pendingVideoSwitch.set(null);
         const entry = get(images).find((item) => item.id === id);
+        devlog('home:videoSwitch', 'Pending video switch', {
+          id, cid, entryFound: !!entry, path: entry?.path ?? null
+        });
         if (!entry?.path) return;
-        clearSelection();
+        // Clear active image state WITHOUT touching videoState (avoids cascade)
+        activeImageId.set(null);
+        resetAnalysis();
+        try { delete (globalThis as any).__ACTIVE_IMAGE_PATH__; } catch {}
+        runner.cancelPending();
+        const videoPath = entry.videoPath ?? entry.path;
+        devlog('home:videoSwitch:load', 'Loading video selection', { cid, existingId: entry.id, videoPath });
         video.loadVideoSelection({
           name: entry.name,
-          path: entry.path,
+          path: videoPath,
           size: entry.size,
           blob: new Blob([], { type: 'video/mp4' }),
           mimeType: 'video/mp4'
-        });
+        }, entry.id, cid);
       }),
       (() => { let first = true; return mediaLoadRequested.subscribe(() => { if (first) { first = false; return; } ingestion.chooseMedia(); }); })()
     ];
@@ -329,6 +356,8 @@
       window.removeEventListener('pointerup', handleScrubEnd);
       window.removeEventListener('pointercancel', handleScrubEnd);
       if (unlistenDragDrop) unlistenDragDrop();
+      devlog('home:unmount', 'HomeView unmounting');
+      devlog.resources('home:unmount');
       void logEvent('home:view:unmount');
     };
   });

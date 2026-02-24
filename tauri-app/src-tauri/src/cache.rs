@@ -11,6 +11,7 @@ pub struct EventLog {
 impl EventLog {
     pub fn append(&self, message: &str) {
         let timestamp = Local::now().to_rfc3339_opts(SecondsFormat::Millis, false);
+        eprintln!("[log] {timestamp} {message}");
         let line = format!("{timestamp} {message}\n");
         if let Ok(mut file) = OpenOptions::new()
             .create(true)
