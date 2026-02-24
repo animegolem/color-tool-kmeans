@@ -397,10 +397,16 @@ export interface PendingVideoSwitch {
 
 export const pendingVideoSwitch = writable<PendingVideoSwitch | null>(null);
 
+let _videoSwitchTimer: ReturnType<typeof setTimeout> | null = null;
+
 export function switchToVideo(id: string) {
   const cid = devlog.cid();
-  devlog('store:switchToVideo', 'Switch to video', { id, cid });
-  pendingVideoSwitch.set({ id, cid });
+  devlog('store:switchToVideo', 'Switch to video (debounced)', { id, cid });
+  if (_videoSwitchTimer) clearTimeout(_videoSwitchTimer);
+  _videoSwitchTimer = setTimeout(() => {
+    _videoSwitchTimer = null;
+    pendingVideoSwitch.set({ id, cid });
+  }, 150);
 }
 
 export const mediaLoadRequested = writable<number>(0);

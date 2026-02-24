@@ -44,6 +44,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   let videoElement: HTMLVideoElement | null = $state(null);
   let restoringVideoState = false;
   let _currentLoadCid: string | null = null;
+  let _loadSrcTimer: ReturnType<typeof setTimeout> | null = null;
 
   function videoResourceSnapshot() {
     return {
@@ -112,6 +113,10 @@ export function createVideoController(deps: VideoControllerDeps) {
     if (videoDecodeTimer) {
       clearTimeout(videoDecodeTimer);
       videoDecodeTimer = null;
+    }
+    if (_loadSrcTimer) {
+      clearTimeout(_loadSrcTimer);
+      _loadSrcTimer = null;
     }
   }
 
@@ -279,6 +284,7 @@ export function createVideoController(deps: VideoControllerDeps) {
         deps.clearLastRequestKey();
         deps.scheduleAnalysisWith({ ...entry, dataset }, deps.getCurrentParams());
         pushVideoState();
+        saveToCache(); // capture posterPath so cache restores show hasPoster=true
         devlog('video:frameDecode:done', 'Frame decode done', {
           frameId, framePath, cid: decodeCid, ...videoResourceSnapshot()
         });
@@ -345,6 +351,7 @@ export function createVideoController(deps: VideoControllerDeps) {
         path: selection.path, cid: loadCid,
         duration: cached.duration, hasStrip: cached.stripPath !== null
       });
+      saveToCache(); // snapshot outgoing video before reset
       resetVideoState();
       _currentLoadCid = loadCid;
       videoSelection = selection;
@@ -369,6 +376,7 @@ export function createVideoController(deps: VideoControllerDeps) {
       return;
     }
 
+    saveToCache(); // snapshot outgoing video before reset
     resetVideoState();
     _currentLoadCid = loadCid;
     videoSelection = selection;
@@ -582,9 +590,22 @@ export function createVideoController(deps: VideoControllerDeps) {
   function loadSrcEffect() {
     const el = videoElement;
     const src = videoSrcUrl;
-    devlog('video:srcEffect', 'Src effect', { hasElement: el !== null, hasSrc: src !== null });
+    devlog('video:srcEffect', 'Src effect (debounced)', { hasElement: el !== null, hasSrc: src !== null });
+    if (_loadSrcTimer) {
+      clearTimeout(_loadSrcTimer);
+      _loadSrcTimer = null;
+    }
     if (el && src) {
-      el.load();
+      _loadSrcTimer = setTimeout(() => {
+        _loadSrcTimer = null;
+        // Re-read latest state inside callback to act on final URL
+        const currentEl = videoElement;
+        const currentSrc = videoSrcUrl;
+        if (currentEl && currentSrc) {
+          devlog('video:srcEffect:load', 'Calling el.load()', { src: currentSrc.startsWith('blob:') ? 'blob' : 'asset' });
+          currentEl.load();
+        }
+      }, 100);
     }
   }
 

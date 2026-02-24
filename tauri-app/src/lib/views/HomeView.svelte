@@ -291,12 +291,17 @@
           id, cid, entryFound: !!entry, path: entry?.path ?? null
         });
         if (!entry?.path) return;
+        const videoPath = entry.videoPath ?? entry.path;
+        // Skip if this video is already active
+        if (video.videoSelection?.path === videoPath) {
+          devlog('home:videoSwitch:skip', 'Already active — skipping', { cid, videoPath });
+          return;
+        }
         // Clear active image state WITHOUT touching videoState (avoids cascade)
         activeImageId.set(null);
         resetAnalysis();
         try { delete (globalThis as any).__ACTIVE_IMAGE_PATH__; } catch {}
         runner.cancelPending();
-        const videoPath = entry.videoPath ?? entry.path;
         devlog('home:videoSwitch:load', 'Loading video selection', { cid, existingId: entry.id, videoPath });
         video.loadVideoSelection({
           name: entry.name,
