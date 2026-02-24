@@ -7,12 +7,12 @@ tags:
   - Input
   - Epic-020
   - media-ingest
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-EPIC-020, AI-IMP-096]
 parent_epic: [[AI-EPIC-020-multi-image-input]]
 confidence_score: 0.85
 date_created: 2026-02-03
-date_completed:
+date_completed: 2026-02-24
 ---
 gi
 # AI-IMP-097-media-ingest
@@ -62,22 +62,22 @@ Done means: a single "Add media" button opens a native dialog accepting both ima
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add Rust `open_media_dialog` command using `pick_files()` with filter groups (Images / Videos / All Media)
-- [ ] Register `open_media_dialog` in `main.rs`, remove `open_image_dialog` and `open_video_dialog` registrations
-- [ ] Delete old `open_image_dialog` and `open_video_dialog` command handlers from `commands.rs`
-- [ ] Replace `openImageFile()` / `openVideoFile()` with `openMediaFiles()` in `FsBridge` interface and Tauri implementation (return `FileSelection[] | null`)
-- [ ] Add append-only store function for batch adds (adds to `images` without switching `activeImageId`)
-- [ ] Replace `chooseFile()` + `chooseVideo()` with unified `chooseMedia()` in file-ingestion
-- [ ] Route media type (image vs video) after selection based on MIME/extension
-- [ ] Implement first-video-only policy: process first video in batch, skip extras with banner
-- [ ] Remove `clearVideoSelection()` from `ingestSelection()`; move to callers (clear once before loop)
-- [ ] Replace Tauri drag-drop early return with `listen('tauri://drag-drop')` event listener for filesystem paths
-- [ ] Keep existing WebKit drag handlers for overlay visuals only (hover/highlight)
-- [ ] Multi-drop: activate first file via `setFile()`, append rest via append-only path
-- [ ] Merge "Upload image" / "Upload video" into single "Add media" button in HomeView
-- [ ] Update drop overlay text
-- [ ] Verify video pipeline still works through unified path (probe -> extract -> ingest)
-- [ ] Run `npm run check`, `npm run lint`, `npm run test`
+- [x] Add Rust `open_media_dialog` command using `pick_files()` with filter groups (Images / Videos / All Media)
+- [x] Register `open_media_dialog` in `main.rs`, remove `open_image_dialog` and `open_video_dialog` registrations
+- [x] Delete old `open_image_dialog` and `open_video_dialog` command handlers from `commands.rs`
+- [x] Replace `openImageFile()` / `openVideoFile()` with `openMediaFiles()` in `FsBridge` interface and Tauri implementation (return `FileSelection[] | null`)
+- [x] Add append-only store function for batch adds (adds to `images` without switching `activeImageId`)
+- [x] Replace `chooseFile()` + `chooseVideo()` with unified `chooseMedia()` in file-ingestion
+- [x] Route media type (image vs video) after selection based on MIME/extension
+- [x] Implement first-video-only policy: process first video in batch, skip extras with banner
+- [x] Remove `clearVideoSelection()` from `ingestSelection()`; move to callers (clear once before loop)
+- [x] Replace Tauri drag-drop early return with `listen('tauri://drag-drop')` event listener for filesystem paths
+- [x] Keep existing WebKit drag handlers for overlay visuals only (hover/highlight)
+- [x] Multi-drop: activate first file via `setFile()`, append rest via append-only path
+- [x] Merge "Upload image" / "Upload video" into single "Add media" button in HomeView
+- [x] Update drop overlay text
+- [x] Verify video pipeline still works through unified path (probe -> extract -> ingest)
+- [x] Run `npm run check`, `npm run lint`, `npm run test`
 
 ### Acceptance Criteria
 

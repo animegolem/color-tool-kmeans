@@ -9,12 +9,12 @@
 
 **IMPs:**
 - [[AI-IMP-096-library-drawer-ui|IMP-096]] - completed
-- [[AI-IMP-097-media-ingest|IMP-097]] - planned
-- [[AI-IMP-098-clipboard-paste-images|IMP-098]] - planned
+- [[AI-IMP-097-media-ingest|IMP-097]] - completed
+- [[AI-IMP-098-clipboard-paste-images|IMP-098]] - completed
 - [[AI-IMP-099-folder-browser|IMP-099]] - planned
-- [[AI-IMP-100-active-item-switching-removal|IMP-100]] - planned
+- [[AI-IMP-100-active-item-switching-removal|IMP-100]] - completed
 - [[AI-IMP-101-header-bar-layout|IMP-101]] - completed
-- [[AI-IMP-109-sidebar-all-views|IMP-109]] - planned
+- [[AI-IMP-109-sidebar-all-views|IMP-109]] - completed
 - [[AI-IMP-110-video-controls-values-view|IMP-110]] - planned
 - [[AI-IMP-112-session-management-toggle|IMP-112]] - deferred
 
@@ -65,6 +65,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (351 LOC)
 - tauri-app/src-tauri/src/commands.rs (349 LOC)
 - tauri-app/src/lib/exports/polar-chart.ts (339 LOC)
+- tauri-app/src/App.svelte (312 LOC)
 
 ---
 
@@ -77,7 +78,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>12 Epics, 37 IMPs completed</summary>
+<summary>12 Epics, 41 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006: Tauri bridge reliability and native mode fixes]] (2026-01-21)
 - [[AI-EPIC-007-tauri-ui-graphs-exports|EPIC-007: Tauri ui graphs exports]] (2026-01-21)

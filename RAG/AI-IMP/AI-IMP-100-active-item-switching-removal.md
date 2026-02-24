@@ -7,12 +7,12 @@ tags:
   - Input
   - Epic-020
   - media-bucket
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-EPIC-020, AI-IMP-096]
 parent_epic: [[AI-EPIC-020-multi-image-input]]
 confidence_score: 0.75
 date_created: 2026-02-03
-date_completed:
+date_completed: 2026-02-24
 ---
 
 # AI-IMP-100-active-item-switching-removal
@@ -45,15 +45,15 @@ Done means: the Media Bucket section in the sidebar shows thumbnails for all loa
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add `removeFile(id)` to `ui.ts` — removes from `images` array, revokes blob URL, clears analysis caches for that ID only
-- [ ] If removed item was active, switch to next/previous item or null
-- [ ] Render Media Bucket items in sidebar from `$images` store (thumbnail + name + X)
-- [ ] Click item → set `activeImageId` (instant switch, no re-analysis)
-- [ ] Visual active indicator on current item
-- [ ] X button calls `removeFile(id)`
-- [ ] Empty state when no items loaded
-- [ ] Verify analysis cache survives switching (no re-run)
-- [ ] Run `npm run check`, `npm run lint`, `npm run test`
+- [x] Add `removeFile(id)` to `ui.ts` — removes from `images` array, revokes blob URL, clears analysis caches for that ID only
+- [x] If removed item was active, switch to next/previous item or null
+- [x] Render Media Bucket items in sidebar from `$images` store (thumbnail + name + X)
+- [x] Click item → set `activeImageId` (instant switch, no re-analysis)
+- [x] Visual active indicator on current item
+- [x] X button calls `removeFile(id)`
+- [x] Empty state when no items loaded
+- [x] Verify analysis cache survives switching (no re-run)
+- [x] Run `npm run check`, `npm run lint`, `npm run test`
 
 ### Acceptance Criteria
 

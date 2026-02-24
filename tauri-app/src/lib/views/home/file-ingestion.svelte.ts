@@ -71,7 +71,6 @@ export function createFileIngestion(deps: FileIngestionDeps) {
   async function processBatch(selections: FileSelection[]) {
     deps.clearVideoSelection();
     let videoProcessed = false;
-    let skippedVideos = 0;
     let firstActivated = false;
 
     for (const sel of selections) {
@@ -82,7 +81,6 @@ export function createFileIngestion(deps: FileIngestionDeps) {
           void logEvent(`video:file:loaded name=${sel.name}`);
           deps.loadVideoSelection(sel);
         } else {
-          skippedVideos++;
           await ingestSelection(sel, false);
         }
       } else {
@@ -90,11 +88,6 @@ export function createFileIngestion(deps: FileIngestionDeps) {
         await ingestSelection(sel, activate);
         firstActivated = true;
       }
-    }
-    if (skippedVideos > 0) {
-      deps.setBannerMessage(
-        `${skippedVideos} extra video${skippedVideos > 1 ? 's' : ''} added to library — only the first video is analyzed.`
-      );
     }
     if (selections.length > 1) {
       deps.openLibraryDrawer();

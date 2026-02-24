@@ -7,12 +7,12 @@ tags:
   - Input
   - Epic-020
   - clipboard
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-EPIC-020, AI-IMP-096, AI-IMP-097]
 parent_epic: [[AI-EPIC-020-multi-image-input]]
 confidence_score: 0.68
 date_created: 2026-02-03
-date_completed:
+date_completed: 2026-02-24
 ---
 
 # AI-IMP-098-clipboard-paste-images
@@ -26,14 +26,16 @@ Support pasting images via clipboard (Ctrl/Cmd+V) so users can quickly bring in 
 - Active switching/removal behavior (IMP-100).
 
 ### Design/Approach
-- Listen for paste events in the main view.
-- Extract image blobs from the clipboard and pass through the existing ingestion pipeline.
-- Add the pasted entry to the Media Bucket and set it active only if no active item exists.
+- Global `paste` event listener in `App.svelte` (not HomeView) — works from any view.
+- Guard: skip if focused element is editable (`<input>`, `<textarea>`, `contenteditable`) using existing `isEditableTarget()` helper.
+- Extract first `image/*` blob from clipboard, save to temp file in app cache dir via `save_file` Tauri command (native pipeline requires filesystem path).
+- Build `ImageEntry` with path-based source and `convertFileSrc` preview URL.
+- Activation policy: if no active item → `setFile()` + set `__ACTIVE_IMAGE_PATH__`; else → `appendFile()` (no switch).
+- Open library drawer after paste. Log event.
+- Non-Tauri: early return (clipboard paste requires native backend for temp file write and analysis).
 
 ### Files to Touch
-- `tauri-app/src/lib/views/HomeView.svelte`: paste event binding.
-- `tauri-app/src/lib/views/home/file-ingestion.svelte.ts`: handle clipboard image blobs.
-- `tauri-app/src/lib/stores/ui.ts`: uses `addFile()` from IMP-097.
+- `tauri-app/src/App.svelte`: paste event listener, `pasteImageBlob()` handler
 
 ### Implementation Checklist
 
@@ -41,10 +43,15 @@ Support pasting images via clipboard (Ctrl/Cmd+V) so users can quickly bring in 
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add paste listener in Home view with cleanup on unmount.
-- [ ] Parse clipboard images and feed into ingestion.
-- [ ] Add pasted images to Media Bucket via `addFile()`.
-- [ ] Handle empty/unsupported clipboard contents gracefully.
+- [x] Add global paste listener in App.svelte `onMount` with cleanup on destroy
+- [x] Guard: skip if Tauri not available or focused element is editable
+- [x] Extract first `image/*` blob from `clipboardData.items`
+- [x] Save blob to temp file via `save_file` Tauri command (`appCacheDir/clipboard/paste-*.png`)
+- [x] Build `ImageEntry` with path-based source and `convertFileSrc` preview URL
+- [x] Activation policy: `setFile()` if no active item, `appendFile()` otherwise
+- [x] Open library drawer after paste
+- [x] Handle empty/unsupported clipboard contents gracefully (silent no-op)
+- [x] Run `npm run check`, `npm run lint`
 
 ### Acceptance Criteria
 **Scenario: Paste image**
@@ -53,4 +60,5 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 **THEN** it appears in the Media Bucket.
 
 ### Issues Encountered
-<!-- Post-implementation notes go here -->
+- Implemented in `App.svelte` rather than `HomeView.svelte` so paste works from any view (Colors, Values, Exports, Settings).
+- Clipboard images saved as temp PNG files in app cache dir — the native analysis pipeline requires a filesystem path. Future optimization: consider base64 IPC for large images to avoid the temp file round-trip.

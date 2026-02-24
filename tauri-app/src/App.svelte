@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { View } from './lib/stores/ui';
-  import { currentView, setView, libraryDrawerOpen, navCollapsed, selectedFile, videoState, clearActiveSelection, requestMediaLoad } from './lib/stores/ui';
-  import { isTauriEnv } from './lib/bridges/tauri';
+  import type { View, ImageEntry } from './lib/stores/ui';
+  import { currentView, setView, libraryDrawerOpen, navCollapsed, selectedFile, videoState, setVideoState, clearActiveSelection, requestMediaLoad, setFile } from './lib/stores/ui';
+  import { isTauriEnv, tauriInvoke } from './lib/bridges/tauri';
   import HomeView from './lib/views/HomeView.svelte';
   import ValuesView from './lib/views/ValuesView.svelte';
   import ExportsView from './lib/views/ExportsView.svelte';
@@ -132,12 +132,58 @@
       log(`pageshow:persisted=${event.persisted}`);
     };
 
+    const pasteImageBlob = async (blob: File | Blob) => {
+      const { appCacheDir } = await import('@tauri-apps/api/path');
+      const { convertFileSrc } = await import('@tauri-apps/api/core');
+      const cacheDir = await appCacheDir();
+      const path = `${cacheDir}/clipboard/paste-${Date.now()}.png`;
+      const buffer = await blob.arrayBuffer();
+      const data = Array.from(new Uint8Array(buffer));
+      await tauriInvoke('save_file', { req: { path, data } });
+      const previewUrl = convertFileSrc(path);
+      const entryId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+      const entry: ImageEntry = {
+        id: entryId,
+        name: `paste-${new Date().toISOString().slice(11, 19).replace(/:/g, '')}.png`,
+        path,
+        size: blob.size,
+        source: { kind: 'path', path },
+        previewUrl
+      };
+      const emptyDataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
+      setVideoState(null);
+      (globalThis as any).__ACTIVE_IMAGE_PATH__ = path;
+      setFile(entry, emptyDataset);
+      libraryDrawerOpen.set(true);
+      void logEvent('clipboard:paste:image');
+    };
+
+    const handlePaste = (event: ClipboardEvent) => {
+      if (!isTauriEnv()) return;
+      if (isEditableTarget(event.target)) return;
+      const items = event.clipboardData?.items;
+      if (!items) return;
+      let imageFile: File | null = null;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          imageFile = items[i].getAsFile();
+          if (imageFile) break;
+        }
+      }
+      if (!imageFile) return;
+      event.preventDefault();
+      void pasteImageBlob(imageFile).catch((err) => {
+        console.error('[paste] Failed to paste image', err);
+      });
+    };
+
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', handleFocus);
     window.addEventListener('blur', handleBlur);
     window.addEventListener('pagehide', handlePageHide);
     window.addEventListener('pageshow', handlePageShow);
     window.addEventListener('keydown', handleZoomHotkeys);
+    window.addEventListener('paste', handlePaste);
 
     let lastFrame = performance.now();
     let lastStallLog = 0;
@@ -169,6 +215,7 @@
       window.removeEventListener('pagehide', handlePageHide);
       window.removeEventListener('pageshow', handlePageShow);
       window.removeEventListener('keydown', handleZoomHotkeys);
+      window.removeEventListener('paste', handlePaste);
       window.cancelAnimationFrame(frameHandle);
       window.clearInterval(stallTimer);
       window.clearInterval(rendererHeartbeat);
@@ -178,7 +225,7 @@
 
 <main
   class:nav-collapsed={$navCollapsed}
-  class:library-open={$currentView !== 'settings' && $libraryDrawerOpen}
+  class:library-open={$libraryDrawerOpen}
 >
   <nav class="nav" class:collapsed={$navCollapsed}>
     {#each navItems as item}
@@ -216,22 +263,18 @@
       {/if}
     </div>
 
-    {#if $currentView !== 'settings'}
-      <button
-        type="button"
-        class="header-toggle"
-        aria-label={$libraryDrawerOpen ? 'Close library' : 'Open library'}
-        onclick={() => libraryDrawerOpen.update((v) => !v)}
-      >
-        {#if $libraryDrawerOpen}
-          {@html `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M12.5 1C13.881 1 15 2.119 15 3.5V12.5C15 13.881 13.881 15 12.5 15H3.5C2.119 15 1 13.881 1 12.5V3.5C1 2.119 2.119 1 3.5 1H12.5ZM9 14V2H3.5C2.672 2 2 2.672 2 3.5V12.5C2 13.328 2.672 14 3.5 14H9Z"/></svg>`}
-        {:else}
-          {@html `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M12.5 1H3.5C2.122 1 1 2.122 1 3.5V12.5C1 13.879 2.122 15 3.5 15H12.5C13.878 15 15 13.879 15 12.5V3.5C15 2.122 13.878 1 12.5 1ZM2 12.5V3.5C2 2.673 2.673 2 3.5 2H9V14H3.5C2.673 14 2 13.327 2 12.5ZM14 12.5C14 13.327 13.327 14 12.5 14H10V2H12.5C13.327 2 14 2.673 14 3.5V12.5Z"/></svg>`}
-        {/if}
-      </button>
-    {:else}
-      <div class="header-toggle-placeholder"></div>
-    {/if}
+    <button
+      type="button"
+      class="header-toggle"
+      aria-label={$libraryDrawerOpen ? 'Close library' : 'Open library'}
+      onclick={() => libraryDrawerOpen.update((v) => !v)}
+    >
+      {#if $libraryDrawerOpen}
+        {@html `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M12.5 1C13.881 1 15 2.119 15 3.5V12.5C15 13.881 13.881 15 12.5 15H3.5C2.119 15 1 13.881 1 12.5V3.5C1 2.119 2.119 1 3.5 1H12.5ZM9 14V2H3.5C2.672 2 2 2.672 2 3.5V12.5C2 13.328 2.672 14 3.5 14H9Z"/></svg>`}
+      {:else}
+        {@html `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M12.5 1H3.5C2.122 1 1 2.122 1 3.5V12.5C1 13.879 2.122 15 3.5 15H12.5C13.878 15 15 13.879 15 12.5V3.5C15 2.122 13.878 1 12.5 1ZM2 12.5V3.5C2 2.673 2.673 2 3.5 2H9V14H3.5C2.673 14 2 13.327 2 12.5ZM14 12.5C14 13.327 13.327 14 12.5 14H10V2H12.5C13.327 2 14 2.673 14 3.5V12.5Z"/></svg>`}
+      {/if}
+    </button>
   </header>
 
   <section class="view-container">
@@ -246,26 +289,24 @@
     {/if}
   </section>
 
-  {#if $currentView !== 'settings'}
-    <aside class:open={$libraryDrawerOpen} class="library-rail" aria-label="Library rail">
-      {#if $libraryDrawerOpen}
-        <div id="library-drawer" class="library-drawer" aria-label="Library drawer">
-          <div class="library-drawer__content">
-            <header class="library-drawer__header">
-              <h3>Library</h3>
-            </header>
-            <div class="library-section">
-              <div class="library-section__title-row">
-                <span class="library-section__title">Media Bucket</span>
-                <button class="library-section__add" onclick={requestMediaLoad} aria-label="Add media">+</button>
-              </div>
-              <MediaBucket />
+  <aside class:open={$libraryDrawerOpen} class="library-rail" aria-label="Library rail">
+    {#if $libraryDrawerOpen}
+      <div id="library-drawer" class="library-drawer" aria-label="Library drawer">
+        <div class="library-drawer__content">
+          <header class="library-drawer__header">
+            <h3>Library</h3>
+          </header>
+          <div class="library-section">
+            <div class="library-section__title-row">
+              <span class="library-section__title">Media Bucket</span>
+              <button class="library-section__add" onclick={requestMediaLoad} aria-label="Add media">+</button>
             </div>
+            <MediaBucket />
           </div>
         </div>
-      {/if}
-    </aside>
-  {/if}
+      </div>
+    {/if}
+  </aside>
 
   <ZoomOverlay />
 </main>

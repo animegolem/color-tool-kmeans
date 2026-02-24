@@ -7,12 +7,12 @@ tags:
   - Layout
   - Epic-020
   - sidebar
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-EPIC-020, AI-IMP-100]
 parent_epic: [[AI-EPIC-020-multi-image-input]]
 confidence_score: 0.82
 date_created: 2026-02-18
-date_completed:
+date_completed: 2026-02-24
 ---
 
 # AI-IMP-109-sidebar-all-views
@@ -42,12 +42,12 @@ Done means: the Library sidebar toggle button and rail are visible and functiona
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Remove view-conditional guard on library rail rendering
-- [ ] Remove view-conditional guard on header toggle button (replace placeholder with real toggle)
-- [ ] Verify grid layout on Values view with sidebar open/closed
-- [ ] Verify grid layout on Exports view with sidebar open/closed
-- [ ] Responsive: sidebar still auto-collapses at <980px on all views
-- [ ] Run `npm run check`, `npm run lint`, `npm run test`
+- [x] Remove view-conditional guard on library rail rendering
+- [x] Remove view-conditional guard on header toggle button (replace placeholder with real toggle)
+- [x] Verify grid layout on Values view with sidebar open/closed
+- [x] Verify grid layout on Exports view with sidebar open/closed
+- [x] Responsive: sidebar still auto-collapses at <980px on all views
+- [x] Run `npm run check`, `npm run lint`, `npm run test`
 
 ### Acceptance Criteria
 
@@ -68,4 +68,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 **THEN** the sidebar auto-collapses.
 
 ### Issues Encountered
-<!-- Post-implementation notes go here -->
+- Original ticket scoped to Colors/Values/Exports; extended to include Settings for a static UI frame. Three guards removed from `App.svelte`: CSS class binding, header toggle `{#if}` block (with placeholder div), and library rail `<aside>` wrapper.
