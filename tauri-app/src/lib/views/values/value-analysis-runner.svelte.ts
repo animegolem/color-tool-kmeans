@@ -139,10 +139,15 @@ export function createValueAnalysisRunner() {
 
     const unsubs = [
       selectedFile.subscribe((value) => {
+        const prevFile = file;
         file = value;
         const nextId = value?.id ?? null;
         if (displayImageId && nextId !== displayImageId) {
-          displayAnalysis = null;
+          const sameVideo = value?.videoPath && prevFile?.videoPath === value.videoPath;
+          if (!sameVideo) {
+            displayAnalysis = null;
+          }
+          analysis = null;
         }
         displayImageId = nextId;
       }),
@@ -205,6 +210,7 @@ export function createValueAnalysisRunner() {
     updateLevels,
     ensureAnalysis,
     cancelPending,
+    captureAnalysisScroll,
     trackMaskKey,
     mount
   };

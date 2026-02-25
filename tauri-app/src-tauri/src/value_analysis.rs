@@ -9,7 +9,7 @@ use thiserror::Error;
 use crate::color;
 use crate::kmeans::{run_kmeans, KMeansConfig};
 
-const VALUE_ANALYSIS_CACHE_VERSION: u8 = 4;
+const VALUE_ANALYSIS_CACHE_VERSION: u8 = 5;
 const VALUE_ANALYSIS_MAX_DIMENSION: u32 = 1600;
 const VALUE_ANALYSIS_SQUINT_MAX_DIMENSION: u32 = 256;
 const VALUE_ANALYSIS_BLUR_SIGMA: f32 = 1.0;
@@ -69,6 +69,10 @@ struct ValueAnalysisMeta {
     version: u8,
     levels: usize,
     notan_mode: bool,
+    #[serde(default)]
+    source_path: String,
+    #[serde(default)]
+    source_mtime: Option<u64>,
     percentile_low: f32,
     percentile_high: f32,
     percentile_extreme_low: f32,
@@ -112,9 +116,11 @@ pub fn generate_value_analysis(
     let preview_path = cache_dir.join(PREVIEW_FILE);
     let bucket_map_path = cache_dir.join(BUCKET_MAP_FILE);
 
+    let source_path_str = path.as_ref().to_string_lossy();
+    let source_mtime = file_mtime(path.as_ref());
     if neutral_path.exists() && preview_path.exists() && bucket_map_path.exists() {
         if let Some(meta) =
-            load_meta(&cache_dir).filter(|meta| is_meta_current(meta, levels, notan_mode))
+            load_meta(&cache_dir).filter(|meta| is_meta_current(meta, levels, notan_mode, &source_path_str, source_mtime))
         {
             return Ok(ValueAnalysisResult {
                 neutral: neutral_path,
@@ -233,6 +239,8 @@ pub fn generate_value_analysis(
             version: VALUE_ANALYSIS_CACHE_VERSION,
             levels,
             notan_mode,
+            source_path: source_path_str.into_owned(),
+            source_mtime,
             percentile_low: PERCENTILE_LOW,
             percentile_high: PERCENTILE_HIGH,
             percentile_extreme_low: PERCENTILE_EXTREME_LOW,
@@ -513,10 +521,13 @@ fn write_meta(cache_dir: &Path, meta: &ValueAnalysisMeta) {
     }
 }
 
-fn is_meta_current(meta: &ValueAnalysisMeta, levels: usize, notan_mode: bool) -> bool {
+fn is_meta_current(meta: &ValueAnalysisMeta, levels: usize, notan_mode: bool, source_path: &str, source_mtime: Option<u64>) -> bool {
     meta.version == VALUE_ANALYSIS_CACHE_VERSION
         && meta.levels == levels
         && meta.notan_mode == notan_mode
+        && !meta.source_path.is_empty()
+        && meta.source_path == source_path
+        && meta.source_mtime == source_mtime
         && approx_eq(meta.percentile_low, PERCENTILE_LOW)
         && approx_eq(meta.percentile_high, PERCENTILE_HIGH)
         && approx_eq(meta.percentile_extreme_low, PERCENTILE_EXTREME_LOW)
@@ -527,6 +538,14 @@ fn is_meta_current(meta: &ValueAnalysisMeta, levels: usize, notan_mode: bool) ->
 
 fn approx_eq(a: f32, b: f32) -> bool {
     (a - b).abs() <= 1e-5
+}
+
+fn file_mtime(path: &Path) -> Option<u64> {
+    fs::metadata(path)
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
 }
 
 fn sanitize_id(value: &str) -> String {

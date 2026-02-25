@@ -169,7 +169,11 @@
     captureAnalysisScroll: () => runner.captureAnalysisScroll(),
     getVideoStripMode: () => get(videoStripMode),
     getCachedVideoState,
-    cacheVideoState
+    cacheVideoState,
+    findExistingFrameId: (videoPath: string) => {
+      const entry = get(images).find(item => item.videoPath === videoPath);
+      return entry?.id ?? null;
+    }
   });
 
   // --- Derived chart state ---
@@ -396,7 +400,7 @@
   {/if}
 
   {#if file || video.videoSelection}
-    <section class="analysis-layout" class:two-columns={result && (currentParams.showPolarChart || currentParams.showHueLightness)}>
+    <section class="analysis-layout" class:two-columns={currentParams.showPolarChart || currentParams.showHueLightness}>
       <div class="analysis-column">
         {#if video.videoSelection}
           <VideoPanel {video} />
@@ -433,17 +437,18 @@
             </div>
           </div>
         {/if}
-        {#if result && histogram && currentParams.showHistogram}
+        {#if currentParams.showHistogram}
           <AnalysisCards
             {result}
             {histogram}
             polarChart={null}
             hueLightnessChart={null}
             {histogramSortLabel}
+            showHistogramFrame={currentParams.showHistogram}
           />
         {/if}
       </div>
-      {#if result && (currentParams.showPolarChart || currentParams.showHueLightness)}
+      {#if currentParams.showPolarChart || currentParams.showHueLightness}
         <div class="analysis-column">
           <AnalysisCards
             {result}
@@ -451,6 +456,8 @@
             polarChart={currentParams.showPolarChart ? polarChart : null}
             hueLightnessChart={currentParams.showHueLightness ? hueLightnessChart : null}
             histogramSortLabel=""
+            showPolarFrame={currentParams.showPolarChart}
+            showHueLightnessFrame={currentParams.showHueLightness}
           />
         </div>
       {/if}
@@ -593,6 +600,7 @@
   @container (min-width: 760px) {
     .analysis-layout.two-columns {
       grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      align-items: center;
     }
   }
 

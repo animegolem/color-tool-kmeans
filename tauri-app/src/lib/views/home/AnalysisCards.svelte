@@ -11,17 +11,20 @@
   }
 
   interface Props {
-    result: AnalysisResult;
+    result?: AnalysisResult | null;
     histogram?: ChartOutput | null;
     polarChart?: ChartOutput | null;
     hueLightnessChart?: ChartOutput | null;
     histogramSortLabel?: string;
+    showPolarFrame?: boolean;
+    showHueLightnessFrame?: boolean;
+    showHistogramFrame?: boolean;
   }
 
-  let { result, histogram = null, polarChart = null, hueLightnessChart = null, histogramSortLabel = '' }: Props = $props();
+  let { result = null, histogram = null, polarChart = null, hueLightnessChart = null, histogramSortLabel = '', showPolarFrame = false, showHueLightnessFrame = false, showHistogramFrame = false }: Props = $props();
 </script>
 
-{#if histogram}
+{#if histogram || showHistogramFrame}
   <article class="analysis-card">
     <header class="analysis-header">
       <div>
@@ -51,25 +54,31 @@
           Lightness
         </button>
       </div>
-      <span class="metrics">
-        {Math.round(result.durationMs)} ms · {result.iterations} iterations ·
-        {result.totalSamples.toLocaleString()} samples
-      </span>
+      {#if result}
+        <span class="metrics">
+          {Math.round(result.durationMs)} ms · {result.iterations} iterations ·
+          {result.totalSamples.toLocaleString()} samples
+        </span>
+      {/if}
     </header>
-    <div
-      class="chart zoomable"
-      role="button"
-      tabindex="0"
-      onclick={() => openSvgZoom(histogram?.svg, histogram?.width, histogram?.height, openZoomOverlay)}
-      onkeydown={(event) =>
-        handleZoomKeydown(event, histogram?.svg, histogram?.width, histogram?.height, openZoomOverlay)}
-    >
-      {@html histogram.svg}
-    </div>
+    {#if histogram}
+      <div
+        class="chart zoomable"
+        role="button"
+        tabindex="0"
+        onclick={() => openSvgZoom(histogram?.svg, histogram?.width, histogram?.height, openZoomOverlay)}
+        onkeydown={(event) =>
+          handleZoomKeydown(event, histogram?.svg, histogram?.width, histogram?.height, openZoomOverlay)}
+      >
+        {@html histogram.svg}
+      </div>
+    {:else}
+      <div class="chart chart--empty"></div>
+    {/if}
   </article>
 {/if}
 
-{#if polarChart}
+{#if polarChart || showPolarFrame}
   <article class="analysis-card">
     <header class="analysis-header">
       <div>
@@ -100,19 +109,23 @@
         </button>
       </div>
     </header>
-    <div
-      class="chart zoomable"
-      role="button"
-      tabindex="0"
-      onclick={() => openSvgZoom(polarChart?.svg, polarChart?.width, polarChart?.height, openZoomOverlay)}
-      onkeydown={(event) => handleZoomKeydown(event, polarChart?.svg, polarChart?.width, polarChart?.height, openZoomOverlay)}
-    >
-      {@html polarChart.svg}
-    </div>
+    {#if polarChart}
+      <div
+        class="chart zoomable"
+        role="button"
+        tabindex="0"
+        onclick={() => openSvgZoom(polarChart?.svg, polarChart?.width, polarChart?.height, openZoomOverlay)}
+        onkeydown={(event) => handleZoomKeydown(event, polarChart?.svg, polarChart?.width, polarChart?.height, openZoomOverlay)}
+      >
+        {@html polarChart.svg}
+      </div>
+    {:else}
+      <div class="chart chart--empty"></div>
+    {/if}
   </article>
 {/if}
 
-{#if hueLightnessChart}
+{#if hueLightnessChart || showHueLightnessFrame}
   <article class="analysis-card">
     <header class="analysis-header">
       <div>
@@ -136,16 +149,20 @@
         </button>
       </div>
     </header>
-    <div
-      class="chart zoomable"
-      role="button"
-      tabindex="0"
-      onclick={() => openSvgZoom(hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height, openZoomOverlay)}
-      onkeydown={(event) =>
-        handleZoomKeydown(event, hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height, openZoomOverlay)}
-    >
-      {@html hueLightnessChart.svg}
-    </div>
+    {#if hueLightnessChart}
+      <div
+        class="chart zoomable"
+        role="button"
+        tabindex="0"
+        onclick={() => openSvgZoom(hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height, openZoomOverlay)}
+        onkeydown={(event) =>
+          handleZoomKeydown(event, hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height, openZoomOverlay)}
+      >
+        {@html hueLightnessChart.svg}
+      </div>
+    {:else}
+      <div class="chart chart--empty"></div>
+    {/if}
   </article>
 {/if}
 
@@ -203,5 +220,9 @@
     width: 100%;
     height: auto;
     display: block;
+  }
+
+  .chart--empty {
+    min-height: 200px;
   }
 </style>

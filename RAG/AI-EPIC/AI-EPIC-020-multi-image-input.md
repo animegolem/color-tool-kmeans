@@ -8,8 +8,8 @@ tags:
   - input
   - library
 date_created: 2026-01-22
-date_completed:
-kanban_status: in-progress
+date_completed: 2026-02-24
+kanban_status: completed
 AI_IMP_spawned:
 ---
 # AI-EPIC-020-multi-image-input
@@ -42,34 +42,35 @@ Users need to load, manage, and compare multiple references (images and videos) 
 
 ### Functional Requirements
 - [x] FR-1: Library sidebar with Media Bucket section; accessible from all views. Can expand/collapse.
-- [ ] FR-2: Unified media ingest (merged upload button, multi-file drag-drop) populates Media Bucket.
-- [ ] FR-3: Clipboard paste (Ctrl/Cmd+V) loads image into Media Bucket.
-- [ ] FR-4: Folder Browser: IDE-style file tree for session-scoped folder, with image thumbnails. Stretch feature.
-- [ ] FR-5: Switching active item preserves analysis state (verify existing store).
-- [ ] FR-6: Remove (X) action per item to unload from Media Bucket (no disk delete).
-- [ ] FR-7: Optional filter by type (image/video) when both are present.
-- [ ] FR-8: Library sidebar accessible from Colors, Values, and Exports views.
+- [x] FR-2: Unified media ingest (merged upload button, multi-file drag-drop) populates Media Bucket.
+- [x] FR-3: Clipboard paste (Ctrl/Cmd+V) loads image into Media Bucket.
+- [ ] FR-4: Folder Browser: IDE-style file tree for session-scoped folder, with image thumbnails. Stretch feature. *(deferred — IMP-099)*
+- [x] FR-5: Switching active item preserves analysis state (verify existing store).
+- [x] FR-6: Remove (X) action per item to unload from Media Bucket (no disk delete).
+- [ ] FR-7: Optional filter by type (image/video) when both are present. *(nice-to-have, no IMP)*
+- [x] FR-8: Library sidebar accessible from Colors, Values, and Exports views.
 
 ### Non-Functional Requirements
-- [ ] NFR-1: Switching active item should be instant (no re-analysis).
-- [ ] NFR-2: Sidebar interactions should not cause layout jumps or scroll resets.
+- [x] NFR-1: Switching active item should be instant (no re-analysis).
+- [x] NFR-2: Sidebar interactions should not cause layout jumps or scroll resets.
 
 ## Implementation Breakdown
 
 ### Completed Tickets
 - AI-IMP-096: Library Drawer Shell
+- AI-IMP-097: Media Ingest (Unified Upload + Multi-Drop)
+- AI-IMP-098: Clipboard Paste to Media Bucket
+- AI-IMP-100: Media Bucket Navigation & Removal
 - AI-IMP-101: Header Bar Layout
+- AI-IMP-109: Library Sidebar on All Views
+- AI-IMP-110: Video Controls on Values View
 
-### Planned Tickets (Priority Order)
+### Deferred Tickets
 
-| IMP | Title | Status | Priority |
-|-----|-------|--------|----------|
-| 100 | Media Bucket Navigation & Removal | Planned | P1 - Core |
-| 097 | Media Ingest (Unified Upload + Multi-Drop) | Planned | P1 - Core |
-| 109 | Library Sidebar on All Views | Planned | P2 |
-| 098 | Clipboard Paste to Media Bucket | Planned | P3 - Nice-to-have |
-| 099 | Folder Browser (IDE File Tree) | Planned | P4 - Stretch |
-| 110 | Video Controls on Values View | Planned | P4 - Future |
+| IMP | Title | Priority | Reason |
+|-----|-------|----------|--------|
+| 099 | Folder Browser (IDE File Tree) | P4 - Stretch | Lift disproportionate to value |
+| 112 | Session Management Toggle | P4 | Deferred to future epic |
 
 ### Dependency Graph
 

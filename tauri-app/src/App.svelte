@@ -108,7 +108,7 @@
   }
 
   function handleUpload() {
-    if ($currentView === 'home') {
+    if ($currentView === 'home' || $currentView === 'values') {
       requestMediaLoad();
     } else {
       void globalChooseMedia();
@@ -117,7 +117,7 @@
   }
 
   function handleMediaAdd() {
-    if ($currentView === 'home') {
+    if ($currentView === 'home' || $currentView === 'values') {
       requestMediaLoad();
     } else {
       void globalChooseMedia();

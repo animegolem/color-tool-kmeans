@@ -1,29 +1,78 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { convertFileSrc } from '@tauri-apps/api/core';
+  import { listen } from '@tauri-apps/api/event';
   import type { ImageEntry } from '../stores/ui';
-  import { openZoomOverlay, setFile, clearFile } from '../stores/ui';
-  import { getFsBridge } from '../bridges/fs';
+  import {
+    openZoomOverlay, setFile, appendFile, videoState, params,
+    pendingVideoSwitch, images, mediaLoadRequested, libraryDrawerOpen
+  } from '../stores/ui';
+  import { getFsBridge, isVideoFile, inferMimeType } from '../bridges/fs';
+  import type { FileSelection } from '../bridges/fs';
   import { isTauriEnv } from '../bridges/tauri';
-  import { loadImageDataset } from '../compute/image-loader';
   import { logEvent } from '../bridges/log';
+  import { probeVideo } from '../bridges/video';
   import { openImageZoom as zoomImage, openSvgZoom, handleZoomKeydown as svgZoomKeydown } from '../utils/zoom';
   import { generateValuesHistogramSvg } from '../exports/values-histogram';
-  import { showSimplifiedTones } from '../stores/ui';
+  import { showSimplifiedTones, setVideoState, invalidateAnalysisForImage } from '../stores/ui';
   import { createValueAnalysisRunner } from './values/value-analysis-runner.svelte';
+  import { createVideoScrubber } from './values/video-scrubber.svelte';
+  import VideoScrubber from './values/VideoScrubber.svelte';
+
+  let videoEl = $state<HTMLVideoElement | null>(null);
 
   const runner = createValueAnalysisRunner();
+
+  function maxDimensionForQuality(quality: number): number {
+    const step = Math.round(quality);
+    if (step <= 0) return 1200;
+    if (step === 1) return 1600;
+    if (step === 2) return 2200;
+    if (step === 3) return 2600;
+    return 3200;
+  }
+
+  const scrubber = createVideoScrubber({
+    getMaxDimension: () => maxDimensionForQuality($params.quality),
+    captureScroll: () => runner.captureAnalysisScroll(),
+    onFrameExtracted: (framePath, frameId, timestamp, videoPath, videoName) => {
+      (globalThis as any).__ACTIVE_IMAGE_PATH__ = framePath;
+      const previewUrl = `${convertFileSrc(framePath)}?t=${Date.now()}`;
+      // Reuse existing frame entry ID for the same video to prevent duplicates
+      const existing = get(images).find((item) => item.videoPath === videoPath);
+      const entryId = existing?.id ?? frameId;
+      invalidateAnalysisForImage(entryId);
+      const entry: ImageEntry = {
+        id: entryId,
+        name: videoName,
+        path: framePath,
+        videoPath,
+        size: 0,
+        source: { kind: 'path', path: framePath },
+        previewUrl
+      };
+      const dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
+      setFile(entry, dataset);
+      runner.ensureAnalysis({ ...entry, dataset }, runner.levels, runner.effectiveNotanMode);
+    },
+    updateVideoState: (currentTime, posterPath) => {
+      const vs = $videoState;
+      if (!vs) return;
+      setVideoState({ ...vs, currentTime, posterPath });
+    }
+  });
 
   const renderAnalysis = $derived.by(() => runner.analysis);
 
   const neutralSrc = $derived.by(() => {
     if (!renderAnalysis?.neutral) return '';
-    return convertFileSrc(renderAnalysis.neutral);
+    return `${convertFileSrc(renderAnalysis.neutral)}?t=${Date.now()}`;
   });
 
   const previewSrc = $derived.by(() => {
     if (!renderAnalysis?.preview) return '';
-    return convertFileSrc(renderAnalysis.preview);
+    return `${convertFileSrc(renderAnalysis.preview)}?t=${Date.now()}`;
   });
 
   const isRefreshing = $derived.by(
@@ -103,69 +152,229 @@
     )}`;
   }
 
+  async function probeAndSetVideoState(videoPath: string, name: string) {
+    try {
+      const probe = await probeVideo(videoPath);
+      setVideoState({
+        path: videoPath,
+        name,
+        duration: probe.duration,
+        fps: probe.fps ?? null,
+        currentTime: 0,
+        posterPath: null
+      });
+    } catch (err) {
+      console.error('[values] Video probe failed', err);
+    }
+  }
+
+  let pendingVideoPath: string | null = null;
+
+  function handleVideoFile(videoPath: string, name: string) {
+    const vs = get(videoState);
+    if (vs?.path === videoPath) return;
+    if (pendingVideoPath === videoPath) return;
+    pendingVideoPath = videoPath;
+    runner.cancelPending();
+    void probeAndSetVideoState(videoPath, name).finally(() => {
+      if (pendingVideoPath === videoPath) pendingVideoPath = null;
+    });
+  }
+
+  function handleImageFile(sel: FileSelection) {
+    setVideoState(null);
+    const nativeMode = isTauriEnv() && !!sel.path;
+    const dataset = nativeMode
+      ? { width: 0, height: 0, pixels: new Uint8Array(0) }
+      : { width: 0, height: 0, pixels: new Uint8Array(0) };
+
+    // Path-based dedup: reuse existing entry ID if same path
+    const existing = nativeMode && sel.path
+      ? get(images).find((item) => item.path === sel.path && !item.videoPath)
+      : null;
+    const entryId = existing?.id ?? (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+
+    const previewUrl = nativeMode && sel.path
+      ? convertFileSrc(sel.path)
+      : sel.blob && sel.blob.size > 0
+        ? URL.createObjectURL(sel.blob)
+        : null;
+
+    const source: ImageEntry['source'] = nativeMode && sel.path
+      ? { kind: 'path', path: sel.path }
+      : { kind: 'blob' };
+
+    if (nativeMode && sel.path) {
+      (globalThis as any).__ACTIVE_IMAGE_PATH__ = sel.path;
+    }
+
+    const entry: ImageEntry = {
+      id: entryId,
+      name: sel.name || sel.path || 'image',
+      path: sel.path,
+      size: sel.size,
+      source,
+      previewUrl
+    };
+
+    setFile(entry, dataset);
+  }
+
+  async function processBatch(selections: FileSelection[]) {
+    let videoProcessed = false;
+    let firstActivated = false;
+
+    for (const sel of selections) {
+      if (isVideoFile(sel)) {
+        if (!videoProcessed && sel.path) {
+          videoProcessed = true;
+          firstActivated = true;
+          handleVideoFile(sel.path, sel.name);
+        } else if (sel.path) {
+          const entryId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+          const entry: ImageEntry = {
+            id: entryId,
+            name: sel.name,
+            path: sel.path,
+            videoPath: sel.path,
+            size: sel.size,
+            source: { kind: 'path', path: sel.path },
+            previewUrl: null
+          };
+          appendFile(entry, { width: 0, height: 0, pixels: new Uint8Array(0) });
+        }
+      } else {
+        if (!firstActivated) {
+          firstActivated = true;
+          handleImageFile(sel);
+        } else {
+          const nativeMode = isTauriEnv() && !!sel.path;
+          const dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
+          const entryId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+          const previewUrl = nativeMode && sel.path ? convertFileSrc(sel.path) : null;
+          const source: ImageEntry['source'] = nativeMode && sel.path
+            ? { kind: 'path', path: sel.path }
+            : { kind: 'blob' };
+          const entry: ImageEntry = {
+            id: entryId,
+            name: sel.name || sel.path || 'file',
+            path: sel.path,
+            size: sel.size,
+            source,
+            previewUrl
+          };
+          appendFile(entry, dataset);
+        }
+      }
+    }
+    if (selections.length > 1) {
+      libraryDrawerOpen.set(true);
+    }
+  }
+
   async function handleUpload() {
     try {
       const bridge = await getFsBridge();
-      const selections = await bridge.openMediaFiles('images');
+      const selections = await bridge.openMediaFiles('all');
       if (!selections?.length) return;
-      const selection = selections[0];
-
-      const nativeMode = isTauriEnv() && !!selection.path;
-
-      let dataset;
-      if (nativeMode) {
-        (globalThis as any).__ACTIVE_IMAGE_PATH__ = selection.path;
-        dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
-      } else {
-        dataset = await loadImageDataset(selection.blob);
-      }
-
-      const previewUrl = nativeMode && selection.path
-        ? convertFileSrc(selection.path)
-        : selection.blob && selection.blob.size > 0
-          ? URL.createObjectURL(selection.blob)
-          : null;
-
-      const source: ImageEntry['source'] = nativeMode && selection.path
-        ? { kind: 'path', path: selection.path }
-        : { kind: 'blob' };
-
-      const entry: ImageEntry = {
-        id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
-        name: selection.name || selection.path || 'image',
-        path: selection.path,
-        size: selection.size,
-        source,
-        previewUrl
-      };
-
-      clearFile();
-      setFile(entry, dataset);
+      await processBatch(selections);
     } catch (e) {
       console.error('[values] Upload failed', e);
     }
   }
 
-  onMount(() => runner.mount());
+  onMount(() => {
+    const cleanupRunner = runner.mount();
+    scrubber.syncFromVideoState($videoState);
+    // HomeView → ValuesView handoff: if we mount with an existing video frame
+    // that hasn't been analyzed yet, trigger analysis immediately.
+    // (During scrubbing, onFrameExtracted handles analysis directly.)
+    if (runner.file?.videoPath && !runner.hasCurrentAnalysis) {
+      void runner.ensureAnalysis(runner.file, runner.levels, runner.effectiveNotanMode);
+    }
+    let unlistenDragDrop: (() => void) | null = null;
+    if (isTauriEnv()) {
+      listen<{ paths?: string[] }>('tauri://drag-drop', (event) => {
+        const paths = event.payload?.paths;
+        if (!paths?.length) return;
+        const selections = paths.map((p) => ({
+          name: p.split(/[\\/]/).pop() ?? 'file',
+          path: p,
+          size: 0,
+          blob: new Blob([], { type: inferMimeType(p.split(/[\\/]/).pop() ?? '') }),
+          mimeType: inferMimeType(p.split(/[\\/]/).pop() ?? '')
+        } satisfies FileSelection));
+        void processBatch(selections);
+      }).then((fn) => { unlistenDragDrop = fn; });
+    }
+    const unsubs = [
+      videoState.subscribe((vs) => {
+        scrubber.syncFromVideoState(vs);
+        if (vs && (!runner.file || runner.file.videoPath !== vs.path)) {
+          scrubber.scheduleFrameExtract();
+        }
+      }),
+      pendingVideoSwitch.subscribe((pending) => {
+        if (!pending) return;
+        const { id } = pending;
+        pendingVideoSwitch.set(null);
+        const entry = get(images).find((item) => item.id === id);
+        if (!entry?.path) return;
+        const videoPath = entry.videoPath ?? entry.path;
+        handleVideoFile(videoPath, entry.name);
+      }),
+      (() => {
+        let first = true;
+        return mediaLoadRequested.subscribe(() => {
+          if (first) { first = false; return; }
+          handleUpload();
+        });
+      })()
+    ];
+    return () => {
+      cleanupRunner();
+      unsubs.forEach((unsub) => unsub());
+      if (unlistenDragDrop) unlistenDragDrop();
+      scrubber.destroy();
+    };
+  });
 
   $effect(() => {
     if (!runner.file) return;
     if (runner.status !== 'idle') return;
     if (runner.hasCurrentAnalysis) return;
+    // Raw video files need frame extraction, not direct analysis
+    if (runner.file.path && /\.mp4$/i.test(runner.file.path) && !runner.file.videoPath) {
+      handleVideoFile(runner.file.path, runner.file.name);
+      return;
+    }
+    // Video frames are analyzed directly in onFrameExtracted
+    if (runner.file.videoPath) return;
     void runner.ensureAnalysis(runner.file, runner.levels, runner.effectiveNotanMode);
   });
 
   $effect(() => {
     runner.trackMaskKey(renderAnalysis);
   });
+
+  $effect(() => {
+    scrubber.setVideoElementRef(videoEl);
+  });
+
+  $effect(() => {
+    const src = scrubber.videoSrcUrl;
+    if (!videoEl || !src) return;
+    const timer = setTimeout(() => videoEl?.load(), 100);
+    return () => clearTimeout(timer);
+  });
 </script>
 
 <section class="values">
   {#if !runner.file}
     <div class="empty empty--upload">
-      <p>No image loaded.</p>
-      <button class="upload" onclick={handleUpload}>Upload image</button>
-      <p class="formats">PNG, JPEG, WebP</p>
+      <p>No media loaded.</p>
+      <button class="upload" onclick={handleUpload}>Add media</button>
+      <p class="formats">PNG, JPEG, WebP, BMP, GIF, TIFF, MP4</p>
     </div>
   {:else if !renderAnalysis}
     {#if runner.status === 'pending'}
@@ -173,14 +382,27 @@
     {:else if runner.status === 'error'}
       <div class="empty">Values analysis failed. {runner.error ?? 'Unknown error.'}</div>
     {:else}
-      <div class="empty">Select an image to view the values analysis.</div>
+      <div class="empty">Select media to view the values analysis.</div>
     {/if}
   {:else}
     <div class="preview-frame">
       <div class="preview-pair">
         <div class="preview-card">
           <span>Original</span>
-          {#if runner.file.previewUrl}
+          {#if scrubber.isVideo}
+            <video
+              bind:this={videoEl}
+              class="preview"
+              poster={runner.file.previewUrl ?? undefined}
+              muted
+              playsinline
+              preload="auto"
+            >
+              {#if scrubber.videoSrcUrl}
+                <source src={scrubber.videoSrcUrl} type="video/mp4" />
+              {/if}
+            </video>
+          {:else if runner.file.previewUrl}
             <div
               class="zoomable"
               role="button"
@@ -222,6 +444,9 @@
             <div class="empty">Neutral values unavailable.</div>
           {/if}
         </div>
+        {#if scrubber.isVideo}
+          <VideoScrubber {scrubber} />
+        {/if}
       </div>
     </div>
 
@@ -354,6 +579,11 @@
     gap: 24px;
     width: 100%;
     max-width: 880px;
+  }
+
+  .preview-pair :global(.video-scrubber) {
+    grid-column: 1;
+    margin-top: 4px;
   }
 
   .preview-card {

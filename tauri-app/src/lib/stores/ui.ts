@@ -228,6 +228,24 @@ export function clearAnalysisError() {
   analysisState.set('idle');
 }
 
+export function invalidateAnalysisForImage(imageId: string) {
+  analysisById.update((cache) => {
+    const next = { ...cache };
+    delete next[imageId];
+    return next;
+  });
+  const removeKeysForImage = (cache: Record<string, any>) => {
+    const next: typeof cache = {};
+    for (const [key, val] of Object.entries(cache)) {
+      if (!key.startsWith(imageId + ':')) next[key] = val;
+    }
+    return next;
+  };
+  valueAnalysisByKey.update(removeKeysForImage);
+  valueAnalysisStateByKey.update(removeKeysForImage);
+  valueAnalysisErrorByKey.update(removeKeysForImage);
+}
+
 export const exportScale = writable<number>(2);
 export const exportDir = writable<string | null>(null);
 

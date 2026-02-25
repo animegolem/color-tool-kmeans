@@ -21,6 +21,7 @@ export interface VideoControllerDeps {
   getVideoStripMode: () => 'filmstrip' | 'barcode';
   getCachedVideoState: (videoPath: string) => VideoCacheEntry | null;
   cacheVideoState: (videoPath: string, entry: VideoCacheEntry) => void;
+  findExistingFrameId: (videoPath: string) => string | null;
 }
 
 export function createVideoController(deps: VideoControllerDeps) {
@@ -408,8 +409,8 @@ export function createVideoController(deps: VideoControllerDeps) {
     videoFps = state.fps ?? null;
     videoCurrentTime = state.currentTime ?? 0;
     _pendingSeekTime = videoCurrentTime > 0 ? videoCurrentTime : null;
-    videoFrameId =
-      globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    videoFrameId = deps.findExistingFrameId(state.path) ??
+      (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
     videoStripId =
       globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     if (state.stripPath) {

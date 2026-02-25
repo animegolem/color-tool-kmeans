@@ -7,12 +7,15 @@ tags:
   - Video
   - Epic-020
   - values-view
-kanban_status: planned
-depends_on: [AI-EPIC-020, AI-IMP-109]
-parent_epic: [[AI-EPIC-020-multi-image-input]]
-confidence_score: 0.60
+kanban_status: completed
+depends_on:
+  - AI-EPIC-020
+  - AI-IMP-109
+parent_epic:
+  - - AI-EPIC-020-multi-image-input
+confidence_score: 0.6
 date_created: 2026-02-18
-date_completed:
+date_completed: 2026-02-24
 ---
 
 # AI-IMP-110-video-controls-values-view
@@ -47,12 +50,12 @@ Done means: the Values view shows a scrubber bar when a video is the active medi
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Detect when active media is a video on Values view
-- [ ] Render minimal scrubber + time display on Values view
-- [ ] Extract frame on scrub position change
-- [ ] Trigger value re-analysis with newly extracted frame
-- [ ] Default to current extracted frame on view switch
-- [ ] Run `npm run check`, `npm run lint`, `npm run test`
+- [x] Detect when active media is a video on Values view
+- [x] Render minimal scrubber + time display on Values view
+- [x] Extract frame on scrub position change
+- [x] Trigger value re-analysis with newly extracted frame
+- [x] Default to current extracted frame on view switch
+- [x] Run `npm run check`, `npm run lint`, `npm run test`
 
 ### Acceptance Criteria
 
