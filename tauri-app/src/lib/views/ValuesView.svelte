@@ -6,7 +6,9 @@
   import type { ImageEntry } from '../stores/ui';
   import {
     openZoomOverlay, setFile, appendFile, videoState, params,
-    pendingVideoSwitch, images, mediaLoadRequested, libraryDrawerOpen
+    pendingVideoSwitch, images, mediaLoadRequested, libraryDrawerOpen,
+    showSimplifiedTones, setVideoState, invalidateAnalysisForImage,
+    updateEntryPreview, getCachedVideoState
   } from '../stores/ui';
   import { getFsBridge, isVideoFile, inferMimeType } from '../bridges/fs';
   import type { FileSelection } from '../bridges/fs';
@@ -15,7 +17,7 @@
   import { probeVideo } from '../bridges/video';
   import { openImageZoom as zoomImage, openSvgZoom, handleZoomKeydown as svgZoomKeydown } from '../utils/zoom';
   import { generateValuesHistogramSvg } from '../exports/values-histogram';
-  import { showSimplifiedTones, setVideoState, invalidateAnalysisForImage } from '../stores/ui';
+  import { ingestFileAsEntry, maxDimensionForQuality } from '../services/media-ingestion';
   import { createValueAnalysisRunner } from './values/value-analysis-runner.svelte';
   import { createVideoScrubber } from './values/video-scrubber.svelte';
   import VideoScrubber from './values/VideoScrubber.svelte';
@@ -23,15 +25,6 @@
   let videoEl = $state<HTMLVideoElement | null>(null);
 
   const runner = createValueAnalysisRunner();
-
-  function maxDimensionForQuality(quality: number): number {
-    const step = Math.round(quality);
-    if (step <= 0) return 1200;
-    if (step === 1) return 1600;
-    if (step === 2) return 2200;
-    if (step === 3) return 2600;
-    return 3200;
-  }
 
   const scrubber = createVideoScrubber({
     getMaxDimension: () => maxDimensionForQuality($params.quality),
@@ -153,6 +146,20 @@
   }
 
   async function probeAndSetVideoState(videoPath: string, name: string) {
+    // Check session cache first to preserve scrub position across view switches
+    const cached = getCachedVideoState(videoPath);
+    if (cached) {
+      setVideoState({
+        path: videoPath,
+        name,
+        duration: cached.duration,
+        fps: cached.fps ?? null,
+        currentTime: cached.currentTime ?? 0,
+        posterPath: cached.posterPath ?? null
+      });
+      return;
+    }
+    // Fallback: probe video
     try {
       const probe = await probeVideo(videoPath);
       setVideoState({
@@ -184,38 +191,22 @@
   function handleImageFile(sel: FileSelection) {
     setVideoState(null);
     const nativeMode = isTauriEnv() && !!sel.path;
-    const dataset = nativeMode
-      ? { width: 0, height: 0, pixels: new Uint8Array(0) }
-      : { width: 0, height: 0, pixels: new Uint8Array(0) };
 
     // Path-based dedup: reuse existing entry ID if same path
     const existing = nativeMode && sel.path
       ? get(images).find((item) => item.path === sel.path && !item.videoPath)
       : null;
-    const entryId = existing?.id ?? (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
 
-    const previewUrl = nativeMode && sel.path
-      ? convertFileSrc(sel.path)
-      : sel.blob && sel.blob.size > 0
-        ? URL.createObjectURL(sel.blob)
-        : null;
+    const { entry, dataset } = ingestFileAsEntry(sel);
 
-    const source: ImageEntry['source'] = nativeMode && sel.path
-      ? { kind: 'path', path: sel.path }
-      : { kind: 'blob' };
+    // Preserve existing entry ID for dedup
+    if (existing) {
+      entry.id = existing.id;
+    }
 
     if (nativeMode && sel.path) {
       (globalThis as any).__ACTIVE_IMAGE_PATH__ = sel.path;
     }
-
-    const entry: ImageEntry = {
-      id: entryId,
-      name: sel.name || sel.path || 'image',
-      path: sel.path,
-      size: sel.size,
-      source,
-      previewUrl
-    };
 
     setFile(entry, dataset);
   }
@@ -230,39 +221,18 @@
           videoProcessed = true;
           firstActivated = true;
           handleVideoFile(sel.path, sel.name);
-        } else if (sel.path) {
-          const entryId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
-          const entry: ImageEntry = {
-            id: entryId,
-            name: sel.name,
-            path: sel.path,
-            videoPath: sel.path,
-            size: sel.size,
-            source: { kind: 'path', path: sel.path },
-            previewUrl: null
-          };
-          appendFile(entry, { width: 0, height: 0, pixels: new Uint8Array(0) });
+        } else {
+          // Additional videos: create entry with async thumbnail extraction
+          const { entry, dataset } = ingestFileAsEntry(sel, updateEntryPreview);
+          appendFile(entry, dataset);
         }
       } else {
         if (!firstActivated) {
           firstActivated = true;
           handleImageFile(sel);
         } else {
-          const nativeMode = isTauriEnv() && !!sel.path;
-          const dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
-          const entryId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
-          const previewUrl = nativeMode && sel.path ? convertFileSrc(sel.path) : null;
-          const source: ImageEntry['source'] = nativeMode && sel.path
-            ? { kind: 'path', path: sel.path }
-            : { kind: 'blob' };
-          const entry: ImageEntry = {
-            id: entryId,
-            name: sel.name || sel.path || 'file',
-            path: sel.path,
-            size: sel.size,
-            source,
-            previewUrl
-          };
+          // Additional images: create entry for media bucket
+          const { entry, dataset } = ingestFileAsEntry(sel, updateEntryPreview);
           appendFile(entry, dataset);
         }
       }

@@ -1,12 +1,11 @@
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type { AnalysisParams, ImageEntry, SelectedImage } from '../../stores/ui';
 import type { FileSelection } from '../../bridges/fs';
 import { getFsBridge, isVideoFile, inferMimeType } from '../../bridges/fs';
 import { isTauriEnv } from '../../bridges/tauri';
 import { loadImageDataset } from '../../compute/image-loader';
-import { extractVideoFrame } from '../../bridges/video';
 import { logEvent } from '../../bridges/log';
+import { ingestFileAsEntry, maxDimensionForQuality, buildPreviewUrl } from '../../services/media-ingestion';
 
 export interface FileIngestionDeps {
   setFile: (entry: ImageEntry, dataset: { width: number; height: number; pixels: Uint8Array }) => void;
@@ -29,28 +28,6 @@ export function createFileIngestion(deps: FileIngestionDeps) {
   let draggingWindow = $state(false);
   let loadToken = 0;
   let dropRef: HTMLElement | null = $state(null);
-
-  function buildPreviewUrl(
-    selection: FileSelection,
-    nativeMode: boolean
-  ): string | null {
-    if (nativeMode && selection.path) {
-      return convertFileSrc(selection.path);
-    }
-    if (selection.blob && selection.blob.size > 0) {
-      return URL.createObjectURL(selection.blob);
-    }
-    return null;
-  }
-
-  function maxDimensionForQuality(quality: number): number {
-    const step = Math.round(quality);
-    if (step <= 0) return 1200;
-    if (step === 1) return 1600;
-    if (step === 2) return 2200;
-    if (step === 3) return 2600;
-    return 3200;
-  }
 
   async function chooseMedia() {
     try {
@@ -98,59 +75,31 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     const token = loadToken;
     deps.cancelPending();
     try {
-      let dataset;
       const nativeMode = isTauriEnv() && !!fileSelection.path;
+      let dataset;
       if (nativeMode) {
-        if (activate) {
-          (globalThis as any).__ACTIVE_IMAGE_PATH__ = fileSelection.path;
-        }
         dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
       } else {
         dataset = await loadImageDataset(fileSelection.blob);
       }
       if (token !== loadToken) return;
-      const isVideo = isVideoFile(fileSelection);
-      const previewUrl = isVideo ? null : buildPreviewUrl(fileSelection, nativeMode);
-      const source: ImageEntry['source'] =
-        nativeMode && fileSelection.path
-          ? { kind: 'path', path: fileSelection.path }
-          : { kind: 'blob' };
-      const entryId =
-        globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
-      const selected: ImageEntry = {
-        id: entryId,
-        name: fileSelection.name || fileSelection.path || 'image',
-        path: fileSelection.path,
-        ...(isVideo && fileSelection.path ? { videoPath: fileSelection.path } : {}),
-        size: fileSelection.size,
-        source,
-        previewUrl
-      };
-      // For video files, extract a static thumbnail asynchronously to avoid
-      // WebKit auto-playing MP4 content inside <img> tags (causes renderer crash)
-      if (isVideo && fileSelection.path) {
-        const videoPath = fileSelection.path;
-        const frameId = `thumb-${entryId}`;
-        extractVideoFrame({ path: videoPath, frameId, timestamp: 0, maxDimension: 200 })
-          .then((res) => {
-            const thumbUrl = convertFileSrc(res.path);
-            deps.updateEntryPreview(entryId, thumbUrl);
-          })
-          .catch((err) => {
-            console.warn('[file-ingestion] Video thumbnail extraction failed', err);
-          });
+
+      const { entry } = ingestFileAsEntry(fileSelection, deps.updateEntryPreview);
+
+      if (activate && nativeMode && fileSelection.path) {
+        (globalThis as any).__ACTIVE_IMAGE_PATH__ = fileSelection.path;
       }
       deps.setBannerMessage(null);
       if (activate) {
-        deps.setFile(selected, dataset);
+        deps.setFile(entry, dataset);
         const snapshot = deps.getParams();
         deps.scheduleAnalysisWith(
-          { ...selected, dataset },
+          { ...entry, dataset },
           snapshot,
           deps.getStatus()
         );
       } else {
-        deps.appendFile(selected, dataset);
+        deps.appendFile(entry, dataset);
       }
     } catch (error) {
       console.error('[home] Failed to decode image', error);
@@ -244,6 +193,7 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     handleDragLeave,
     handleDrop,
     buildPreviewUrl,
-    maxDimensionForQuality
+    maxDimensionForQuality,
+    ingestFileAsEntry
   };
 }

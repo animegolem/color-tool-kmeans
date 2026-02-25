@@ -119,9 +119,9 @@ pub fn generate_value_analysis(
     let source_path_str = path.as_ref().to_string_lossy();
     let source_mtime = file_mtime(path.as_ref());
     if neutral_path.exists() && preview_path.exists() && bucket_map_path.exists() {
-        if let Some(meta) =
-            load_meta(&cache_dir).filter(|meta| is_meta_current(meta, levels, notan_mode, &source_path_str, source_mtime))
-        {
+        if let Some(meta) = load_meta(&cache_dir).filter(|meta| {
+            is_meta_current(meta, levels, notan_mode, &source_path_str, source_mtime)
+        }) {
             return Ok(ValueAnalysisResult {
                 neutral: neutral_path,
                 preview: preview_path,
@@ -521,7 +521,13 @@ fn write_meta(cache_dir: &Path, meta: &ValueAnalysisMeta) {
     }
 }
 
-fn is_meta_current(meta: &ValueAnalysisMeta, levels: usize, notan_mode: bool, source_path: &str, source_mtime: Option<u64>) -> bool {
+fn is_meta_current(
+    meta: &ValueAnalysisMeta,
+    levels: usize,
+    notan_mode: bool,
+    source_path: &str,
+    source_mtime: Option<u64>,
+) -> bool {
     meta.version == VALUE_ANALYSIS_CACHE_VERSION
         && meta.levels == levels
         && meta.notan_mode == notan_mode

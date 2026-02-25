@@ -34,7 +34,7 @@
 Generated from tracked files; binary assets excluded.
 
 - tauri-app/src-tauri/src/bin/bench_runner.rs (1943 LOC)
-- tauri-app/src/lib/views/ValuesView.svelte (857 LOC)
+- tauri-app/src/lib/views/ValuesView.svelte (827 LOC)
 - tauri-app/src-tauri/src/color.rs (706 LOC)
 - tauri-app/src/lib/views/ExportsView.svelte (698 LOC)
 - tauri-app/src/lib/views/home/video-controller.svelte.ts (651 LOC)
