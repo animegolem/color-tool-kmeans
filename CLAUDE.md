@@ -86,7 +86,7 @@ Color analysis tool using k-means clustering. Primary implementation:
 - `image_pipeline.rs` — image sampling and analysis entry point
 - `value_analysis.rs` — value/lightness analysis
 - `ffmpeg.rs` — video frame extraction via ffmpeg CLI
-- **Binaries** (`bin/`) — CLI tools: `compute_cli`, `kmeans_baseline`, `rmpc_theme_gen`, `bench_runner`
+- **Binaries** (`bin/`) — `kmeans_baseline` (perf microbenchmark)
 
 **Key Design Pattern**: Detection-based bridge selection. Native Tauri API required.
 
@@ -133,9 +133,8 @@ cd tauri-app/src-tauri
 cargo fmt --all -- --check
 cargo clippy --workspace -- -D warnings
 
-# Run CLI tools
-cargo run --bin compute_cli -- <args>
-cargo run --bin rmpc-theme-gen -- <args>
+# Run baseline benchmark
+cargo run --bin kmeans_baseline
 ```
 
 ## Git Hooks & CI
