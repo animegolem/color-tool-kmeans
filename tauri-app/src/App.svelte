@@ -4,9 +4,8 @@
   import { get } from 'svelte/store';
   import { currentView, setView, libraryDrawerOpen, navCollapsed, narrowMode, selectedFile, videoState, setVideoState, clearActiveSelection, requestMediaLoad, setFile, appendFile, updateEntryPreview } from './lib/stores/ui';
   import { isTauriEnv, tauriInvoke } from './lib/bridges/tauri';
-  import { getFsBridge, isVideoFile } from './lib/bridges/fs';
-  import { convertFileSrc } from '@tauri-apps/api/core';
-  import { extractVideoFrame } from './lib/bridges/video';
+  import { getFsBridge } from './lib/bridges/fs';
+  import { ingestFileAsEntry } from './lib/services/media-ingestion';
   import HomeView from './lib/views/HomeView.svelte';
   import ValuesView from './lib/views/ValuesView.svelte';
   import ExportsView from './lib/views/ExportsView.svelte';
@@ -69,35 +68,16 @@
       if (!selections?.length) return;
       let firstActivated = false;
       for (const sel of selections) {
-        const nativeMode = isTauriEnv() && !!sel.path;
-        const isVideo = isVideoFile(sel);
-        const previewUrl = isVideo ? null :
-          (nativeMode && sel.path ? convertFileSrc(sel.path) : null);
-        const entryId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
-        const entry: ImageEntry = {
-          id: entryId,
-          name: sel.name || sel.path || 'image',
-          path: sel.path,
-          ...(isVideo && sel.path ? { videoPath: sel.path } : {}),
-          size: sel.size,
-          source: nativeMode && sel.path ? { kind: 'path', path: sel.path } : { kind: 'blob' },
-          previewUrl
-        };
-        if (isVideo && sel.path) {
-          extractVideoFrame({ path: sel.path, frameId: `thumb-${entryId}`, timestamp: 0, maxDimension: 200 })
-            .then((res) => updateEntryPreview(entryId, convertFileSrc(res.path)))
-            .catch(() => {});
-        }
-        const emptyDataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
+        const { entry, dataset } = ingestFileAsEntry(sel, updateEntryPreview);
         if (!firstActivated) {
           firstActivated = true;
-          if (nativeMode && sel.path) {
-            (globalThis as any).__ACTIVE_IMAGE_PATH__ = sel.path;
+          if (entry.path) {
+            (globalThis as any).__ACTIVE_IMAGE_PATH__ = entry.path;
           }
           setVideoState(null);
-          setFile(entry, emptyDataset);
+          setFile(entry, dataset);
         } else {
-          appendFile(entry, emptyDataset);
+          appendFile(entry, dataset);
         }
       }
       if (selections.length > 1) libraryDrawerOpen.set(true);

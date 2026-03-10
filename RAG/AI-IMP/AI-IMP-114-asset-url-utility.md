@@ -6,12 +6,12 @@ tags:
   - refactor
   - svelte
   - utils
-kanban_status: backlog
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-022-media-pipeline-unification]]
 confidence_score: 0.90
 date_created: 2026-02-25
-date_completed:
+date_completed: 2026-02-25
 ---
 
 # AI-IMP-114-asset-url-utility
@@ -41,13 +41,11 @@ Create a small utility module `lib/utils/asset-url.ts` exporting a single functi
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Create `lib/utils/asset-url.ts` with `export function assetUrl(path: string): string`
-- [ ] Replace 3 inline patterns in `ValuesView.svelte`
-- [ ] Replace 4 inline patterns in `video-controller.svelte.ts`
-- [ ] Replace 1 inline pattern in `ExportsView.svelte`
-- [ ] Replace 1 inline pattern in `video-scrubber.svelte.ts`
-- [ ] Remove unused `convertFileSrc` imports where `assetUrl` fully replaces them
-- [ ] Run `npm run check && npm run lint`
+- [x] Create `lib/utils/asset-url.ts` with `export function assetUrl(path: string): string`
+- [x] Replace 3 inline patterns in `ValuesView.svelte`
+- [x] Replace 6 inline patterns in `video-controller.svelte.ts`
+- [x] Remove unused `convertFileSrc` imports where `assetUrl` fully replaces them
+- [x] Run `npm run check && npm run lint`
 
 ### Acceptance Criteria
 
@@ -63,4 +61,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 **THEN** it passes with no type errors.
 
 ### Issues Encountered
-<!-- Post-implementation notes go here -->
+- IMP originally listed 9 instances as ValuesView (3), video-controller (4), ExportsView (1), video-scrubber (1). Actual distribution: ValuesView (3) + video-controller (6) = 9. ExportsView and video-scrubber use `convertFileSrc` without cache-busting (no `Date.now()`), which is correct for their use cases (stable strip paths, video source URLs).

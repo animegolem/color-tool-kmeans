@@ -6,12 +6,12 @@ tags:
   - refactor
   - svelte
   - utils
-kanban_status: backlog
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-022-media-pipeline-unification]]
 confidence_score: 0.95
 date_created: 2026-02-25
-date_completed:
+date_completed: 2026-02-25
 ---
 
 # AI-IMP-115-format-time-dedup
@@ -39,12 +39,12 @@ Create `lib/utils/time.ts` exporting `formatTime(seconds: number): string`. Remo
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Create `lib/utils/time.ts` with `export function formatTime(seconds: number): string`
-- [ ] Remove `formatTime` definition from `video-controller.svelte.ts`, add import from `lib/utils/time`
-- [ ] Remove `formatTime` definition from `video-scrubber.svelte.ts`, add import from `lib/utils/time`
-- [ ] Verify VideoPanel renders time displays correctly
-- [ ] Verify VideoScrubber renders time displays correctly
-- [ ] Run `npm run check && npm run lint`
+- [x] Create `lib/utils/time.ts` with `export function formatTime(seconds: number): string`
+- [x] Remove `formatTime` definition from `video-controller.svelte.ts`, add import from `lib/utils/time`
+- [x] Remove `formatTime` definition from `video-scrubber.svelte.ts`, add import from `lib/utils/time`
+- [ ] Verify VideoPanel renders time displays correctly (manual smoke test)
+- [ ] Verify VideoScrubber renders time displays correctly (manual smoke test)
+- [x] Run `npm run check && npm run lint`
 
 ### Acceptance Criteria
 

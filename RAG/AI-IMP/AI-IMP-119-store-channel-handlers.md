@@ -17,7 +17,7 @@ date_completed:
 # AI-IMP-119-store-channel-handlers
 
 ## Summary
-Extract `pendingVideoSwitch` and `mediaLoadRequested` subscription handlers from HomeView.svelte (lines 282-311) and ValuesView.svelte (lines 287-302) into shared factory functions in `lib/services/view-subscriptions.ts`.
+Extract `pendingVideoSwitch` and `mediaLoadRequested` subscription handlers from HomeView.svelte (lines 282-310) and ValuesView.svelte (lines 287-302) into shared factory functions in `lib/services/view-subscriptions.ts`. Note: HomeView's `pendingVideoSwitch` handler is more complex (includes devlog tracing, dedup check, state clearing) — the factory should accept callbacks for view-specific behavior.
 
 Done means: both views use shared factory functions for these subscriptions, video switching works from the library rail in both views, and the upload button triggers the correct view's dialog.
 

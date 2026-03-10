@@ -17,7 +17,7 @@ date_completed:
 # AI-IMP-118-active-image-path-abstraction
 
 ## Summary
-Centralize `__ACTIVE_IMAGE_PATH__` global management (12 direct mutations across 5 files) into `lib/services/active-image.ts` with `setActivePath()`, `getActivePath()`, and `clearActivePath()` functions.
+Centralize `__ACTIVE_IMAGE_PATH__` global management (13 direct mutations across 6 files, plus 2 reads) into `lib/services/active-image.ts` with `setActivePath()`, `getActivePath()`, and `clearActivePath()` functions.
 
 Done means: no direct `__ACTIVE_IMAGE_PATH__` `globalThis` access remains in the codebase, all analysis paths still work, and `npm run check` passes.
 
@@ -26,7 +26,7 @@ Done means: no direct `__ACTIVE_IMAGE_PATH__` `globalThis` access remains in the
 - Changing the compute bridge's path resolution logic.
 
 ### Design/Approach
-Create `lib/services/active-image.ts` exporting three functions that encapsulate the `globalThis.__ACTIVE_IMAGE_PATH__` read/write/delete pattern. Replace all 12 direct mutations and reads across the 5 consumer files. The `clearActivePath()` function replaces the existing try-catch delete patterns.
+Create `lib/services/active-image.ts` exporting three functions that encapsulate the `globalThis.__ACTIVE_IMAGE_PATH__` read/write/delete pattern. Replace all 13 direct mutations (9 writes + 4 deletes) and 2 reads across the 6 consumer files. The `clearActivePath()` function replaces the existing try-catch delete patterns.
 
 ### Files to Touch
 - `tauri-app/src/lib/services/active-image.ts`: new file
@@ -47,11 +47,11 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 - [ ] Create `lib/services/active-image.ts` with `setActivePath`, `getActivePath`, `clearActivePath`
 - [ ] Replace all `globalThis.__ACTIVE_IMAGE_PATH__` writes with `setActivePath()` in App.svelte
 - [ ] Replace all `globalThis.__ACTIVE_IMAGE_PATH__` writes with `setActivePath()` in ValuesView.svelte
-- [ ] Replace all `globalThis.__ACTIVE_IMAGE_PATH__` writes with `setActivePath()` in HomeView.svelte
-- [ ] Replace all `globalThis.__ACTIVE_IMAGE_PATH__` access in file-ingestion.svelte.ts
-- [ ] Replace all `globalThis.__ACTIVE_IMAGE_PATH__` access in video-controller.svelte.ts
-- [ ] Replace try-catch delete patterns with `clearActivePath()`
-- [ ] Replace `globalThis.__ACTIVE_IMAGE_PATH__` read in compute/bridge.ts with `getActivePath()`
+- [ ] Replace 2 delete patterns in HomeView.svelte with `clearActivePath()`
+- [ ] Replace 1 write in file-ingestion.svelte.ts with `setActivePath()`
+- [ ] Replace 3 writes in video-controller.svelte.ts with `setActivePath()`
+- [ ] Replace 2 deletes + 1 read + 1 write in ui.ts with service functions
+- [ ] Replace 1 read in compute/bridge.ts with `getActivePath()`
 - [ ] Verify color analysis works after switching active images
 - [ ] Verify value analysis works after switching active images
 - [ ] Run `npm run check && npm run lint`

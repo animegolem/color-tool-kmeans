@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { convertFileSrc } from '@tauri-apps/api/core';
+  import { assetUrl } from '../utils/asset-url';
   import { listen } from '@tauri-apps/api/event';
   import type { ImageEntry } from '../stores/ui';
   import {
-    openZoomOverlay, setFile, appendFile, videoState, params,
+    openZoomOverlay, setFile, appendFile, videoState, params, activeImageId,
     pendingVideoSwitch, images, mediaLoadRequested, libraryDrawerOpen,
     showSimplifiedTones, setVideoState, invalidateAnalysisForImage,
-    updateEntryPreview, getCachedVideoState
+    updateEntryPreview, getCachedVideoState, cacheVideoState
   } from '../stores/ui';
   import { getFsBridge, isVideoFile, inferMimeType } from '../bridges/fs';
   import type { FileSelection } from '../bridges/fs';
@@ -31,7 +31,7 @@
     captureScroll: () => runner.captureAnalysisScroll(),
     onFrameExtracted: (framePath, frameId, timestamp, videoPath, videoName) => {
       (globalThis as any).__ACTIVE_IMAGE_PATH__ = framePath;
-      const previewUrl = `${convertFileSrc(framePath)}?t=${Date.now()}`;
+      const previewUrl = assetUrl(framePath);
       // Reuse existing frame entry ID for the same video to prevent duplicates
       const existing = get(images).find((item) => item.videoPath === videoPath);
       const entryId = existing?.id ?? frameId;
@@ -53,6 +53,20 @@
       const vs = $videoState;
       if (!vs) return;
       setVideoState({ ...vs, currentTime, posterPath });
+    },
+    cacheVideoState: (videoPath, currentTime, posterPath) => {
+      const vs = get(videoState);
+      if (!vs) return;
+      const activeId = get(activeImageId);
+      cacheVideoState(videoPath, {
+        duration: vs.duration,
+        fps: vs.fps,
+        currentTime,
+        stripPath: vs.stripPath ?? null,
+        stripId: null,
+        posterPath,
+        frameId: activeId ?? '',
+      });
     }
   });
 
@@ -60,12 +74,12 @@
 
   const neutralSrc = $derived.by(() => {
     if (!renderAnalysis?.neutral) return '';
-    return `${convertFileSrc(renderAnalysis.neutral)}?t=${Date.now()}`;
+    return assetUrl(renderAnalysis.neutral);
   });
 
   const previewSrc = $derived.by(() => {
     if (!renderAnalysis?.preview) return '';
-    return `${convertFileSrc(renderAnalysis.preview)}?t=${Date.now()}`;
+    return assetUrl(renderAnalysis.preview);
   });
 
   const isRefreshing = $derived.by(

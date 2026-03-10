@@ -2,6 +2,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import type { ImageEntry, VideoState } from '../../stores/ui';
 import { extractVideoFrame } from '../../bridges/video';
 import { logEvent } from '../../bridges/log';
+import { formatTime } from '../../utils/time';
 
 export interface VideoScrubberDeps {
   getMaxDimension: () => number;
@@ -14,6 +15,7 @@ export interface VideoScrubberDeps {
   ) => void;
   updateVideoState: (currentTime: number, posterPath: string) => void;
   captureScroll?: () => void;
+  cacheVideoState?: (videoPath: string, currentTime: number, posterPath: string) => void;
 }
 
 export function createVideoScrubber(deps: VideoScrubberDeps) {
@@ -78,6 +80,7 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
         void logEvent(`values:video:frame:done t=${requestTime.toFixed(2)}`);
         deps.onFrameExtracted(framePath, fid, requestTime, videoPath, videoName ?? videoPath);
         deps.updateVideoState(requestTime, framePath);
+        deps.cacheVideoState?.(videoPath, requestTime, framePath);
       } catch (error) {
         if (token !== decodeToken) return;
         const message = error instanceof Error ? error.message : String(error);
@@ -114,14 +117,6 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
     currentTime = Math.min(Math.max(currentTime + delta, 0), duration);
     if (videoElement) videoElement.currentTime = currentTime;
     scheduleFrameExtract();
-  }
-
-  function formatTime(seconds: number): string {
-    if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
-    const whole = Math.floor(seconds);
-    const mins = Math.floor(whole / 60);
-    const secs = whole % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
   function setVideoElementRef(el: HTMLVideoElement | null) {

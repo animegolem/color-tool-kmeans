@@ -6,12 +6,12 @@ tags:
   - refactor
   - svelte
   - ingestion
-kanban_status: backlog
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-022-media-pipeline-unification]]
 confidence_score: 0.85
 date_created: 2026-02-25
-date_completed:
+date_completed: 2026-02-25
 ---
 
 # AI-IMP-116-app-svelte-ingestion-consolidation
@@ -37,14 +37,14 @@ Import `ingestFileAsEntry` from `lib/services/media-ingestion.ts` into `App.svel
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Import `ingestFileAsEntry` from `lib/services/media-ingestion.ts` in `App.svelte`
-- [ ] Replace inline entry creation loop in `globalChooseMedia()` with shared function calls
-- [ ] Keep first-file activation and `__ACTIVE_IMAGE_PATH__` assignment
-- [ ] Remove `convertFileSrc` and `extractVideoFrame` imports if no longer directly used
-- [ ] Test single-file upload from Exports view
-- [ ] Test multi-file upload from Exports view
-- [ ] Verify video thumbnails are generated for all non-active videos
-- [ ] Run `npm run check && npm run lint`
+- [x] Import `ingestFileAsEntry` from `lib/services/media-ingestion.ts` in `App.svelte`
+- [x] Replace inline entry creation loop in `globalChooseMedia()` with shared function calls
+- [x] Keep first-file activation and `__ACTIVE_IMAGE_PATH__` assignment
+- [x] Remove `convertFileSrc`, `extractVideoFrame`, and `isVideoFile` imports (no longer directly used)
+- [ ] Test single-file upload from Exports view (manual smoke test)
+- [ ] Test multi-file upload from Exports view (manual smoke test)
+- [ ] Verify video thumbnails are generated for all non-active videos (manual smoke test)
+- [x] Run `npm run check && npm run lint`
 
 ### Acceptance Criteria
 

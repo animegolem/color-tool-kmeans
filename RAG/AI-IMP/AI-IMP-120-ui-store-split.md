@@ -20,7 +20,7 @@ date_completed:
 Split `lib/stores/ui.ts` (646 LOC) into 8 focused modules with a barrel re-export for backward compatibility:
 - `navigation.ts` (~15 LOC)
 - `image.ts` (~180 LOC)
-- `analysis.ts` (~100 LOC)
+- `analysis.ts` (~140 LOC)
 - `value-analysis.ts` (~85 LOC)
 - `video.ts` (~55 LOC)
 - `exports.ts` (~30 LOC)

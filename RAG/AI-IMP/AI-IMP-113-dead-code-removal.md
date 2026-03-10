@@ -6,12 +6,12 @@ tags:
   - tech-debt
   - rust
   - cleanup
-kanban_status: backlog
+kanban_status: completed
 depends_on: [AI-IMP-073]
 parent_epic: [[AI-EPIC-022-media-pipeline-unification]]
 confidence_score: 0.95
 date_created: 2026-02-25
-date_completed:
+date_completed: 2026-02-25
 ---
 
 # AI-IMP-113-dead-code-removal
@@ -40,15 +40,15 @@ Straightforward deletion and cleanup. Remove the two binary source files, strip 
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Delete `src-tauri/src/bin/bench_runner.rs`
-- [ ] Delete `src-tauri/src/bin/compute_cli.rs`
-- [ ] Remove `bench-crate` feature from `Cargo.toml` `[features]` table
-- [ ] Remove `kmeans_colors` and `palette` optional deps if only used by bench-crate
-- [ ] Remove `[[bin]]` entries for bench_runner and compute_cli in `Cargo.toml`
-- [ ] Update `CLAUDE.md` bin/ description to remove references to `rmpc_theme_gen`, `compute_cli`, `bench_runner`
-- [ ] Run `cargo fmt --all -- --check`
-- [ ] Run `cargo clippy --workspace -- -D warnings`
-- [ ] Run `cargo build`
+- [x] Delete `src-tauri/src/bin/bench_runner.rs`
+- [x] Delete `src-tauri/src/bin/compute_cli.rs`
+- [x] Remove `bench-crate` feature from `Cargo.toml` `[features]` table
+- [x] Remove `kmeans_colors` and `palette` optional deps if only used by bench-crate
+- [x] Remove `[[bin]]` entries for bench_runner and compute_cli in `Cargo.toml`
+- [x] Update `CLAUDE.md` bin/ description to remove references to `rmpc_theme_gen`, `compute_cli`, `bench_runner`
+- [x] Run `cargo fmt --all -- --check`
+- [x] Run `cargo clippy --workspace -- -D warnings`
+- [x] Run `cargo build`
 
 ### Acceptance Criteria
 

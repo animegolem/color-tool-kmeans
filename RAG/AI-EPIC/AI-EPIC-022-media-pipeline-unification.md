@@ -31,7 +31,7 @@ Additionally, `ui.ts` is a 646-LOC monolith mixing 8 logical groups, and depreca
 
 Consolidate media handling into shared services with view-specific rendering callbacks:
 
-1. **Unified ingestion service** — Shared `ingestFileAsEntry()` factory in `lib/services/media-ingestion.ts` used by all views. **(Partially done — HomeView and ValuesView rewired; App.svelte still uses inline copy.)**
+1. **Unified ingestion service** — Shared `ingestFileAsEntry()` factory in `lib/services/media-ingestion.ts` used by all views. **(Done — HomeView, ValuesView, and App.svelte all rewired.)**
 
 2. **Single analysis trigger model per view** — Each view picks one trigger strategy (imperative or reactive), not both. HomeView uses imperative scheduling via `scheduleAnalysisWith`. ValuesView uses imperative via `ensureAnalysis` in `onFrameExtracted`. Review the overlapping `$effect` fallback for video frames.
 
@@ -41,7 +41,7 @@ Consolidate media handling into shared services with view-specific rendering cal
 
 5. **Shared utility dedup** — `maxDimensionForQuality` **(done)**, `formatTime` (2 copies), `buildPreviewUrl` **(done)**.
 
-6. **Global state abstraction** — `__ACTIVE_IMAGE_PATH__` is mutated 12 times across 5 files with inconsistent patterns. Centralize into a service.
+6. **Global state abstraction** — `__ACTIVE_IMAGE_PATH__` is mutated 13 times (9 writes + 4 deletes) across 6 files with inconsistent patterns. Centralize into a service.
 
 7. **Store modularization** — Split `ui.ts` (646 LOC) into 8 focused modules with barrel re-export for backward compatibility.
 
@@ -68,17 +68,17 @@ Consolidate media handling into shared services with view-specific rendering cal
 ### Functional Requirements
 
 - [x] FR-1: Extract `ingestFileAsEntry()` + `buildPreviewUrl()` + `maxDimensionForQuality()` into `lib/services/media-ingestion.ts`. Rewire HomeView and ValuesView.
-- [ ] FR-2: Create `assetUrl(path)` utility in `lib/utils/asset-url.ts`. Replace 9 inline cache-bust patterns.
-- [ ] FR-3: Review `$effect`-based analysis trigger for video frames in ValuesView — confirm if the fallback at line 312 is necessary for non-video cases.
-- [ ] FR-4: Unify `pendingVideoSwitch` and `mediaLoadRequested` subscribers into shared factory functions.
+- [x] FR-2: Create `assetUrl(path)` utility in `lib/utils/asset-url.ts`. Replace 9 inline cache-bust patterns. **(IMP-114)**
+- [x] FR-3: Review `$effect`-based analysis trigger for video frames in ValuesView. **Reviewed: the `$effect` at line 312 IS needed — it handles initial image analysis for non-video files and correctly skips video frames (handled by `onFrameExtracted`).**
+- [ ] FR-4: Unify `pendingVideoSwitch` and `mediaLoadRequested` subscribers into shared factory functions. **(IMP-119)**
 - [x] FR-5: Extract `maxDimensionForQuality` to shared service. **(Done — in media-ingestion.ts)**
-- [ ] FR-6: Rewire App.svelte `globalChooseMedia()` to use `ingestFileAsEntry()`.
-- [ ] FR-7: Split `ui.ts` into 8 focused store modules with barrel re-export.
-- [ ] FR-8: Centralize `__ACTIVE_IMAGE_PATH__` management into `lib/services/active-image.ts`.
-- [ ] FR-9: Delete deprecated bench_runner.rs, compute_cli.rs, bench-crate feature. Clean CLAUDE.md stale refs.
-- [ ] FR-10: Create `RAG/DATA-FLOW.md` documenting all data flows.
-- [ ] FR-11: Extract `formatTime()` to `lib/utils/time.ts`.
-- [ ] FR-12: Extract drag-drop payload parsing to `lib/services/drag-drop.ts`.
+- [x] FR-6: Rewire App.svelte `globalChooseMedia()` to use `ingestFileAsEntry()`. **(IMP-116)**
+- [ ] FR-7: Split `ui.ts` into 8 focused store modules with barrel re-export. **(IMP-120)**
+- [ ] FR-8: Centralize `__ACTIVE_IMAGE_PATH__` management into `lib/services/active-image.ts`. **(IMP-118)**
+- [x] FR-9: Delete deprecated bench_runner.rs, compute_cli.rs, bench-crate feature. Clean CLAUDE.md stale refs. **(IMP-113)**
+- [x] FR-10: Create `RAG/DATA-FLOW.md` documenting all data flows. **(Done)**
+- [x] FR-11: Extract `formatTime()` to `lib/utils/time.ts`. **(IMP-115)**
+- [ ] FR-12: Extract drag-drop payload parsing to `lib/services/drag-drop.ts`. **(IMP-117)**
 
 ### Non-Functional Requirements
 

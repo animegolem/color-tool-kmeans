@@ -310,13 +310,24 @@ export function setFile(entry: ImageEntry, dataset: ImageDataset) {
   let matched = false;
   images.update((list) => {
     const index = list.findIndex((item) => item.id === entry.id);
-    if (index === -1) {
-      return [...list, entry];
+    if (index !== -1) {
+      matched = true;
+      const next = list.slice();
+      next[index] = entry;
+      return next;
     }
-    matched = true;
-    const next = list.slice();
-    next[index] = entry;
-    return next;
+    // Path-based dedup: reuse existing entry if same path
+    if (entry.path) {
+      const pathIndex = list.findIndex((item) => item.path === entry.path);
+      if (pathIndex !== -1) {
+        matched = true;
+        entry.id = list[pathIndex].id;
+        const next = list.slice();
+        next[pathIndex] = entry;
+        return next;
+      }
+    }
+    return [...list, entry];
   });
   activeImageId.set(entry.id);
   devlog('store:setFile', 'Set file', { id: entry.id, name: entry.name, matched, imagesAfter: get(images).length });
@@ -342,11 +353,18 @@ export function appendFile(entry: ImageEntry, dataset: ImageDataset) {
   let matched = false;
   images.update((list) => {
     const index = list.findIndex((item) => item.id === entry.id);
-    if (index === -1) return [...list, entry];
-    matched = true;
-    const next = list.slice();
-    next[index] = entry;
-    return next;
+    if (index !== -1) {
+      matched = true;
+      const next = list.slice();
+      next[index] = entry;
+      return next;
+    }
+    // Path-based dedup: skip if an entry with the same path already exists
+    if (entry.path && list.some((item) => item.path === entry.path)) {
+      matched = true;
+      return list;
+    }
+    return [...list, entry];
   });
   devlog('store:appendFile', 'Append file', { id: entry.id, name: entry.name, matched, imagesAfter: get(images).length });
   devlog.resources('store:appendFile');

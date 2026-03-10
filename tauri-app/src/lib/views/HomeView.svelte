@@ -32,7 +32,7 @@
     videoStripMode,
     libraryDrawerOpen,
     pendingVideoSwitch,
-    mediaLoadRequested
+    mediaLoadRequested,
   } from '../stores/ui';
   import { isTauriEnv, tauriDetectionInfo } from '../bridges/tauri';
   import { getFfmpegVersion } from '../bridges/ffmpeg';
@@ -63,6 +63,7 @@
   let currentParams = $state<AnalysisParams>(get(params));
   let status = $state<AnalysisState>(get(analysisState));
   let result = $state<AnalysisResult | null>(null);
+  let displayResult = $state<AnalysisResult | null>(null);
   let analysisErr = $state<string | null>(null);
 
   interface DevBannerDetails {
@@ -143,8 +144,6 @@
     getStatus: () => status,
     clearVideoSelection: () => video.clearVideoSelection(),
     loadVideoSelection: (sel) => {
-      activeImageId.set(null);
-      resetAnalysis();
       try { delete (globalThis as any).__ACTIVE_IMAGE_PATH__; } catch {}
       runner.cancelPending();
       video.loadVideoSelection(sel);
@@ -173,13 +172,18 @@
     findExistingFrameId: (videoPath: string) => {
       const entry = get(images).find(item => item.videoPath === videoPath);
       return entry?.id ?? null;
+    },
+    seedAnalysisKey: (imageId: string, paramSnapshot: any) => {
+      runner.seedLastRequestKey({ id: imageId } as SelectedImage, paramSnapshot);
     }
   });
 
   // --- Derived chart state ---
+  const chartResult = $derived(displayResult ?? result);
+
   const polarChart = $derived.by(() => {
-    if (!result) return null;
-    return generateCircleGraphSvg(result.clusters, {
+    if (!chartResult) return null;
+    return generateCircleGraphSvg(chartResult.clusters, {
       symbolScale: currentParams.symbolScale,
       showAxisLabels: currentParams.showAxisLabels,
       showStroke: currentParams.showClusterOutline,
@@ -189,8 +193,8 @@
   });
 
   const hueLightnessChart = $derived.by(() => {
-    if (!result) return null;
-    return generateHueLightnessSvg(result.clusters, {
+    if (!chartResult) return null;
+    return generateHueLightnessSvg(chartResult.clusters, {
       symbolScale: currentParams.symbolScale,
       showAxisLabels: currentParams.showAxisLabels,
       showStroke: currentParams.showClusterOutline,
@@ -201,8 +205,8 @@
   });
 
   const histogram = $derived.by(() => {
-    if (!result) return null;
-    return generateHistogramSvg(result.clusters, {
+    if (!chartResult) return null;
+    return generateHistogramSvg(chartResult.clusters, {
       width: 520,
       height: 180,
       maxBars: 120,
@@ -269,10 +273,20 @@
     let unlistenDragDrop: (() => void) | null = null;
     ingestion.setupTauriDragDrop().then((fn) => { unlistenDragDrop = fn ?? null; });
     const unsubs = [
-      selectedFile.subscribe((value) => { file = value; }),
+      selectedFile.subscribe((value) => {
+        file = value;
+        if (!value && !video.videoSelection) {
+          displayResult = null;
+        }
+      }),
       params.subscribe((value) => { currentParams = { ...value }; }),
       analysisState.subscribe((value) => { status = value; }),
-      analysisResult.subscribe((value) => { result = value; }),
+      analysisResult.subscribe((value) => {
+        result = value;
+        if (value !== null) {
+          displayResult = value;
+        }
+      }),
       analysisError.subscribe((value) => { analysisErr = value; }),
       videoState.subscribe((state) => {
         devlog('home:videoState', 'Video state changed', { hasState: state !== null, path: state?.path ?? null });
@@ -294,9 +308,6 @@
           devlog('home:videoSwitch:skip', 'Already active — skipping', { cid, videoPath });
           return;
         }
-        // Clear active image state WITHOUT touching videoState (avoids cascade)
-        activeImageId.set(null);
-        resetAnalysis();
         try { delete (globalThis as any).__ACTIVE_IMAGE_PATH__; } catch {}
         runner.cancelPending();
         devlog('home:videoSwitch:load', 'Loading video selection', { cid, existingId: entry.id, videoPath });
@@ -439,7 +450,7 @@
         {/if}
         {#if currentParams.showHistogram}
           <AnalysisCards
-            {result}
+            result={chartResult}
             {histogram}
             polarChart={null}
             hueLightnessChart={null}
@@ -451,7 +462,7 @@
       {#if currentParams.showPolarChart || currentParams.showHueLightness}
         <div class="analysis-column">
           <AnalysisCards
-            {result}
+            result={chartResult}
             histogram={null}
             polarChart={currentParams.showPolarChart ? polarChart : null}
             hueLightnessChart={currentParams.showHueLightness ? hueLightnessChart : null}
