@@ -5,7 +5,7 @@
   import type { ImageEntry } from '../stores/ui';
   import {
     openZoomOverlay, setFile, appendFile, videoState, params, activeImageId,
-    pendingVideoSwitch, images, mediaLoadRequested, libraryDrawerOpen,
+    images, libraryDrawerOpen,
     showSimplifiedTones, setVideoState, invalidateAnalysisForImage,
     updateEntryPreview, getCachedVideoState, cacheVideoState
   } from '../stores/ui';
@@ -13,6 +13,7 @@
   import type { FileSelection } from '../bridges/fs';
   import { isTauriEnv } from '../bridges/tauri';
   import { setupTauriDragDrop } from '../services/drag-drop';
+  import { subscribePendingVideoSwitch, subscribeMediaLoadRequested } from '../services/view-subscriptions';
   import { logEvent } from '../bridges/log';
   import { probeVideo } from '../bridges/video';
   import { openImageZoom as zoomImage, openSvgZoom, handleZoomKeydown as svgZoomKeydown } from '../utils/zoom';
@@ -287,22 +288,10 @@
           scrubber.scheduleFrameExtract();
         }
       }),
-      pendingVideoSwitch.subscribe((pending) => {
-        if (!pending) return;
-        const { id } = pending;
-        pendingVideoSwitch.set(null);
-        const entry = get(images).find((item) => item.id === id);
-        if (!entry?.path) return;
-        const videoPath = entry.videoPath ?? entry.path;
+      subscribePendingVideoSwitch(({ entry, videoPath }) => {
         handleVideoFile(videoPath, entry.name);
       }),
-      (() => {
-        let first = true;
-        return mediaLoadRequested.subscribe(() => {
-          if (first) { first = false; return; }
-          handleUpload();
-        });
-      })()
+      subscribeMediaLoadRequested(() => handleUpload())
     ];
     return () => {
       cleanupRunner();

@@ -15,7 +15,7 @@
 - [[AI-IMP-116-app-svelte-ingestion-consolidation|IMP-116]] - completed
 - [[AI-IMP-117-drag-drop-unification|IMP-117]] - completed
 - [[AI-IMP-118-active-image-path-abstraction|IMP-118]] - completed
-- [[AI-IMP-119-store-channel-handlers|IMP-119]] - backlog
+- [[AI-IMP-119-store-channel-handlers|IMP-119]] - completed
 - [[AI-IMP-120-ui-store-split|IMP-120]] - backlog
 - [[AI-IMP-121-video-frame-diagnostic-logging|IMP-121]] - backlog
 
@@ -45,12 +45,12 @@
 
 Generated from tracked files; binary assets excluded.
 
-- tauri-app/src/lib/views/ValuesView.svelte (830 LOC)
+- tauri-app/src/lib/views/ValuesView.svelte (819 LOC)
 - tauri-app/src-tauri/src/color.rs (706 LOC)
 - tauri-app/src/lib/views/ExportsView.svelte (698 LOC)
 - tauri-app/src/lib/stores/ui.ts (661 LOC)
 - tauri-app/src/lib/views/home/video-controller.svelte.ts (656 LOC)
-- tauri-app/src/lib/views/HomeView.svelte (655 LOC)
+- tauri-app/src/lib/views/HomeView.svelte (647 LOC)
 
 ## Size Watch (over 300 LOC)
 
@@ -79,7 +79,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>13 Epics, 48 IMPs completed</summary>
+<summary>13 Epics, 49 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006: Tauri bridge reliability and native mode fixes]] (2026-01-21)
 - [[AI-EPIC-007-tauri-ui-graphs-exports|EPIC-007: Tauri ui graphs exports]] (2026-01-21)

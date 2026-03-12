@@ -31,8 +31,6 @@
     cacheVideoState,
     videoStripMode,
     libraryDrawerOpen,
-    pendingVideoSwitch,
-    mediaLoadRequested,
   } from '../stores/ui';
   import { isTauriEnv, tauriDetectionInfo } from '../bridges/tauri';
   import { getFfmpegVersion } from '../bridges/ffmpeg';
@@ -46,6 +44,7 @@
   import { createAnalysisRunner } from './home/analysis-runner.svelte';
   import { createFileIngestion } from './home/file-ingestion.svelte';
   import { clearActivePath } from '../services/active-image';
+  import { subscribePendingVideoSwitch, subscribeMediaLoadRequested } from '../services/view-subscriptions';
   import VideoPanel from './home/VideoPanel.svelte';
   import AnalysisCards from './home/AnalysisCards.svelte';
   import ParameterControls from './home/ParameterControls.svelte';
@@ -294,17 +293,10 @@
         video.handleVideoStateChange(state);
       }),
       (() => { let first = true; return videoStripMode.subscribe(() => { if (first) { first = false; return; } video.regenerateStrip(); }); })(),
-      pendingVideoSwitch.subscribe((pending) => {
-        if (!pending) return;
-        const { id, cid } = pending;
-        pendingVideoSwitch.set(null);
-        const entry = get(images).find((item) => item.id === id);
+      subscribePendingVideoSwitch(({ entry, videoPath, id, cid }) => {
         devlog('home:videoSwitch', 'Pending video switch', {
-          id, cid, entryFound: !!entry, path: entry?.path ?? null
+          id, cid, entryFound: true, path: entry.path ?? null
         });
-        if (!entry?.path) return;
-        const videoPath = entry.videoPath ?? entry.path;
-        // Skip if this video is already active
         if (video.videoSelection?.path === videoPath) {
           devlog('home:videoSwitch:skip', 'Already active — skipping', { cid, videoPath });
           return;
@@ -320,7 +312,7 @@
           mimeType: 'video/mp4'
         }, entry.id, cid);
       }),
-      (() => { let first = true; return mediaLoadRequested.subscribe(() => { if (first) { first = false; return; } ingestion.chooseMedia(); }); })()
+      subscribeMediaLoadRequested(() => ingestion.chooseMedia())
     ];
     let dragDepth = 0;
     let hideTimer: ReturnType<typeof setTimeout> | null = null;
