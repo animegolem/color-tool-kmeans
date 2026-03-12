@@ -6,12 +6,12 @@ tags:
   - Debt
   - Cleanup
   - bridges
-kanban_status: backlog
+kanban_status: completed
 depends_on: []
-parent_epic:
+parent_epic: [[AI-EPIC-022-media-pipeline-unification]]
+date_completed: 2026-03-11
 confidence_score: 0.90
 date_created: 2026-02-18
-date_completed:
 ---
 
 # AI-IMP-111-bridge-legacy-cleanup
@@ -43,14 +43,14 @@ Done means: `createBrowserFsBridge()` is removed, bridge selection functions are
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Remove `createBrowserFsBridge()` function and all browser-specific file handling from `fs.ts`
-- [ ] Remove 300ms polling from `ensureFsBridgeReady()` in `fs.ts`
-- [ ] Simplify `selectFsBridge()` to Tauri-only with throw on missing API
-- [ ] Remove 300ms polling from `ensureBridgeReady()` in `compute.ts`
-- [ ] Remove `bridge.force` localStorage hack from `tauri.ts`
-- [ ] Update CLAUDE.md: remove `localStorage.setItem('bridge.force','tauri')` guidance
-- [ ] Verify app launches and file dialogs work in `npm run tauri dev`
-- [ ] Run `npm run check`, `npm run lint`, `npm run test`
+- [x] Remove `createBrowserFsBridge()` function and all browser-specific file handling from `fs.ts` — already done in prior work
+- [x] Remove 300ms polling from `ensureFsBridgeReady()` in `fs.ts` — removed stub + promise var
+- [x] Simplify `selectFsBridge()` to Tauri-only with throw on missing API — already Tauri-only
+- [x] Remove 300ms polling from `ensureBridgeReady()` in `compute.ts` — removed stub + promise var
+- [x] Remove `bridge.force` localStorage hack from `tauri.ts` — already removed in prior work
+- [x] Update CLAUDE.md: remove `localStorage.setItem('bridge.force','tauri')` guidance — already removed
+- [x] Verify app launches and file dialogs work in `npm run tauri dev`
+- [x] Run `npm run check`, `npm run lint`, `npm run test`
 
 ### Acceptance Criteria
 

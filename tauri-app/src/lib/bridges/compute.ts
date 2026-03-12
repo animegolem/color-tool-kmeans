@@ -255,27 +255,10 @@ export function selectComputeBridge(): ComputeBridge {
 }
 
 let cachedComputeBridge: ComputeBridge | null = null;
-let bridgeReadyPromise: Promise<void> | null = null;
 
-async function ensureBridgeReady(): Promise<void> {
-  if (bridgeReadyPromise) return bridgeReadyPromise;
-
-  bridgeReadyPromise = (async () => {
-    console.info('[bridges] ensureBridgeReady complete; proceeding to bridge selection');
-  })();
-
-  return bridgeReadyPromise;
-}
-
-export async function getComputeBridge(): Promise<ComputeBridge> {
-  console.info('[bridges] getComputeBridge called, awaiting ready...');
-  await ensureBridgeReady();
-
+export function getComputeBridge(): ComputeBridge {
   if (!cachedComputeBridge) {
-    console.info('[bridges] cache miss, selecting bridge now');
     cachedComputeBridge = selectComputeBridge();
-  } else {
-    console.info('[bridges] cache hit, returning existing bridge:', cachedComputeBridge.id);
   }
   return cachedComputeBridge;
 }

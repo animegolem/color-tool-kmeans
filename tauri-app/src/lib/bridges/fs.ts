@@ -148,27 +148,10 @@ export function selectFsBridge(): FsBridge {
 }
 
 let cachedFsBridge: FsBridge | null = null;
-let fsBridgeReadyPromise: Promise<void> | null = null;
 
-async function ensureFsBridgeReady(): Promise<void> {
-  if (fsBridgeReadyPromise) return fsBridgeReadyPromise;
-
-  fsBridgeReadyPromise = (async () => {
-    console.info('[bridges] ensureFsBridgeReady complete; proceeding to bridge selection');
-  })();
-
-  return fsBridgeReadyPromise;
-}
-
-export async function getFsBridge(): Promise<FsBridge> {
-  console.info('[bridges] getFsBridge called, awaiting ready...');
-  await ensureFsBridgeReady();
-
+export function getFsBridge(): FsBridge {
   if (!cachedFsBridge) {
-    console.info('[bridges] cache miss, selecting fs bridge now');
     cachedFsBridge = selectFsBridge();
-  } else {
-    console.info('[bridges] cache hit, returning existing fs bridge:', cachedFsBridge.id);
   }
   return cachedFsBridge;
 }

@@ -8,6 +8,7 @@
 > Media ingestion (upload, drag-drop, clipboard, library-rail click) and analysis triggering are implemented independently across App.svelte, HomeVie...
 
 **IMPs:**
+- [[AI-IMP-111-bridge-legacy-cleanup|IMP-111]] - completed
 - [[AI-IMP-113-dead-code-removal|IMP-113]] - completed
 - [[AI-IMP-114-asset-url-utility|IMP-114]] - completed
 - [[AI-IMP-115-format-time-dedup|IMP-115]] - completed
@@ -70,9 +71,6 @@ Generated from tracked files; binary assets excluded.
 
 ## Anomalies
 
-### Orphaned IMPs (no epic dependency)
-- [[AI-IMP-111-bridge-legacy-cleanup|IMP-111]] - backlog, no epic dependency found
-
 ### Status Mismatches
 - [[AI-IMP-099-folder-browser|IMP-099]] - open but parent epic AI-EPIC-020 is completed
 - [[AI-IMP-112-session-management-toggle|IMP-112]] - open but parent epic AI-EPIC-020 is completed
@@ -81,7 +79,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>13 Epics, 46 IMPs completed</summary>
+<summary>13 Epics, 47 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006: Tauri bridge reliability and native mode fixes]] (2026-01-21)
 - [[AI-EPIC-007-tauri-ui-graphs-exports|EPIC-007: Tauri ui graphs exports]] (2026-01-21)
