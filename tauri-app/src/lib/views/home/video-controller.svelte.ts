@@ -5,6 +5,7 @@ import { extractVideoFrame, extractVideoStrip, probeVideo } from '../../bridges/
 import { logEvent } from '../../bridges/log';
 import { devlog } from '../../utils/devlog';
 import { formatTime } from '../../utils/time';
+import { setActivePath } from '../../services/active-image';
 
 export interface VideoControllerDeps {
   isNativeModeActive: () => boolean;
@@ -271,7 +272,7 @@ export function createVideoController(deps: VideoControllerDeps) {
         }
         const framePath = response.path;
         if (!framePath) return;
-        (globalThis as any).__ACTIVE_IMAGE_PATH__ = framePath;
+        setActivePath(framePath);
         const previewUrl = assetUrl(framePath);
         videoPosterUrl = previewUrl;
         videoPosterPath = framePath;
@@ -301,7 +302,7 @@ export function createVideoController(deps: VideoControllerDeps) {
         devlog('video:frameDecode:done', 'Frame decode done', {
           frameId, framePath, cid: decodeCid, ...videoResourceSnapshot()
         });
-        void logEvent(`video:frame:done t=${requestTime.toFixed(2)}`);
+        void logEvent(`video:frame:done t_req=${requestTime.toFixed(4)} t_ffmpeg=${response.timestampUsed}`);
       } catch (error) {
         if (token !== videoDecodeToken) return;
         console.error('[home] Video frame decode failed', error);
@@ -383,7 +384,7 @@ export function createVideoController(deps: VideoControllerDeps) {
       if (cached.posterPath) {
         videoPosterPath = cached.posterPath;
         videoPosterUrl = assetUrl(cached.posterPath);
-        (globalThis as any).__ACTIVE_IMAGE_PATH__ = cached.posterPath;
+        setActivePath(cached.posterPath);
       }
       pushVideoState();
       _restoringFromSessionCache = true;
@@ -432,7 +433,7 @@ export function createVideoController(deps: VideoControllerDeps) {
     if (state.posterPath) {
       videoPosterPath = state.posterPath;
       videoPosterUrl = assetUrl(state.posterPath);
-      (globalThis as any).__ACTIVE_IMAGE_PATH__ = state.posterPath;
+      setActivePath(state.posterPath);
     }
     restoringVideoState = false;
     if (videoSelection?.path && (videoDuration <= 0 || !videoFps)) {

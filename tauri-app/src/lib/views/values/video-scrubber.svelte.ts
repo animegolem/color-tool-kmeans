@@ -77,7 +77,7 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
         if (token !== decodeToken) return;
         const framePath = response.path;
         if (!framePath) return;
-        void logEvent(`values:video:frame:done t=${requestTime.toFixed(2)}`);
+        void logEvent(`values:video:frame:done t_req=${requestTime.toFixed(4)} t_ffmpeg=${response.timestampUsed}`);
         deps.onFrameExtracted(framePath, fid, requestTime, videoPath, videoName ?? videoPath);
         deps.updateVideoState(requestTime, framePath);
         deps.cacheVideoState?.(videoPath, requestTime, framePath);

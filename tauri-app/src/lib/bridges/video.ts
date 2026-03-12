@@ -9,6 +9,7 @@ export interface VideoFrameRequest {
 
 export interface VideoFrameResponse {
   path: string;
+  timestampUsed?: string;
 }
 
 export interface VideoProbeResponse {

@@ -123,6 +123,7 @@ pub struct VideoFrameRequest {
 #[serde(rename_all = "camelCase")]
 pub struct VideoFrameResponse {
     pub path: String,
+    pub timestamp_used: String,
 }
 
 #[derive(Debug, Deserialize)]

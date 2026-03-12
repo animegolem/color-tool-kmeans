@@ -3,6 +3,7 @@ import type { ImageDataset } from '../compute/image-loader';
 import type { PrefsV1 } from './prefs';
 import { DEFAULTS, savePrefs } from './prefs';
 import { devlog, registerResourceCounter } from '../utils/devlog';
+import { setActivePath, clearActivePath, getActivePath } from '../services/active-image';
 
 export type View = 'home' | 'values' | 'exports' | 'settings';
 
@@ -421,7 +422,7 @@ export function switchToFile(id: string) {
   if (!entry) return;
 
   if (entry.path) {
-    (globalThis as any).__ACTIVE_IMAGE_PATH__ = entry.path;
+    setActivePath(entry.path);
   }
   setVideoState(null);
 
@@ -442,7 +443,7 @@ export function clearActiveSelection() {
   resetAnalysis();
   setVideoState(null);
   try {
-    delete (globalThis as any).__ACTIVE_IMAGE_PATH__;
+    clearActivePath();
   } catch {
     // ignore
   }
@@ -489,13 +490,9 @@ export function clearFile() {
   videoStateCache.set({});
   resetAnalysis();
   setVideoState(null);
-  try {
-    // Clear native path used by Tauri compute bridge to avoid stale state
-    if ((globalThis as any).__ACTIVE_IMAGE_PATH__) {
-      delete (globalThis as any).__ACTIVE_IMAGE_PATH__;
-    }
-  } catch {
-    // ignore
+  // Clear native path used by Tauri compute bridge to avoid stale state
+  if (getActivePath()) {
+    clearActivePath();
   }
 }
 

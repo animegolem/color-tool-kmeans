@@ -6,12 +6,12 @@ tags:
   - refactor
   - svelte
   - services
-kanban_status: backlog
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-022-media-pipeline-unification]]
 confidence_score: 0.80
 date_created: 2026-02-25
-date_completed:
+date_completed: 2026-03-10
 ---
 
 # AI-IMP-118-active-image-path-abstraction
@@ -44,17 +44,17 @@ Create `lib/services/active-image.ts` exporting three functions that encapsulate
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Create `lib/services/active-image.ts` with `setActivePath`, `getActivePath`, `clearActivePath`
-- [ ] Replace all `globalThis.__ACTIVE_IMAGE_PATH__` writes with `setActivePath()` in App.svelte
-- [ ] Replace all `globalThis.__ACTIVE_IMAGE_PATH__` writes with `setActivePath()` in ValuesView.svelte
-- [ ] Replace 2 delete patterns in HomeView.svelte with `clearActivePath()`
-- [ ] Replace 1 write in file-ingestion.svelte.ts with `setActivePath()`
-- [ ] Replace 3 writes in video-controller.svelte.ts with `setActivePath()`
-- [ ] Replace 2 deletes + 1 read + 1 write in ui.ts with service functions
-- [ ] Replace 1 read in compute/bridge.ts with `getActivePath()`
-- [ ] Verify color analysis works after switching active images
-- [ ] Verify value analysis works after switching active images
-- [ ] Run `npm run check && npm run lint`
+- [x] Create `lib/services/active-image.ts` with `setActivePath`, `getActivePath`, `clearActivePath`
+- [x] Replace all `globalThis.__ACTIVE_IMAGE_PATH__` writes with `setActivePath()` in App.svelte
+- [x] Replace all `globalThis.__ACTIVE_IMAGE_PATH__` writes with `setActivePath()` in ValuesView.svelte
+- [x] Replace 2 delete patterns in HomeView.svelte with `clearActivePath()`
+- [x] Replace 1 write in file-ingestion.svelte.ts with `setActivePath()`
+- [x] Replace 3 writes in video-controller.svelte.ts with `setActivePath()`
+- [x] Replace 2 deletes + 1 read + 1 write in ui.ts with service functions
+- [x] Replace 1 read in compute/bridge.ts with `getActivePath()`
+- [x] Verify color analysis works after switching active images
+- [x] Verify value analysis works after switching active images
+- [x] Run `npm run check && npm run lint`
 
 ### Acceptance Criteria
 

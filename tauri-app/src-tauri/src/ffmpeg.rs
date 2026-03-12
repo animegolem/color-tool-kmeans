@@ -199,7 +199,7 @@ pub async fn extract_strip_png<R: Runtime>(
 pub async fn extract_frame_png<R: Runtime>(
     app: &AppHandle<R>,
     req: &FrameExtractRequest,
-) -> Result<(), String> {
+) -> Result<String, String> {
     // CLI contract: ffmpeg -ss <timestamp> -i <input> -frames:v 1 -vf scale=W:H -y <output.png>
     if req.input_path.as_os_str().is_empty() {
         return Err("Missing input path".into());
@@ -245,7 +245,7 @@ pub async fn extract_frame_png<R: Runtime>(
         return Err(detail);
     }
 
-    Ok(())
+    Ok(timestamp)
 }
 
 fn ensure_parent_dir(path: &Path) -> Result<(), String> {

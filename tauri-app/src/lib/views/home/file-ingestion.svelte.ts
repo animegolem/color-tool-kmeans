@@ -6,6 +6,7 @@ import { isTauriEnv } from '../../bridges/tauri';
 import { loadImageDataset } from '../../compute/image-loader';
 import { logEvent } from '../../bridges/log';
 import { ingestFileAsEntry, maxDimensionForQuality, buildPreviewUrl } from '../../services/media-ingestion';
+import { setActivePath } from '../../services/active-image';
 
 export interface FileIngestionDeps {
   setFile: (entry: ImageEntry, dataset: { width: number; height: number; pixels: Uint8Array }) => void;
@@ -87,7 +88,7 @@ export function createFileIngestion(deps: FileIngestionDeps) {
       const { entry } = ingestFileAsEntry(fileSelection, deps.updateEntryPreview);
 
       if (activate && nativeMode && fileSelection.path) {
-        (globalThis as any).__ACTIVE_IMAGE_PATH__ = fileSelection.path;
+        setActivePath(fileSelection.path);
       }
       deps.setBannerMessage(null);
       if (activate) {

@@ -292,9 +292,10 @@ pub async fn extract_video_frame(
         max_dimension,
         output_path: output_path.clone(),
     };
-    ffmpeg::extract_frame_png(&app, &frame_req).await?;
+    let timestamp_used = ffmpeg::extract_frame_png(&app, &frame_req).await?;
     Ok(VideoFrameResponse {
         path: output_path.to_string_lossy().to_string(),
+        timestamp_used,
     })
 }
 

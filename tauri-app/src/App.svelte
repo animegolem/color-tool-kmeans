@@ -6,6 +6,7 @@
   import { isTauriEnv, tauriInvoke } from './lib/bridges/tauri';
   import { getFsBridge } from './lib/bridges/fs';
   import { ingestFileAsEntry } from './lib/services/media-ingestion';
+  import { setActivePath } from './lib/services/active-image';
   import HomeView from './lib/views/HomeView.svelte';
   import ValuesView from './lib/views/ValuesView.svelte';
   import ExportsView from './lib/views/ExportsView.svelte';
@@ -72,7 +73,7 @@
         if (!firstActivated) {
           firstActivated = true;
           if (entry.path) {
-            (globalThis as any).__ACTIVE_IMAGE_PATH__ = entry.path;
+            setActivePath(entry.path);
           }
           setVideoState(null);
           setFile(entry, dataset);
@@ -222,7 +223,7 @@
       };
       const emptyDataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
       setVideoState(null);
-      (globalThis as any).__ACTIVE_IMAGE_PATH__ = path;
+      setActivePath(path);
       setFile(entry, emptyDataset);
       libraryDrawerOpen.set(true);
       void logEvent('clipboard:paste:image');

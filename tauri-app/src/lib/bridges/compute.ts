@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isTauriEnv, tauriInvoke, tauriDetectionInfo } from './tauri';
+import { getActivePath } from '../services/active-image';
 import type { ImageDataset } from '../compute/image-loader';
 import type { AnalysisParams, AnalysisResult } from '../stores/ui';
 
@@ -193,7 +194,7 @@ function createTauriComputeBridge(): ComputeBridge | null {
     id: 'tauri-native',
     async analyze(_dataset, params) {
       const req = {
-        path: (globalThis as any).__ACTIVE_IMAGE_PATH__ ?? '',
+        path: getActivePath() ?? '',
         k: params.clusters,
         quality: params.quality ?? DEFAULT_QUALITY,
         ignoreTopN: params.ignoreTopN ?? DEFAULT_IGNORE_TOP_N,

@@ -45,6 +45,7 @@
   import { createVideoController } from './home/video-controller.svelte';
   import { createAnalysisRunner } from './home/analysis-runner.svelte';
   import { createFileIngestion } from './home/file-ingestion.svelte';
+  import { clearActivePath } from '../services/active-image';
   import VideoPanel from './home/VideoPanel.svelte';
   import AnalysisCards from './home/AnalysisCards.svelte';
   import ParameterControls from './home/ParameterControls.svelte';
@@ -144,7 +145,7 @@
     getStatus: () => status,
     clearVideoSelection: () => video.clearVideoSelection(),
     loadVideoSelection: (sel) => {
-      try { delete (globalThis as any).__ACTIVE_IMAGE_PATH__; } catch {}
+      clearActivePath();
       runner.cancelPending();
       video.loadVideoSelection(sel);
     },
@@ -308,7 +309,7 @@
           devlog('home:videoSwitch:skip', 'Already active — skipping', { cid, videoPath });
           return;
         }
-        try { delete (globalThis as any).__ACTIVE_IMAGE_PATH__; } catch {}
+        clearActivePath();
         runner.cancelPending();
         devlog('home:videoSwitch:load', 'Loading video selection', { cid, existingId: entry.id, videoPath });
         video.loadVideoSelection({

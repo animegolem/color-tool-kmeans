@@ -18,6 +18,7 @@
   import { openImageZoom as zoomImage, openSvgZoom, handleZoomKeydown as svgZoomKeydown } from '../utils/zoom';
   import { generateValuesHistogramSvg } from '../exports/values-histogram';
   import { ingestFileAsEntry, maxDimensionForQuality } from '../services/media-ingestion';
+  import { setActivePath } from '../services/active-image';
   import { createValueAnalysisRunner } from './values/value-analysis-runner.svelte';
   import { createVideoScrubber } from './values/video-scrubber.svelte';
   import VideoScrubber from './values/VideoScrubber.svelte';
@@ -30,7 +31,7 @@
     getMaxDimension: () => maxDimensionForQuality($params.quality),
     captureScroll: () => runner.captureAnalysisScroll(),
     onFrameExtracted: (framePath, frameId, timestamp, videoPath, videoName) => {
-      (globalThis as any).__ACTIVE_IMAGE_PATH__ = framePath;
+      setActivePath(framePath);
       const previewUrl = assetUrl(framePath);
       // Reuse existing frame entry ID for the same video to prevent duplicates
       const existing = get(images).find((item) => item.videoPath === videoPath);
@@ -219,7 +220,7 @@
     }
 
     if (nativeMode && sel.path) {
-      (globalThis as any).__ACTIVE_IMAGE_PATH__ = sel.path;
+      setActivePath(sel.path);
     }
 
     setFile(entry, dataset);
