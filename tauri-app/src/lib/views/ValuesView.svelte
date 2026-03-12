@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { assetUrl } from '../utils/asset-url';
-  import { listen } from '@tauri-apps/api/event';
   import type { ImageEntry } from '../stores/ui';
   import {
     openZoomOverlay, setFile, appendFile, videoState, params, activeImageId,
@@ -10,9 +9,10 @@
     showSimplifiedTones, setVideoState, invalidateAnalysisForImage,
     updateEntryPreview, getCachedVideoState, cacheVideoState
   } from '../stores/ui';
-  import { getFsBridge, isVideoFile, inferMimeType } from '../bridges/fs';
+  import { getFsBridge, isVideoFile } from '../bridges/fs';
   import type { FileSelection } from '../bridges/fs';
   import { isTauriEnv } from '../bridges/tauri';
+  import { setupTauriDragDrop } from '../services/drag-drop';
   import { logEvent } from '../bridges/log';
   import { probeVideo } from '../bridges/video';
   import { openImageZoom as zoomImage, openSvgZoom, handleZoomKeydown as svgZoomKeydown } from '../utils/zoom';
@@ -278,20 +278,8 @@
       void runner.ensureAnalysis(runner.file, runner.levels, runner.effectiveNotanMode);
     }
     let unlistenDragDrop: (() => void) | null = null;
-    if (isTauriEnv()) {
-      listen<{ paths?: string[] }>('tauri://drag-drop', (event) => {
-        const paths = event.payload?.paths;
-        if (!paths?.length) return;
-        const selections = paths.map((p) => ({
-          name: p.split(/[\\/]/).pop() ?? 'file',
-          path: p,
-          size: 0,
-          blob: new Blob([], { type: inferMimeType(p.split(/[\\/]/).pop() ?? '') }),
-          mimeType: inferMimeType(p.split(/[\\/]/).pop() ?? '')
-        } satisfies FileSelection));
-        void processBatch(selections);
-      }).then((fn) => { unlistenDragDrop = fn; });
-    }
+    setupTauriDragDrop((selections) => void processBatch(selections))
+      .then((fn) => { unlistenDragDrop = fn; });
     const unsubs = [
       videoState.subscribe((vs) => {
         scrubber.syncFromVideoState(vs);

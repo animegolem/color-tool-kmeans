@@ -272,7 +272,7 @@
     void logEvent('home:view:mount');
     void checkFfmpegVersion();
     let unlistenDragDrop: (() => void) | null = null;
-    ingestion.setupTauriDragDrop().then((fn) => { unlistenDragDrop = fn ?? null; });
+    ingestion.setupDragDrop().then((fn) => { unlistenDragDrop = fn ?? null; });
     const unsubs = [
       selectedFile.subscribe((value) => {
         file = value;

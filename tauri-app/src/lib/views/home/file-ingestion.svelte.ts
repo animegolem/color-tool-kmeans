@@ -1,12 +1,12 @@
-import { listen } from '@tauri-apps/api/event';
 import type { AnalysisParams, ImageEntry, SelectedImage } from '../../stores/ui';
 import type { FileSelection } from '../../bridges/fs';
-import { getFsBridge, isVideoFile, inferMimeType } from '../../bridges/fs';
+import { getFsBridge, isVideoFile } from '../../bridges/fs';
 import { isTauriEnv } from '../../bridges/tauri';
 import { loadImageDataset } from '../../compute/image-loader';
 import { logEvent } from '../../bridges/log';
 import { ingestFileAsEntry, maxDimensionForQuality, buildPreviewUrl } from '../../services/media-ingestion';
 import { setActivePath } from '../../services/active-image';
+import { setupTauriDragDrop } from '../../services/drag-drop';
 
 export interface FileIngestionDeps {
   setFile: (entry: ImageEntry, dataset: { width: number; height: number; pixels: Uint8Array }) => void;
@@ -112,21 +112,8 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     }
   }
 
-  async function setupTauriDragDrop(): Promise<(() => void) | null> {
-    if (!isTauriEnv()) return null;
-    const unlisten = await listen<{ paths?: string[] }>('tauri://drag-drop', (event) => {
-      const paths = event.payload?.paths;
-      if (!paths?.length) return;
-      const selections = paths.map((p) => ({
-        name: p.split(/[\\/]/).pop() ?? 'file',
-        path: p,
-        size: 0,
-        blob: new Blob([], { type: inferMimeType(p.split(/[\\/]/).pop() ?? '') }),
-        mimeType: inferMimeType(p.split(/[\\/]/).pop() ?? '')
-      } satisfies FileSelection));
-      void processBatch(selections);
-    });
-    return unlisten;
+  function setupDragDrop(): Promise<(() => void) | null> {
+    return setupTauriDragDrop((selections) => void processBatch(selections));
   }
 
   function handleDropzoneKeydown(event: KeyboardEvent) {
@@ -188,7 +175,7 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     set dropRef(v: HTMLElement | null) { dropRef = v; },
     chooseMedia,
     ingestSelection,
-    setupTauriDragDrop,
+    setupDragDrop,
     handleDropzoneKeydown,
     handleDragOver,
     handleDragLeave,

@@ -6,12 +6,12 @@ tags:
   - refactor
   - svelte
   - services
-kanban_status: backlog
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-022-media-pipeline-unification]]
 confidence_score: 0.85
 date_created: 2026-02-25
-date_completed:
+date_completed: 2026-03-11
 ---
 
 # AI-IMP-117-drag-drop-unification
