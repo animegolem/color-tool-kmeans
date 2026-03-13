@@ -6,12 +6,12 @@ tags:
   - video
   - diagnostics
   - logging
-kanban_status: backlog
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-022-media-pipeline-unification]]
 confidence_score: 0.95
 date_created: 2026-03-11
-date_completed:
+date_completed: 2026-03-13
 ---
 
 # AI-IMP-121-video-frame-diagnostic-logging
@@ -55,8 +55,8 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 - [x] Add `timestampUsed?: string` to TypeScript `VideoFrameResponse` interface
 - [x] Update HomeView log to `video:frame:done t_req=... t_ffmpeg=...`
 - [x] Update ValuesView log to `values:video:frame:done t_req=... t_ffmpeg=...`
-- [ ] Verify `cargo clippy --workspace -- -D warnings` passes
-- [ ] Verify `npm run check && npm run lint` passes
+- [x] Verify `cargo clippy --workspace -- -D warnings` passes
+- [x] Verify `npm run check && npm run lint` passes
 - [ ] Manual test: load video, scrub, confirm event logs show both `t_req` and `t_ffmpeg`
 
 ### Acceptance Criteria
