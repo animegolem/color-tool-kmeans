@@ -25,6 +25,7 @@ export interface VideoControllerDeps {
   cacheVideoState: (videoPath: string, entry: VideoCacheEntry) => void;
   findExistingFrameId: (videoPath: string) => string | null;
   seedAnalysisKey: (imageId: string, params: any) => void;
+  hasAnalysisForImage: (id: string) => boolean;
 }
 
 export function createVideoController(deps: VideoControllerDeps) {
@@ -289,7 +290,7 @@ export function createVideoController(deps: VideoControllerDeps) {
         const wasRestoring = _restoringFromSessionCache;
         _restoringFromSessionCache = false;
         deps.setFile(entry, dataset);
-        if (wasRestoring) {
+        if (wasRestoring && deps.hasAnalysisForImage(frameId)) {
           // setFile already restored analysisState='ready' from analysisById cache.
           // Seed the dedup key so the HomeView $effect won't re-trigger analysis.
           deps.seedAnalysisKey(frameId, deps.getCurrentParams());

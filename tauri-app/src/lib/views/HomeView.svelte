@@ -32,6 +32,7 @@
     videoStripMode,
     libraryDrawerOpen,
   } from '../stores/ui';
+  import { analysisById } from '../stores/analysis';
   import { isTauriEnv, tauriDetectionInfo } from '../bridges/tauri';
   import { getFfmpegVersion } from '../bridges/ffmpeg';
   import { logEvent } from '../bridges/log';
@@ -175,7 +176,8 @@
     },
     seedAnalysisKey: (imageId: string, paramSnapshot: any) => {
       runner.seedLastRequestKey({ id: imageId } as SelectedImage, paramSnapshot);
-    }
+    },
+    hasAnalysisForImage: (id: string) => !!get(analysisById)[id]
   });
 
   // --- Derived chart state ---
