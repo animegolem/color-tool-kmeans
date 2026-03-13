@@ -17,7 +17,7 @@ import { composeValueStudy } from '../../exports/value-study-compositor';
 import { getFsBridge, saveFromPath } from '../../bridges/fs';
 import { svgToPngBlob } from '../../exports/png';
 import { requestValueAnalysis } from '../../bridges/value-analysis';
-import { convertFileSrc } from '@tauri-apps/api/core';
+import { assetUrl } from '../../utils/asset-url';
 
 export interface ValuesExportDeps {
   getFile(): SelectedImage | null;
@@ -66,8 +66,8 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
     const file = deps.getFile();
     const currentStudy = await ensureValuesData();
     const originalSrc = file!.previewUrl || '';
-    const neutralSrc = convertFileSrc(currentStudy.neutral);
-    const previewSrc = convertFileSrc(currentStudy.preview);
+    const neutralSrc = assetUrl(currentStudy.neutral);
+    const previewSrc = assetUrl(currentStudy.preview);
     return generateValueAnalysisSvg({
       originalSrc,
       neutralSrc,
@@ -105,8 +105,8 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
       if (!originalSrc) {
         throw new Error('Original image preview unavailable for export.');
       }
-      const neutralSrc = convertFileSrc(currentStudy.neutral);
-      const previewSrc = convertFileSrc(currentStudy.preview);
+      const neutralSrc = assetUrl(currentStudy.neutral);
+      const previewSrc = assetUrl(currentStudy.preview);
 
       const baseInput = {
         originalSrc,
@@ -151,7 +151,7 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
             loadValueAnalysisForExport(5, false)
           ]);
           const toCell = (study: typeof level2): NotanCellData => ({
-            previewSrc: convertFileSrc(study.preview),
+            previewSrc: assetUrl(study.preview),
             previewWidth: study.previewWidth,
             previewHeight: study.previewHeight,
             bucketValues: study.bucketValues,
@@ -212,7 +212,7 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
       if (cb.valuesIncludeOriginal) {
         const originalSrc = file.previewUrl || '';
         if (!originalSrc) throw new Error('Original image preview unavailable for export.');
-        const neutralSrc = convertFileSrc(currentStudy.neutral);
+        const neutralSrc = assetUrl(currentStudy.neutral);
         const { svg, width, height } = await generateValueAnalysisSvg({
           originalSrc,
           neutralSrc,
@@ -312,7 +312,7 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
           loadValueAnalysisForExport(5, false)
         ]);
         const toCell = (study: typeof level2): NotanCellData => ({
-          previewSrc: convertFileSrc(study.preview),
+          previewSrc: assetUrl(study.preview),
           previewWidth: study.previewWidth,
           previewHeight: study.previewHeight,
           bucketValues: study.bucketValues,
@@ -324,7 +324,7 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
       } else {
         const currentStudy = await ensureValuesData();
         ({ svg, width, height } = await generateSingleCellSvg({
-          previewSrc: convertFileSrc(currentStudy.preview),
+          previewSrc: assetUrl(currentStudy.preview),
           previewWidth: currentStudy.previewWidth,
           previewHeight: currentStudy.previewHeight,
           bucketValues: currentStudy.bucketValues,

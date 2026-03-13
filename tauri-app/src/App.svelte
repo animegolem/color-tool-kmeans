@@ -70,7 +70,11 @@
       let firstActivated = false;
       for (const sel of selections) {
         const { entry, dataset } = ingestFileAsEntry(sel, updateEntryPreview);
-        if (!firstActivated) {
+        if (entry.videoPath) {
+          // Video files: append-only, don't activate as image (would fail in image pipeline)
+          appendFile(entry, dataset);
+          void logEvent(`global:media:video:appended name=${entry.name}`);
+        } else if (!firstActivated) {
           firstActivated = true;
           if (entry.path) {
             setActivePath(entry.path);
@@ -88,21 +92,13 @@
     }
   }
 
-  function handleUpload() {
-    if ($currentView === 'home' || $currentView === 'values') {
-      requestMediaLoad();
-    } else {
-      void globalChooseMedia();
-    }
-    void logEvent('header:upload');
-  }
-
   function handleMediaAdd() {
     if ($currentView === 'home' || $currentView === 'values') {
       requestMediaLoad();
     } else {
       void globalChooseMedia();
     }
+    void logEvent('header:upload');
   }
 
   onMount(() => {
@@ -336,7 +332,7 @@
           <span class="header-file-label" title={fileLabel}>{fileLabel}</span>
           <button type="button" class="header-clear" onclick={handleClear}>Clear</button>
         {:else}
-          <button type="button" class="header-upload" onclick={handleUpload}>Upload</button>
+          <button type="button" class="header-upload" onclick={handleMediaAdd}>Upload</button>
         {/if}
       </div>
     </div>
