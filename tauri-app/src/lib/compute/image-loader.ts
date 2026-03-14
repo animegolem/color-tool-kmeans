@@ -83,12 +83,3 @@ export async function loadImageDataset(blob: Blob): Promise<ImageDataset> {
   const pixels = new Uint8Array(imageData.data.buffer.slice(0));
   return { width, height, pixels };
 }
-
-export async function fileToDataset(file: File): Promise<ImageDataset> {
-  return loadImageDataset(file);
-}
-
-export async function bufferToDataset(buffer: ArrayBuffer, mimeType: string): Promise<ImageDataset> {
-  const blob = new Blob([buffer], { type: mimeType });
-  return loadImageDataset(blob);
-}

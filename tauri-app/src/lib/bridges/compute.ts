@@ -243,7 +243,7 @@ function logSelection(label: string, id: ComputeBridge['id']) {
   console.info(`[bridges] ${label} bridge selected: ${id}`);
 }
 
-export function selectComputeBridge(): ComputeBridge {
+function selectComputeBridge(): ComputeBridge {
   const tauriBridge = createTauriComputeBridge();
   if (tauriBridge) {
     const info = tauriDetectionInfo();

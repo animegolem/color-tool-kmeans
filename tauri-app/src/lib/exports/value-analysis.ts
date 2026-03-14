@@ -1,4 +1,4 @@
-import { svgDocument, svgRect, svgText } from './svg';
+import { svgDocument, svgRect, svgText, serializeAttrs, escapeAttr } from './svg';
 import { generateValuesHistogramBars } from './values-histogram';
 
 export interface ValueAnalysisExportInput {
@@ -400,16 +400,6 @@ export function svgImage({
   })} />`;
 }
 
-export function serializeAttrs(attrs: Record<string, string | number>): string {
-  return Object.entries(attrs)
-    .map(([key, value]) => `${key}=\"${escapeAttr(String(value))}\"`)
-    .join(' ');
-}
-
-export function escapeAttr(input: string): string {
-  return input.replace(/&/g, '&amp;').replace(/\"/g, '&quot;');
-}
-
 export async function toDataUrl(src: string): Promise<string> {
   if (!src) {
     throw new Error('Missing image source for export.');
@@ -437,11 +427,3 @@ export async function toDataUrl(src: string): Promise<string> {
   });
 }
 
-export function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ''));
-    reader.onerror = () => reject(new Error('Failed to read image data.'));
-    reader.readAsDataURL(blob);
-  });
-}

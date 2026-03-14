@@ -140,7 +140,7 @@ function logSelection(label: string, id: FsBridge['id']) {
   console.info(`[bridges] ${label} bridge selected: ${id}`);
 }
 
-export function selectFsBridge(): FsBridge {
+function selectFsBridge(): FsBridge {
   const tauri = createTauriFsBridge();
   if (tauri) {
     logSelection('fs', tauri.id);

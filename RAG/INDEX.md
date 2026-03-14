@@ -29,7 +29,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/views/ValuesView.svelte (801 LOC)
 - tauri-app/src/lib/views/ExportsView.svelte (713 LOC)
 - tauri-app/src-tauri/src/color.rs (706 LOC)
-- tauri-app/src/lib/views/home/video-controller.svelte.ts (661 LOC)
+- tauri-app/src/lib/views/home/video-controller.svelte.ts (660 LOC)
 - tauri-app/src/lib/views/HomeView.svelte (650 LOC)
 
 ## Size Watch (over 300 LOC)
@@ -38,8 +38,8 @@ Generated from tracked files; binary assets excluded.
 
 - tauri-app/src-tauri/src/value_analysis.rs (594 LOC)
 - tauri-app/src-tauri/src/kmeans.rs (581 LOC)
-- tauri-app/src/lib/exports/value-analysis.ts (447 LOC)
 - RAG/scripts/generate-index.sh (440 LOC)
+- tauri-app/src/lib/exports/value-analysis.ts (429 LOC)
 - tauri-app/src/app.css (428 LOC)
 - tauri-app/src/App.svelte (397 LOC)
 - tauri-app/src-tauri/src/commands.rs (372 LOC)
@@ -60,7 +60,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>15 Epics, 58 IMPs completed</summary>
+<summary>15 Epics, 59 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006: Tauri bridge reliability and native mode fixes]] (2026-01-21)
 - [[AI-EPIC-007-tauri-ui-graphs-exports|EPIC-007: Tauri ui graphs exports]] (2026-01-21)

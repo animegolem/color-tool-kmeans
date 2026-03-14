@@ -34,16 +34,16 @@ export function svgGroup(children: string[], attrs: Record<string, string | numb
   return `<g ${serializeAttrs(attrs)}>${children.join('')}</g>`;
 }
 
-function serializeAttrs(attrs: Record<string, string | number>): string {
+export function serializeAttrs(attrs: Record<string, string | number>): string {
   return Object.entries(attrs)
     .map(([key, value]) => `${key}="${escapeAttr(String(value))}"`)
     .join(' ');
 }
 
-function escapeAttr(input: string): string {
+export function escapeAttr(input: string): string {
   return input.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }
 
-function escapeText(input: string): string {
+export function escapeText(input: string): string {
   return input.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

@@ -18,6 +18,7 @@ AI_IMP_spawned:
   - AI-IMP-129
   - AI-IMP-130
   - AI-IMP-131
+  - AI-IMP-132
 ---
 
 # AI-EPIC-023-ux-polish-and-media-ergonomics

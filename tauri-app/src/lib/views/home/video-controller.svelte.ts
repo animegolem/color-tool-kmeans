@@ -655,7 +655,6 @@ export function createVideoController(deps: VideoControllerDeps) {
     handleStripSeek,
     handleVideoStateChange,
     setVideoElementRef,
-    loadSrcEffect,
-    formatTime
+    loadSrcEffect
   };
 }
