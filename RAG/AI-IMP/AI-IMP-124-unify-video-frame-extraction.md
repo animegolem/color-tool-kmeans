@@ -6,7 +6,7 @@ tags:
   - video
   - architecture
   - P2
-kanban_status: planned
+kanban_status: deferred
 depends_on:
   - AI-IMP-121
 parent_epic: [[AI-EPIC-023-ux-polish-and-media-ergonomics]]

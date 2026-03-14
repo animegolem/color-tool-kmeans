@@ -7,8 +7,8 @@ tags:
   - polish
   - media
 date_created: 2026-03-13
-date_completed:
-kanban_status: in-progress
+date_completed: 2026-03-14
+kanban_status: completed
 AI_IMP_spawned:
   - AI-IMP-124
   - AI-IMP-125
