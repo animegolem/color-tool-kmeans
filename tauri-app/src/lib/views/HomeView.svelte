@@ -50,6 +50,7 @@
   import AnalysisCards from './home/AnalysisCards.svelte';
   import ParameterControls from './home/ParameterControls.svelte';
   import DevBanner from './home/DevBanner.svelte';
+  import { inferMimeType } from '../bridges/fs';
 
   const devEnabled = import.meta.env.DEV ?? false;
 
@@ -310,8 +311,8 @@
           name: entry.name,
           path: videoPath,
           size: entry.size,
-          blob: new Blob([], { type: 'video/mp4' }),
-          mimeType: 'video/mp4'
+          blob: new Blob([], { type: inferMimeType(entry.name) }),
+          mimeType: inferMimeType(entry.name)
         }, entry.id, cid);
       }),
       subscribeMediaLoadRequested(() => ingestion.chooseMedia())
@@ -409,7 +410,7 @@
     <section class="analysis-layout" class:two-columns={currentParams.showPolarChart || currentParams.showHueLightness}>
       <div class="analysis-column">
         {#if video.videoSelection}
-          <VideoPanel {video} />
+          <VideoPanel {video} onZoom={() => zoomImage(video.videoDisplayUrl, video.videoSelection?.name ?? 'Video frame', openZoomOverlay)} />
         {:else}
           <div
             bind:this={ingestion.dropRef}

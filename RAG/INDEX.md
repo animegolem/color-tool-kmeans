@@ -15,6 +15,7 @@
 - [[AI-IMP-128-expand-video-container-support|IMP-128]] - completed
 - [[AI-IMP-129-fade-selection-media-bucket|IMP-129]] - completed
 - [[AI-IMP-130-deduplicate-values-view-utilities|IMP-130]] - completed
+- [[AI-IMP-131-post-review-bugfixes|IMP-131]] - completed
 
 ---
 
@@ -42,11 +43,11 @@
 
 Generated from tracked files; binary assets excluded.
 
-- tauri-app/src/lib/views/ValuesView.svelte (793 LOC)
+- tauri-app/src/lib/views/ValuesView.svelte (801 LOC)
 - tauri-app/src/lib/views/ExportsView.svelte (713 LOC)
 - tauri-app/src-tauri/src/color.rs (706 LOC)
 - tauri-app/src/lib/views/home/video-controller.svelte.ts (661 LOC)
-- tauri-app/src/lib/views/HomeView.svelte (649 LOC)
+- tauri-app/src/lib/views/HomeView.svelte (650 LOC)
 
 ## Size Watch (over 300 LOC)
 
@@ -75,7 +76,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>14 Epics, 57 IMPs completed</summary>
+<summary>14 Epics, 58 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006: Tauri bridge reliability and native mode fixes]] (2026-01-21)
 - [[AI-EPIC-007-tauri-ui-graphs-exports|EPIC-007: Tauri ui graphs exports]] (2026-01-21)

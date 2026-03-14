@@ -36,7 +36,7 @@
       <div
         class="media-bucket__item"
         class:active={item.id === $activeImageId}
-        class:dimmed={$currentView === 'settings' || ($currentView === 'exports' && !!item.videoPath)}
+        class:dimmed={item.id !== $activeImageId && ($currentView === 'settings' || ($currentView === 'exports' && !!item.videoPath))}
         class:inert={$currentView === 'exports' && !!item.videoPath}
         onclick={() => handleClick(item.id)}
         onkeydown={(e) => handleKeydown(e, item.id)}

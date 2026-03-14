@@ -326,18 +326,26 @@
         <div class="preview-card">
           <span>Original</span>
           {#if scrubber.isVideo}
-            <video
-              bind:this={videoEl}
-              class="preview"
-              poster={runner.file.previewUrl ?? undefined}
-              muted
-              playsinline
-              preload="auto"
+            <div
+              class:zoomable={!!runner.file.previewUrl}
+              role={runner.file.previewUrl ? 'button' : undefined}
+              tabindex={runner.file.previewUrl ? 0 : undefined}
+              onclick={runner.file.previewUrl ? () => openImageZoom(runner.file.previewUrl ?? '', runner.file.name) : undefined}
+              onkeydown={runner.file.previewUrl ? (event: KeyboardEvent) => handleZoomKeydown(event, runner.file.previewUrl ?? '', runner.file.name) : undefined}
             >
-              {#if scrubber.videoSrcUrl}
-                <source src={scrubber.videoSrcUrl} type={scrubber.mimeType ?? 'video/mp4'} />
-              {/if}
-            </video>
+              <video
+                bind:this={videoEl}
+                class="preview"
+                poster={runner.file.previewUrl ?? undefined}
+                muted
+                playsinline
+                preload="auto"
+              >
+                {#if scrubber.videoSrcUrl}
+                  <source src={scrubber.videoSrcUrl} type={scrubber.mimeType ?? 'video/mp4'} />
+                {/if}
+              </video>
+            </div>
           {:else if runner.file.previewUrl}
             <div
               class="zoomable"

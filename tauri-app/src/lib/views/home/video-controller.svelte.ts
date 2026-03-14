@@ -285,7 +285,7 @@ export function createVideoController(deps: VideoControllerDeps) {
           name: videoSelection.name,
           path: framePath,
           videoPath: videoSelection.path,
-          frameTimestamp: videoCurrentTime,
+          frameTimestamp: requestTime,
           size: 0,
           source: { kind: 'path', path: framePath },
           previewUrl

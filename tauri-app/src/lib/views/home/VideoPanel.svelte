@@ -3,9 +3,10 @@
 
   interface Props {
     video: ReturnType<typeof createVideoController>;
+    onZoom?: () => void;
   }
 
-  let { video }: Props = $props();
+  let { video, onZoom }: Props = $props();
 
   let videoEl = $state<HTMLVideoElement | null>(null);
 
@@ -19,6 +20,15 @@
     {#if video.videoSrcUrl}
       <div
         class="video-frame"
+        class:zoomable={!!onZoom && !!video.videoDisplayUrl}
+        role={onZoom && video.videoDisplayUrl ? 'button' : undefined}
+        tabindex={onZoom && video.videoDisplayUrl ? 0 : undefined}
+        onclick={onZoom && video.videoDisplayUrl ? onZoom : undefined}
+        onkeydown={onZoom && video.videoDisplayUrl ? (event: KeyboardEvent) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          onZoom!();
+        } : undefined}
         style={video.videoAspectRatio ? `aspect-ratio: ${video.videoAspectRatio}` : undefined}
       >
         <video
