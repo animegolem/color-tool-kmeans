@@ -31,7 +31,7 @@
   },
   "bundle": {
     "active": false,
-    "targets": ["deb", "appimage", "msi"],
+    "targets": ["dmg", "msi"],
     "icon": [],
     "externalBin": ["bin/ffmpeg", "bin/ffprobe"]
   }

@@ -36,8 +36,8 @@ echo "Configuring FFmpeg for ${target} (LGPL only)..."
   --disable-nonfree \
   --disable-debug \
   --enable-pic \
-  --enable-shared \
-  --disable-static \
+  --enable-static \
+  --disable-shared \
   --target-os=darwin \
   --arch="$(uname -m)" \
   --disable-doc

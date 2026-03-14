@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { params, clusterMax, excludeTopMax, showSimplifiedTones, exportDir, videoStripMode, videoFrameLabel, graphExportFormat } from '../stores/ui';
+  import { params, clusterMax, excludeTopMax, showSimplifiedTones, exportDir, videoStripMode, videoFrameLabel, graphExportFormat, compactSidebars } from '../stores/ui';
   import { hydrateFromPrefs } from '../stores/ui';
   import { resetPrefs, DEFAULTS } from '../stores/prefs';
   import { open } from '@tauri-apps/plugin-dialog';
@@ -42,6 +42,14 @@
 </script>
 
 <section class="settings">
+  <div class="group">
+    <h2>App</h2>
+    <label class="choice">
+      <input type="checkbox" bind:checked={$compactSidebars} />
+      Compact sidebars (always overlay)
+    </label>
+  </div>
+
   <div class="group">
     <h2>Colors</h2>
     <div class="field">
@@ -142,6 +150,7 @@
 <style>
   .settings {
     max-width: 720px;
+    margin: 0 auto;
   }
 
   .group {

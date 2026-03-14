@@ -8,6 +8,7 @@ import {
   exportScale, exportDir, exportChecks, clusterMax, excludeTopMax,
   showSimplifiedTones, videoStripMode, videoFrameLabel, graphExportFormat
 } from './exports';
+import { compactSidebars } from './navigation';
 
 export function hydrateFromPrefs(prefs: PrefsV1) {
   params.set({
@@ -36,6 +37,7 @@ export function hydrateFromPrefs(prefs: PrefsV1) {
   videoStripMode.set(prefs.display.videoStripMode ?? 'barcode');
   videoFrameLabel.set(prefs.display.videoFrameLabel ?? 'timestamp');
   graphExportFormat.set(prefs.graphExportFormat ?? 'svg');
+  compactSidebars.set(prefs.display.compactSidebars ?? false);
 }
 
 // Write-back: debounced subscriptions that persist store changes
@@ -46,7 +48,7 @@ params.subscribe((val) => {
   if (_debounceParams) clearTimeout(_debounceParams);
   _debounceParams = setTimeout(() => void savePrefs({
     analysis: val,
-    display: { showHistogram: val.showHistogram, showPolarChart: val.showPolarChart, showHueLightness: val.showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: get(videoStripMode), videoFrameLabel: get(videoFrameLabel) }
+    display: { showHistogram: val.showHistogram, showPolarChart: val.showPolarChart, showHueLightness: val.showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: get(videoStripMode), videoFrameLabel: get(videoFrameLabel), compactSidebars: get(compactSidebars) }
   }), 500);
 });
 
@@ -99,19 +101,19 @@ excludeTopMax.subscribe((val) => {
 let _skipSimplifiedTonesFirst = true;
 showSimplifiedTones.subscribe((val) => {
   if (_skipSimplifiedTonesFirst) { _skipSimplifiedTonesFirst = false; return; }
-  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: val, videoStripMode: get(videoStripMode), videoFrameLabel: get(videoFrameLabel) } });
+  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: val, videoStripMode: get(videoStripMode), videoFrameLabel: get(videoFrameLabel), compactSidebars: get(compactSidebars) } });
 });
 
 let _skipVideoStripModeFirst = true;
 videoStripMode.subscribe((val) => {
   if (_skipVideoStripModeFirst) { _skipVideoStripModeFirst = false; return; }
-  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: val, videoFrameLabel: get(videoFrameLabel) } });
+  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: val, videoFrameLabel: get(videoFrameLabel), compactSidebars: get(compactSidebars) } });
 });
 
 let _skipVideoFrameLabelFirst = true;
 videoFrameLabel.subscribe((val) => {
   if (_skipVideoFrameLabelFirst) { _skipVideoFrameLabelFirst = false; return; }
-  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: get(videoStripMode), videoFrameLabel: val } });
+  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: get(videoStripMode), videoFrameLabel: val, compactSidebars: get(compactSidebars) } });
 });
 
 let _debounceGraphExportFormat: ReturnType<typeof setTimeout> | null = null;
@@ -120,4 +122,10 @@ graphExportFormat.subscribe((val) => {
   if (_skipGraphExportFormatFirst) { _skipGraphExportFormatFirst = false; return; }
   if (_debounceGraphExportFormat) clearTimeout(_debounceGraphExportFormat);
   _debounceGraphExportFormat = setTimeout(() => void savePrefs({ graphExportFormat: val }), 500);
+});
+
+let _skipCompactSidebarsFirst = true;
+compactSidebars.subscribe((val) => {
+  if (_skipCompactSidebarsFirst) { _skipCompactSidebarsFirst = false; return; }
+  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: get(videoStripMode), videoFrameLabel: get(videoFrameLabel), compactSidebars: val } });
 });

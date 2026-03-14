@@ -31,7 +31,7 @@ Desktop app for analyzing color palettes and tonal structure in images and video
 ## Quick Start
 
 ### Prerequisites
-- Node 18.20.8
+- Node 20
 - Rust (stable)
 - Tauri CLI: `npm i -g @tauri-apps/cli`
 - ffmpeg/ffprobe (for video features)

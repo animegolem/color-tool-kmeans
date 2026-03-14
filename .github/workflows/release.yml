@@ -42,3 +42,36 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: tauri-app/src-tauri/target/release/bundle/**/*
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build FFmpeg sidecars (macOS)
+        run: |
+          cd tauri-app
+          ./scripts/build-ffmpeg-macos-lgpl.sh
+
+      - name: Install dependencies
+        run: |
+          cd tauri-app
+          npm install --no-audit --no-fund
+
+      - name: Build Tauri app (macOS)
+        run: |
+          cd tauri-app
+          npm run tauri build
+
+      - name: Release artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: tauri-app/src-tauri/target/release/bundle/**/*

@@ -16,7 +16,7 @@
 - Fonts (one-time): `cd tauri-app && ./scripts/fetch-fira.sh`.
 - Dev: `cd tauri-app && npm run tauri dev` (native shell) or `npm run dev` (web-only).
 - Build: `cd tauri-app && npm run build`.
-- Packaging: `cd tauri-app && npm run tauri build` → platform artifacts. Node: 18.20.8.
+- Packaging: `cd tauri-app && npm run tauri build` → platform artifacts. Node: 20.
 
 ## CI/DI & Git Hooks
 - Enable hooks once: `git config core.hooksPath .githooks`.

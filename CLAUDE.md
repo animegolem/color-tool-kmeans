@@ -115,7 +115,7 @@ npm run check        # svelte-check
 npm run test         # vitest
 ```
 
-**Environment**: Node 18.20.8
+**Environment**: Node 20
 
 **Linux/NVIDIA/Wayland stability** (required for WebKit crashes):
 ```bash

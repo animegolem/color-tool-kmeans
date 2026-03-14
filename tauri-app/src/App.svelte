@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import type { View, ImageEntry } from './lib/stores/ui';
   import { get } from 'svelte/store';
-  import { currentView, setView, libraryDrawerOpen, navCollapsed, narrowMode, selectedFile, videoState, setVideoState, clearActiveSelection, requestMediaLoad, setFile, appendFile, updateEntryPreview } from './lib/stores/ui';
+  import { currentView, setView, libraryDrawerOpen, navCollapsed, narrowMode, compactSidebars, selectedFile, videoState, setVideoState, clearActiveSelection, requestMediaLoad, setFile, appendFile, updateEntryPreview } from './lib/stores/ui';
   import { isTauriEnv, tauriInvoke } from './lib/bridges/tauri';
   import { getFsBridge } from './lib/bridges/fs';
   import { ingestFileAsEntry } from './lib/services/media-ingestion';
@@ -46,6 +46,14 @@
   };
 
   const activeViewDesc = $derived(viewDescriptions[$currentView] ?? '');
+  const effectiveNarrow = $derived($narrowMode || $compactSidebars);
+
+  $effect(() => {
+    if ($compactSidebars && !$narrowMode) {
+      navCollapsed.set(true);
+      libraryDrawerOpen.set(false);
+    }
+  });
 
   const fileLabel = $derived.by(() => {
     if (video) return video.name;
@@ -134,7 +142,7 @@
       libraryDrawerOpen.set(false);
     };
     const handleEscSidebar = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || !get(narrowMode)) return;
+      if (e.key !== 'Escape' || !(get(narrowMode) || get(compactSidebars))) return;
       if (!get(navCollapsed) || get(libraryDrawerOpen)) {
         e.preventDefault();
         closeSidebars();
@@ -296,7 +304,7 @@
 <main
   class:nav-collapsed={$navCollapsed}
   class:library-open={$libraryDrawerOpen}
-  class:narrow-mode={$narrowMode}
+  class:narrow-mode={effectiveNarrow}
 >
   <nav class="nav" class:collapsed={$navCollapsed}>
     {#each navItems as item}
@@ -312,7 +320,7 @@
       class="header-toggle"
       aria-label={$navCollapsed ? 'Show navigation' : 'Hide navigation'}
       onclick={() => {
-        if ($narrowMode && $navCollapsed) libraryDrawerOpen.set(false);
+        if (effectiveNarrow && $navCollapsed) libraryDrawerOpen.set(false);
         navCollapsed.update((v) => !v);
       }}
     >
@@ -344,7 +352,7 @@
       class="header-toggle"
       aria-label={$libraryDrawerOpen ? 'Close library' : 'Open library'}
       onclick={() => {
-        if ($narrowMode && !$libraryDrawerOpen) navCollapsed.set(true);
+        if (effectiveNarrow && !$libraryDrawerOpen) navCollapsed.set(true);
         libraryDrawerOpen.update((v) => !v);
       }}
     >
@@ -380,7 +388,7 @@
     </div>
   </aside>
 
-  {#if $narrowMode && (!$navCollapsed || $libraryDrawerOpen)}
+  {#if effectiveNarrow && (!$navCollapsed || $libraryDrawerOpen)}
     <div class="sidebar-backdrop" role="presentation"
       onclick={() => { navCollapsed.set(true); libraryDrawerOpen.set(false); }}></div>
   {/if}
