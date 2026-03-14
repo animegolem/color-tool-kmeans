@@ -32,7 +32,7 @@
           onseeked={video.handleVideoSeeked}
           onerror={video.handleVideoError}
         >
-          <source src={video.videoSrcUrl} type="video/mp4" />
+          <source src={video.videoSrcUrl} type={video.videoSelection?.mimeType ?? 'video/mp4'} />
         </video>
       </div>
     {:else}
@@ -41,8 +41,8 @@
   </div>
   <div class="video-controls">
     <div class="step-group">
-      <button type="button" class="step-btn" onclick={() => video.stepVideoFrames(-10)}>◀◀</button>
-      <button type="button" class="step-btn" onclick={() => video.stepVideoFrames(-1)}>◀</button>
+      <button type="button" class="step-btn" title="Back 10 frames" onclick={() => video.stepVideoFrames(-10)}>◀◀</button>
+      <button type="button" class="step-btn" title="Back 1 frame" onclick={() => video.stepVideoFrames(-1)}>◀</button>
     </div>
     <input
       class="video-scrub"
@@ -57,17 +57,11 @@
       oninput={video.handleVideoScrubInput}
       disabled={video.videoDuration <= 0}
       aria-label="Video timeline"
+      title="Scrub through video timeline"
     />
     <div class="step-group step-group--right">
-      <button type="button" class="step-btn" onclick={() => video.stepVideoFrames(1)}>▶</button>
-      <button type="button" class="step-btn" onclick={() => video.stepVideoFrames(10)}>▶▶</button>
-    </div>
-    <div class="video-time">
-      {#if video.videoProbePending && video.videoDuration <= 0}
-        Indexing…
-      {:else}
-        {video.formatTime(video.videoCurrentTime)} / {video.formatTime(video.videoDuration)}
-      {/if}
+      <button type="button" class="step-btn" title="Forward 1 frame" onclick={() => video.stepVideoFrames(1)}>▶</button>
+      <button type="button" class="step-btn" title="Forward 10 frames" onclick={() => video.stepVideoFrames(10)}>▶▶</button>
     </div>
   </div>
   <div class="video-strip">
@@ -135,7 +129,7 @@
 
   .video-controls {
     display: grid;
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: auto 1fr auto;
     gap: 12px;
     align-items: center;
   }
@@ -160,13 +154,6 @@
 
   .video-scrub {
     width: 100%;
-  }
-
-  .video-time {
-    font-size: 12px;
-    color: rgba(33, 33, 32, 0.65);
-    min-width: 90px;
-    text-align: right;
   }
 
   .video-strip {

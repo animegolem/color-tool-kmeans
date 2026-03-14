@@ -12,7 +12,7 @@
 <section class="controls">
   <h2>Parameters</h2>
   <div class="grid">
-    <label>
+    <label title="Number of color clusters to extract from the image">
       <span>Number of clusters: <strong>{$params.clusters}</strong></span>
       <input
         type="range"
@@ -27,7 +27,7 @@
       />
       <input class="number-input" type="number" min="1" max={$clusterMax} step="1" bind:value={$params.clusters} />
     </label>
-    <label>
+    <label title="Trade speed for accuracy — higher values sample more pixels">
       <span>Speed ← → Quality: <strong>{$params.quality}</strong></span>
       <input
         type="range"
@@ -41,7 +41,7 @@
         onblur={onScrubEnd}
       />
     </label>
-    <label>
+    <label title="Hide the N largest clusters from the results">
       <span>Exclude top clusters: <strong>{$params.ignoreTopN}</strong></span>
       <input
         type="range"
@@ -55,7 +55,7 @@
         onblur={onScrubEnd}
       />
     </label>
-    <label>
+    <label title="Merge clusters closer than this perceptual distance (OKLab ΔE)">
       <span>Color merge threshold (ΔE OKLab): <strong>{$params.mergeThreshold.toFixed(2)}</strong></span>
       <input
         type="range"
@@ -69,7 +69,7 @@
         onblur={onScrubEnd}
       />
     </label>
-    <label>
+    <label title="Scale of chart marker symbols">
       <span>Symbol size: <strong>{$params.symbolScale.toFixed(1)}</strong></span>
       <input
         type="range"
@@ -83,15 +83,15 @@
         onblur={onScrubEnd}
       />
     </label>
-    <label class="choice">
+    <label class="choice" title="Draw an outline around each cluster marker">
       <input type="checkbox" bind:checked={$params.showClusterOutline} />
       Cluster outline
     </label>
-    <label class="choice">
+    <label class="choice" title="Show axis labels on polar and scatter charts">
       <input type="checkbox" bind:checked={$params.showAxisLabels} />
       Axis labels
     </label>
-    <label class="choice">
+    <label class="choice" title="Plot original pixel values instead of cluster centroids">
       <input type="checkbox" bind:checked={$params.snapToReal} />
       Map to real values
     </label>

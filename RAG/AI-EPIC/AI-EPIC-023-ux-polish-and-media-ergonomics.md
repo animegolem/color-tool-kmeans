@@ -8,7 +8,7 @@ tags:
   - media
 date_created: 2026-03-13
 date_completed:
-kanban_status: planned
+kanban_status: in-progress
 AI_IMP_spawned:
   - AI-IMP-124
   - AI-IMP-125
@@ -55,12 +55,12 @@ Bundle the P2–P4 follow-up items from the EPIC-022 parking lot and codebase re
 ### Functional Requirements
 
 - [ ] FR-1: Unify video frame extraction so both views share cached results (IMP-124)
-- [ ] FR-2: Remove timestamp display from HomeView video panel, add frame label setting (IMP-125)
-- [ ] FR-3: Add `title` tooltips to all parameter controls and video transport buttons (IMP-126)
-- [ ] FR-4: Fix library sidebar open hitch by keeping MediaBucket mounted (IMP-127)
-- [ ] FR-5: Support `.mov` and `.webm` in file dialogs and video detection (IMP-128)
-- [ ] FR-6: Fade deselected items in media bucket (IMP-129)
-- [ ] FR-7: Deduplicate ValuesView utility functions (IMP-130)
+- [x] FR-2: Remove timestamp display from HomeView video panel, add frame label setting (IMP-125)
+- [x] FR-3: Add `title` tooltips to all parameter controls and video transport buttons (IMP-126)
+- [x] FR-4: Fix library sidebar open hitch by keeping MediaBucket mounted (IMP-127)
+- [x] FR-5: Support `.mov` and `.webm` in file dialogs and video detection (IMP-128)
+- [x] FR-6: Fade deselected items in media bucket (IMP-129)
+- [x] FR-7: Deduplicate ValuesView utility functions (IMP-130)
 
 ### Non-Functional Requirements
 

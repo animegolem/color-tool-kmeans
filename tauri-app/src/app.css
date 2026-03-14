@@ -232,6 +232,11 @@ main.library-open {
   transition: width 0.2s ease;
 }
 
+.library-rail--hidden {
+  visibility: hidden;
+  overflow: hidden;
+}
+
 .library-drawer {
   width: var(--library-panel);
   height: 100%;

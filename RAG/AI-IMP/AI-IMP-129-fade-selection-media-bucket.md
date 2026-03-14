@@ -5,12 +5,12 @@ tags:
   - Implementation
   - ux
   - P3
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-023-ux-polish-and-media-ergonomics]]
 confidence_score: 0.9
 date_created: 2026-03-13
-date_completed:
+date_completed: 2026-03-13
 ---
 
 # AI-IMP-129-fade-selection-media-bucket
@@ -38,10 +38,11 @@ Apply `opacity: 0.5` (or similar) to media bucket items that are not the current
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add conditional opacity class to media bucket items based on active selection
-- [ ] Verify active item remains full opacity
-- [ ] Verify deselected items are visually dimmed
-- [ ] Verify `npm run check && npm run lint` passes
+- [x] Add conditional opacity class to media bucket items based on active selection
+- [x] Reworked to view-aware dimming: Home/Values=none, Exports=videos only, Settings=all
+- [x] Verify active item remains full opacity
+- [x] Verify deselected items are visually dimmed per view rules
+- [x] Verify `npm run check && npm run lint` passes
 
 ### Acceptance Criteria
 

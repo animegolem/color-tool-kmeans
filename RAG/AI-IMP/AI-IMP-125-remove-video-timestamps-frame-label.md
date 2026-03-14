@@ -6,12 +6,12 @@ tags:
   - ux
   - video
   - P3
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-023-ux-polish-and-media-ergonomics]]
 confidence_score: 0.85
 date_created: 2026-03-13
-date_completed:
+date_completed: 2026-03-13
 ---
 
 # AI-IMP-125-remove-video-timestamps-frame-label
@@ -42,10 +42,12 @@ Remove `mm:ss / mm:ss` display from `VideoPanel.svelte:65-71` to match ValuesVie
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Remove timestamp display from VideoPanel.svelte
-- [ ] Add `videoFrameLabel` setting to store/settings
-- [ ] Add frame label toggle to SettingsView
-- [ ] Verify `npm run check && npm run lint` passes
+- [x] Remove timestamp display from VideoPanel.svelte
+- [x] Add `videoFrameLabel` setting to store/settings
+- [x] Add frame label toggle to SettingsView
+- [x] Add `frameTimestamp` to ImageEntry for export filename generation
+- [x] Update ExportsView `baseName()` to append frame suffix based on label mode
+- [x] Verify `npm run check && npm run lint` passes
 
 ### Acceptance Criteria
 
@@ -53,6 +55,11 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 **GIVEN** a video is loaded in Colors view.
 **WHEN** the video panel is displayed.
 **THEN** no `mm:ss / mm:ss` timestamp text is visible.
+
+**Scenario:** Export filenames include frame identifier.
+**GIVEN** a video frame is selected for export.
+**WHEN** the user exports from ExportsView.
+**THEN** the filename includes a frame suffix based on the Export Frame Label setting (timestamp: `-00m03s25`, frame: `-f97`).
 
 ### Issues Encountered
 

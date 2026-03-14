@@ -1,6 +1,7 @@
 import { assetUrl } from '../../utils/asset-url';
 import type { ImageEntry, VideoState, VideoCacheEntry } from '../../stores/ui';
 import type { FileSelection } from '../../bridges/fs';
+import { inferMimeType } from '../../bridges/fs';
 import { extractVideoFrame, extractVideoStrip, probeVideo } from '../../bridges/video';
 import { logEvent } from '../../bridges/log';
 import { devlog } from '../../utils/devlog';
@@ -150,12 +151,13 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function buildVideoSelectionFromState(state: VideoState): FileSelection {
+    const mime = inferMimeType(state.name);
     return {
       name: state.name,
       path: state.path,
       size: 0,
-      blob: new Blob([], { type: 'video/mp4' }),
-      mimeType: 'video/mp4'
+      blob: new Blob([], { type: mime }),
+      mimeType: mime
     };
   }
 
@@ -283,6 +285,7 @@ export function createVideoController(deps: VideoControllerDeps) {
           name: videoSelection.name,
           path: framePath,
           videoPath: videoSelection.path,
+          frameTimestamp: videoCurrentTime,
           size: 0,
           source: { kind: 'path', path: framePath },
           previewUrl
@@ -633,6 +636,7 @@ export function createVideoController(deps: VideoControllerDeps) {
     get videoCurrentTime() { return videoCurrentTime; },
     set videoCurrentTime(v: number) { videoCurrentTime = v; },
     get videoAspectRatio() { return videoAspectRatio; },
+    get videoFps() { return videoFps ?? 0; },
     get videoProbePending() { return videoProbePending; },
     get videoStripUrl() { return videoStripUrl; },
     get videoStripPending() { return videoStripPending; },

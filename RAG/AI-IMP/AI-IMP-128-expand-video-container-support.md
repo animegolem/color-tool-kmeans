@@ -6,12 +6,12 @@ tags:
   - video
   - ux
   - P3
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-023-ux-polish-and-media-ergonomics]]
 confidence_score: 0.9
 date_created: 2026-03-13
-date_completed:
+date_completed: 2026-03-13
 ---
 
 # AI-IMP-128-expand-video-container-support
@@ -44,10 +44,11 @@ Currently hardcoded to `.mp4` in 3 places: `fs.ts` (dialog filter + `isVideoFile
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add `.mov` and `.webm` to `isVideoFile()` extension check in `fs.ts`
-- [ ] Add `.mov` and `.webm` to file dialog filter in `fs.ts`
-- [ ] Replace `isVideoName()` in MediaBucket with `entry.videoPath` or shared detection
-- [ ] Verify `npm run check && npm run lint` passes
+- [x] Add `.mov` and `.webm` to `isVideoFile()` extension check in `fs.ts`
+- [x] Add `.mov` and `.webm` to file dialog filter in `fs.ts`
+- [x] Replace `isVideoName()` in MediaBucket with `entry.videoPath` or shared detection
+- [x] Fix hardcoded `type="video/mp4"` in 3 locations — now uses `inferMimeType()` for correct MIME
+- [x] Verify `npm run check && npm run lint` passes
 
 ### Acceptance Criteria
 

@@ -29,3 +29,5 @@ export const excludeTopMax = writable<number>(10);
 export const showSimplifiedTones = writable<boolean>(true);
 export type VideoStripMode = 'filmstrip' | 'barcode';
 export const videoStripMode = writable<VideoStripMode>('barcode');
+export type VideoFrameLabel = 'timestamp' | 'frame';
+export const videoFrameLabel = writable<VideoFrameLabel>('timestamp');

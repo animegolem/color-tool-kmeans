@@ -5,12 +5,12 @@ tags:
   - Implementation
   - cleanup
   - P4
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-023-ux-polish-and-media-ergonomics]]
 confidence_score: 0.95
 date_created: 2026-03-13
-date_completed:
+date_completed: 2026-03-13
 ---
 
 # AI-IMP-130-deduplicate-values-view-utilities
@@ -39,11 +39,11 @@ Import the existing utility functions from `lib/exports/value-analysis.ts` into 
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Verify `formatPercent`, `keyLabel`, `contrastLabel`, `bucketTextColor` are exported from `value-analysis.ts`
-- [ ] Import them in `ValuesView.svelte`
-- [ ] Remove duplicate definitions from ValuesView
-- [ ] Verify behavior is identical (check call sites for any differences)
-- [ ] Verify `npm run check && npm run lint` passes
+- [x] Verify `formatPercent`, `keyLabel`, `contrastLabel`, `bucketTextColor` are exported from `value-analysis.ts`
+- [x] Import them in `ValuesView.svelte`
+- [x] Remove duplicate definitions from ValuesView
+- [x] Verify behavior is identical (check call sites for any differences)
+- [x] Verify `npm run check && npm run lint` passes
 
 ### Acceptance Criteria
 

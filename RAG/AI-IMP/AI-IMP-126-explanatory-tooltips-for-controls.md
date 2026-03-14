@@ -6,12 +6,12 @@ tags:
   - ux
   - accessibility
   - P3
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-023-ux-polish-and-media-ergonomics]]
 confidence_score: 0.9
 date_created: 2026-03-13
-date_completed:
+date_completed: 2026-03-13
 ---
 
 # AI-IMP-126-explanatory-tooltips-for-controls
@@ -42,11 +42,11 @@ Add native HTML `title` attributes to all interactive controls that lack descrip
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add `title` to all parameter controls in ParameterControls.svelte
-- [ ] Add `title` to video step/transport buttons in VideoPanel.svelte
-- [ ] Add matching `title` to VideoScrubber.svelte controls
-- [ ] Verify tooltips appear on hover
-- [ ] Verify `npm run check && npm run lint` passes
+- [x] Add `title` to all parameter controls in ParameterControls.svelte
+- [x] Add `title` to video step/transport buttons in VideoPanel.svelte
+- [x] Add matching `title` to VideoScrubber.svelte controls
+- [x] Verify tooltips appear on hover
+- [x] Verify `npm run check && npm run lint` passes
 
 ### Acceptance Criteria
 

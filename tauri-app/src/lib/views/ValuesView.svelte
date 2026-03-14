@@ -18,6 +18,7 @@
   import { probeVideo } from '../bridges/video';
   import { openImageZoom as zoomImage, openSvgZoom, handleZoomKeydown as svgZoomKeydown } from '../utils/zoom';
   import { generateValuesHistogramSvg } from '../exports/values-histogram';
+  import { formatPercent, keyLabel, contrastLabel, grayFill, bucketTextColor } from '../exports/value-analysis';
   import { ingestFileAsEntry, maxDimensionForQuality } from '../services/media-ingestion';
   import { setActivePath } from '../services/active-image';
   import { createValueAnalysisRunner } from './values/value-analysis-runner.svelte';
@@ -43,6 +44,7 @@
         name: videoName,
         path: framePath,
         videoPath,
+        frameTimestamp: timestamp,
         size: 0,
         source: { kind: 'path', path: framePath },
         previewUrl
@@ -125,34 +127,6 @@
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
     openImageZoom(src, alt);
-  }
-
-  function formatPercent(value: number) {
-    return `${Math.round(value * 100)}%`;
-  }
-
-  function keyLabel(p10: number, p90: number) {
-    const mid = (p10 + p90) * 0.5;
-    if (mid <= 0.38) return 'Low key';
-    if (mid >= 0.62) return 'High key';
-    return 'Mid key';
-  }
-
-  function contrastLabel(p10: number, p90: number) {
-    const range = p90 - p10;
-    if (range >= 0.75) return 'Full range';
-    if (range >= 0.6) return 'High contrast';
-    if (range >= 0.4) return 'Medium contrast';
-    return 'Low contrast';
-  }
-
-  function bucketTone(value: number) {
-    const shade = Math.round(Math.max(0, Math.min(1, value)) * 255);
-    return `rgb(${shade}, ${shade}, ${shade})`;
-  }
-
-  function bucketTextColor(value: number) {
-    return value <= 0.52 ? 'rgba(248, 242, 227, 0.9)' : 'rgba(33, 33, 32, 0.85)';
   }
 
   function bucketLabel(bucket: { lower: number; upper: number; share: number }) {
@@ -361,7 +335,7 @@
               preload="auto"
             >
               {#if scrubber.videoSrcUrl}
-                <source src={scrubber.videoSrcUrl} type="video/mp4" />
+                <source src={scrubber.videoSrcUrl} type={scrubber.mimeType ?? 'video/mp4'} />
               {/if}
             </video>
           {:else if runner.file.previewUrl}
@@ -479,7 +453,7 @@
           <button
             class="bucket"
             type="button"
-            style={`flex: ${Math.max(1, bucket.count)}; background: ${bucketTone(bucket.value)}; color: ${bucketTextColor(
+            style={`flex: ${Math.max(1, bucket.count)}; background: ${grayFill(bucket.value)}; color: ${bucketTextColor(
               bucket.value
             )};`}
             title={bucketLabel(bucket)}

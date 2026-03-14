@@ -68,10 +68,12 @@
       const selections = await bridge.openMediaFiles('all');
       if (!selections?.length) return;
       let firstActivated = false;
+      let videoAppended = false;
       for (const sel of selections) {
         const { entry, dataset } = ingestFileAsEntry(sel, updateEntryPreview);
         if (entry.videoPath) {
           // Video files: append-only, don't activate as image (would fail in image pipeline)
+          videoAppended = true;
           appendFile(entry, dataset);
           void logEvent(`global:media:video:appended name=${entry.name}`);
         } else if (!firstActivated) {
@@ -85,7 +87,7 @@
           appendFile(entry, dataset);
         }
       }
-      if (selections.length > 1) libraryDrawerOpen.set(true);
+      if (selections.length > 1 || videoAppended) libraryDrawerOpen.set(true);
       void logEvent('global:media:loaded');
     } catch (err) {
       console.error('[app] Failed to open native dialog', err);
@@ -366,18 +368,16 @@
     {/if}
   </section>
 
-  <aside class="library-rail" aria-label="Library rail">
-    {#if $libraryDrawerOpen}
-      <div id="library-drawer" class="library-drawer" aria-label="Library drawer">
-        <div class="library-drawer__content">
-          <header class="library-drawer__header">
-            <h3>Media Bucket</h3>
-            <button class="library-section__add" onclick={handleMediaAdd} aria-label="Add media">+</button>
-          </header>
-          <MediaBucket />
-        </div>
+  <aside class="library-rail" class:library-rail--hidden={!$libraryDrawerOpen} aria-label="Library rail">
+    <div id="library-drawer" class="library-drawer" aria-label="Library drawer">
+      <div class="library-drawer__content">
+        <header class="library-drawer__header">
+          <h3>Media Bucket</h3>
+          <button class="library-section__add" onclick={handleMediaAdd} aria-label="Add media">+</button>
+        </header>
+        <MediaBucket />
       </div>
-    {/if}
+    </div>
   </aside>
 
   {#if $narrowMode && (!$navCollapsed || $libraryDrawerOpen)}

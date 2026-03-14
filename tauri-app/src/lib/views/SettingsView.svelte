@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { params, clusterMax, excludeTopMax, showSimplifiedTones, exportDir, videoStripMode, graphExportFormat } from '../stores/ui';
+  import { params, clusterMax, excludeTopMax, showSimplifiedTones, exportDir, videoStripMode, videoFrameLabel, graphExportFormat } from '../stores/ui';
   import { hydrateFromPrefs } from '../stores/ui';
   import { resetPrefs, DEFAULTS } from '../stores/prefs';
   import { open } from '@tauri-apps/plugin-dialog';
@@ -95,6 +95,17 @@
       <label class="choice">
         <input type="radio" name="videoStripMode" value="barcode" bind:group={$videoStripMode} />
         Barcode (per-frame color)
+      </label>
+    </div>
+    <div class="field">
+      <span class="field-label">Export Frame Label</span>
+      <label class="choice">
+        <input type="radio" name="videoFrameLabel" value="timestamp" bind:group={$videoFrameLabel} />
+        Timestamp (e.g. -00m03s25)
+      </label>
+      <label class="choice">
+        <input type="radio" name="videoFrameLabel" value="frame" bind:group={$videoFrameLabel} />
+        Frame number (e.g. -f97)
       </label>
     </div>
   </div>

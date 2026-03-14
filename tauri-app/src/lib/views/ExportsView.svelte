@@ -6,6 +6,7 @@
     params,
     selectedFile,
     videoState,
+    videoFrameLabel,
     exportScale,
     exportChecks,
     graphExportFormat,
@@ -113,7 +114,21 @@
     if (!file) return 'export';
     const name = file.name || 'image';
     const withoutExt = name.replace(/\.[^.]+$/, '');
-    return withoutExt.replace(/[^A-Za-z0-9-_]+/g, '-');
+    let base = withoutExt.replace(/[^A-Za-z0-9-_]+/g, '-');
+    if (file.videoPath && file.frameTimestamp != null) {
+      if ($videoFrameLabel === 'frame') {
+        const fps = $videoState?.fps ?? 24;
+        const frameNum = Math.round(file.frameTimestamp * fps);
+        base += `-f${frameNum}`;
+      } else {
+        const totalSec = Math.floor(file.frameTimestamp);
+        const mins = Math.floor(totalSec / 60);
+        const secs = totalSec % 60;
+        const centis = Math.round((file.frameTimestamp - totalSec) * 100);
+        base += `-${String(mins).padStart(2, '0')}m${String(secs).padStart(2, '0')}s${String(centis).padStart(2, '0')}`;
+      }
+    }
+    return base;
   }
 
   // --- Tile builders ---

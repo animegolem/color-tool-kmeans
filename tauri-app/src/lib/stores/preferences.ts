@@ -6,7 +6,7 @@ import { params } from './analysis';
 import { valueAnalysisLevels } from './value-analysis';
 import {
   exportScale, exportDir, exportChecks, clusterMax, excludeTopMax,
-  showSimplifiedTones, videoStripMode, graphExportFormat
+  showSimplifiedTones, videoStripMode, videoFrameLabel, graphExportFormat
 } from './exports';
 
 export function hydrateFromPrefs(prefs: PrefsV1) {
@@ -34,6 +34,7 @@ export function hydrateFromPrefs(prefs: PrefsV1) {
   excludeTopMax.set(prefs.limits.excludeTopMax);
   showSimplifiedTones.set(prefs.display.showSimplifiedTones);
   videoStripMode.set(prefs.display.videoStripMode ?? 'barcode');
+  videoFrameLabel.set(prefs.display.videoFrameLabel ?? 'timestamp');
   graphExportFormat.set(prefs.graphExportFormat ?? 'svg');
 }
 
@@ -45,7 +46,7 @@ params.subscribe((val) => {
   if (_debounceParams) clearTimeout(_debounceParams);
   _debounceParams = setTimeout(() => void savePrefs({
     analysis: val,
-    display: { showHistogram: val.showHistogram, showPolarChart: val.showPolarChart, showHueLightness: val.showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: get(videoStripMode) }
+    display: { showHistogram: val.showHistogram, showPolarChart: val.showPolarChart, showHueLightness: val.showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: get(videoStripMode), videoFrameLabel: get(videoFrameLabel) }
   }), 500);
 });
 
@@ -98,13 +99,19 @@ excludeTopMax.subscribe((val) => {
 let _skipSimplifiedTonesFirst = true;
 showSimplifiedTones.subscribe((val) => {
   if (_skipSimplifiedTonesFirst) { _skipSimplifiedTonesFirst = false; return; }
-  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: val, videoStripMode: get(videoStripMode) } });
+  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: val, videoStripMode: get(videoStripMode), videoFrameLabel: get(videoFrameLabel) } });
 });
 
 let _skipVideoStripModeFirst = true;
 videoStripMode.subscribe((val) => {
   if (_skipVideoStripModeFirst) { _skipVideoStripModeFirst = false; return; }
-  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: val } });
+  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: val, videoFrameLabel: get(videoFrameLabel) } });
+});
+
+let _skipVideoFrameLabelFirst = true;
+videoFrameLabel.subscribe((val) => {
+  if (_skipVideoFrameLabelFirst) { _skipVideoFrameLabelFirst = false; return; }
+  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: get(videoStripMode), videoFrameLabel: val } });
 });
 
 let _debounceGraphExportFormat: ReturnType<typeof setTimeout> | null = null;

@@ -76,7 +76,7 @@ export async function saveFromPath(
 
 function buildFilters(mode: 'images' | 'videos' | 'all') {
   const IMG = ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'tiff'];
-  const VID = ['mp4'];
+  const VID = ['mp4', 'mov', 'webm'];
   if (mode === 'images') return [{ name: 'Images', extensions: IMG }];
   if (mode === 'videos') return [{ name: 'Videos', extensions: VID }];
   return [
@@ -88,7 +88,7 @@ function buildFilters(mode: 'images' | 'videos' | 'all') {
 
 export function isVideoFile(sel: FileSelection): boolean {
   if (sel.mimeType?.startsWith('video/')) return true;
-  return /\.mp4$/i.test(sel.name ?? '');
+  return /\.(mp4|mov|webm)$/i.test(sel.name ?? '');
 }
 
 function createTauriFsBridge(): FsBridge | null {
@@ -131,6 +131,8 @@ export function inferMimeType(name: string): string {
   if (lower.endsWith('.gif')) return 'image/gif';
   if (lower.endsWith('.tiff') || lower.endsWith('.tif')) return 'image/tiff';
   if (lower.endsWith('.mp4')) return 'video/mp4';
+  if (lower.endsWith('.mov')) return 'video/quicktime';
+  if (lower.endsWith('.webm')) return 'video/webm';
   return 'application/octet-stream';
 }
 

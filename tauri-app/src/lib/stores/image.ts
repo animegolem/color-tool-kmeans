@@ -16,6 +16,7 @@ export interface ImageEntry {
   name: string;
   path?: string;
   videoPath?: string;
+  frameTimestamp?: number;
   size: number;
   source: ImageSource;
   previewUrl: string | null;

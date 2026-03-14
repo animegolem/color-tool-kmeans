@@ -6,12 +6,12 @@ tags:
   - ux
   - performance
   - P3
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-023-ux-polish-and-media-ergonomics]]
 confidence_score: 0.85
 date_created: 2026-03-13
-date_completed:
+date_completed: 2026-03-13
 ---
 
 # AI-IMP-127-fix-library-sidebar-open-hitch
@@ -41,12 +41,12 @@ Replace `{#if $libraryDrawerOpen}` with a CSS visibility toggle so the DOM stays
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Replace `{#if $libraryDrawerOpen}` with always-mounted `<MediaBucket />`
-- [ ] Add CSS visibility toggle based on `$libraryDrawerOpen`
-- [ ] Verify open animation is smooth (no hitch)
-- [ ] Verify close animation remains smooth
-- [ ] Verify MediaBucket doesn't interfere with layout when hidden
-- [ ] Verify `npm run check && npm run lint` passes
+- [x] Replace `{#if $libraryDrawerOpen}` with always-mounted `<MediaBucket />`
+- [x] Add CSS visibility toggle based on `$libraryDrawerOpen`
+- [x] Verify open animation is smooth (no hitch)
+- [x] Verify close animation remains smooth
+- [x] Verify MediaBucket doesn't interfere with layout when hidden
+- [x] Verify `npm run check && npm run lint` passes
 
 ### Acceptance Criteria
 

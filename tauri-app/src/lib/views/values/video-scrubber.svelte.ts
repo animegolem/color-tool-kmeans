@@ -1,6 +1,7 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
 import type { ImageEntry, VideoState } from '../../stores/ui';
 import { extractVideoFrame } from '../../bridges/video';
+import { inferMimeType } from '../../bridges/fs';
 import { logEvent } from '../../bridges/log';
 import { formatTime } from '../../utils/time';
 
@@ -33,6 +34,7 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
 
   const isVideo = $derived(videoPath !== null && duration > 0);
   const videoSrcUrl = $derived(videoPath ? convertFileSrc(videoPath) : null);
+  const mimeType = $derived(videoName ? inferMimeType(videoName) : null);
 
   function syncFromVideoState(vs: VideoState | null) {
     if (!vs) {
@@ -140,6 +142,7 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
     get scrubbing() { return scrubbing; },
     get extracting() { return extracting; },
     get videoSrcUrl() { return videoSrcUrl; },
+    get mimeType() { return mimeType; },
     setVideoElementRef,
     syncFromVideoState,
     scheduleFrameExtract,
