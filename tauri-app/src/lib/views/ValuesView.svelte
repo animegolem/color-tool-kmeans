@@ -4,30 +4,27 @@
   import { assetUrl } from '../utils/asset-url';
   import type { ImageEntry } from '../stores/ui';
   import {
-    openZoomOverlay, setFile, appendFile, videoState, params, activeImageId,
-    images, libraryDrawerOpen,
+    openZoomOverlay, setFile, videoState, params, activeImageId,
+    images,
     showSimplifiedTones, setVideoState, invalidateAnalysisForImage,
-    updateEntryPreview, getCachedVideoState, cacheVideoState
+    cacheVideoState
   } from '../stores/ui';
-  import { getFsBridge, isVideoFile } from '../bridges/fs';
-  import type { FileSelection } from '../bridges/fs';
-  import { isTauriEnv } from '../bridges/tauri';
-  import { setupTauriDragDrop } from '../services/drag-drop';
   import { subscribePendingVideoSwitch, subscribeMediaLoadRequested } from '../services/view-subscriptions';
   import { logEvent } from '../bridges/log';
-  import { probeVideo } from '../bridges/video';
   import { openImageZoom as zoomImage, openSvgZoom, handleZoomKeydown as svgZoomKeydown } from '../utils/zoom';
   import { generateValuesHistogramSvg } from '../exports/values-histogram';
   import { formatPercent, keyLabel, contrastLabel, grayFill, bucketTextColor } from '../exports/value-analysis';
-  import { ingestFileAsEntry, maxDimensionForQuality } from '../services/media-ingestion';
+  import { maxDimensionForQuality } from '../services/media-ingestion';
   import { setActivePath } from '../services/active-image';
   import { createValueAnalysisRunner } from './values/value-analysis-runner.svelte';
   import { createVideoScrubber } from './values/video-scrubber.svelte';
+  import { createValuesFileIngestion } from './values/file-ingestion-values.svelte';
   import VideoScrubber from './values/VideoScrubber.svelte';
 
   let videoEl = $state<HTMLVideoElement | null>(null);
 
   const runner = createValueAnalysisRunner();
+  const ingestion = createValuesFileIngestion({ cancelPending: () => runner.cancelPending() });
 
   const scrubber = createVideoScrubber({
     getMaxDimension: () => maxDimensionForQuality($params.quality),
@@ -135,125 +132,14 @@
     )}`;
   }
 
-  async function probeAndSetVideoState(videoPath: string, name: string) {
-    // Check session cache first to preserve scrub position across view switches
-    const cached = getCachedVideoState(videoPath);
-    if (cached) {
-      setVideoState({
-        path: videoPath,
-        name,
-        duration: cached.duration,
-        fps: cached.fps ?? null,
-        currentTime: cached.currentTime ?? 0,
-        posterPath: cached.posterPath ?? null
-      });
-      return;
-    }
-    // Fallback: probe video
-    try {
-      const probe = await probeVideo(videoPath);
-      setVideoState({
-        path: videoPath,
-        name,
-        duration: probe.duration,
-        fps: probe.fps ?? null,
-        currentTime: 0,
-        posterPath: null
-      });
-    } catch (err) {
-      console.error('[values] Video probe failed', err);
-    }
-  }
-
-  let pendingVideoPath: string | null = null;
-
-  function handleVideoFile(videoPath: string, name: string) {
-    const vs = get(videoState);
-    if (vs?.path === videoPath) return;
-    if (pendingVideoPath === videoPath) return;
-    pendingVideoPath = videoPath;
-    runner.cancelPending();
-    void probeAndSetVideoState(videoPath, name).finally(() => {
-      if (pendingVideoPath === videoPath) pendingVideoPath = null;
-    });
-  }
-
-  function handleImageFile(sel: FileSelection) {
-    setVideoState(null);
-    const nativeMode = isTauriEnv() && !!sel.path;
-
-    // Path-based dedup: reuse existing entry ID if same path
-    const existing = nativeMode && sel.path
-      ? get(images).find((item) => item.path === sel.path && !item.videoPath)
-      : null;
-
-    const { entry, dataset } = ingestFileAsEntry(sel);
-
-    // Preserve existing entry ID for dedup
-    if (existing) {
-      entry.id = existing.id;
-    }
-
-    if (nativeMode && sel.path) {
-      setActivePath(sel.path);
-    }
-
-    setFile(entry, dataset);
-  }
-
-  async function processBatch(selections: FileSelection[]) {
-    let videoProcessed = false;
-    let firstActivated = false;
-
-    for (const sel of selections) {
-      if (isVideoFile(sel)) {
-        if (!videoProcessed && sel.path) {
-          videoProcessed = true;
-          firstActivated = true;
-          handleVideoFile(sel.path, sel.name);
-        } else {
-          // Additional videos: create entry with async thumbnail extraction
-          const { entry, dataset } = ingestFileAsEntry(sel, updateEntryPreview);
-          appendFile(entry, dataset);
-        }
-      } else {
-        if (!firstActivated) {
-          firstActivated = true;
-          handleImageFile(sel);
-        } else {
-          // Additional images: create entry for media bucket
-          const { entry, dataset } = ingestFileAsEntry(sel, updateEntryPreview);
-          appendFile(entry, dataset);
-        }
-      }
-    }
-    if (selections.length > 1) {
-      libraryDrawerOpen.set(true);
-    }
-  }
-
-  async function handleUpload() {
-    try {
-      const bridge = await getFsBridge();
-      const selections = await bridge.openMediaFiles('all');
-      if (!selections?.length) return;
-      await processBatch(selections);
-    } catch (e) {
-      console.error('[values] Upload failed', e);
-    }
-  }
-
   onMount(() => {
     const cleanupRunner = runner.mount();
     scrubber.syncFromVideoState($videoState);
-    // HomeView → ValuesView handoff: if we mount with an existing video frame
-    // that hasn't been analyzed yet, trigger analysis immediately.
-    // (During scrubbing, onFrameExtracted handles analysis directly.)
     if (runner.file?.videoPath && !runner.hasCurrentAnalysis) {
       void runner.ensureAnalysis(runner.file, runner.levels, runner.effectiveNotanMode);
     }
     let unlistenDragDrop: (() => void) | null = null;
-    setupTauriDragDrop((selections) => void processBatch(selections))
+    ingestion.setupDragDrop()
       .then((fn) => { unlistenDragDrop = fn; });
     const unsubs = [
       videoState.subscribe((vs) => {
@@ -263,9 +149,9 @@
         }
       }),
       subscribePendingVideoSwitch(({ entry, videoPath }) => {
-        handleVideoFile(videoPath, entry.name);
+        ingestion.handleVideoFile(videoPath, entry.name);
       }),
-      subscribeMediaLoadRequested(() => handleUpload())
+      subscribeMediaLoadRequested(() => ingestion.handleUpload())
     ];
     return () => {
       cleanupRunner();
@@ -279,12 +165,10 @@
     if (!runner.file) return;
     if (runner.status !== 'idle') return;
     if (runner.hasCurrentAnalysis) return;
-    // Raw video files need frame extraction, not direct analysis
     if (runner.file.path && /\.mp4$/i.test(runner.file.path) && !runner.file.videoPath) {
-      handleVideoFile(runner.file.path, runner.file.name);
+      ingestion.handleVideoFile(runner.file.path, runner.file.name);
       return;
     }
-    // Video frames are analyzed directly in onFrameExtracted
     if (runner.file.videoPath) return;
     void runner.ensureAnalysis(runner.file, runner.levels, runner.effectiveNotanMode);
   });
@@ -309,7 +193,7 @@
   {#if !runner.file}
     <div class="empty empty--upload">
       <p>No media loaded.</p>
-      <button class="upload" onclick={handleUpload}>Add media</button>
+      <button class="upload" onclick={ingestion.handleUpload}>Add media</button>
       <p class="formats">PNG, JPEG, WebP, BMP, GIF, TIFF, MP4</p>
     </div>
   {:else if !renderAnalysis}

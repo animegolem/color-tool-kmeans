@@ -17,6 +17,7 @@ TAB=$'\t'
 EPICS_IN_PROGRESS=$(mktemp)
 EPICS_PLANNED=$(mktemp)
 EPICS_DEFERRED=$(mktemp)
+EPICS_CANCELLED=$(mktemp)
 EPICS_COMPLETED=$(mktemp)
 IMPS_BY_EPIC=$(mktemp)
 ORPHAN_IMPS=$(mktemp)
@@ -24,26 +25,18 @@ STATUS_MISMATCHES=$(mktemp)
 LARGE_FILES=$(mktemp)
 ILLEGAL_STATUS=$(mktemp)
 
-trap 'rm -f "$EPICS_IN_PROGRESS" "$EPICS_PLANNED" "$EPICS_DEFERRED" "$EPICS_COMPLETED" "$IMPS_BY_EPIC" "$ORPHAN_IMPS" "$STATUS_MISMATCHES" "$LARGE_FILES" "$ILLEGAL_STATUS"' EXIT
+trap 'rm -f "$EPICS_IN_PROGRESS" "$EPICS_PLANNED" "$EPICS_DEFERRED" "$EPICS_CANCELLED" "$EPICS_COMPLETED" "$IMPS_BY_EPIC" "$ORPHAN_IMPS" "$STATUS_MISMATCHES" "$LARGE_FILES" "$ILLEGAL_STATUS"' EXIT
 
 # -----------------------------------------------------------------------------
 # normalize_frontmatter: Fix field name variations in-place
 # -----------------------------------------------------------------------------
 normalize_frontmatter() {
   local file="$1"
-  local tmp="${file}.tmp"
-
-  # Check if file needs normalization
-  if grep -q '^kanban-status:' "$file" 2>/dev/null; then
-    sed 's/^kanban-status:/kanban_status:/' "$file" > "$tmp" && mv "$tmp" "$file"
-  fi
-
-  if grep -q '^close_date:' "$file" 2>/dev/null; then
-    sed 's/^close_date:/date_completed:/' "$file" > "$tmp" && mv "$tmp" "$file"
-  fi
-
-  if grep -q '^created_date:' "$file" 2>/dev/null; then
-    sed 's/^created_date:/date_created:/' "$file" > "$tmp" && mv "$tmp" "$file"
+  if grep -qE '^(kanban-status|close_date|created_date):' "$file" 2>/dev/null; then
+    local tmp="${file}.tmp"
+    sed -e 's/^kanban-status:/kanban_status:/' \
+        -e 's/^close_date:/date_completed:/' \
+        -e 's/^created_date:/date_created:/' "$file" > "$tmp" && mv "$tmp" "$file"
   fi
 }
 
@@ -59,6 +52,7 @@ extract_frontmatter_field() {
     in_fm && $0 ~ "^" field ":" {
       sub("^" field ":[[:space:]]*", "")
       gsub(/[[:space:]]*$/, "")
+      gsub(/^["'\''"]|["'\''"]$/, "")
       print
       exit
     }
@@ -80,6 +74,41 @@ extract_problem_statement() {
       exit
     }
   ' "$file"
+}
+
+# -----------------------------------------------------------------------------
+# extract_imp_title: Get a display title from an IMP file
+# Falls back to filename-derived title if first ## heading is generic
+# -----------------------------------------------------------------------------
+extract_imp_title() {
+  local file="$1"
+  local filename
+  filename=$(basename "$file" .md)
+
+  # Try first ## heading after frontmatter
+  local heading
+  heading=$(awk '
+    BEGIN { fm = 0 }
+    /^---$/ { fm++; next }
+    fm >= 2 && /^## / {
+      sub(/^## */, "")
+      gsub(/[[:space:]]*$/, "")
+      print
+      exit
+    }
+  ' "$file")
+
+  # Use heading if it's descriptive (not generic "Summary" variants)
+  if [[ -n "$heading" ]] && ! echo "$heading" | grep -qiE '^summary( |$)'; then
+    echo "$heading"
+    return
+  fi
+
+  # Fallback: derive from filename (strip AI-IMP-NNN- prefix, dashes to spaces, capitalize)
+  local slug
+  slug=$(echo "$filename" | sed 's/^AI-IMP-[0-9]*-*//')
+  slug=$(echo "$slug" | tr '-' ' ')
+  echo "$slug" | awk '{print toupper(substr($0,1,1)) substr($0,2)}'
 }
 
 # -----------------------------------------------------------------------------
@@ -139,114 +168,133 @@ add_parent_epic_backlink() {
 # -----------------------------------------------------------------------------
 echo "[generate-index] Scanning AI-EPIC files..."
 
-for file in "$RAG_DIR/AI-EPIC"/*.md; do
-  [[ -f "$file" ]] || continue
+if [[ ! -d "$RAG_DIR/AI-EPIC" ]]; then
+  echo "[generate-index] WARNING: AI-EPIC/ directory not found — skipping EPICs"
+else
+  for file in "$RAG_DIR/AI-EPIC"/*.md; do
+    [[ -f "$file" ]] || continue
 
-  filename=$(basename "$file" .md)
-  epic_num=$(echo "$filename" | grep -oE '[0-9]+' | head -1)
+    filename=$(basename "$file" .md)
+    epic_num=$(echo "$filename" | grep -oE '[0-9]+' | head -1)
 
-  # Normalize field names
-  normalize_frontmatter "$file"
+    # Normalize field names
+    normalize_frontmatter "$file"
 
-  # Extract fields
-  status=$(extract_frontmatter_field "$file" "kanban_status")
-  status=$(echo "$status" | tr '[:upper:]' '[:lower:]')
-  date_completed=$(extract_frontmatter_field "$file" "date_completed")
-  problem=$(extract_problem_statement "$file")
+    # Extract fields
+    status=$(extract_frontmatter_field "$file" "kanban_status")
+    status=$(echo "$status" | tr '[:upper:]' '[:lower:]')
+    date_completed=$(extract_frontmatter_field "$file" "date_completed")
+    problem=$(extract_problem_statement "$file")
 
-  # Create title from filename (capitalize first letter using awk for portability)
-  title=$(echo "$filename" | sed 's/AI-EPIC-[0-9]*-//' | tr '-' ' ')
-  title=$(echo "$title" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
+    # Create title from filename (capitalize first letter using awk for portability)
+    title=$(echo "$filename" | sed 's/AI-EPIC-[0-9]*-//' | tr '-' ' ')
+    title=$(echo "$title" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
 
-  # Truncate problem statement if too long
-  if [[ ${#problem} -gt 150 ]]; then
-    problem="${problem:0:147}..."
-  fi
+    # Truncate problem statement if too long
+    if [[ ${#problem} -gt 150 ]]; then
+      problem="${problem:0:147}..."
+    fi
 
-  # Store: filename TAB epic_num TAB title TAB problem TAB date_completed
-  case "$status" in
-    completed|complete)
-      printf '%s\t%s\t%s\t%s\t%s\n' "$filename" "$epic_num" "$title" "$problem" "$date_completed" >> "$EPICS_COMPLETED"
-      ;;
-    in-progress|in_progress)
-      printf '%s\t%s\t%s\t%s\t%s\n' "$filename" "$epic_num" "$title" "$problem" "" >> "$EPICS_IN_PROGRESS"
-      ;;
-    deferred)
-      printf '%s\t%s\t%s\t%s\t%s\n' "$filename" "$epic_num" "$title" "$problem" "" >> "$EPICS_DEFERRED"
-      ;;
-    planned|backlog|"")
-      printf '%s\t%s\t%s\t%s\t%s\n' "$filename" "$epic_num" "$title" "$problem" "" >> "$EPICS_PLANNED"
-      ;;
-    *)
-      printf '%s\t%s\t%s\n' "$filename" "$epic_num" "$status" >> "$ILLEGAL_STATUS"
-      ;;
-  esac
-done
+    # Store: filename TAB epic_num TAB title TAB problem TAB date_completed
+    case "$status" in
+      completed|complete)
+        printf '%s\t%s\t%s\t%s\t%s\n' "$filename" "$epic_num" "$title" "$problem" "$date_completed" >> "$EPICS_COMPLETED"
+        ;;
+      in-progress|in_progress)
+        printf '%s\t%s\t%s\t%s\t%s\n' "$filename" "$epic_num" "$title" "$problem" "" >> "$EPICS_IN_PROGRESS"
+        ;;
+      deferred)
+        printf '%s\t%s\t%s\t%s\t%s\n' "$filename" "$epic_num" "$title" "$problem" "" >> "$EPICS_DEFERRED"
+        ;;
+      cancelled)
+        printf '%s\t%s\t%s\t%s\t%s\n' "$filename" "$epic_num" "$title" "$problem" "" >> "$EPICS_CANCELLED"
+        ;;
+      planned|backlog|"")
+        printf '%s\t%s\t%s\t%s\t%s\n' "$filename" "$epic_num" "$title" "$problem" "" >> "$EPICS_PLANNED"
+        ;;
+      *)
+        printf '%s\t%s\t%s\n' "$filename" "$epic_num" "$status" >> "$ILLEGAL_STATUS"
+        ;;
+    esac
+  done
+fi
 
 # -----------------------------------------------------------------------------
 # Process IMPs
 # -----------------------------------------------------------------------------
 echo "[generate-index] Scanning AI-IMP files..."
 
-for file in "$RAG_DIR/AI-IMP"/*.md; do
-  [[ -f "$file" ]] || continue
+if [[ ! -d "$RAG_DIR/AI-IMP" ]]; then
+  echo "[generate-index] WARNING: AI-IMP/ directory not found — skipping IMPs"
+else
+  for file in "$RAG_DIR/AI-IMP"/*.md; do
+    [[ -f "$file" ]] || continue
 
-  filename=$(basename "$file" .md)
-  imp_num=$(echo "$filename" | sed 's/^AI-IMP-//' | grep -oE '^[0-9]+(-[0-9]+)?')
+    filename=$(basename "$file" .md)
+    imp_num=$(echo "$filename" | sed 's/^AI-IMP-//' | grep -oE '^[0-9]+(-[0-9]+)?')
 
-  # Normalize field names
-  normalize_frontmatter "$file"
+    # Normalize field names
+    normalize_frontmatter "$file"
 
-  # Extract fields
-  status=$(extract_frontmatter_field "$file" "kanban_status")
-  status=$(echo "$status" | tr '[:upper:]' '[:lower:]')
+    # Extract fields
+    status=$(extract_frontmatter_field "$file" "kanban_status")
+    status=$(echo "$status" | tr '[:upper:]' '[:lower:]')
 
-  # Validate IMP status
-  case "$status" in
-    completed|complete|in-progress|in_progress|deferred|planned|backlog|cancelled|"") ;;
-    *)
-      printf '%s\t%s\t%s\n' "$filename" "$imp_num" "$status" >> "$ILLEGAL_STATUS"
-      ;;
-  esac
+    # Extract display title
+    imp_title=$(extract_imp_title "$file")
 
-  depends_on=$(extract_frontmatter_field "$file" "depends_on")
+    # Validate IMP status
+    case "$status" in
+      completed|complete|in-progress|in_progress|deferred|planned|backlog|cancelled|"") ;;
+      *)
+        printf '%s\t%s\t%s\n' "$filename" "$imp_num" "$status" >> "$ILLEGAL_STATUS"
+        ;;
+    esac
 
-  # Find parent epic
-  parent_epic=$(get_epic_from_depends_on "$depends_on")
+    depends_on=$(extract_frontmatter_field "$file" "depends_on")
 
-  # Fallback to parent_epic frontmatter field (handles sub-tickets whose depends_on points to parent IMP)
-  if [[ -z "$parent_epic" ]]; then
-    parent_epic_field=$(extract_frontmatter_field "$file" "parent_epic")
-    parent_epic=$(echo "$parent_epic_field" | grep -oE 'AI-EPIC-[0-9]+' | head -1 || true)
-  fi
+    # Find parent epic
+    parent_epic=$(get_epic_from_depends_on "$depends_on")
 
-  # Add backlink if we found an epic
-  if [[ -n "$parent_epic" ]]; then
-    add_parent_epic_backlink "$file" "$parent_epic"
-    epic_num=$(echo "$parent_epic" | grep -oE '[0-9]+')
+    # Fallback to parent_epic frontmatter field (handles sub-tickets whose depends_on points to parent IMP)
+    if [[ -z "$parent_epic" ]]; then
+      parent_epic_field=$(extract_frontmatter_field "$file" "parent_epic")
+      parent_epic=$(echo "$parent_epic_field" | grep -oE 'AI-EPIC-[0-9]+' | head -1 || true)
+    fi
 
-    # Find epic status
-    epic_file=$(find "$RAG_DIR/AI-EPIC" -maxdepth 1 -name "${parent_epic}*.md" 2>/dev/null | head -1)
-    if [[ -n "$epic_file" ]]; then
-      epic_status=$(extract_frontmatter_field "$epic_file" "kanban_status")
-      epic_status=$(echo "$epic_status" | tr '[:upper:]' '[:lower:]')
+    # Add backlink if we found an epic
+    if [[ -n "$parent_epic" ]]; then
+      add_parent_epic_backlink "$file" "$parent_epic"
+      epic_num=$(echo "$parent_epic" | grep -oE '[0-9]+')
 
-      # Check for status mismatches
-      if [[ "$epic_status" == "completed" || "$epic_status" == "complete" ]] && \
-         [[ "$status" != "completed" && "$status" != "complete" ]]; then
-        printf '%s\t%s\t%s\topen but parent epic %s is completed\n' "$filename" "$imp_num" "$status" "$parent_epic" >> "$STATUS_MISMATCHES"
+      # Find epic status
+      epic_file=$(find "$RAG_DIR/AI-EPIC" -maxdepth 1 -name "${parent_epic}*.md" 2>/dev/null | head -1)
+      if [[ -n "$epic_file" ]]; then
+        epic_status=$(extract_frontmatter_field "$epic_file" "kanban_status")
+        epic_status=$(echo "$epic_status" | tr '[:upper:]' '[:lower:]')
+
+        # Check for status mismatches
+        if [[ "$epic_status" == "completed" || "$epic_status" == "complete" ]] && \
+           [[ "$status" != "completed" && "$status" != "complete" ]]; then
+          printf '%s\t%s\t%s\topen but parent epic %s is completed\n' "$filename" "$imp_num" "$status" "$parent_epic" >> "$STATUS_MISMATCHES"
+        fi
+      fi
+
+      # Store: epic_num TAB imp_filename TAB imp_num TAB status TAB imp_title
+      printf '%s\t%s\t%s\t%s\t%s\n' "$epic_num" "$filename" "$imp_num" "$status" "$imp_title" >> "$IMPS_BY_EPIC"
+    else
+      # Orphaned IMP - report non-completed in Anomalies; count all for Summary totals
+      if [[ "$status" != "completed" && "$status" != "complete" ]]; then
+        printf '%s\t%s\t%s\tno epic dependency found\n' "$filename" "$imp_num" "$status" >> "$ORPHAN_IMPS"
+      fi
+      # Track all orphan statuses for Summary counts (including completed)
+      orphan_completed_count=${orphan_completed_count:-0}
+      if [[ "$status" == "completed" || "$status" == "complete" ]]; then
+        orphan_completed_count=$((orphan_completed_count + 1))
       fi
     fi
-
-    # Store: epic_num TAB imp_filename TAB imp_num TAB status
-    printf '%s\t%s\t%s\t%s\n' "$epic_num" "$filename" "$imp_num" "$status" >> "$IMPS_BY_EPIC"
-  else
-    # Orphaned IMP - only report if not completed (one-off tasks without epics are acceptable when done)
-    if [[ "$status" != "completed" && "$status" != "complete" ]]; then
-      printf '%s\t%s\t%s\tno epic dependency found\n' "$filename" "$imp_num" "$status" >> "$ORPHAN_IMPS"
-    fi
-  fi
-done
+  done
+fi
 
 # -----------------------------------------------------------------------------
 # Collect large files (report only)
@@ -260,7 +308,7 @@ while IFS= read -r -d '' file; do
   [[ -f "$path" ]] || continue
 
   case "$file" in
-    RAG/INDEX.md|**/package-lock.json|tauri-app/src-tauri/tests/fixtures/color_golden.json|*.png|*.jpg|*.jpeg|*.gif|*.svg|*.ico|*.bin|*.exe|*.dll|*.so|*.dylib|*.woff*|*.ttf|*.otf|*.pdf|*.mp4|*.mov|*.zip|*.tar*|*.gz|*.xz)
+    RAG/INDEX.md|*/package-lock.json|package-lock.json|tauri-app/src-tauri/tests/fixtures/color_golden.json|*.png|*.jpg|*.jpeg|*.gif|*.svg|*.ico|*.bin|*.exe|*.dll|*.so|*.dylib|*.woff*|*.ttf|*.otf|*.pdf|*.mp4|*.mov|*.zip|*.tar*|*.gz|*.xz)
       continue
       ;;
   esac
@@ -284,7 +332,54 @@ echo "[generate-index] Generating INDEX.md..."
 
 EOF
 
+  # ---------------------------------------------------------------------------
+  # Summary table
+  # ---------------------------------------------------------------------------
+  # Count EPICs by status
+  epics_in_progress=$(wc -l < "$EPICS_IN_PROGRESS" 2>/dev/null | tr -d ' ')
+  epics_planned=$(wc -l < "$EPICS_PLANNED" 2>/dev/null | tr -d ' ')
+  epics_deferred=$(wc -l < "$EPICS_DEFERRED" 2>/dev/null | tr -d ' ')
+  epics_cancelled=$(wc -l < "$EPICS_CANCELLED" 2>/dev/null | tr -d ' ')
+  epics_completed=$(wc -l < "$EPICS_COMPLETED" 2>/dev/null | tr -d ' ')
+  epics_total=$((epics_in_progress + epics_planned + epics_deferred + epics_cancelled + epics_completed))
+
+  # Count IMPs by individual status (from IMPS_BY_EPIC column 4)
+  imps_in_progress=$(awk -F'\t' '$4 ~ /^in[-_]progress/' "$IMPS_BY_EPIC" 2>/dev/null | wc -l | tr -d ' ')
+  imps_planned=$(awk -F'\t' '$4 ~ /^(planned|backlog)$/' "$IMPS_BY_EPIC" 2>/dev/null | wc -l | tr -d ' ')
+  imps_deferred=$(awk -F'\t' '$4 == "deferred"' "$IMPS_BY_EPIC" 2>/dev/null | wc -l | tr -d ' ')
+  imps_cancelled=$(awk -F'\t' '$4 == "cancelled"' "$IMPS_BY_EPIC" 2>/dev/null | wc -l | tr -d ' ')
+  imps_completed=$(awk -F'\t' '$4 ~ /^complete/' "$IMPS_BY_EPIC" 2>/dev/null | wc -l | tr -d ' ')
+  # Include orphan IMPs in totals (non-completed orphans shown in Anomalies; completed orphans counted silently)
+  orphan_count=$(wc -l < "$ORPHAN_IMPS" 2>/dev/null | tr -d ' ')
+  orphan_completed=${orphan_completed_count:-0}
+
+  [[ -z "$imps_in_progress" ]] && imps_in_progress=0
+  [[ -z "$imps_planned" ]] && imps_planned=0
+  [[ -z "$imps_deferred" ]] && imps_deferred=0
+  [[ -z "$imps_cancelled" ]] && imps_cancelled=0
+  [[ -z "$imps_completed" ]] && imps_completed=0
+
+  # Add orphan completed IMPs to the completed count
+  imps_completed=$((imps_completed + orphan_completed))
+  imps_total=$((imps_in_progress + imps_planned + imps_deferred + imps_cancelled + imps_completed + orphan_count))
+
+  cat <<EOF
+## Summary
+
+| Status | EPICs | IMPs |
+|--------|-------|------|
+| In Progress | ${epics_in_progress} | ${imps_in_progress} |
+| Planned | ${epics_planned} | ${imps_planned} |
+| Deferred | ${epics_deferred} | ${imps_deferred} |
+| Cancelled | ${epics_cancelled} | ${imps_cancelled} |
+| Completed | ${epics_completed} | ${imps_completed} |
+| **Total** | **${epics_total}** | **${imps_total}** |
+
+EOF
+
+  # ---------------------------------------------------------------------------
   # In Progress section
+  # ---------------------------------------------------------------------------
   if [[ -s "$EPICS_IN_PROGRESS" ]]; then
     echo "## In Progress"
     echo ""
@@ -299,8 +394,8 @@ EOF
       # Find IMPs for this epic
       if grep -q "^${epic_num}${TAB}" "$IMPS_BY_EPIC" 2>/dev/null; then
         echo "**IMPs:**"
-        grep "^${epic_num}${TAB}" "$IMPS_BY_EPIC" | while IFS=$'\t' read -r _ imp_filename imp_num imp_status; do
-          echo "- [[${imp_filename}|IMP-${imp_num}]] - ${imp_status}"
+        grep "^${epic_num}${TAB}" "$IMPS_BY_EPIC" | while IFS=$'\t' read -r _ imp_filename imp_num imp_status imp_title; do
+          echo "- [[${imp_filename}|IMP-${imp_num}]] ${imp_title} — ${imp_status}"
         done
         echo ""
       fi
@@ -310,7 +405,9 @@ EOF
     done < "$EPICS_IN_PROGRESS"
   fi
 
+  # ---------------------------------------------------------------------------
   # Planned section
+  # ---------------------------------------------------------------------------
   if [[ -s "$EPICS_PLANNED" ]]; then
     echo "## Planned"
     echo ""
@@ -325,8 +422,8 @@ EOF
       # Find IMPs for this epic
       if grep -q "^${epic_num}${TAB}" "$IMPS_BY_EPIC" 2>/dev/null; then
         echo "**IMPs:**"
-        grep "^${epic_num}${TAB}" "$IMPS_BY_EPIC" | while IFS=$'\t' read -r _ imp_filename imp_num imp_status; do
-          echo "- [[${imp_filename}|IMP-${imp_num}]] - ${imp_status}"
+        grep "^${epic_num}${TAB}" "$IMPS_BY_EPIC" | while IFS=$'\t' read -r _ imp_filename imp_num imp_status imp_title; do
+          echo "- [[${imp_filename}|IMP-${imp_num}]] ${imp_title} — ${imp_status}"
         done
         echo ""
       fi
@@ -336,51 +433,9 @@ EOF
     done < "$EPICS_PLANNED"
   fi
 
-  # Deferred section
-  if [[ -s "$EPICS_DEFERRED" ]]; then
-    echo "## Deferred"
-    echo ""
-
-    while IFS=$'\t' read -r filename epic_num title problem _; do
-      echo "### [[${filename}|EPIC-${epic_num}: ${title}]]"
-      if [[ -n "$problem" ]]; then
-        echo "> ${problem}"
-      fi
-      echo ""
-
-      # Find IMPs for this epic
-      if grep -q "^${epic_num}${TAB}" "$IMPS_BY_EPIC" 2>/dev/null; then
-        echo "**IMPs:**"
-        grep "^${epic_num}${TAB}" "$IMPS_BY_EPIC" | while IFS=$'\t' read -r _ imp_filename imp_num imp_status; do
-          echo "- [[${imp_filename}|IMP-${imp_num}]] - ${imp_status}"
-        done
-        echo ""
-      fi
-
-      echo "---"
-      echo ""
-    done < "$EPICS_DEFERRED"
-  fi
-
-  # Large Files section
-  if [[ -s "$LARGE_FILES" ]]; then
-    echo "## Size Watch (over 600 LOC)"
-    echo ""
-    echo "Generated from tracked files; binary assets excluded."
-    echo ""
-    sort -rn "$LARGE_FILES" | awk -F '\t' '$1 > 600 { print "- " $2 " (" $1 " LOC)" }'
-    echo ""
-    echo "## Size Watch (over 300 LOC)"
-    echo ""
-    echo "Generated from tracked files; binary assets excluded."
-    echo ""
-    sort -rn "$LARGE_FILES" | awk -F '\t' '$1 > 300 && $1 <= 600 { print "- " $2 " (" $1 " LOC)" }'
-    echo ""
-    echo "---"
-    echo ""
-  fi
-
+  # ---------------------------------------------------------------------------
   # Anomalies section
+  # ---------------------------------------------------------------------------
   if [[ -s "$ORPHAN_IMPS" ]] || [[ -s "$STATUS_MISMATCHES" ]] || [[ -s "$ILLEGAL_STATUS" ]]; then
     echo "## Anomalies"
     echo ""
@@ -388,7 +443,7 @@ EOF
     if [[ -s "$ORPHAN_IMPS" ]]; then
       echo "### Orphaned IMPs (no epic dependency)"
       while IFS=$'\t' read -r imp_filename imp_num status reason; do
-        echo "- [[${imp_filename}|IMP-${imp_num}]] - ${status}, ${reason}"
+        echo "- [[${imp_filename}|IMP-${imp_num}]] — ${status}, ${reason}"
       done < "$ORPHAN_IMPS"
       echo ""
     fi
@@ -396,7 +451,7 @@ EOF
     if [[ -s "$STATUS_MISMATCHES" ]]; then
       echo "### Status Mismatches"
       while IFS=$'\t' read -r imp_filename imp_num status reason; do
-        echo "- [[${imp_filename}|IMP-${imp_num}]] - ${reason}"
+        echo "- [[${imp_filename}|IMP-${imp_num}]] — ${reason}"
       done < "$STATUS_MISMATCHES"
       echo ""
     fi
@@ -413,21 +468,101 @@ EOF
     echo ""
   fi
 
-  # Completed section
+  # ---------------------------------------------------------------------------
+  # Cancelled / Deferred section (merged)
+  # ---------------------------------------------------------------------------
+  if [[ -s "$EPICS_CANCELLED" ]] || [[ -s "$EPICS_DEFERRED" ]]; then
+    echo "## Cancelled / Deferred"
+    echo ""
+
+    # Render cancelled EPICs first
+    if [[ -s "$EPICS_CANCELLED" ]]; then
+      while IFS=$'\t' read -r filename epic_num title problem _; do
+        echo "- [[${filename}|EPIC-${epic_num}]] ${title} — cancelled — \"${problem}\""
+        # Find IMPs for this epic
+        if grep -q "^${epic_num}${TAB}" "$IMPS_BY_EPIC" 2>/dev/null; then
+          grep "^${epic_num}${TAB}" "$IMPS_BY_EPIC" | while IFS=$'\t' read -r _ imp_filename imp_num imp_status imp_title; do
+            echo "  - [[${imp_filename}|IMP-${imp_num}]] ${imp_title} — ${imp_status}"
+          done
+        else
+          echo "  - (no IMPs)"
+        fi
+      done < "$EPICS_CANCELLED"
+    fi
+
+    # Render deferred EPICs
+    if [[ -s "$EPICS_DEFERRED" ]]; then
+      while IFS=$'\t' read -r filename epic_num title problem _; do
+        echo "- [[${filename}|EPIC-${epic_num}]] ${title} — deferred — \"${problem}\""
+        # Find IMPs for this epic
+        if grep -q "^${epic_num}${TAB}" "$IMPS_BY_EPIC" 2>/dev/null; then
+          grep "^${epic_num}${TAB}" "$IMPS_BY_EPIC" | while IFS=$'\t' read -r _ imp_filename imp_num imp_status imp_title; do
+            echo "  - [[${imp_filename}|IMP-${imp_num}]] ${imp_title} — ${imp_status}"
+          done
+        else
+          echo "  - (no IMPs)"
+        fi
+      done < "$EPICS_DEFERRED"
+    fi
+
+    echo ""
+    echo "---"
+    echo ""
+  fi
+
+  # ---------------------------------------------------------------------------
+  # Size Watch section
+  # ---------------------------------------------------------------------------
+  if [[ -s "$LARGE_FILES" ]]; then
+    echo "## Size Watch"
+    echo ""
+    echo "Generated from tracked files; binary assets excluded."
+    echo ""
+
+    # Check if any files over 600
+    if sort -rn "$LARGE_FILES" | awk -F '\t' '$1 > 600 { found=1 } END { exit !found }'; then
+      echo "### > 600 LOC"
+      echo ""
+      sort -rn "$LARGE_FILES" | awk -F '\t' '$1 > 600 { print "- " $2 " (" $1 " LOC)" }'
+      echo ""
+    fi
+
+    # Check if any files 300-600
+    if sort -rn "$LARGE_FILES" | awk -F '\t' '$1 > 300 && $1 <= 600 { found=1 } END { exit !found }'; then
+      echo "### > 300 LOC"
+      echo ""
+      sort -rn "$LARGE_FILES" | awk -F '\t' '$1 > 300 && $1 <= 600 { print "- " $2 " (" $1 " LOC)" }'
+      echo ""
+    fi
+
+    echo "---"
+    echo ""
+  fi
+
+  # ---------------------------------------------------------------------------
+  # Completed section (with IMP children)
+  # ---------------------------------------------------------------------------
   if [[ -s "$EPICS_COMPLETED" ]]; then
     completed_epics=$(wc -l < "$EPICS_COMPLETED" | tr -d ' ')
-    completed_imps=$(grep -c "completed" "$IMPS_BY_EPIC" 2>/dev/null || echo "0")
+    completed_imps=$(awk -F'\t' '$4 ~ /^complete/' "$IMPS_BY_EPIC" 2>/dev/null | wc -l | tr -d ' ')
+    [[ -z "$completed_imps" ]] && completed_imps=0
 
     echo "## Completed"
     echo "<details>"
-    echo "<summary>${completed_epics} Epics, ${completed_imps} IMPs completed</summary>"
+    echo "<summary>${completed_epics} EPICs, ${completed_imps} IMPs completed</summary>"
     echo ""
 
     while IFS=$'\t' read -r filename epic_num title _ date_completed; do
       if [[ -n "$date_completed" ]]; then
-        echo "- [[${filename}|EPIC-${epic_num}: ${title}]] (${date_completed})"
+        echo "- [[${filename}|EPIC-${epic_num}]] ${title} — ${date_completed}"
       else
-        echo "- [[${filename}|EPIC-${epic_num}: ${title}]]"
+        echo "- [[${filename}|EPIC-${epic_num}]] ${title}"
+      fi
+      # Show IMP children for this epic
+      if grep -q "^${epic_num}${TAB}" "$IMPS_BY_EPIC" 2>/dev/null; then
+        grep "^${epic_num}${TAB}" "$IMPS_BY_EPIC" | while IFS=$'\t' read -r _ imp_filename imp_num imp_status imp_title; do
+          echo "  - [[${imp_filename}|IMP-${imp_num}]] ${imp_title} — ${imp_status}"
+        done
       fi
     done < "$EPICS_COMPLETED"
 

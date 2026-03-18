@@ -1,4 +1,5 @@
 import { get } from 'svelte/store';
+import type { Readable } from 'svelte/store';
 import type { PrefsV1 } from './prefs';
 import { savePrefs } from './prefs';
 import type { AnalysisParams } from './analysis';
@@ -40,92 +41,54 @@ export function hydrateFromPrefs(prefs: PrefsV1) {
   compactSidebars.set(prefs.display.compactSidebars ?? false);
 }
 
-// Write-back: debounced subscriptions that persist store changes
-let _debounceParams: ReturnType<typeof setTimeout> | null = null;
-let _skipParamsFirst = true;
-params.subscribe((val) => {
-  if (_skipParamsFirst) { _skipParamsFirst = false; return; }
-  if (_debounceParams) clearTimeout(_debounceParams);
-  _debounceParams = setTimeout(() => void savePrefs({
-    analysis: val,
-    display: { showHistogram: val.showHistogram, showPolarChart: val.showPolarChart, showHueLightness: val.showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: get(videoStripMode), videoFrameLabel: get(videoFrameLabel), compactSidebars: get(compactSidebars) }
-  }), 500);
-});
+// --- Write-back helpers ---
 
-let _debounceVaLevels: ReturnType<typeof setTimeout> | null = null;
-let _skipVaLevelsFirst = true;
-valueAnalysisLevels.subscribe((val) => {
-  if (_skipVaLevelsFirst) { _skipVaLevelsFirst = false; return; }
-  if (_debounceVaLevels) clearTimeout(_debounceVaLevels);
-  _debounceVaLevels = setTimeout(() => void savePrefs({ valueAnalysis: { levels: val } }), 500);
-});
+function persistStore<T>(
+  store: Readable<T>,
+  toPayload: (val: T) => Partial<PrefsV1>,
+  delay = 0
+) {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let skipFirst = true;
+  store.subscribe((val) => {
+    if (skipFirst) { skipFirst = false; return; }
+    if (timer) clearTimeout(timer);
+    if (delay > 0) {
+      timer = setTimeout(() => void savePrefs(toPayload(val)), delay);
+    } else {
+      void savePrefs(toPayload(val));
+    }
+  });
+}
 
-let _debounceExportScale: ReturnType<typeof setTimeout> | null = null;
-let _skipExportScaleFirst = true;
-exportScale.subscribe((val) => {
-  if (_skipExportScaleFirst) { _skipExportScaleFirst = false; return; }
-  if (_debounceExportScale) clearTimeout(_debounceExportScale);
-  _debounceExportScale = setTimeout(() => void savePrefs({ exportScale: val }), 500);
-});
+function displayPayload(overrides: Partial<PrefsV1['display']> = {}): Pick<PrefsV1, 'display'> {
+  const p = get(params);
+  return {
+    display: {
+      showHistogram: p.showHistogram,
+      showPolarChart: p.showPolarChart,
+      showHueLightness: p.showHueLightness,
+      showSimplifiedTones: get(showSimplifiedTones),
+      videoStripMode: get(videoStripMode),
+      videoFrameLabel: get(videoFrameLabel),
+      compactSidebars: get(compactSidebars),
+      ...overrides
+    }
+  };
+}
 
-let _skipExportDirFirst = true;
-exportDir.subscribe((val) => {
-  if (_skipExportDirFirst) { _skipExportDirFirst = false; return; }
-  void savePrefs({ exportDir: val });
-});
+// Debounced subscriptions
+persistStore(params, (val) => ({ analysis: val, ...displayPayload() }), 500);
+persistStore(valueAnalysisLevels, (val) => ({ valueAnalysis: { levels: val } }), 500);
+persistStore(exportScale, (val) => ({ exportScale: val }), 500);
+persistStore(exportChecks, (val) => ({ exports: val }), 500);
+persistStore(clusterMax, (val) => ({ limits: { clusterMax: val, excludeTopMax: get(excludeTopMax) } }), 500);
+persistStore(excludeTopMax, (val) => ({ limits: { clusterMax: get(clusterMax), excludeTopMax: val } }), 500);
+persistStore(graphExportFormat, (val) => ({ graphExportFormat: val }), 500);
 
-let _debounceExportChecks: ReturnType<typeof setTimeout> | null = null;
-let _skipExportChecksFirst = true;
-exportChecks.subscribe((val) => {
-  if (_skipExportChecksFirst) { _skipExportChecksFirst = false; return; }
-  if (_debounceExportChecks) clearTimeout(_debounceExportChecks);
-  _debounceExportChecks = setTimeout(() => void savePrefs({ exports: val }), 500);
-});
-
-let _debounceClusterMax: ReturnType<typeof setTimeout> | null = null;
-let _skipClusterMaxFirst = true;
-clusterMax.subscribe((val) => {
-  if (_skipClusterMaxFirst) { _skipClusterMaxFirst = false; return; }
-  if (_debounceClusterMax) clearTimeout(_debounceClusterMax);
-  _debounceClusterMax = setTimeout(() => void savePrefs({ limits: { clusterMax: val, excludeTopMax: get(excludeTopMax) } }), 500);
-});
-
-let _debounceExcludeTopMax: ReturnType<typeof setTimeout> | null = null;
-let _skipExcludeTopMaxFirst = true;
-excludeTopMax.subscribe((val) => {
-  if (_skipExcludeTopMaxFirst) { _skipExcludeTopMaxFirst = false; return; }
-  if (_debounceExcludeTopMax) clearTimeout(_debounceExcludeTopMax);
-  _debounceExcludeTopMax = setTimeout(() => void savePrefs({ limits: { clusterMax: get(clusterMax), excludeTopMax: val } }), 500);
-});
-
-let _skipSimplifiedTonesFirst = true;
-showSimplifiedTones.subscribe((val) => {
-  if (_skipSimplifiedTonesFirst) { _skipSimplifiedTonesFirst = false; return; }
-  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: val, videoStripMode: get(videoStripMode), videoFrameLabel: get(videoFrameLabel), compactSidebars: get(compactSidebars) } });
-});
-
-let _skipVideoStripModeFirst = true;
-videoStripMode.subscribe((val) => {
-  if (_skipVideoStripModeFirst) { _skipVideoStripModeFirst = false; return; }
-  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: val, videoFrameLabel: get(videoFrameLabel), compactSidebars: get(compactSidebars) } });
-});
-
-let _skipVideoFrameLabelFirst = true;
-videoFrameLabel.subscribe((val) => {
-  if (_skipVideoFrameLabelFirst) { _skipVideoFrameLabelFirst = false; return; }
-  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: get(videoStripMode), videoFrameLabel: val, compactSidebars: get(compactSidebars) } });
-});
-
-let _debounceGraphExportFormat: ReturnType<typeof setTimeout> | null = null;
-let _skipGraphExportFormatFirst = true;
-graphExportFormat.subscribe((val) => {
-  if (_skipGraphExportFormatFirst) { _skipGraphExportFormatFirst = false; return; }
-  if (_debounceGraphExportFormat) clearTimeout(_debounceGraphExportFormat);
-  _debounceGraphExportFormat = setTimeout(() => void savePrefs({ graphExportFormat: val }), 500);
-});
-
-let _skipCompactSidebarsFirst = true;
-compactSidebars.subscribe((val) => {
-  if (_skipCompactSidebarsFirst) { _skipCompactSidebarsFirst = false; return; }
-  void savePrefs({ display: { showHistogram: get(params).showHistogram, showPolarChart: get(params).showPolarChart, showHueLightness: get(params).showHueLightness, showSimplifiedTones: get(showSimplifiedTones), videoStripMode: get(videoStripMode), videoFrameLabel: get(videoFrameLabel), compactSidebars: val } });
-});
+// Immediate subscriptions
+persistStore(exportDir, (val) => ({ exportDir: val }));
+persistStore(showSimplifiedTones, (val) => displayPayload({ showSimplifiedTones: val }));
+persistStore(videoStripMode, (val) => displayPayload({ videoStripMode: val }));
+persistStore(videoFrameLabel, (val) => displayPayload({ videoFrameLabel: val }));
+persistStore(compactSidebars, (val) => displayPayload({ compactSidebars: val }));
