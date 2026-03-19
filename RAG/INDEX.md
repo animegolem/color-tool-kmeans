@@ -7,11 +7,25 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 0 | 0 |
-| Planned | 0 | 7 |
-| Deferred | 3 | 4 |
+| Planned | 1 | 12 |
+| Deferred | 2 | 4 |
 | Cancelled | 0 | 0 |
 | Completed | 15 | 90 |
-| **Total** | **18** | **101** |
+| **Total** | **18** | **106** |
+
+## Planned
+
+### [[AI-EPIC-011-aggregate-analysis|EPIC-011: Aggregate analysis]]
+> When analyzing color across multiple reference images (e.g., frames from an episode, paintings by the same artist, scene references), users need to...
+
+**IMPs:**
+- [[AI-IMP-133-rust-compose-grid|IMP-133]] Rust `compose_grid` command + frontend bridge — planned
+- [[AI-IMP-134-multi-analysis-store|IMP-134]] Multi-analysis store — pin state, composite path, result cache — planned
+- [[AI-IMP-135-media-bucket-pin-toggle|IMP-135]] MediaBucket pin toggle UI + right-click context menus — planned
+- [[AI-IMP-136-batch-view|IMP-136]] BatchView — empty/selection/results states + three-panel layout — planned
+- [[AI-IMP-137-batch-export-and-scene-detection-scope|IMP-137]] Batch export via composeColorStudy + deferred scene detection ticket — planned
+
+---
 
 ## Anomalies
 
@@ -24,8 +38,6 @@
 
 ## Cancelled / Deferred
 
-- [[AI-EPIC-011-aggregate-analysis|EPIC-011]] Aggregate analysis — deferred — "When analyzing color across multiple reference images (e.g., frames from an episode, scene references), users need to see common palette threads. C..."
-  - (no IMPs)
 - [[AI-EPIC-012-color-picker|EPIC-012]] Color picker — deferred — "Users want to quickly sample colors from anywhere in the app (source image, clusters, charts) and get color codes for use in illustration programs...."
   - (no IMPs)
 - [[AI-EPIC-021-accessibility-and-keyboard|EPIC-021]] Accessibility and keyboard — deferred — "The app lacks systematic accessibility support. Interactive elements are missing ARIA roles, keyboard navigation is incomplete, focus management is..."
