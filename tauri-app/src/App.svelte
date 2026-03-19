@@ -9,6 +9,7 @@
   import { setActivePath } from './lib/services/active-image';
   import HomeView from './lib/views/HomeView.svelte';
   import ValuesView from './lib/views/ValuesView.svelte';
+  import BatchView from './lib/views/BatchView.svelte';
   import ExportsView from './lib/views/ExportsView.svelte';
   import SettingsView from './lib/views/SettingsView.svelte';
   import ZoomOverlay from './lib/components/ZoomOverlay.svelte';
@@ -26,6 +27,7 @@
   const navItems = [
     { key: 'home', label: 'Colors' },
     { key: 'values', label: 'Values' },
+    { key: 'batch', label: 'Batch' },
     { key: 'exports', label: 'Exports' },
     { key: 'settings', label: 'Settings' }
   ] as const;
@@ -41,6 +43,7 @@
   const viewDescriptions: Record<string, string> = {
     home: 'OKLab color data derived by K-Means++ and plotted for analysis.',
     values: 'Value analysis derived from OKLab lightness.',
+    batch: 'Batch analysis across multiple pinned images.',
     exports: 'Export analysis results as SVG, PNG, or CSV.',
     settings: 'Application preferences and defaults.'
   };
@@ -103,7 +106,7 @@
   }
 
   function handleMediaAdd() {
-    if ($currentView === 'home' || $currentView === 'values') {
+    if ($currentView === 'home' || $currentView === 'values' || $currentView === 'batch') {
       requestMediaLoad();
     } else {
       void globalChooseMedia();
@@ -369,6 +372,8 @@
       <HomeView />
     {:else if $currentView === 'values'}
       <ValuesView />
+    {:else if $currentView === 'batch'}
+      <BatchView />
     {:else if $currentView === 'settings'}
       <SettingsView />
     {:else}

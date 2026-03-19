@@ -18,6 +18,7 @@ AI_IMP_spawned:
   - AI-IMP-135
   - AI-IMP-136
   - AI-IMP-137
+  - AI-IMP-139
 ---
 
 # AI-EPIC-011-aggregate-analysis
@@ -87,10 +88,15 @@ Add a **"Batch"** view accessible from the left nav that enables multi-image col
 - [[AI-IMP-135]] — MediaBucket pin toggle UI + right-click context menus
 - [[AI-IMP-136]] — BatchView (empty/selection/results states, three-panel layout)
 - [[AI-IMP-137]] — Batch export + deferred scene detection ticket (IMP scope only)
+- [[AI-IMP-139]] — BatchView cleanup: layout restructure, lifecycle fixes, UI polish
 
 ### Completed Tickets
 
-(none yet)
+- [[AI-IMP-133]] — Rust `compose_grid` command + frontend bridge
+- [[AI-IMP-134]] — Multi-analysis store (pins, composite, result state)
+- [[AI-IMP-135]] — MediaBucket pin toggle UI + right-click context menus
+- [[AI-IMP-136]] — BatchView (empty/selection/results states, three-panel layout)
+- [[AI-IMP-139]] — BatchView cleanup: layout, lifecycle, context menu removal, pin icon
 
 ## Notes
 

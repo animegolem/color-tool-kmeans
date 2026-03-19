@@ -1,0 +1,159 @@
+import { get } from 'svelte/store';
+import { tauriInvoke } from '../../bridges/tauri';
+import { TauriComputeError, parseTauriResponse } from '../../bridges/compute';
+import { composeGrid } from '../../bridges/compose';
+import {
+  multiAnalysisState,
+  multiAnalysisResult,
+  multiAnalysisError,
+  multiCompositePath,
+  resetMultiAnalysis
+} from '../../stores/multi-analysis';
+import type { AnalysisParams, AnalysisResult } from '../../stores/analysis';
+
+const SPINNER_THRESHOLD_MS = 150;
+const DEFAULT_TOLERANCE = 1e-3;
+const DEFAULT_MAX_ITER = 40;
+const DEFAULT_MAX_SAMPLES = 300_000;
+const DEFAULT_SEED = 1;
+
+function mapErrorToMessage(error: unknown): string {
+  if (error instanceof TauriComputeError) {
+    switch (error.code) {
+      case 'missing-path':
+        return 'Composite image path was not found. Please re-pin images and try again.';
+      case 'invalid-response':
+        return 'Batch analysis returned unexpected data. Review the Tauri console for details.';
+      case 'invoke-failed':
+        return 'Batch analysis failed to start. Restart the app or check the console output.';
+      default:
+        return 'Batch analysis reported an unexpected error.';
+    }
+  }
+  if (error instanceof Error) {
+    return error.message || 'Unexpected error during batch analysis.';
+  }
+  return 'Unexpected error during batch analysis.';
+}
+
+export function createBatchRunner() {
+  let currentToken = 0;
+  let spinnerTimer: ReturnType<typeof setTimeout> | null = null;
+  let spinnerVisible = $state(false);
+
+  function clearSpinner() {
+    if (spinnerTimer) {
+      clearTimeout(spinnerTimer);
+      spinnerTimer = null;
+    }
+    spinnerVisible = false;
+  }
+
+  function cancel() {
+    currentToken += 1;
+    clearSpinner();
+    const state = get(multiAnalysisState);
+    if (state === 'compositing' || state === 'analyzing') {
+      multiAnalysisState.set('idle');
+    }
+  }
+
+  function reset() {
+    cancel();
+    resetMultiAnalysis();
+  }
+
+  async function analyze(paths: string[], params: AnalysisParams): Promise<void> {
+    currentToken += 1;
+    const token = currentToken;
+
+    multiAnalysisState.set('compositing');
+    multiAnalysisError.set(null);
+    multiAnalysisResult.set(null);
+    multiCompositePath.set(null);
+
+    spinnerVisible = false;
+    clearSpinner();
+    spinnerTimer = setTimeout(() => {
+      if (token === currentToken) {
+        spinnerVisible = true;
+      }
+    }, SPINNER_THRESHOLD_MS);
+
+    let compositePath: string;
+    try {
+      const result = await composeGrid(paths);
+      if (token !== currentToken) return;
+      compositePath = result.path;
+      multiCompositePath.set(compositePath);
+    } catch (err) {
+      if (token !== currentToken) return;
+      console.error('[batch] compositing failed', err);
+      const message = err instanceof Error ? err.message : 'Failed to compose grid image.';
+      multiAnalysisError.set(message);
+      multiAnalysisState.set('error');
+      clearSpinner();
+      return;
+    }
+
+    multiAnalysisState.set('analyzing');
+    if (token !== currentToken) return;
+
+    const req = {
+      path: compositePath,
+      k: params.clusters,
+      quality: params.quality ?? 2,
+      ignoreTopN: params.ignoreTopN ?? 0,
+      mergeThreshold: params.mergeThreshold ?? 0,
+      snapToReal: params.snapToReal ?? false,
+      minLum: 0,
+      tol: DEFAULT_TOLERANCE,
+      maxIter: DEFAULT_MAX_ITER,
+      seed: DEFAULT_SEED,
+      maxSamples: DEFAULT_MAX_SAMPLES
+    };
+
+    try {
+      const rawResponse = await tauriInvoke('analyze_image', { req });
+      if (token !== currentToken) return;
+
+      const parsed = parseTauriResponse(rawResponse);
+      const clusters = parsed.clusters.map((cluster) => ({
+        count: cluster.count,
+        share: cluster.share,
+        centroidSpace: cluster.centroidSpace,
+        oklab: cluster.oklab,
+        oklch: cluster.oklch,
+        rgb: cluster.rgb,
+        hsv: cluster.hsv
+      })) as AnalysisResult['clusters'];
+
+      const analysisResult: AnalysisResult = {
+        clusters,
+        iterations: parsed.iterations,
+        durationMs: parsed.durationMs,
+        totalSamples: parsed.totalSamples,
+        variant: String(parsed.variant ?? 'tauri-native')
+      };
+
+      multiAnalysisResult.set(analysisResult);
+      multiAnalysisState.set('ready');
+    } catch (err) {
+      if (token !== currentToken) return;
+      console.error('[batch] analysis failed', err);
+      multiAnalysisError.set(mapErrorToMessage(err));
+      multiAnalysisState.set('error');
+    } finally {
+      if (token === currentToken) {
+        clearSpinner();
+      }
+    }
+  }
+
+  return {
+    get spinnerVisible() { return spinnerVisible; },
+    analyze,
+    cancel,
+    reset
+  };
+}

@@ -1,14 +1,10 @@
 <script lang="ts">
   import { images, activeImageId, currentView, switchToFile, switchToVideo, removeFile, clearFile } from '../stores/ui';
   import { pinnedImageIds, togglePin, clearPins } from '../stores/multi-analysis';
-  import { videoState } from '../stores/video';
   import type { ImageEntry } from '../stores/image';
-  import BucketContextMenu from './BucketContextMenu.svelte';
 
   const imageIcon = `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.33333 35H31.6667C33.5076 35 35 33.5076 35 31.6667V8.33333C35 6.49238 33.5076 5 31.6667 5H8.33333C6.49238 5 5 6.49238 5 8.33333V31.6667C5 33.5076 6.49238 35 8.33333 35ZM8.33333 35L26.6667 16.6667L35 25M16.6667 14.1667C16.6667 15.5474 15.5474 16.6667 14.1667 16.6667C12.786 16.6667 11.6667 15.5474 11.6667 14.1667C11.6667 12.786 12.786 11.6667 14.1667 11.6667C15.5474 11.6667 16.6667 12.786 16.6667 14.1667Z" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   const videoIcon = `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M30.6667 9.33329L21.3334 16L30.6667 22.6666V9.33329Z" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.6667 6.66663H4.00004C2.52728 6.66663 1.33337 7.86053 1.33337 9.33329V22.6666C1.33337 24.1394 2.52728 25.3333 4.00004 25.3333H18.6667C20.1395 25.3333 21.3334 24.1394 21.3334 22.6666V9.33329C21.3334 7.86053 20.1395 6.66663 18.6667 6.66663Z" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-
-  let contextMenu = $state<{ x: number; y: number; entry: ImageEntry } | null>(null);
 
   let pinnedCount = $derived([...$pinnedImageIds].length);
 
@@ -33,12 +29,6 @@
     togglePin(id);
   }
 
-  function handleContextMenu(event: MouseEvent, item: ImageEntry) {
-    event.preventDefault();
-    event.stopPropagation();
-    contextMenu = { x: event.clientX, y: event.clientY, entry: item };
-  }
-
   function isRawVideo(item: ImageEntry): boolean {
     return !!item.videoPath && !item.frameTimestamp;
   }
@@ -60,11 +50,10 @@
         class="media-bucket__item"
         class:active={item.id === $activeImageId}
         class:pinned={$pinnedImageIds.has(item.id)}
-        class:dimmed={item.id !== $activeImageId && ($currentView === 'settings' || ($currentView === 'exports' && !!item.videoPath))}
-        class:inert={$currentView === 'exports' && !!item.videoPath}
+        class:dimmed={item.id !== $activeImageId && ($currentView === 'settings' || (($currentView === 'exports' || $currentView === 'batch') && !!item.videoPath))}
+        class:inert={($currentView === 'exports' || $currentView === 'batch') && !!item.videoPath}
         onclick={() => handleClick(item.id)}
         onkeydown={(e) => handleKeydown(e, item.id)}
-        oncontextmenu={(e) => handleContextMenu(e, item)}
         role="button"
         tabindex="0"
         title={item.name}
@@ -107,16 +96,6 @@
       Clear All
     </button>
   {/if}
-{/if}
-
-{#if contextMenu}
-  <BucketContextMenu
-    x={contextMenu.x}
-    y={contextMenu.y}
-    entry={contextMenu.entry}
-    isActiveVideo={!!contextMenu.entry.videoPath && !!$videoState && $videoState.path === contextMenu.entry.videoPath}
-    onclose={() => { contextMenu = null; }}
-  />
 {/if}
 
 <style>
@@ -201,13 +180,13 @@
     position: absolute;
     top: 2px;
     left: 2px;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     border: none;
     background: rgba(33, 33, 32, 0.7);
     color: #fff;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1;
     cursor: pointer;
     display: grid;
@@ -215,11 +194,12 @@
     padding: 0;
     opacity: 0;
     transition: opacity 0.15s ease;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
   }
 
   .media-bucket__pin.pinned {
     opacity: 1;
-    color: var(--accent);
+    color: #fff;
     background: rgba(33, 33, 32, 0.85);
   }
 

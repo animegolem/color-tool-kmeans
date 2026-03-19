@@ -156,7 +156,7 @@ function normalizeTauriCluster(raw: unknown): Record<string, unknown> {
   };
 }
 
-function normalizeTauriResponse(raw: unknown): Record<string, unknown> {
+export function normalizeTauriResponse(raw: unknown): Record<string, unknown> {
   if (!raw || typeof raw !== 'object') {
     return {};
   }
@@ -171,7 +171,7 @@ function normalizeTauriResponse(raw: unknown): Record<string, unknown> {
   };
 }
 
-function parseTauriResponse(raw: unknown): ParsedTauriResponse {
+export function parseTauriResponse(raw: unknown): ParsedTauriResponse {
   const normalized = normalizeTauriResponse(raw);
   try {
     return tauriComputeResponseSchema.parse(normalized);
