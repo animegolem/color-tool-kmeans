@@ -7,10 +7,10 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 0 | 0 |
-| Planned | 1 | 11 |
+| Planned | 1 | 10 |
 | Deferred | 2 | 4 |
 | Cancelled | 0 | 0 |
-| Completed | 15 | 95 |
+| Completed | 15 | 96 |
 | **Total** | **18** | **110** |
 
 ## Planned
@@ -22,7 +22,7 @@
 - [[AI-IMP-133-rust-compose-grid|IMP-133]] Rust `compose_grid` command + frontend bridge — completed
 - [[AI-IMP-134-multi-analysis-store|IMP-134]] Multi-analysis store — pin state, composite path, result cache — completed
 - [[AI-IMP-135-media-bucket-pin-toggle|IMP-135]] MediaBucket pin toggle UI + right-click context menus — completed
-- [[AI-IMP-136-batch-view|IMP-136]] BatchView — empty/selection/results states + three-panel layout — planned
+- [[AI-IMP-136-batch-view|IMP-136]] BatchView — empty/selection/results states + three-panel layout — completed
 - [[AI-IMP-137-batch-export-and-scene-detection-scope|IMP-137]] Batch export via composeColorStudy + deferred scene detection ticket — planned
 - [[AI-IMP-139-batch-view-cleanup|IMP-139]] BatchView layout restructure, lifecycle fixes, and UI polish — completed
 - [[AI-IMP-141-batch-chart-controls|IMP-141]] BatchView chart toggle controls, auto-pin uploads, and column alignment — planned
@@ -80,7 +80,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>15 EPICs, 64 IMPs completed</summary>
+<summary>15 EPICs, 65 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed
