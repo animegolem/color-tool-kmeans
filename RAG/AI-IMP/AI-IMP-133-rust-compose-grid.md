@@ -6,12 +6,12 @@ tags:
   - batch-analysis
   - rust
   - backend
-kanban_status: planned
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-011-aggregate-analysis]]
 confidence_score: 0.85
 date_created: 2026-03-18
-date_completed:
+date_completed: 2026-03-19
 ---
 
 # AI-IMP-133-rust-compose-grid
@@ -72,29 +72,29 @@ struct ComposeGridResponse { path: String, width: u32, height: u32, grid_cols: u
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Create `src-tauri/src/compose_grid.rs` with `compute_grid_layout(count) -> (cols, rows)` function
-- [ ] Implement `compose_grid_image(paths, max_cell_dim, cache_dir) -> Result<(PathBuf, u32, u32, u32, u32)>`
-  - [ ] Load each image via `ImageReader::open().with_guessed_format().decode()`
-  - [ ] Compute uniform cell dimensions from max_cell_dim
-  - [ ] Scale each image to fit within cell (Lanczos3), maintaining aspect ratio
-  - [ ] Create transparent RGBA canvas (`RgbaImage::new` with dimensions)
-  - [ ] Paint each image centered in its grid cell using `image::imageops::overlay`
-  - [ ] Write PNG to cache dir as `batch-grid.png` (always overwrite)
-- [ ] Input validation: return descriptive errors for 0-1 paths, >16 paths, unreadable files
-- [ ] Add `ComposeGridRequest` and `ComposeGridResponse` to `commands_types.rs`
-- [ ] Add `#[tauri::command] pub async fn compose_grid(...)` to `commands.rs`
-- [ ] Export module in `lib.rs`, register command in `main.rs`
-- [ ] Create `tauri-app/src/lib/bridges/compose.ts` with `composeGrid()` function
-- [ ] Rust unit tests:
-  - [ ] `compute_grid_layout` returns correct (cols, rows) for counts 1-16
-  - [ ] `compose_grid` with 0 or 1 paths returns appropriate error
-  - [ ] `compose_grid` with >16 paths returns appropriate error
-  - [ ] `compose_grid` with unreadable path returns error identifying the file
-  - [ ] `compose_grid` with 4 test images produces RGBA PNG with transparent gaps
-  - [ ] Output is deterministic (same inputs → same pixel data)
-- [ ] Validate: `cargo fmt --check && cargo clippy -- -D warnings`
-- [ ] Validate: `cargo test` — all new + existing tests pass
-- [ ] Validate: `npm run check && npm run lint`
+- [x] Create `src-tauri/src/compose_grid.rs` with `compute_grid_layout(count) -> (cols, rows)` function
+- [x] Implement `compose_grid_image(paths, max_cell_dim, cache_dir) -> Result<(PathBuf, u32, u32, u32, u32)>`
+  - [x] Load each image via `ImageReader::open().with_guessed_format().decode()`
+  - [x] Compute uniform cell dimensions from max_cell_dim
+  - [x] Scale each image to fit within cell (Lanczos3), maintaining aspect ratio
+  - [x] Create transparent RGBA canvas (`RgbaImage::new` with dimensions)
+  - [x] Paint each image centered in its grid cell using `image::imageops::overlay`
+  - [x] Write PNG to cache dir as `batch-grid.png` (always overwrite)
+- [x] Input validation: return descriptive errors for 0-1 paths, >16 paths, unreadable files
+- [x] Add `ComposeGridRequest` and `ComposeGridResponse` to `commands_types.rs`
+- [x] Add `#[tauri::command] pub async fn compose_grid(...)` to `commands.rs`
+- [x] Export module in `lib.rs`, register command in `main.rs`
+- [x] Create `tauri-app/src/lib/bridges/compose.ts` with `composeGrid()` function
+- [x] Rust unit tests:
+  - [x] `compute_grid_layout` returns correct (cols, rows) for counts 1-16
+  - [x] `compose_grid` with 0 or 1 paths returns appropriate error
+  - [x] `compose_grid` with >16 paths returns appropriate error
+  - [x] `compose_grid` with unreadable path returns error identifying the file
+  - [x] `compose_grid` with 4 test images produces RGBA PNG with transparent gaps
+  - [x] Output is deterministic (same inputs → same pixel data)
+- [x] Validate: `cargo fmt --check && cargo clippy -- -D warnings`
+- [x] Validate: `cargo test` — all new + existing tests pass (37 Rust tests, 152 Vitest)
+- [x] Validate: `npm run check && npm run lint`
 
 ### Acceptance Criteria
 
@@ -129,8 +129,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 
 ### Issues Encountered
 
-<!--
-This section is filled out post work as you fill out the checklists.
-You SHOULD document any issues encountered and resolved during the sprint.
-You MUST document any failed implementations, blockers or missing tests.
--->
+No issues encountered. All implementation and tests passed on first attempt. `cargo fmt` required minor reformatting of two long `assert!` macros in tests (auto-fixed).

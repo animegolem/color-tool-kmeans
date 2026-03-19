@@ -7,10 +7,10 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 0 | 0 |
-| Planned | 1 | 12 |
+| Planned | 1 | 11 |
 | Deferred | 2 | 4 |
 | Cancelled | 0 | 0 |
-| Completed | 15 | 90 |
+| Completed | 15 | 91 |
 | **Total** | **18** | **106** |
 
 ## Planned
@@ -19,7 +19,7 @@
 > When analyzing color across multiple reference images (e.g., frames from an episode, paintings by the same artist, scene references), users need to...
 
 **IMPs:**
-- [[AI-IMP-133-rust-compose-grid|IMP-133]] Rust `compose_grid` command + frontend bridge — planned
+- [[AI-IMP-133-rust-compose-grid|IMP-133]] Rust `compose_grid` command + frontend bridge — completed
 - [[AI-IMP-134-multi-analysis-store|IMP-134]] Multi-analysis store — pin state, composite path, result cache — planned
 - [[AI-IMP-135-media-bucket-pin-toggle|IMP-135]] MediaBucket pin toggle UI + right-click context menus — planned
 - [[AI-IMP-136-batch-view|IMP-136]] BatchView — empty/selection/results states + three-panel layout — planned
@@ -75,7 +75,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>15 EPICs, 59 IMPs completed</summary>
+<summary>15 EPICs, 60 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed
