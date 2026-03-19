@@ -6,13 +6,13 @@ tags:
   - batch-analysis
   - frontend
   - ux
-kanban_status: planned
+kanban_status: completed
 depends_on:
   - AI-IMP-139
 parent_epic: [[AI-EPIC-011-aggregate-analysis]]
 confidence_score: 0.80
 date_created: 2026-03-19
-date_completed:
+date_completed: 2026-03-19
 ---
 
 # AI-IMP-142-pin-ux-shift-select
@@ -43,14 +43,14 @@ Two pin interaction improvements: (1) shift+click to range-pin all items between
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add `let lastPinnedId = $state<string | null>(null)` to MediaBucket
-- [ ] Modify `handlePin(event, id)` to detect `event.shiftKey`
-- [ ] When shift+click: find index range between `lastPinnedId` and `id` in `$images`
-- [ ] Pin all unpinned, non-raw-video items in range via `togglePin()`
-- [ ] Update `lastPinnedId` after every pin action
-- [ ] Swap pin characters: try `📌` (U+1F4CC) for pinned, neutral indicator for unpinned
+- [x] Add `let lastPinnedId = $state<string | null>(null)` to MediaBucket
+- [x] Modify `handlePin(event, id)` to detect `event.shiftKey`
+- [x] When shift+click: find index range between `lastPinnedId` and `id` in `$images`
+- [x] Pin all unpinned, non-raw-video items in range via `togglePin()`
+- [x] Update `lastPinnedId` after every pin action
+- [x] Swap pin characters: try `📌` (U+1F4CC) for pinned, `○` (U+25CB) for unpinned
 - [ ] Evaluate emoji rendering at 20px — revert to stars if poor
-- [ ] Validate: `npm run check && npm run lint`
+- [x] Validate: `npm run check && npm run lint`
 
 ### Acceptance Criteria
 

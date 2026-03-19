@@ -7,11 +7,13 @@
     appendFile,
     setFile,
     updateEntryPreview,
-    libraryDrawerOpen
+    libraryDrawerOpen,
+    batchChartParams
   } from '../stores/ui';
   import {
     pinnedImages,
     pinnedImageIds,
+    togglePin,
     clearPins,
     multiAnalysisState,
     multiAnalysisResult,
@@ -39,6 +41,7 @@
   let error: string | null = $state(get(multiAnalysisError));
   let compositePath: string | null = $state(get(multiCompositePath));
   let currentParams = $state(get(params));
+  let chartParams = $state(get(batchChartParams));
 
   const unsubs: (() => void)[] = [];
   unsubs.push(pinnedImages.subscribe((v) => { pinned = v; }));
@@ -48,6 +51,7 @@
   unsubs.push(multiAnalysisError.subscribe((v) => { error = v; }));
   unsubs.push(multiCompositePath.subscribe((v) => { compositePath = v; }));
   unsubs.push(params.subscribe((v) => { currentParams = v; }));
+  unsubs.push(batchChartParams.subscribe((v) => { chartParams = v; }));
 
   onMount(() => {
     unsubs.push(subscribeMediaLoadRequested(() => chooseMedia()));
@@ -103,6 +107,9 @@
         } else {
           appendFile(entry, dataset);
         }
+        if (!entry.videoPath && pinCount < MAX_PINS) {
+          togglePin(entry.id);
+        }
       }
       if (selections.length > 1) libraryDrawerOpen.set(true);
     } catch (err) {
@@ -127,27 +134,27 @@
   const polarChart = $derived.by(() => {
     if (!result) return null;
     return generateCircleGraphSvg(result.clusters, {
-      symbolScale: currentParams.symbolScale,
-      showAxisLabels: currentParams.showAxisLabels,
-      showStroke: currentParams.showClusterOutline,
-      mode: currentParams.polarMode
+      symbolScale: chartParams.symbolScale,
+      showAxisLabels: chartParams.showAxisLabels,
+      showStroke: chartParams.showClusterOutline,
+      mode: chartParams.polarMode
     });
   });
 
   const histogram = $derived.by(() => {
     if (!result) return null;
     return generateHistogramSvg(result.clusters, {
-      sortBy: currentParams.histogramSort
+      sortBy: chartParams.histogramSort
     });
   });
 
   const hueLightnessChart = $derived.by(() => {
     if (!result) return null;
     return generateHueLightnessSvg(result.clusters, {
-      symbolScale: currentParams.symbolScale,
-      showAxisLabels: currentParams.showAxisLabels,
-      showStroke: currentParams.showClusterOutline,
-      sizeMode: currentParams.hueLightnessSizeMode
+      symbolScale: chartParams.symbolScale,
+      showAxisLabels: chartParams.showAxisLabels,
+      showStroke: chartParams.showClusterOutline,
+      sizeMode: chartParams.hueLightnessSizeMode
     });
   });
 
@@ -245,7 +252,14 @@
         </article>
 
         <article class="analysis-card">
-          <header class="card-header"><h3>Cluster Histogram</h3></header>
+          <header class="card-header">
+            <h3>Cluster Histogram</h3>
+            <div class="toggle-group">
+              <button type="button" class:active={chartParams.histogramSort === 'frequency'} onclick={() => $batchChartParams.histogramSort = 'frequency'}>Frequency</button>
+              <button type="button" class:active={chartParams.histogramSort === 'hue'} onclick={() => $batchChartParams.histogramSort = 'hue'}>Hue</button>
+              <button type="button" class:active={chartParams.histogramSort === 'lightness'} onclick={() => $batchChartParams.histogramSort = 'lightness'}>Lightness</button>
+            </div>
+          </header>
           {#if histogram}
             <div
               class="chart zoomable"
@@ -262,7 +276,14 @@
 
       <div class="results-column">
         <article class="analysis-card">
-          <header class="card-header"><h3>Polar Chart</h3></header>
+          <header class="card-header">
+            <h3>Polar Chart</h3>
+            <div class="toggle-group">
+              <button type="button" class:active={chartParams.polarMode === 'oklch'} onclick={() => $batchChartParams.polarMode = 'oklch'}>OKLCH</button>
+              <button type="button" class:active={chartParams.polarMode === 'okhsv'} onclick={() => $batchChartParams.polarMode = 'okhsv'}>OKHSV</button>
+              <button type="button" class:active={chartParams.polarMode === 'hsv'} onclick={() => $batchChartParams.polarMode = 'hsv'}>HSV</button>
+            </div>
+          </header>
           {#if polarChart}
             <div
               class="chart zoomable"
@@ -277,7 +298,13 @@
         </article>
 
         <article class="analysis-card">
-          <header class="card-header"><h3>Hue x Lightness</h3></header>
+          <header class="card-header">
+            <h3>Hue x Lightness</h3>
+            <div class="toggle-group">
+              <button type="button" class:active={chartParams.hueLightnessSizeMode === 'chroma'} onclick={() => $batchChartParams.hueLightnessSizeMode = 'chroma'}>Chroma</button>
+              <button type="button" class:active={chartParams.hueLightnessSizeMode === 'frequency'} onclick={() => $batchChartParams.hueLightnessSizeMode = 'frequency'}>Frequency</button>
+            </div>
+          </header>
           {#if hueLightnessChart}
             <div
               class="chart zoomable"
@@ -477,7 +504,7 @@
   @container (min-width: 760px) {
     .results-layout.two-columns {
       grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-      align-items: start;
+      align-items: center;
     }
   }
 
@@ -495,12 +522,40 @@
   }
 
   .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
     margin-bottom: 12px;
   }
 
   .card-header h3 {
     margin: 0;
     font-size: 14px;
+  }
+
+  .toggle-group {
+    display: inline-flex;
+    gap: 6px;
+    background: rgba(33, 33, 32, 0.08);
+    border-radius: 999px;
+    padding: 4px;
+  }
+
+  .toggle-group button {
+    border: none;
+    background: transparent;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    cursor: pointer;
+    color: rgba(33, 33, 32, 0.7);
+  }
+
+  .toggle-group button.active {
+    background: var(--accent);
+    color: #fff;
   }
 
   .chart :global(svg) {

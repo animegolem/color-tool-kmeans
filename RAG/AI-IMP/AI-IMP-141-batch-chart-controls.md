@@ -6,13 +6,13 @@ tags:
   - batch-analysis
   - view
   - frontend
-kanban_status: planned
+kanban_status: completed
 depends_on:
   - AI-IMP-139
 parent_epic: [[AI-EPIC-011-aggregate-analysis]]
 confidence_score: 0.85
 date_created: 2026-03-19
-date_completed:
+date_completed: 2026-03-19
 ---
 
 # AI-IMP-141-batch-chart-controls
@@ -52,16 +52,16 @@ Analysis params (clusters, quality, ignoreTopN, mergeThreshold, snapToReal) stay
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Create `src/lib/stores/batch-params.ts` with `BatchChartParams` interface and `batchChartParams` writable store
-- [ ] Re-export from `src/lib/stores/ui.ts`
-- [ ] Add histogram toggle group (Frequency / Hue / Lightness) to histogram card header in BatchView
-- [ ] Add polar mode toggle group (OKLCH / OKHSV / HSV) to polar chart card header
-- [ ] Add hue-lightness size mode toggle group (Chroma / Frequency) to hue-lightness card header
-- [ ] Update chart derivations to read from `batchChartParams` instead of `params` for rendering options
-- [ ] Fix `.results-layout.two-columns` CSS: `align-items: start` → `align-items: center`
-- [ ] In `chooseMedia()`, auto-pin uploaded images (skip raw videos, respect MAX_PINS)
-- [ ] Validate: `npm run check && npm run lint && npm run test`
-- [ ] Validate: BatchView.svelte stays under 600 LOC
+- [x] Create `src/lib/stores/batch-params.ts` with `BatchChartParams` interface and `batchChartParams` writable store
+- [x] Re-export from `src/lib/stores/ui.ts`
+- [x] Add histogram toggle group (Frequency / Hue / Lightness) to histogram card header in BatchView
+- [x] Add polar mode toggle group (OKLCH / OKHSV / HSV) to polar chart card header
+- [x] Add hue-lightness size mode toggle group (Chroma / Frequency) to hue-lightness card header
+- [x] Update chart derivations to read from `batchChartParams` instead of `params` for rendering options
+- [x] Fix `.results-layout.two-columns` CSS: `align-items: start` → `align-items: center`
+- [x] In `chooseMedia()`, auto-pin uploaded images (skip raw videos, respect MAX_PINS)
+- [x] Validate: `npm run check && npm run lint && npm run test`
+- [x] Validate: BatchView.svelte stays under 600 LOC (577 LOC)
 
 ### Acceptance Criteria
 

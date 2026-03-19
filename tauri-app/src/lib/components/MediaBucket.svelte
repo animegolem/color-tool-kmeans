@@ -7,6 +7,7 @@
   const videoIcon = `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M30.6667 9.33329L21.3334 16L30.6667 22.6666V9.33329Z" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.6667 6.66663H4.00004C2.52728 6.66663 1.33337 7.86053 1.33337 9.33329V22.6666C1.33337 24.1394 2.52728 25.3333 4.00004 25.3333H18.6667C20.1395 25.3333 21.3334 24.1394 21.3334 22.6666V9.33329C21.3334 7.86053 20.1395 6.66663 18.6667 6.66663Z" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
   let pinnedCount = $derived([...$pinnedImageIds].length);
+  let lastPinnedId = $state<string | null>(null);
 
   function handleClick(id: string) {
     const entry = $images.find((item) => item.id === id);
@@ -26,7 +27,24 @@
 
   function handlePin(event: MouseEvent, id: string) {
     event.stopPropagation();
+    if (event.shiftKey && lastPinnedId) {
+      const items = $images;
+      const lastIdx = items.findIndex((item) => item.id === lastPinnedId);
+      const curIdx = items.findIndex((item) => item.id === id);
+      if (lastIdx >= 0 && curIdx >= 0) {
+        const lo = Math.min(lastIdx, curIdx);
+        const hi = Math.max(lastIdx, curIdx);
+        for (let i = lo; i <= hi; i++) {
+          if (!isRawVideo(items[i]) && !$pinnedImageIds.has(items[i].id)) {
+            togglePin(items[i].id);
+          }
+        }
+        lastPinnedId = id;
+        return;
+      }
+    }
     togglePin(id);
+    lastPinnedId = id;
   }
 
   function isRawVideo(item: ImageEntry): boolean {
@@ -76,7 +94,7 @@
           onclick={(e) => handlePin(e, item.id)}
           disabled={isRawVideo(item)}
           aria-label={$pinnedImageIds.has(item.id) ? `Unpin ${item.name}` : `Pin ${item.name}`}
-        >{$pinnedImageIds.has(item.id) ? '\u2605' : '\u2606'}</button>
+        >{$pinnedImageIds.has(item.id) ? '\u{1F4CC}' : '\u25CB'}</button>
         <button
           class="media-bucket__remove"
           onclick={(e) => handleRemove(e, item.id)}
