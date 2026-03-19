@@ -6,13 +6,13 @@ tags:
   - batch-analysis
   - ui
   - media-bucket
-kanban_status: planned
+kanban_status: completed
 depends_on:
   - AI-IMP-134
 parent_epic: [[AI-EPIC-011-aggregate-analysis]]
 confidence_score: 0.8
 date_created: 2026-03-18
-date_completed:
+date_completed: 2026-03-19
 ---
 
 # AI-IMP-135-media-bucket-pin-toggle
@@ -69,21 +69,21 @@ This mirrors the existing `onFrameExtracted` callback pattern in `video-scrubber
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add star toggle overlay to each item in MediaBucket grid
-  - [ ] Import `pinnedImageIds`, `togglePin`, `clearPins` from stores
-  - [ ] Render ★ (filled) when pinned, ☆ (outline) when unpinned
-  - [ ] `onclick` calls `togglePin(id)` with `stopPropagation()`
-  - [ ] Disable star for raw video entries (no `frameTimestamp`)
-- [ ] Add pinned visual indicator: accent left-border on pinned items
-- [ ] Add pin count footer: `"N pinned [Clear pins]"` visible when N > 0
-- [ ] Create `BucketContextMenu.svelte` component
-  - [ ] Positioned at cursor coordinates, dismissed on outside click / Escape
-  - [ ] Renders menu items based on entry type (image vs video)
-- [ ] Wire right-click (`oncontextmenu`) on bucket items to show context menu
-  - [ ] Image items: "Export image..." menu item
-  - [ ] Active video items: "Add frame to media bucket" + "Export..." menu items
-  - [ ] "Add frame" extracts frame, creates entry, adds to bucket, auto-pins
-- [ ] Validate: `npm run check && npm run lint`
+- [x] Add star toggle overlay to each item in MediaBucket grid
+  - [x] Import `pinnedImageIds`, `togglePin`, `clearPins` from stores
+  - [x] Render ★ (filled) when pinned, ☆ (outline) when unpinned
+  - [x] `onclick` calls `togglePin(id)` with `stopPropagation()`
+  - [x] Disable star for raw video entries (no `frameTimestamp`)
+- [x] Add pinned visual indicator: accent left-border on pinned items
+- [x] Add pin count footer: `"N pinned [Clear pins]"` visible when N > 0
+- [x] Create `BucketContextMenu.svelte` component
+  - [x] Positioned at cursor coordinates, dismissed on outside click / Escape
+  - [x] Renders menu items based on entry type (image vs video)
+- [x] Wire right-click (`oncontextmenu`) on bucket items to show context menu
+  - [x] Image items: "Export image..." menu item
+  - [x] Active video items: "Add frame to media bucket" + "Export..." menu items
+  - [x] "Add frame" extracts frame, creates entry, adds to bucket, auto-pins
+- [x] Validate: `npm run check && npm run lint`
 - [ ] Manual smoke: pin 3 images across views, verify visual state, right-click menus
 
 ### Acceptance Criteria

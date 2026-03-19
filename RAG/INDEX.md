@@ -7,10 +7,10 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 0 | 0 |
-| Planned | 1 | 10 |
+| Planned | 1 | 9 |
 | Deferred | 2 | 4 |
 | Cancelled | 0 | 0 |
-| Completed | 15 | 92 |
+| Completed | 15 | 93 |
 | **Total** | **18** | **106** |
 
 ## Planned
@@ -21,7 +21,7 @@
 **IMPs:**
 - [[AI-IMP-133-rust-compose-grid|IMP-133]] Rust `compose_grid` command + frontend bridge — completed
 - [[AI-IMP-134-multi-analysis-store|IMP-134]] Multi-analysis store — pin state, composite path, result cache — completed
-- [[AI-IMP-135-media-bucket-pin-toggle|IMP-135]] MediaBucket pin toggle UI + right-click context menus — planned
+- [[AI-IMP-135-media-bucket-pin-toggle|IMP-135]] MediaBucket pin toggle UI + right-click context menus — completed
 - [[AI-IMP-136-batch-view|IMP-136]] BatchView — empty/selection/results states + three-panel layout — planned
 - [[AI-IMP-137-batch-export-and-scene-detection-scope|IMP-137]] Batch export via composeColorStudy + deferred scene detection ticket — planned
 
@@ -70,12 +70,13 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src-tauri/src/ffmpeg.rs (369 LOC)
 - tauri-app/src/lib/exports/polar-chart.ts (358 LOC)
 - tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (350 LOC)
+- tauri-app/src/lib/components/MediaBucket.svelte (303 LOC)
 
 ---
 
 ## Completed
 <details>
-<summary>15 EPICs, 61 IMPs completed</summary>
+<summary>15 EPICs, 62 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed
