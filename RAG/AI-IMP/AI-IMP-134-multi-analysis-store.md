@@ -6,13 +6,13 @@ tags:
   - batch-analysis
   - store
   - frontend
-kanban_status: planned
+kanban_status: completed
 depends_on:
   - AI-IMP-133
 parent_epic: [[AI-EPIC-011-aggregate-analysis]]
 confidence_score: 0.9
 date_created: 2026-03-18
-date_completed:
+date_completed: 2026-03-19
 ---
 
 # AI-IMP-134-multi-analysis-store
@@ -54,17 +54,17 @@ Navigation update: Add `'batch'` to the `View` type union in `navigation.ts`.
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Create `src/lib/stores/multi-analysis.ts`
-  - [ ] `pinnedImageIds` writable store (Set\<string\>)
-  - [ ] `pinnedImages` derived store (ordered array, excludes removed images)
-  - [ ] `togglePin(id)` — add if absent, remove if present; call `resetMultiAnalysis()`
-  - [ ] `clearPins()` — clear all pins; call `resetMultiAnalysis()`
-  - [ ] `multiAnalysisResult`, `multiAnalysisState`, `multiAnalysisError`, `multiCompositePath` writable stores
-  - [ ] `resetMultiAnalysis()` — resets result/state/error/compositePath to defaults
-  - [ ] Auto-cleanup: when `images` store changes, prune `pinnedImageIds` of any IDs no longer in `images`
-- [ ] Add `'batch'` to `View` type in `navigation.ts`
-- [ ] Re-export all multi-analysis stores/functions from `ui.ts`
-- [ ] Validate: `npm run check && npm run lint && npm run test`
+- [x] Create `src/lib/stores/multi-analysis.ts`
+  - [x] `pinnedImageIds` writable store (Set\<string\>)
+  - [x] `pinnedImages` derived store (ordered array, excludes removed images)
+  - [x] `togglePin(id)` — add if absent, remove if present; call `resetMultiAnalysis()`
+  - [x] `clearPins()` — clear all pins; call `resetMultiAnalysis()`
+  - [x] `multiAnalysisResult`, `multiAnalysisState`, `multiAnalysisError`, `multiCompositePath` writable stores
+  - [x] `resetMultiAnalysis()` — resets result/state/error/compositePath to defaults
+  - [x] Auto-cleanup: when `images` store changes, prune `pinnedImageIds` of any IDs no longer in `images`
+- [x] Add `'batch'` to `View` type in `navigation.ts`
+- [x] Re-export all multi-analysis stores/functions from `ui.ts`
+- [x] Validate: `npm run check && npm run lint && npm run test`
 
 ### Acceptance Criteria
 

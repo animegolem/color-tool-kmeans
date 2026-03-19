@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 
-export type View = 'home' | 'values' | 'exports' | 'settings';
+export type View = 'home' | 'values' | 'batch' | 'exports' | 'settings';
 
 export const currentView = writable<View>('home');
 export const libraryDrawerOpen = writable<boolean>(false);

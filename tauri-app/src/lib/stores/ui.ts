@@ -9,3 +9,4 @@ export * from './video';
 export * from './zoom';
 export * from './exports';
 export * from './preferences';
+export * from './multi-analysis';
