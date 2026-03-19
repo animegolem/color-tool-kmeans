@@ -7,10 +7,10 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 0 | 0 |
-| Planned | 1 | 12 |
+| Planned | 1 | 11 |
 | Deferred | 2 | 4 |
 | Cancelled | 0 | 0 |
-| Completed | 15 | 94 |
+| Completed | 15 | 95 |
 | **Total** | **18** | **110** |
 
 ## Planned
@@ -27,7 +27,7 @@
 - [[AI-IMP-139-batch-view-cleanup|IMP-139]] BatchView layout restructure, lifecycle fixes, and UI polish — completed
 - [[AI-IMP-141-batch-chart-controls|IMP-141]] BatchView chart toggle controls, auto-pin uploads, and column alignment — planned
 - [[AI-IMP-142-pin-ux-shift-select|IMP-142]] MediaBucket pin UX — shift-click range select and pushpin icon — planned
-- [[AI-IMP-143-remove-header-file-ui|IMP-143]] Remove vestigial header bar file label, Clear, and Upload buttons — planned
+- [[AI-IMP-143-remove-header-file-ui|IMP-143]] Remove vestigial header bar file label, Clear, and Upload buttons — completed
 
 ---
 
@@ -67,11 +67,11 @@ Generated from tracked files; binary assets excluded.
 - RAG/scripts/generate-index.sh (575 LOC)
 - tauri-app/src/lib/views/BatchView.svelte (522 LOC)
 - tauri-app/src/lib/exports/value-analysis.ts (429 LOC)
-- tauri-app/src/app.css (428 LOC)
 - tauri-app/src/lib/views/ExportsView.svelte (424 LOC)
-- tauri-app/src/App.svelte (402 LOC)
 - tauri-app/src-tauri/src/commands.rs (395 LOC)
+- tauri-app/src/App.svelte (380 LOC)
 - tauri-app/src/lib/views/exports/colors-export-runner.svelte.ts (378 LOC)
+- tauri-app/src/app.css (375 LOC)
 - tauri-app/src-tauri/src/ffmpeg.rs (369 LOC)
 - tauri-app/src/lib/exports/polar-chart.ts (358 LOC)
 - tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (350 LOC)
@@ -80,7 +80,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>15 EPICs, 63 IMPs completed</summary>
+<summary>15 EPICs, 64 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed

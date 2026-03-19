@@ -5,12 +5,12 @@ tags:
   - Implementation
   - frontend
   - cleanup
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-011-aggregate-analysis]]
 confidence_score: 0.95
 date_created: 2026-03-19
-date_completed:
+date_completed: 2026-03-19
 ---
 
 # AI-IMP-143-remove-header-file-ui
@@ -48,13 +48,13 @@ Remove the entire `header-file-group` div from `App.svelte` and associated dead 
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Remove `header-file-group` div and children from App.svelte template
-- [ ] Remove `handleClear()` function
-- [ ] Remove `clearActiveSelection` from imports (verify not used elsewhere in App.svelte)
-- [ ] Remove `fileLabel`, `file`, `video` derived declarations
-- [ ] Remove `.header-file-group`, `.header-separator`, `.header-file-label`, `.header-clear`, `.header-upload` from app.css
-- [ ] Keep `handleMediaAdd()` — still used by sidebar "+" button
-- [ ] Validate: `npm run check && npm run lint && npm run test`
+- [x] Remove `header-file-group` div and children from App.svelte template
+- [x] Remove `handleClear()` function
+- [x] Remove `clearActiveSelection` from imports (verify not used elsewhere in App.svelte)
+- [x] Remove `fileLabel`, `file`, `video` derived declarations
+- [x] Remove `.header-file-group`, `.header-separator`, `.header-file-label`, `.header-clear`, `.header-upload` from app.css
+- [x] Keep `handleMediaAdd()` — still used by sidebar "+" button
+- [x] Validate: `npm run check && npm run lint && npm run test`
 - [ ] Manual smoke: header shows only sidebar toggles + view title/description on all views
 
 ### Acceptance Criteria

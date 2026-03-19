@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import type { View, ImageEntry } from './lib/stores/ui';
   import { get } from 'svelte/store';
-  import { currentView, setView, libraryDrawerOpen, navCollapsed, narrowMode, compactSidebars, selectedFile, videoState, setVideoState, clearActiveSelection, requestMediaLoad, setFile, appendFile, updateEntryPreview } from './lib/stores/ui';
+  import { currentView, setView, libraryDrawerOpen, navCollapsed, narrowMode, compactSidebars, setVideoState, requestMediaLoad, setFile, appendFile, updateEntryPreview } from './lib/stores/ui';
   import { isTauriEnv, tauriInvoke } from './lib/bridges/tauri';
   import { getFsBridge } from './lib/bridges/fs';
   import { ingestFileAsEntry } from './lib/services/media-ingestion';
@@ -32,9 +32,6 @@
     { key: 'settings', label: 'Settings' }
   ] as const;
 
-  const file = $derived($selectedFile ? { name: $selectedFile.name } : null);
-  const video = $derived($videoState ? { name: $videoState.name } : null);
-
   const activeViewLabel = $derived.by(() => {
     const item = navItems.find((i) => i.key === $currentView);
     return item?.label ?? 'Colors';
@@ -58,19 +55,9 @@
     }
   });
 
-  const fileLabel = $derived.by(() => {
-    if (video) return video.name;
-    if (file) return file.name;
-    return null;
-  });
-
   function handleNavClick(view: View) {
     setView(view);
     void logEvent(`nav:view ${view}`);
-  }
-
-  function handleClear() {
-    clearActiveSelection();
   }
 
   async function globalChooseMedia() {
@@ -338,15 +325,6 @@
       <div class="header-title-group">
         <span class="header-view-title">{activeViewLabel}</span>
         <span class="header-view-desc">{activeViewDesc}</span>
-      </div>
-      <div class="header-file-group">
-        {#if fileLabel}
-          <span class="header-separator" aria-hidden="true">&middot;</span>
-          <span class="header-file-label" title={fileLabel}>{fileLabel}</span>
-          <button type="button" class="header-clear" onclick={handleClear}>Clear</button>
-        {:else}
-          <button type="button" class="header-upload" onclick={handleMediaAdd}>Upload</button>
-        {/if}
       </div>
     </div>
 
