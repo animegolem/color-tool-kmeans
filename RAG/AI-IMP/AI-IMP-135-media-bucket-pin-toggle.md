@@ -43,6 +43,18 @@ The media bucket sidebar needs two new affordances for the batch analysis workfl
 - Video items (with active video state): "Add frame to media bucket" (extracts current frame via existing `extract_video_frame` command, adds to bucket auto-pinned) + "Export...".
 - Non-active video items: "Export..." only.
 
+**Captured-frame entry semantics:**
+"Add frame to media bucket" creates a **new standalone `ImageEntry`** with:
+- New unique ID (UUID — must NOT reuse the video entry's ID)
+- `path` = extracted frame PNG path (from `extract_video_frame` cache output)
+- `videoPath` = source video path (for provenance — bucket will show video badge)
+- `frameTimestamp` = current playback position (ensures bucket treats it as a frame, not a raw video)
+- `previewUrl` = `convertFileSrc(framePath)` for thumbnail
+- Appended via `appendFile()`, not `setFile()` (does not change active selection)
+- Auto-pinned via `togglePin(newId)` after append
+
+This mirrors the existing `onFrameExtracted` callback pattern in `video-scrubber.svelte.ts` but appends a new entry rather than replacing the video's frame entry. The key distinction: existing scrubber reuses the video entry ID (so the video row always shows the latest frame), while "Add frame" creates independent entries that accumulate in the bucket.
+
 **Star icon click must stop propagation** to prevent triggering the existing item click (switchToFile/switchToVideo).
 
 ### Files to Touch

@@ -32,15 +32,22 @@ A thin frontend bridge wraps the IPC call for use by the batch runner.
 
 **New Rust module:** `src-tauri/src/compose_grid.rs`
 
-Grid layout algorithm (mirrors existing `computeGridLayout` in `compositor.ts`):
+Grid layout algorithm (extends `computeGridLayout` in `compositor.ts` which caps at 3 columns for export tiles; the Rust grid adds 4-column layouts for 10-16 images):
 - 2 → 2×1, 3-4 → 2×2, 5-6 → 3×2, 7-9 → 3×3, 10-12 → 4×3, 13-16 → 4×4
+
+**Note:** The frontend `computeGridLayout` only goes to 3×2. This is intentional — it serves export tile compositing, not image grids. The Rust layout is authoritative for batch grid composition.
 
 Per-cell logic:
 1. Determine uniform cell size from `max_cell_dim` (default 800px).
 2. Load each image, downscale to fit within cell (maintain aspect ratio, Lanczos3).
 3. Center on transparent RGBA cell.
 4. Paint cells into full canvas with gap (8px transparent between cells).
-5. Encode as PNG, write to `app_cache_dir/batch-grid-{hash}.png`.
+5. Encode as PNG, write to `app_cache_dir/batch-grid.png` (always overwrite — analysis is manual-trigger only, no stale-cache risk).
+
+**Input validation:**
+- 0 or 1 paths → return error `"At least 2 images required for grid composition"`
+- \>16 paths → return error `"Maximum 16 images supported (received N)"`
+- Unreadable/non-image file → return error `"Failed to load image: {path}: {reason}"`
 
 **Request/Response types** in `commands_types.rs`:
 ```rust
@@ -72,12 +79,21 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
   - [ ] Scale each image to fit within cell (Lanczos3), maintaining aspect ratio
   - [ ] Create transparent RGBA canvas (`RgbaImage::new` with dimensions)
   - [ ] Paint each image centered in its grid cell using `image::imageops::overlay`
-  - [ ] Write PNG to cache dir with deterministic filename (hash of sorted paths)
+  - [ ] Write PNG to cache dir as `batch-grid.png` (always overwrite)
+- [ ] Input validation: return descriptive errors for 0-1 paths, >16 paths, unreadable files
 - [ ] Add `ComposeGridRequest` and `ComposeGridResponse` to `commands_types.rs`
 - [ ] Add `#[tauri::command] pub async fn compose_grid(...)` to `commands.rs`
 - [ ] Export module in `lib.rs`, register command in `main.rs`
 - [ ] Create `tauri-app/src/lib/bridges/compose.ts` with `composeGrid()` function
+- [ ] Rust unit tests:
+  - [ ] `compute_grid_layout` returns correct (cols, rows) for counts 1-16
+  - [ ] `compose_grid` with 0 or 1 paths returns appropriate error
+  - [ ] `compose_grid` with >16 paths returns appropriate error
+  - [ ] `compose_grid` with unreadable path returns error identifying the file
+  - [ ] `compose_grid` with 4 test images produces RGBA PNG with transparent gaps
+  - [ ] Output is deterministic (same inputs → same pixel data)
 - [ ] Validate: `cargo fmt --check && cargo clippy -- -D warnings`
+- [ ] Validate: `cargo test` — all new + existing tests pass
 - [ ] Validate: `npm run check && npm run lint`
 
 ### Acceptance Criteria
@@ -100,6 +116,16 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 **GIVEN** the Tauri app is running.
 **WHEN** the frontend calls `composeGrid(paths)`.
 **THEN** the IPC call succeeds and returns the cached PNG path + dimensions.
+
+**Scenario:** Invalid input — too few images
+**GIVEN** 0 or 1 image paths.
+**WHEN** `compose_grid` is called.
+**THEN** the command returns an error message indicating at least 2 images are required.
+
+**Scenario:** Invalid input — unreadable file
+**GIVEN** a mix of valid and invalid paths.
+**WHEN** `compose_grid` is called.
+**THEN** the command returns an error identifying which file could not be loaded.
 
 ### Issues Encountered
 

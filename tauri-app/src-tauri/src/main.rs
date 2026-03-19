@@ -54,7 +54,8 @@ fn main() {
             extract_video_frame,
             probe_video,
             extract_video_strip,
-            ffmpeg_version
+            ffmpeg_version,
+            compose_grid
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

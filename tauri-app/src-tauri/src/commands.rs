@@ -3,6 +3,7 @@ use std::time::Instant;
 use tauri::{AppHandle, Manager};
 
 use tauri_app::color;
+use tauri_app::compose_grid;
 use tauri_app::ffmpeg;
 use tauri_app::image_pipeline::{prepare_samples, quality_preset, SampleParams};
 use tauri_app::kmeans::{run_kmeans, KMeansConfig};
@@ -369,4 +370,26 @@ pub async fn extract_video_strip(
 #[tauri::command]
 pub async fn ffmpeg_version(app: AppHandle) -> Result<String, String> {
     ffmpeg::ffmpeg_version(&app).await
+}
+
+#[tauri::command]
+pub async fn compose_grid(
+    req: ComposeGridRequest,
+    app: AppHandle,
+) -> Result<ComposeGridResponse, String> {
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|_| String::from("Failed to resolve cache directory"))?;
+    let max_cell_dim = req.max_cell_dim.unwrap_or(800);
+    let (path, width, height, cols, rows) =
+        compose_grid::compose_grid(&req.paths, max_cell_dim, &cache_dir)
+            .map_err(|e| format!("Grid composition failed: {e}"))?;
+    Ok(ComposeGridResponse {
+        path: path.to_string_lossy().to_string(),
+        width,
+        height,
+        grid_cols: cols,
+        grid_rows: rows,
+    })
 }

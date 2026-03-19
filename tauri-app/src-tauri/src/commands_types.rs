@@ -190,3 +190,21 @@ pub struct LogEventRequest {
     pub message: String,
     pub source: Option<String>,
 }
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ComposeGridRequest {
+    pub paths: Vec<String>,
+    #[serde(default)]
+    pub max_cell_dim: Option<u32>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ComposeGridResponse {
+    pub path: String,
+    pub width: u32,
+    pub height: u32,
+    pub grid_cols: u32,
+    pub grid_rows: u32,
+}
