@@ -19,6 +19,9 @@ AI_IMP_spawned:
   - AI-IMP-136
   - AI-IMP-137
   - AI-IMP-139
+  - AI-IMP-141
+  - AI-IMP-142
+  - AI-IMP-143
 ---
 
 # AI-EPIC-011-aggregate-analysis
@@ -89,6 +92,9 @@ Add a **"Batch"** view accessible from the left nav that enables multi-image col
 - [[AI-IMP-136]] — BatchView (empty/selection/results states, three-panel layout)
 - [[AI-IMP-137]] — Batch export + deferred scene detection ticket (IMP scope only)
 - [[AI-IMP-139]] — BatchView cleanup: layout restructure, lifecycle fixes, UI polish
+- [[AI-IMP-141]] — BatchView chart controls, auto-pin, column alignment
+- [[AI-IMP-142]] — MediaBucket pin UX: shift-select range pinning, pushpin icon
+- [[AI-IMP-143]] — Remove vestigial header bar file label, Clear, Upload buttons
 
 ### Completed Tickets
 

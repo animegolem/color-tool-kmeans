@@ -7,11 +7,11 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 0 | 0 |
-| Planned | 1 | 9 |
+| Planned | 1 | 12 |
 | Deferred | 2 | 4 |
 | Cancelled | 0 | 0 |
 | Completed | 15 | 94 |
-| **Total** | **18** | **107** |
+| **Total** | **18** | **110** |
 
 ## Planned
 
@@ -25,6 +25,9 @@
 - [[AI-IMP-136-batch-view|IMP-136]] BatchView — empty/selection/results states + three-panel layout — planned
 - [[AI-IMP-137-batch-export-and-scene-detection-scope|IMP-137]] Batch export via composeColorStudy + deferred scene detection ticket — planned
 - [[AI-IMP-139-batch-view-cleanup|IMP-139]] BatchView layout restructure, lifecycle fixes, and UI polish — completed
+- [[AI-IMP-141-batch-chart-controls|IMP-141]] BatchView chart toggle controls, auto-pin uploads, and column alignment — planned
+- [[AI-IMP-142-pin-ux-shift-select|IMP-142]] MediaBucket pin UX — shift-click range select and pushpin icon — planned
+- [[AI-IMP-143-remove-header-file-ui|IMP-143]] Remove vestigial header bar file label, Clear, and Upload buttons — planned
 
 ---
 
