@@ -1,12 +1,17 @@
 <script lang="ts">
-  import { params, clusterMax, excludeTopMax } from '../../stores/ui';
+  import type { Writable } from 'svelte/store';
+  import type { AnalysisParams } from '../../stores/analysis';
+  import { params as globalParams, clusterMax, excludeTopMax } from '../../stores/ui';
 
   interface Props {
+    paramsStore?: Writable<AnalysisParams>;
     onScrubStart: (event: PointerEvent) => void;
     onScrubEnd: () => void;
   }
 
-  let { onScrubStart, onScrubEnd }: Props = $props();
+  let { paramsStore = globalParams, onScrubStart, onScrubEnd }: Props = $props();
+
+  const params = $derived(paramsStore);
 </script>
 
 <section class="controls">

@@ -2,14 +2,14 @@
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
   import {
-    params,
     openZoomOverlay,
     appendFile,
     setFile,
     updateEntryPreview,
     libraryDrawerOpen,
-    batchChartParams
+    batchParams
   } from '../stores/ui';
+  import ParameterControls from './home/ParameterControls.svelte';
   import {
     pinnedImages,
     pinnedImageIds,
@@ -40,8 +40,7 @@
   let result: AnalysisResult | null = $state(get(multiAnalysisResult));
   let error: string | null = $state(get(multiAnalysisError));
   let compositePath: string | null = $state(get(multiCompositePath));
-  let currentParams = $state(get(params));
-  let chartParams = $state(get(batchChartParams));
+  let chartParams = $state(get(batchParams));
 
   const unsubs: (() => void)[] = [];
   unsubs.push(pinnedImages.subscribe((v) => { pinned = v; }));
@@ -50,8 +49,7 @@
   unsubs.push(multiAnalysisResult.subscribe((v) => { result = v; }));
   unsubs.push(multiAnalysisError.subscribe((v) => { error = v; }));
   unsubs.push(multiCompositePath.subscribe((v) => { compositePath = v; }));
-  unsubs.push(params.subscribe((v) => { currentParams = v; }));
-  unsubs.push(batchChartParams.subscribe((v) => { chartParams = v; }));
+  unsubs.push(batchParams.subscribe((v) => { chartParams = v; }));
 
   onMount(() => {
     unsubs.push(subscribeMediaLoadRequested(() => chooseMedia()));
@@ -122,7 +120,7 @@
       .filter((img) => !!img.path)
       .map((img) => img.path!);
     if (paths.length < 2) return;
-    void runner.analyze(paths, { ...currentParams });
+    void runner.analyze(paths, { ...chartParams });
   }
 
   function handleClearPins() {
@@ -206,6 +204,8 @@
       {/each}
     </div>
 
+    <ParameterControls paramsStore={batchParams} onScrubStart={() => {}} onScrubEnd={() => {}} />
+
     {#if error && batchStatus === 'error'}
       <div class="error-banner" role="alert">
         <p>{error}</p>
@@ -234,6 +234,8 @@
       </p>
     {/if}
 
+    <ParameterControls paramsStore={batchParams} onScrubStart={() => {}} onScrubEnd={() => {}} />
+
     <section class="results-layout two-columns">
       <div class="results-column">
         <article class="analysis-card">
@@ -255,9 +257,9 @@
           <header class="card-header">
             <h3>Cluster Histogram</h3>
             <div class="toggle-group">
-              <button type="button" class:active={chartParams.histogramSort === 'frequency'} onclick={() => $batchChartParams.histogramSort = 'frequency'}>Frequency</button>
-              <button type="button" class:active={chartParams.histogramSort === 'hue'} onclick={() => $batchChartParams.histogramSort = 'hue'}>Hue</button>
-              <button type="button" class:active={chartParams.histogramSort === 'lightness'} onclick={() => $batchChartParams.histogramSort = 'lightness'}>Lightness</button>
+              <button type="button" class:active={chartParams.histogramSort === 'frequency'} onclick={() => $batchParams.histogramSort = 'frequency'}>Frequency</button>
+              <button type="button" class:active={chartParams.histogramSort === 'hue'} onclick={() => $batchParams.histogramSort = 'hue'}>Hue</button>
+              <button type="button" class:active={chartParams.histogramSort === 'lightness'} onclick={() => $batchParams.histogramSort = 'lightness'}>Lightness</button>
             </div>
           </header>
           {#if histogram}
@@ -279,9 +281,9 @@
           <header class="card-header">
             <h3>Polar Chart</h3>
             <div class="toggle-group">
-              <button type="button" class:active={chartParams.polarMode === 'oklch'} onclick={() => $batchChartParams.polarMode = 'oklch'}>OKLCH</button>
-              <button type="button" class:active={chartParams.polarMode === 'okhsv'} onclick={() => $batchChartParams.polarMode = 'okhsv'}>OKHSV</button>
-              <button type="button" class:active={chartParams.polarMode === 'hsv'} onclick={() => $batchChartParams.polarMode = 'hsv'}>HSV</button>
+              <button type="button" class:active={chartParams.polarMode === 'oklch'} onclick={() => $batchParams.polarMode = 'oklch'}>OKLCH</button>
+              <button type="button" class:active={chartParams.polarMode === 'okhsv'} onclick={() => $batchParams.polarMode = 'okhsv'}>OKHSV</button>
+              <button type="button" class:active={chartParams.polarMode === 'hsv'} onclick={() => $batchParams.polarMode = 'hsv'}>HSV</button>
             </div>
           </header>
           {#if polarChart}
@@ -301,8 +303,8 @@
           <header class="card-header">
             <h3>Hue x Lightness</h3>
             <div class="toggle-group">
-              <button type="button" class:active={chartParams.hueLightnessSizeMode === 'chroma'} onclick={() => $batchChartParams.hueLightnessSizeMode = 'chroma'}>Chroma</button>
-              <button type="button" class:active={chartParams.hueLightnessSizeMode === 'frequency'} onclick={() => $batchChartParams.hueLightnessSizeMode = 'frequency'}>Frequency</button>
+              <button type="button" class:active={chartParams.hueLightnessSizeMode === 'chroma'} onclick={() => $batchParams.hueLightnessSizeMode = 'chroma'}>Chroma</button>
+              <button type="button" class:active={chartParams.hueLightnessSizeMode === 'frequency'} onclick={() => $batchParams.hueLightnessSizeMode = 'frequency'}>Frequency</button>
             </div>
           </header>
           {#if hueLightnessChart}

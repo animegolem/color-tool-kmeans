@@ -1,19 +1,19 @@
 import { writable } from 'svelte/store';
+import type { AnalysisParams } from './analysis';
 
-export interface BatchChartParams {
-  polarMode: 'oklch' | 'okhsv' | 'hsv';
-  histogramSort: 'frequency' | 'hue' | 'lightness';
-  hueLightnessSizeMode: 'frequency' | 'chroma';
-  symbolScale: number;
-  showClusterOutline: boolean;
-  showAxisLabels: boolean;
-}
-
-export const batchChartParams = writable<BatchChartParams>({
-  polarMode: 'oklch',
-  histogramSort: 'frequency',
-  hueLightnessSizeMode: 'chroma',
+export const batchParams = writable<AnalysisParams>({
+  clusters: 45,
+  quality: 2,
+  ignoreTopN: 0,
+  mergeThreshold: 0,
   symbolScale: 1,
-  showClusterOutline: true,
-  showAxisLabels: true
+  showClusterOutline: false,
+  showAxisLabels: true,
+  snapToReal: true,
+  polarMode: 'okhsv',
+  hueLightnessSizeMode: 'chroma',
+  histogramSort: 'frequency',
+  showHistogram: true,
+  showPolarChart: true,
+  showHueLightness: true
 });
