@@ -59,7 +59,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/views/ValuesView.svelte (691 LOC)
 - tauri-app/src/lib/views/home/video-controller.svelte.ts (660 LOC)
 - tauri-app/src/lib/views/HomeView.svelte (652 LOC)
-- tauri-app/src/lib/views/BatchView.svelte (615 LOC)
+- tauri-app/src/lib/views/BatchView.svelte (628 LOC)
 
 ### > 300 LOC
 
@@ -75,6 +75,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src-tauri/src/ffmpeg.rs (369 LOC)
 - tauri-app/src/lib/exports/polar-chart.ts (358 LOC)
 - tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (350 LOC)
+- tauri-app/src/lib/views/batch/batch-runner.svelte.ts (303 LOC)
 - tauri-app/src/lib/components/MediaBucket.svelte (301 LOC)
 
 ---

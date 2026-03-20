@@ -10,6 +10,7 @@ import {
   resetMultiAnalysis
 } from '../../stores/multi-analysis';
 import type { AnalysisParams, AnalysisResult } from '../../stores/analysis';
+import { logEvent } from '../../bridges/log';
 
 const ANALYZE_DEBOUNCE_MS = 400;
 const SPINNER_THRESHOLD_MS = 150;
@@ -100,8 +101,8 @@ export function createBatchRunner() {
     resetMultiAnalysis();
   }
 
-  function scheduleReanalysis(paths: string[], params: AnalysisParams): void {
-    const key = JSON.stringify({
+  function buildRequestKey(paths: string[], params: AnalysisParams): string {
+    return JSON.stringify({
       paths,
       clusters: params.clusters,
       quality: params.quality,
@@ -109,6 +110,14 @@ export function createBatchRunner() {
       mergeThreshold: params.mergeThreshold,
       snapToReal: params.snapToReal
     });
+  }
+
+  function seedRequestKey(paths: string[], params: AnalysisParams): void {
+    lastRequestKey = buildRequestKey(paths, params);
+  }
+
+  function scheduleReanalysis(paths: string[], params: AnalysisParams): void {
+    const key = buildRequestKey(paths, params);
     if (key === lastRequestKey) return;
     lastRequestKey = key;
     clearDebounce();
@@ -128,6 +137,7 @@ export function createBatchRunner() {
       analysisScrollLock.token = token;
     }
 
+    void logEvent(`batch:reanalysis:start clusters=${params.clusters}`);
     multiAnalysisState.set('analyzing');
     multiAnalysisError.set(null);
 
@@ -175,9 +185,11 @@ export function createBatchRunner() {
       });
       multiAnalysisState.set('ready');
       restoreAnalysisScroll(token);
+      void logEvent(`batch:reanalysis:success ms=${Math.round(parsed.durationMs)} iterations=${parsed.iterations} samples=${parsed.totalSamples}`);
     } catch (err) {
       if (token !== currentToken) return;
       console.error('[batch] reanalysis failed', err);
+      void logEvent('batch:reanalysis:error');
       multiAnalysisError.set(mapErrorToMessage(err));
       multiAnalysisState.set('error');
       restoreAnalysisScroll(token);
@@ -190,6 +202,7 @@ export function createBatchRunner() {
     currentToken += 1;
     const token = currentToken;
 
+    void logEvent(`batch:compositing:start images=${paths.length}`);
     multiAnalysisState.set('compositing');
     multiAnalysisError.set(null);
     multiAnalysisResult.set(null);
@@ -209,9 +222,11 @@ export function createBatchRunner() {
       if (token !== currentToken) return;
       compositePath = result.path;
       multiCompositePath.set(compositePath);
+      void logEvent(`batch:compositing:done grid=${result.width}x${result.height}`);
     } catch (err) {
       if (token !== currentToken) return;
       console.error('[batch] compositing failed', err);
+      void logEvent('batch:compositing:error');
       const message = err instanceof Error ? err.message : 'Failed to compose grid image.';
       multiAnalysisError.set(message);
       multiAnalysisState.set('error');
@@ -261,17 +276,12 @@ export function createBatchRunner() {
 
       multiAnalysisResult.set(analysisResult);
       multiAnalysisState.set('ready');
-      lastRequestKey = JSON.stringify({
-        paths,
-        clusters: params.clusters,
-        quality: params.quality,
-        ignoreTopN: params.ignoreTopN,
-        mergeThreshold: params.mergeThreshold,
-        snapToReal: params.snapToReal
-      });
+      lastRequestKey = buildRequestKey(paths, params);
+      void logEvent(`batch:analysis:success ms=${Math.round(analysisResult.durationMs)} iterations=${analysisResult.iterations} samples=${analysisResult.totalSamples}`);
     } catch (err) {
       if (token !== currentToken) return;
       console.error('[batch] analysis failed', err);
+      void logEvent('batch:analysis:error');
       multiAnalysisError.set(mapErrorToMessage(err));
       multiAnalysisState.set('error');
     } finally {
@@ -285,6 +295,7 @@ export function createBatchRunner() {
     get spinnerVisible() { return spinnerVisible; },
     analyze,
     scheduleReanalysis,
+    seedRequestKey,
     captureAnalysisScroll,
     cancel,
     reset

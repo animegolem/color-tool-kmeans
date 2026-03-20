@@ -27,6 +27,7 @@
   import { openSvgZoom, openImageZoom, handleZoomKeydown } from '../utils/zoom';
   import { assetUrl } from '../utils/asset-url';
   import { getFsBridge } from '../bridges/fs';
+  import { logEvent } from '../bridges/log';
   import { ingestFileAsEntry } from '../services/media-ingestion';
   import { setActivePath } from '../services/active-image';
   import { subscribeMediaLoadRequested } from '../services/view-subscriptions';
@@ -34,12 +35,21 @@
 
   const runner = createBatchRunner();
 
+  // Seed dedup key so reanalysis effect doesn't re-trigger on mount
+  if (get(multiAnalysisState) === 'ready' && get(multiAnalysisResult)) {
+    const initPaths = get(pinnedImages).filter((img) => !!img.path).map((img) => img.path!);
+    if (initPaths.length >= 2) {
+      runner.seedRequestKey(initPaths, get(batchParams));
+    }
+  }
+
   let pinned = $state(get(pinnedImages));
   let pinIds = $state(get(pinnedImageIds));
   let batchStatus = $state(get(multiAnalysisState));
   let result: AnalysisResult | null = $state(get(multiAnalysisResult));
   let error: string | null = $state(get(multiAnalysisError));
   let compositePath: string | null = $state(get(multiCompositePath));
+  let compositeUrl: string | null = $state(get(multiCompositePath) ? assetUrl(get(multiCompositePath)!) : null);
   let chartParams = $state(get(batchParams));
 
   const unsubs: (() => void)[] = [];
@@ -48,10 +58,11 @@
   unsubs.push(multiAnalysisState.subscribe((v) => { batchStatus = v; }));
   unsubs.push(multiAnalysisResult.subscribe((v) => { result = v; }));
   unsubs.push(multiAnalysisError.subscribe((v) => { error = v; }));
-  unsubs.push(multiCompositePath.subscribe((v) => { compositePath = v; }));
+  unsubs.push(multiCompositePath.subscribe((v) => { compositePath = v; compositeUrl = v ? assetUrl(v) : null; }));
   unsubs.push(batchParams.subscribe((v) => { chartParams = v; }));
 
   onMount(() => {
+    void logEvent('batch:view:mount');
     unsubs.push(subscribeMediaLoadRequested(() => chooseMedia()));
     window.addEventListener('pointerup', handleScrubEnd);
     window.addEventListener('pointercancel', handleScrubEnd);
@@ -62,6 +73,7 @@
   });
 
   onDestroy(() => {
+    void logEvent('batch:view:unmount');
     unsubs.forEach((fn) => fn());
     runner.cancel();
   });
@@ -153,10 +165,12 @@
       .filter((img) => !!img.path)
       .map((img) => img.path!);
     if (paths.length < 2) return;
+    void logEvent(`batch:analyze:start pins=${paths.length} clusters=${chartParams.clusters}`);
     void runner.analyze(paths, { ...chartParams });
   }
 
   function handleClearPins() {
+    void logEvent('batch:pins:cleared');
     runner.reset();
     clearPins();
   }
@@ -189,7 +203,6 @@
     });
   });
 
-  const compositeUrl = $derived(compositePath ? assetUrl(compositePath) : null);
 
   const previewCols = $derived(Math.min(pinCount, 4));
 </script>

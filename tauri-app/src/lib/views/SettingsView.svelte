@@ -4,12 +4,16 @@
   import { resetPrefs, DEFAULTS } from '../stores/prefs';
   import { open } from '@tauri-apps/plugin-dialog';
   import { logEvent } from '../bridges/log';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
 
   let isResetting = $state(false);
 
   onMount(() => {
     void logEvent('settings:view:mount');
+  });
+
+  onDestroy(() => {
+    void logEvent('settings:view:unmount');
   });
 
   async function handleBrowseDir() {
