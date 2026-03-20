@@ -7,11 +7,11 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 0 | 0 |
-| Planned | 1 | 8 |
+| Planned | 2 | 21 |
 | Deferred | 2 | 4 |
 | Cancelled | 0 | 0 |
 | Completed | 15 | 98 |
-| **Total** | **18** | **110** |
+| **Total** | **19** | **123** |
 
 ## Planned
 
@@ -28,6 +28,26 @@
 - [[AI-IMP-141-batch-chart-controls|IMP-141]] BatchView chart toggle controls, auto-pin uploads, and column alignment — completed
 - [[AI-IMP-142-pin-ux-shift-select|IMP-142]] MediaBucket pin UX — shift-click range select and pushpin icon — completed
 - [[AI-IMP-143-remove-header-file-ui|IMP-143]] Remove vestigial header bar file label, Clear, and Upload buttons — completed
+
+---
+
+### [[AI-EPIC-024-road-to-v1-polish|EPIC-024: Road to v1 polish]]
+> The core batch analysis, media bucket, and multi-view architecture are functional but lack the polish expected for a v1 release. Users encounter vi...
+
+**IMPs:**
+- [[AI-IMP-144-hue-lightness-frequency-validation|IMP-144]] Validate hue x lightness frequency sizing — planned
+- [[AI-IMP-145-video-frame-snapshot|IMP-145]] Video frame snapshot to media bucket — planned
+- [[AI-IMP-146-settings-phrasing-review|IMP-146]] Review settings phrasings for new views — planned
+- [[AI-IMP-147-guard-video-frame-click|IMP-147]] Guard video frame click during processing — planned
+- [[AI-IMP-148-drag-drop-unification|IMP-148]] Evaluate and unify drag-and-drop pathways — planned
+- [[AI-IMP-149-batch-drag-drop|IMP-149]] Drag-and-drop on batch view (load + pin) — planned
+- [[AI-IMP-150-media-bucket-image-caching|IMP-150]] Media bucket sidebar image caching — planned
+- [[AI-IMP-151-batch-pin-management-ux|IMP-151]] Batch pin management UX — planned
+- [[AI-IMP-152-persist-batch-settings|IMP-152]] Persist batch settings between sessions — planned
+- [[AI-IMP-153-export-context-menus|IMP-153]] Direct export context menus for graphs — planned
+- [[AI-IMP-154-os-zoom-content-scaling|IMP-154]] OS zoom content-only scaling — planned
+- [[AI-IMP-155-settings-tab-media-fading|IMP-155]] Settings tab media bucket fading — planned
+- [[AI-IMP-156-clear-pins-button-styling|IMP-156]] Clear pins button styling alignment — planned
 
 ---
 
