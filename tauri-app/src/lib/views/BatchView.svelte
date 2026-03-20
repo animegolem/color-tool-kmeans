@@ -448,12 +448,16 @@
   }
 
   .clear-btn {
-    background: transparent;
-    border: 1px solid var(--color-border-muted, #928b8b);
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 14px;
+    background: var(--accent, #824c32);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
     cursor: pointer;
+  }
+
+  .clear-btn:hover {
+    opacity: 0.9;
   }
 
   .clear-btn:disabled {

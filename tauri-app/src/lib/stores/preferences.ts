@@ -4,6 +4,7 @@ import type { PrefsV1 } from './prefs';
 import { savePrefs } from './prefs';
 import type { AnalysisParams } from './analysis';
 import { params } from './analysis';
+import { batchParams } from './batch-params';
 import { valueAnalysisLevels } from './value-analysis';
 import {
   exportScale, exportDir, exportChecks, clusterMax, excludeTopMax,
@@ -27,6 +28,22 @@ export function hydrateFromPrefs(prefs: PrefsV1) {
     showHistogram: prefs.display.showHistogram,
     showPolarChart: prefs.display.showPolarChart,
     showHueLightness: prefs.display.showHueLightness
+  });
+  batchParams.set({
+    clusters: prefs.batchAnalysis.clusters,
+    quality: prefs.batchAnalysis.quality,
+    ignoreTopN: prefs.batchAnalysis.ignoreTopN,
+    mergeThreshold: prefs.batchAnalysis.mergeThreshold,
+    symbolScale: prefs.batchAnalysis.symbolScale,
+    showClusterOutline: prefs.batchAnalysis.showClusterOutline,
+    showAxisLabels: prefs.batchAnalysis.showAxisLabels,
+    snapToReal: prefs.batchAnalysis.snapToReal,
+    polarMode: prefs.batchAnalysis.polarMode as AnalysisParams['polarMode'],
+    hueLightnessSizeMode: prefs.batchAnalysis.hueLightnessSizeMode as AnalysisParams['hueLightnessSizeMode'],
+    histogramSort: prefs.batchAnalysis.histogramSort as AnalysisParams['histogramSort'],
+    showHistogram: true,
+    showPolarChart: true,
+    showHueLightness: true
   });
   valueAnalysisLevels.set(prefs.valueAnalysis.levels);
   exportScale.set(prefs.exportScale);
@@ -79,6 +96,7 @@ function displayPayload(overrides: Partial<PrefsV1['display']> = {}): Pick<Prefs
 
 // Debounced subscriptions
 persistStore(params, (val) => ({ analysis: val, ...displayPayload() }), 500);
+persistStore(batchParams, (val) => ({ batchAnalysis: val }), 500);
 persistStore(valueAnalysisLevels, (val) => ({ valueAnalysis: { levels: val } }), 500);
 persistStore(exportScale, (val) => ({ exportScale: val }), 500);
 persistStore(exportChecks, (val) => ({ exports: val }), 500);

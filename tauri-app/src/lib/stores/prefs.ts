@@ -31,6 +31,19 @@ export interface PrefsV1 {
     clusterMax: number;
     excludeTopMax: number;
   };
+  batchAnalysis: {
+    clusters: number;
+    quality: number;
+    ignoreTopN: number;
+    mergeThreshold: number;
+    symbolScale: number;
+    showClusterOutline: boolean;
+    showAxisLabels: boolean;
+    snapToReal: boolean;
+    polarMode: string;
+    hueLightnessSizeMode: string;
+    histogramSort: string;
+  };
   exports: {
     colorsSourceImage: boolean;
     colorsPolarChart: boolean;
@@ -81,6 +94,19 @@ export const DEFAULTS: PrefsV1 = {
   limits: {
     clusterMax: 200,
     excludeTopMax: 10
+  },
+  batchAnalysis: {
+    clusters: 45,
+    quality: 2,
+    ignoreTopN: 0,
+    mergeThreshold: 0,
+    symbolScale: 1,
+    showClusterOutline: false,
+    showAxisLabels: true,
+    snapToReal: true,
+    polarMode: 'okhsv',
+    hueLightnessSizeMode: 'chroma',
+    histogramSort: 'frequency'
   },
   exports: {
     colorsSourceImage: true,
@@ -149,6 +175,16 @@ function deepMerge(defaults: PrefsV1, partial: Record<string, unknown>): PrefsV1
     if (typeof lim.excludeTopMax === 'number') result.limits.excludeTopMax = lim.excludeTopMax;
   }
 
+  if (partial.batchAnalysis && typeof partial.batchAnalysis === 'object') {
+    const ba = partial.batchAnalysis as Record<string, unknown>;
+    result.batchAnalysis = { ...defaults.batchAnalysis };
+    for (const key of Object.keys(defaults.batchAnalysis) as (keyof PrefsV1['batchAnalysis'])[]) {
+      if (key in ba && typeof ba[key] === typeof defaults.batchAnalysis[key]) {
+        (result.batchAnalysis as Record<string, unknown>)[key] = ba[key];
+      }
+    }
+  }
+
   if (partial.exports && typeof partial.exports === 'object') {
     const e = partial.exports as Record<string, unknown>;
     result.exports = { ...defaults.exports };
@@ -198,6 +234,7 @@ export async function savePrefs(partial: Partial<PrefsV1>): Promise<void> {
     if (partial.valueAnalysis) base.valueAnalysis = { ...base.valueAnalysis, ...partial.valueAnalysis };
     if (partial.display) base.display = { ...base.display, ...partial.display };
     if (partial.limits) base.limits = { ...base.limits, ...partial.limits };
+    if (partial.batchAnalysis) base.batchAnalysis = { ...base.batchAnalysis, ...partial.batchAnalysis };
     if (partial.exports) base.exports = { ...base.exports, ...partial.exports };
     if (partial.exportScale !== undefined) base.exportScale = partial.exportScale;
     if (partial.exportDir !== undefined) base.exportDir = partial.exportDir;
