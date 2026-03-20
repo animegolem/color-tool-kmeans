@@ -53,6 +53,12 @@
 
   onMount(() => {
     unsubs.push(subscribeMediaLoadRequested(() => chooseMedia()));
+    window.addEventListener('pointerup', handleScrubEnd);
+    window.addEventListener('pointercancel', handleScrubEnd);
+    return () => {
+      window.removeEventListener('pointerup', handleScrubEnd);
+      window.removeEventListener('pointercancel', handleScrubEnd);
+    };
   });
 
   onDestroy(() => {
@@ -61,18 +67,19 @@
   });
 
   const pinCount = $derived(pinned.length);
-  const MAX_PINS = 16;
+  const MAX_PINS = 36;
   const overLimit = $derived(pinCount > MAX_PINS);
 
   type ViewState = 'empty' | 'selection' | 'results';
   const viewState = $derived.by((): ViewState => {
     if (pinCount < 2) return 'empty';
-    if (batchStatus === 'ready' && result) return 'results';
+    if (result) return 'results';
     return 'selection';
   });
 
   const inFlight = $derived(batchStatus === 'compositing' || batchStatus === 'analyzing');
   const showSpinner = $derived(inFlight && runner.spinnerVisible);
+  let isScrubbing = $state(false);
 
   // Reset to selection when pins change and we had results
   let prevPinSnapshot = $state(serializePins(get(pinnedImageIds)));
@@ -88,6 +95,32 @@
 
   function serializePins(ids: Set<string>): string {
     return [...ids].sort().join(',');
+  }
+
+  // Re-analyze when analysis-affecting params change (debounced in runner)
+  $effect(() => {
+    const p = chartParams;
+    if (isScrubbing) return;
+    if (batchStatus !== 'ready' || !result) return;
+    const paths = pinned.filter((img) => !!img.path).map((img) => img.path!);
+    if (paths.length < 2) return;
+    runner.scheduleReanalysis(paths, { ...p });
+  });
+
+  function handleScrubStart(_event: PointerEvent) {
+    isScrubbing = true;
+    runner.captureAnalysisScroll();
+  }
+
+  function handleScrubEnd() {
+    if (!isScrubbing) return;
+    isScrubbing = false;
+    if (batchStatus === 'ready' && result) {
+      const paths = pinned.filter((img) => !!img.path).map((img) => img.path!);
+      if (paths.length >= 2) {
+        runner.scheduleReanalysis(paths, { ...chartParams });
+      }
+    }
   }
 
   async function chooseMedia() {
@@ -166,8 +199,8 @@
     <section class="empty-state">
       <h2>Batch Analysis</h2>
       <p>Pin 2 or more images from the Media Bucket to analyze them together.</p>
+      <button type="button" class="action-btn" onclick={chooseMedia}>Add media</button>
       <p class="hint">Min 2, max {MAX_PINS} images. Use the pin icon on each thumbnail in the library.</p>
-      <button type="button" class="action-btn" onclick={chooseMedia}>Upload media</button>
     </section>
 
   {:else if viewState === 'selection'}
@@ -204,7 +237,7 @@
       {/each}
     </div>
 
-    <ParameterControls paramsStore={batchParams} onScrubStart={() => {}} onScrubEnd={() => {}} />
+    <ParameterControls paramsStore={batchParams} onScrubStart={handleScrubStart} onScrubEnd={handleScrubEnd} />
 
     {#if error && batchStatus === 'error'}
       <div class="error-banner" role="alert">
@@ -234,12 +267,9 @@
       </p>
     {/if}
 
-    <ParameterControls paramsStore={batchParams} onScrubStart={() => {}} onScrubEnd={() => {}} />
-
     <section class="results-layout two-columns">
       <div class="results-column">
         <article class="analysis-card">
-          <header class="card-header"><h3>Grid Composite</h3></header>
           {#if compositeUrl}
             <div
               class="chart zoomable"
@@ -321,6 +351,8 @@
         </article>
       </div>
     </section>
+
+    <ParameterControls paramsStore={batchParams} onScrubStart={handleScrubStart} onScrubEnd={handleScrubEnd} />
   {/if}
 </div>
 
@@ -334,14 +366,14 @@
 
   .empty-state {
     text-align: center;
-    padding: 56px 24px;
-    border: 2px dashed var(--control-track, #d7d0c4);
+    padding: 56px;
+    border: 2px dashed var(--accent);
     border-radius: 12px;
-    background: rgba(130, 76, 50, 0.04);
+    background: rgba(130, 76, 50, 0.06);
   }
 
   .empty-state h2 {
-    margin: 0 0 12px;
+    margin: 0 0 8px;
     font-size: 20px;
   }
 
@@ -351,10 +383,15 @@
     font-size: 14px;
   }
 
+  .empty-state .action-btn {
+    margin-top: 12px;
+  }
+
   .empty-state .hint {
     font-size: 12px;
-    opacity: 0.6;
-    margin-bottom: 20px;
+    color: rgba(33, 33, 32, 0.6);
+    margin-top: 12px;
+    margin-bottom: 0;
   }
 
   .batch-header {
@@ -382,9 +419,8 @@
     background: var(--accent, #824c32);
     color: #fff;
     border: none;
-    border-radius: 8px;
-    padding: 8px 20px;
-    font-size: 14px;
+    border-radius: 6px;
+    padding: 10px 18px;
     cursor: pointer;
   }
 

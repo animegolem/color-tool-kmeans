@@ -6,8 +6,7 @@ use image::{ImageReader, RgbaImage};
 const GAP: u32 = 8;
 
 /// Returns `(cols, rows)` for the given image count.
-/// Extends the frontend `computeGridLayout` (which caps at 3 cols) to support
-/// 4-column layouts for batch analysis of up to 16 images.
+/// Supports up to 6×6 layouts for batch analysis of up to 36 images.
 pub fn compute_grid_layout(count: usize) -> (u32, u32) {
     match count {
         0 => (0, 0),
@@ -17,7 +16,11 @@ pub fn compute_grid_layout(count: usize) -> (u32, u32) {
         5..=6 => (3, 2),
         7..=9 => (3, 3),
         10..=12 => (4, 3),
-        _ => (4, 4),
+        13..=16 => (4, 4),
+        17..=20 => (5, 4),
+        21..=25 => (5, 5),
+        26..=30 => (6, 5),
+        _ => (6, 6),
     }
 }
 
@@ -32,8 +35,8 @@ pub fn compose_grid(
     if paths.len() < 2 {
         return Err("At least 2 images are required for grid composition".into());
     }
-    if paths.len() > 16 {
-        return Err("Grid composition supports a maximum of 16 images".into());
+    if paths.len() > 36 {
+        return Err("Grid composition supports a maximum of 36 images".into());
     }
 
     let (cols, rows) = compute_grid_layout(paths.len());
@@ -168,6 +171,14 @@ mod tests {
         assert_eq!(compute_grid_layout(14), (4, 4));
         assert_eq!(compute_grid_layout(15), (4, 4));
         assert_eq!(compute_grid_layout(16), (4, 4));
+        assert_eq!(compute_grid_layout(17), (5, 4));
+        assert_eq!(compute_grid_layout(20), (5, 4));
+        assert_eq!(compute_grid_layout(21), (5, 5));
+        assert_eq!(compute_grid_layout(25), (5, 5));
+        assert_eq!(compute_grid_layout(26), (6, 5));
+        assert_eq!(compute_grid_layout(30), (6, 5));
+        assert_eq!(compute_grid_layout(31), (6, 6));
+        assert_eq!(compute_grid_layout(36), (6, 6));
     }
 
     #[test]
@@ -188,12 +199,12 @@ mod tests {
     }
 
     #[test]
-    fn error_on_seventeen_paths() {
+    fn error_on_too_many_paths() {
         let cache = TempDir::new().expect("temp dir");
-        let paths: Vec<String> = (0..17).map(|i| format!("/fake/path_{i}.png")).collect();
+        let paths: Vec<String> = (0..37).map(|i| format!("/fake/path_{i}.png")).collect();
         let result = compose_grid(&paths, 800, cache.path());
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("maximum of 16"));
+        assert!(result.unwrap_err().contains("maximum of 36"));
     }
 
     #[test]

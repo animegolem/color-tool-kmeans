@@ -542,7 +542,9 @@
     </div>
   {/if}
 
-  <ParameterControls onScrubStart={handleScrubStart} onScrubEnd={handleScrubEnd} />
+  {#if file}
+    <ParameterControls onScrubStart={handleScrubStart} onScrubEnd={handleScrubEnd} />
+  {/if}
 </section>
 
 <style>

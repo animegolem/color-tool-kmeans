@@ -653,13 +653,19 @@
 
   .empty--upload {
     text-align: center;
-    padding: 56px 16px;
+    padding: 56px;
     border: 2px dashed var(--accent);
+    border-radius: 12px;
     background: rgba(130, 76, 50, 0.06);
   }
 
   .empty--upload p {
     margin: 0;
+  }
+
+  .empty--upload p:first-child {
+    font-size: 20px;
+    margin-bottom: 8px;
   }
 
   .upload {
@@ -671,7 +677,7 @@
     margin-top: 12px;
   }
 
-  .formats {
+  .empty--upload .formats {
     margin-top: 12px;
     font-size: 12px;
     color: rgba(33, 33, 32, 0.6);

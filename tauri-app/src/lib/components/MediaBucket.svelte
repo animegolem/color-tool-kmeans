@@ -68,7 +68,7 @@
         class="media-bucket__item"
         class:active={item.id === $activeImageId}
         class:pinned={$pinnedImageIds.has(item.id)}
-        class:dimmed={item.id !== $activeImageId && ($currentView === 'settings' || (($currentView === 'exports' || $currentView === 'batch') && !!item.videoPath))}
+        class:dimmed={($currentView === 'settings' && item.id !== $activeImageId) || (($currentView === 'exports' || $currentView === 'batch') && !!item.videoPath)}
         class:inert={($currentView === 'exports' || $currentView === 'batch') && !!item.videoPath}
         onclick={() => handleClick(item.id)}
         onkeydown={(e) => handleKeydown(e, item.id)}
