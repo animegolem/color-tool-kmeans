@@ -21,6 +21,7 @@
       <div
         class="video-frame"
         class:zoomable={!!onZoom && !!video.videoDisplayUrl}
+        class:decoding={video.frameDecoding}
         role={onZoom && video.videoDisplayUrl ? 'button' : undefined}
         tabindex={onZoom && video.videoDisplayUrl ? 0 : undefined}
         onclick={onZoom && video.videoDisplayUrl ? onZoom : undefined}
@@ -51,8 +52,8 @@
   </div>
   <div class="video-controls">
     <div class="step-group">
-      <button type="button" class="step-btn" title="Back 10 frames" onclick={() => video.stepVideoFrames(-10)}>◀◀</button>
-      <button type="button" class="step-btn" title="Back 1 frame" onclick={() => video.stepVideoFrames(-1)}>◀</button>
+      <button type="button" class="step-btn" title="Back 10 frames" disabled={video.frameDecoding} onclick={() => video.stepVideoFrames(-10)}>◀◀</button>
+      <button type="button" class="step-btn" title="Back 1 frame" disabled={video.frameDecoding} onclick={() => video.stepVideoFrames(-1)}>◀</button>
     </div>
     <input
       class="video-scrub"
@@ -70,8 +71,8 @@
       title="Scrub through video timeline"
     />
     <div class="step-group step-group--right">
-      <button type="button" class="step-btn" title="Forward 1 frame" onclick={() => video.stepVideoFrames(1)}>▶</button>
-      <button type="button" class="step-btn" title="Forward 10 frames" onclick={() => video.stepVideoFrames(10)}>▶▶</button>
+      <button type="button" class="step-btn" title="Forward 1 frame" disabled={video.frameDecoding} onclick={() => video.stepVideoFrames(1)}>▶</button>
+      <button type="button" class="step-btn" title="Forward 10 frames" disabled={video.frameDecoding} onclick={() => video.stepVideoFrames(10)}>▶▶</button>
     </div>
   </div>
   <div class="video-strip">
@@ -124,6 +125,13 @@
     place-items: center;
     background: #fff;
     aspect-ratio: 16 / 9;
+    transition: opacity 0.15s ease;
+  }
+
+  .video-frame.decoding {
+    pointer-events: none;
+    cursor: wait;
+    opacity: 0.7;
   }
 
   .media-panel video {
@@ -160,6 +168,12 @@
     border-radius: 999px;
     padding: 6px 10px;
     min-width: 36px;
+    cursor: pointer;
+  }
+
+  .step-btn:disabled {
+    opacity: 0.4;
+    cursor: wait;
   }
 
   .video-scrub {

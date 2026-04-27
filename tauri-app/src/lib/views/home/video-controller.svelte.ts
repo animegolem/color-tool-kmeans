@@ -43,6 +43,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   let videoDecodeToken = 0;
   let videoDecodeTimer: ReturnType<typeof setTimeout> | null = null;
   let videoProbePending = $state(false);
+  let frameDecoding = $state(false);
   let videoStripUrl: string | null = $state(null);
   let videoStripPath: string | null = $state(null);
   let videoStripPending = $state(false);
@@ -251,11 +252,13 @@ export function createVideoController(deps: VideoControllerDeps) {
     devlog('video:frameDecode:schedule', 'Schedule frame decode', {
       frameId, wasNull, cid: decodeCid, token
     });
+    frameDecoding = true;
     videoDecodeTimer = setTimeout(async () => {
       if (!videoSelection?.path || token !== videoDecodeToken) {
         devlog('video:frameDecode:stale', 'Stale token — skipping', {
           expectedToken: token, currentToken: videoDecodeToken
         });
+        if (token === videoDecodeToken) frameDecoding = false;
         return;
       }
       devlog('video:frameDecode:exec', 'Execute frame decode', { frameId, token, cid: decodeCid });
@@ -313,6 +316,8 @@ export function createVideoController(deps: VideoControllerDeps) {
         const message = error instanceof Error ? error.message : String(error);
         void logEvent(`video:frame:error message=${message}`);
         deps.setBannerMessage('Failed to decode video frame. Please try another file.');
+      } finally {
+        if (token === videoDecodeToken) frameDecoding = false;
       }
     }, 250);
   }
@@ -641,6 +646,7 @@ export function createVideoController(deps: VideoControllerDeps) {
     get videoStripUrl() { return videoStripUrl; },
     get videoStripPending() { return videoStripPending; },
     get videoDisplayUrl() { return videoPosterUrl ?? null; },
+    get frameDecoding() { return frameDecoding; },
     loadVideoSelection,
     clearVideoSelection,
     regenerateStrip,
