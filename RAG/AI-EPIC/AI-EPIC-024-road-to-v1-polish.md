@@ -8,7 +8,7 @@ tags:
   - ux
 date_created: 2026-03-19
 date_completed:
-kanban_status: planned
+kanban_status: in-progress
 AI_IMP_spawned:
   - AI-IMP-144
   - AI-IMP-145
@@ -86,8 +86,8 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 | planned | AI-IMP-149 | Drag-and-drop on batch view (load + pin) |
 | planned | AI-IMP-150 | Media bucket sidebar image caching |
 | planned | AI-IMP-151 | Batch pin management UX |
-| planned | AI-IMP-152 | Persist batch settings between sessions |
+| completed | AI-IMP-152 | Persist batch settings between sessions |
 | planned | AI-IMP-153 | Direct export context menus for graphs |
 | planned | AI-IMP-154 | OS zoom content-only scaling |
-| planned | AI-IMP-155 | Settings tab media bucket fading |
-| planned | AI-IMP-156 | Clear pins button styling alignment |
+| completed | AI-IMP-155 | Settings tab media bucket fading |
+| completed | AI-IMP-156 | Clear pins button styling alignment |
