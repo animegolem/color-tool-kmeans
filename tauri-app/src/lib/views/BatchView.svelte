@@ -32,6 +32,7 @@
   import { setActivePath } from '../services/active-image';
   import { subscribeMediaLoadRequested } from '../services/view-subscriptions';
   import { createBatchRunner } from './batch/batch-runner.svelte';
+  import PinExpandOverlay from './batch/PinExpandOverlay.svelte';
 
   const runner = createBatchRunner();
 
@@ -205,6 +206,25 @@
 
 
   const previewCols = $derived(Math.min(pinCount, 4));
+
+  let expandedPinId: string | null = $state(null);
+  const expandedPin = $derived(expandedPinId ? pinned.find((img) => img.id === expandedPinId) ?? null : null);
+
+  function handlePinExpand(id: string) {
+    expandedPinId = id;
+  }
+
+  function handlePinExpandKeydown(event: KeyboardEvent, id: string) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    expandedPinId = id;
+  }
+
+  function handlePinUnpin() {
+    if (!expandedPinId) return;
+    togglePin(expandedPinId);
+    expandedPinId = null;
+  }
 </script>
 
 <div class="batch">
@@ -240,7 +260,14 @@
 
     <div class="pin-grid" style:--cols={previewCols}>
       {#each pinned as img (img.id)}
-        <div class="pin-thumb">
+        <div
+          class="pin-thumb"
+          role="button"
+          tabindex="0"
+          title={`Expand ${img.name}`}
+          onclick={() => handlePinExpand(img.id)}
+          onkeydown={(e) => handlePinExpandKeydown(e, img.id)}
+        >
           {#if img.previewUrl}
             <img src={img.previewUrl} alt={img.name} />
           {:else}
@@ -367,6 +394,14 @@
 
     <ParameterControls paramsStore={batchParams} onScrubStart={handleScrubStart} onScrubEnd={handleScrubEnd} />
   {/if}
+
+  {#if expandedPin}
+    <PinExpandOverlay
+      image={expandedPin}
+      onUnpin={handlePinUnpin}
+      onClose={() => (expandedPinId = null)}
+    />
+  {/if}
 </div>
 
 <style>
@@ -477,12 +512,22 @@
     overflow: hidden;
     border-radius: 8px;
     background: rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.15s ease;
+  }
+
+  .pin-thumb:hover,
+  .pin-thumb:focus-visible {
+    border-color: var(--accent);
+    outline: none;
   }
 
   .pin-thumb img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    display: block;
   }
 
   .pin-thumb__placeholder {
