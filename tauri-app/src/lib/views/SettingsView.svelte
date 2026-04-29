@@ -62,17 +62,18 @@
         <input type="range" min="10" max="5000" step="10" bind:value={$clusterMax} />
         <input class="number-input" type="number" min="10" max="5000" step="10" bind:value={$clusterMax} />
       </label>
-      <p class="hint">Values over 5-10k may cause slow processing on some hardware.</p>
+      <p class="hint">Higher values (1000+) may slow processing on some hardware.</p>
     </div>
     <div class="field">
       <label>
-        <span>Max exclude-top: <strong>{$excludeTopMax}</strong></span>
+        <span>Max excludable clusters: <strong>{$excludeTopMax}</strong></span>
         <input type="range" min="10" max="500" step="10" bind:value={$excludeTopMax} />
         <input class="number-input" type="number" min="10" max="500" step="10" bind:value={$excludeTopMax} />
       </label>
     </div>
     <div class="field">
       <span class="field-label">Display Charts</span>
+      <p class="hint">Applies to Colors and Batch views.</p>
       <label class="choice">
         <input type="checkbox" bind:checked={$params.showHistogram} />
         Cluster Histogram
@@ -92,7 +93,7 @@
     <h2>Values</h2>
     <label class="choice">
       <input type="checkbox" bind:checked={$showSimplifiedTones} />
-      Show simplified tones
+      Show simplified-tones panel
     </label>
   </div>
 

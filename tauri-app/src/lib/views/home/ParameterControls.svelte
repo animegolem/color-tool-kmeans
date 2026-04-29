@@ -17,7 +17,7 @@
 <section class="controls">
   <h2>Parameters</h2>
   <div class="grid">
-    <label title="Number of color clusters to extract from the image">
+    <label title="Number of color clusters to extract">
       <span>Number of clusters: <strong>{$params.clusters}</strong></span>
       <input
         type="range"
@@ -96,9 +96,9 @@
       <input type="checkbox" bind:checked={$params.showAxisLabels} />
       Axis labels
     </label>
-    <label class="choice" title="Plot original pixel values instead of cluster centroids">
+    <label class="choice" title="Snap chart markers to actual sampled pixels rather than computed centroids">
       <input type="checkbox" bind:checked={$params.snapToReal} />
-      Map to real values
+      Snap to real pixels
     </label>
   </div>
 </section>
