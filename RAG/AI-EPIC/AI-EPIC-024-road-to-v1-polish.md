@@ -80,12 +80,12 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 |--------|--------|-------|
 | planned | AI-IMP-144 | Validate hue x lightness frequency sizing |
 | planned | AI-IMP-145 | Video frame snapshot to media bucket |
-| planned | AI-IMP-146 | Review settings phrasings for new views |
-| planned | AI-IMP-147 | Guard video frame click during processing |
+| completed | AI-IMP-146 | Review settings phrasings for new views |
+| completed | AI-IMP-147 | Guard video frame click during processing |
 | planned | AI-IMP-148 | Evaluate and unify drag-and-drop pathways |
 | planned | AI-IMP-149 | Drag-and-drop on batch view (load + pin) |
 | planned | AI-IMP-150 | Media bucket sidebar image caching |
-| planned | AI-IMP-151 | Batch pin management UX |
+| completed | AI-IMP-151 | Batch pin management UX |
 | completed | AI-IMP-152 | Persist batch settings between sessions |
 | planned | AI-IMP-153 | Direct export context menus for graphs |
 | planned | AI-IMP-154 | OS zoom content-only scaling |
