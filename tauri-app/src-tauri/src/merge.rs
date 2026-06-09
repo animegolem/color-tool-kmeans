@@ -105,7 +105,7 @@ pub fn merge_clusters_by_threshold(clusters: Vec<RawCluster>, threshold: f32) ->
             count: cluster.count,
         })
         .collect();
-    merged.sort_by(|a, b| b.count.cmp(&a.count));
+    merged.sort_by_key(|c| std::cmp::Reverse(c.count));
     merged
 }
 

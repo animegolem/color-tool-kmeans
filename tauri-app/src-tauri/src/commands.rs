@@ -116,7 +116,7 @@ pub async fn analyze_image(
             merge_threshold, before_count, after_count
         );
     } else {
-        raw_clusters.sort_by(|a, b| b.count.cmp(&a.count));
+        raw_clusters.sort_by_key(|c| std::cmp::Reverse(c.count));
     }
 
     let mut clusters: Vec<ClusterOut> = raw_clusters
@@ -142,7 +142,7 @@ pub async fn analyze_image(
             }
         })
         .collect();
-    clusters.sort_by(|a, b| b.count.cmp(&a.count));
+    clusters.sort_by_key(|c| std::cmp::Reverse(c.count));
     let ignore_top_n = req.ignore_top_n.min(clusters.len().saturating_sub(1));
     if ignore_top_n > 0 {
         clusters = clusters.into_iter().skip(ignore_top_n).collect();
