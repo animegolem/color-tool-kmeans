@@ -29,6 +29,7 @@ export function generateHueLightnessSvg(
   const plotHeight = Math.max(1, height - padding * 2);
   const sizeMode = options.sizeMode ?? 'chroma';
   const maxChroma = Math.max(1e-6, ...clusters.map((cluster) => getChroma(cluster)));
+  const maxShare = Math.max(1e-6, ...clusters.map((cluster) => Math.max(cluster.share, 0)));
   const maxSymbolRadius = Math.min(plotWidth, plotHeight) * 0.06 * (options.symbolScale || 1);
   const points: Array<{ x: number; y: number; radius: number; r: number; g: number; b: number }> = [];
   const circleParts: string[] = [];
@@ -69,7 +70,7 @@ export function generateHueLightnessSvg(
     const y = padding + (1 - lightness) * plotHeight;
     const sizeFactor =
       sizeMode === 'frequency'
-        ? Math.sqrt(Math.max(cluster.share, 0))
+        ? Math.sqrt(Math.max(cluster.share, 0) / maxShare)
         : maxChroma > 0
           ? chroma / maxChroma
           : 0;
