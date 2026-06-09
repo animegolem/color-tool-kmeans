@@ -5,12 +5,12 @@ tags:
   - Implementation
   - architecture
   - drag-drop
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-024-road-to-v1-polish]]
 confidence_score: 0.6
 date_created: 2026-03-19
-date_completed:
+date_completed: 2026-06-09
 ---
 
 # AI-IMP-148-drag-drop-unification
@@ -42,13 +42,13 @@ Audit all `ondragover`, `ondrop`, and related handlers across views. Document th
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Audit drag-drop handlers in HomeView, ValuesView, BatchView
-- [ ] Document commonalities and view-specific differences
-- [ ] Decide: shared utility, shared component, or keep bespoke (with justification)
-- [ ] If extracting: implement shared utility/component
-- [ ] If extracting: refactor existing views to use shared implementation
-- [ ] `npm run check && npm run lint && npm run test`
-- [ ] Manual smoke: drag-drop works identically on all views
+- [x] Audit drag-drop handlers in HomeView, ValuesView, BatchView
+- [x] Document commonalities and view-specific differences
+- [x] Decide: shared utility, shared component, or keep bespoke (with justification)
+- [x] If extracting: implement shared utility/component — N/A, decision is keep bespoke (see Issues Encountered)
+- [x] If extracting: refactor existing views to use shared implementation — N/A
+- [x] `npm run check && npm run lint && npm run test` — N/A, documentation-only ticket
+- [x] Manual smoke: drag-drop works identically on all views — Home and Values verified; Batch lands in IMP-149
 
 ### Acceptance Criteria
 
@@ -63,6 +63,13 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 
 ### Issues Encountered
 
-<!--
-This section is filled out post work.
--->
+**Audit conclusion (2026-06-09): keep bespoke.** The shared service layer already exists and is in use: both HomeView (`views/home/file-ingestion.svelte.ts`) and ValuesView (`views/values/file-ingestion-values.svelte.ts`) route drops through `services/drag-drop.ts` (`setupTauriDragDrop`, the `tauri://drag-drop` listener + path-to-FileSelection mapping) and `services/media-ingestion.ts` (`ingestFileAsEntry`). That covers the ~30% of drop handling that is genuinely common: event plumbing, MIME inference, entry construction, video thumbnail extraction.
+
+The remaining ~70% differs by view intent and should stay bespoke:
+- **HomeView**: activates the first image and schedules color analysis.
+- **ValuesView**: routes videos into probe/scrub state; images activate for value analysis.
+- **BatchView** (IMP-149): appends without activating and auto-pins under the pin cap.
+
+A `createDropHandler(options)` factory would just re-encode those differences as configuration, adding indirection without removing real duplication. Views are destroyed on switch (`App.svelte` renders views via `{#if currentView}`), so per-view listeners cannot double-fire — no correctness pressure to centralize.
+
+**One real unification win identified**: drag-over visual feedback cannot use HTML5 `dragover` (Tauri suppresses HTML5 drag events when its native drag-drop handling is enabled), so `setupTauriDragDrop` gains optional `tauri://drag-enter` / `tauri://drag-leave` callbacks. This lands once in the shared service as part of IMP-149 and is available to all views.

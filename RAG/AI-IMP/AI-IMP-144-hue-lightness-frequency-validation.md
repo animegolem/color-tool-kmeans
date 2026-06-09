@@ -8,7 +8,7 @@ tags:
 kanban_status: planned
 depends_on: []
 parent_epic: [[AI-EPIC-024-road-to-v1-polish]]
-confidence_score: 0.4
+confidence_score: 0.9
 date_created: 2026-03-19
 date_completed:
 ---
@@ -28,6 +28,8 @@ The hue x lightness scatter chart offers a "frequency" size mode that should sca
 ### Design/Approach
 
 Trace the data flow from `AnalysisCluster.count` through `generateHueLightnessSvg()` to the SVG `r` attribute. Verify the normalization formula produces visible size differences for typical cluster distributions. Test with known synthetic data (e.g., one large cluster and several small ones). Fix the normalization if broken; if the mode is fundamentally uninformative, remove it from the toggle group.
+
+**Root cause located (2026-06-09 code review):** in `hue-lightness.ts` the chroma mode normalizes by the max (`chroma / maxChroma`) but frequency mode uses raw `Math.sqrt(cluster.share)` with no normalization. `share` is a 0-1 fraction (`count / sampled_pixels`) and the max symbol radius is ~17px, so at typical cluster counts `sqrt(share) * maxRadius` falls below the 2px `Math.max(2, ...)` floor for every cluster — all markers clamp to 2px and never vary. Fix: normalize by `Math.sqrt(maxShare)` so the largest cluster gets the full symbol radius, mirroring chroma mode. Keep the mode; do not remove it.
 
 ### Files to Touch
 

@@ -8,7 +8,7 @@ tags:
 kanban_status: planned
 depends_on: []
 parent_epic: [[AI-EPIC-024-road-to-v1-polish]]
-confidence_score: 0.5
+confidence_score: 0.7
 date_created: 2026-03-19
 date_completed:
 ---
@@ -28,6 +28,8 @@ Users working with video input need a way to capture the current frame as a stil
 ### Design/Approach
 
 Add a camera SVG icon overlay positioned at the upper-right corner of the video preview in HomeView and ValuesView. On click, extract the current frame via the existing `ffmpeg` bridge (or canvas capture if the frame is already rendered), save to a temp file, and call `appendFile()` to add it to the media bucket. The icon should be semi-transparent (e.g., 30% opacity) and raise to full on hover.
+
+**Scope reduction (2026-06-09 code review):** no new extraction work is needed. `video-controller.svelte.ts` already extracts the current frame to disk on every scrub and registers it as the active `ImageEntry` (with `frameTimestamp`). Snapshot is essentially "persist the current frame entry as a standalone bucket entry": new stable ID, descriptive name (e.g., `video.mp4 @ 12.4s`), `appendFile()`. The one real design point: the extracted frame lives in the prunable cache dir (`cache.rs` pruning), so the snapshot must copy the file to a non-pruned location to survive cache cleanup.
 
 ### Files to Touch
 

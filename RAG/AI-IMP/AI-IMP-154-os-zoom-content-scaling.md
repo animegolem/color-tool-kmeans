@@ -29,6 +29,8 @@ OS zoom functions (Cmd+/Cmd- on macOS, Ctrl+/Ctrl- on other platforms) currently
 
 Evaluate whether intercepting Cmd+/Cmd- keyboard events and applying CSS `transform: scale()` or `zoom` to only the view-container grid cell is feasible without breaking layout or scroll behavior. If implemented, add a "UI Scale" slider or dropdown in SettingsView (e.g., 75%, 100%, 125%, 150%). If the approach proves too brittle (scroll issues, pointer coordinate mismatches), document the limitation and close as won't-fix.
 
+**Feasibility note (2026-06-09 code review):** `App.svelte` already intercepts Cmd+/Cmd-/Cmd+0 (`handleZoomHotkeys`) and applies whole-webview zoom via `getCurrentWebview().setZoom()`. The content-only variant is swapping that call for the CSS `zoom` property on `.view-container` — WebKit supports CSS `zoom` and it participates in layout (unlike `transform: scale`), so scrolling and hit-testing largely work. This is a ~20-line timeboxed experiment, not a rearchitecting. Decision still pending whether to do it at all (nice-to-have; user open to dropping).
+
 ### Files to Touch
 
 - `src/App.svelte`: keyboard event interception, layout adjustments

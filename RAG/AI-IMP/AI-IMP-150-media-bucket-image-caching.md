@@ -29,6 +29,8 @@ When the media bucket sidebar is collapsed and re-expanded, thumbnail images app
 
 Investigate whether the reload is caused by DOM remounting (component destroyed on collapse), blob URL revocation, or missing image caching. If the component is destroyed, consider keeping it mounted but hidden (`display: none` or `visibility: hidden`). If blob URLs are revoked, maintain a URL cache keyed by image ID that persists across mount cycles. Profile with 10+ images to confirm the fix eliminates the flash.
 
+**Premise correction (2026-06-09 code review):** MediaBucket is already kept mounted — the rail collapses via `visibility: hidden` (`.library-rail--hidden`, `app.css`), not an `{#if}` block, so `<img>` elements persist across collapse/expand. The "component destroyed" hypothesis is ruled out. If the flash reproduces, the likely cause is WebKit discarding decoded bitmaps for hidden subtrees and re-decoding on reveal (markedly worse on Linux WebKitGTK than macOS WKWebView). This ticket is repro-first: timebox an attempt to reproduce on the target platform with 10+ images before committing to any fix. Acceptable outcomes include close-as-cannot-reproduce (macOS) or documenting it as a Linux-specific limitation, consistent with Linux being deprioritized for v1.
+
 ### Files to Touch
 
 - `src/lib/components/MediaBucket.svelte`: thumbnail rendering and lifecycle
