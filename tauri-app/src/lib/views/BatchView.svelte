@@ -32,9 +32,12 @@
   import { setActivePath } from '../services/active-image';
   import { subscribeMediaLoadRequested } from '../services/view-subscriptions';
   import { createBatchRunner } from './batch/batch-runner.svelte';
+  import { createBatchDrop } from './batch/batch-drop.svelte';
   import PinExpandOverlay from './batch/PinExpandOverlay.svelte';
 
+  const MAX_PINS = 36;
   const runner = createBatchRunner();
+  const drop = createBatchDrop({ maxPins: MAX_PINS });
 
   // Seed dedup key so reanalysis effect doesn't re-trigger on mount
   if (get(multiAnalysisState) === 'ready' && get(multiAnalysisResult)) {
@@ -65,9 +68,14 @@
   onMount(() => {
     void logEvent('batch:view:mount');
     unsubs.push(subscribeMediaLoadRequested(() => chooseMedia()));
+    let unlistenDrop: (() => void) | null = null;
+    drop.setup().then((fn) => {
+      unlistenDrop = fn ?? null;
+    });
     window.addEventListener('pointerup', handleScrubEnd);
     window.addEventListener('pointercancel', handleScrubEnd);
     return () => {
+      unlistenDrop?.();
       window.removeEventListener('pointerup', handleScrubEnd);
       window.removeEventListener('pointercancel', handleScrubEnd);
     };
@@ -80,7 +88,6 @@
   });
 
   const pinCount = $derived(pinned.length);
-  const MAX_PINS = 36;
   const overLimit = $derived(pinCount > MAX_PINS);
 
   type ViewState = 'empty' | 'selection' | 'results';
@@ -227,7 +234,7 @@
   }
 </script>
 
-<div class="batch">
+<div class="batch" class:drag-over={drop.dragOver}>
   {#if viewState === 'empty'}
     <section class="empty-state">
       <h2>Batch Analysis</h2>
@@ -410,6 +417,13 @@
     margin: 0 auto;
     padding: 24px 16px;
     container-type: inline-size;
+  }
+
+  .batch.drag-over {
+    outline: 2px dashed var(--accent);
+    outline-offset: -6px;
+    border-radius: 12px;
+    background: rgba(130, 76, 50, 0.04);
   }
 
   .empty-state {

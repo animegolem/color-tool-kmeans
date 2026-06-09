@@ -16,14 +16,32 @@ function pathsToSelections(paths: string[]): FileSelection[] {
   });
 }
 
+export interface DragDropOptions {
+  /** Fired on tauri://drag-enter — HTML5 dragover is suppressed by Tauri's native handling. */
+  onEnter?: () => void;
+  /** Fired on tauri://drag-leave and on drop (drag-leave does not fire when the drop lands). */
+  onLeave?: () => void;
+}
+
 export async function setupTauriDragDrop(
-  onBatch: (selections: FileSelection[]) => void
+  onBatch: (selections: FileSelection[]) => void,
+  options?: DragDropOptions
 ): Promise<(() => void) | null> {
   if (!isTauriEnv()) return null;
-  const unlisten = await listen<{ paths?: string[] }>('tauri://drag-drop', (event) => {
-    const paths = event.payload?.paths;
-    if (!paths?.length) return;
-    onBatch(pathsToSelections(paths));
-  });
-  return unlisten;
+  const unlistens: Array<() => void> = [];
+  unlistens.push(
+    await listen<{ paths?: string[] }>('tauri://drag-drop', (event) => {
+      options?.onLeave?.();
+      const paths = event.payload?.paths;
+      if (!paths?.length) return;
+      onBatch(pathsToSelections(paths));
+    })
+  );
+  if (options?.onEnter) {
+    unlistens.push(await listen('tauri://drag-enter', () => options.onEnter?.()));
+  }
+  if (options?.onLeave) {
+    unlistens.push(await listen('tauri://drag-leave', () => options.onLeave?.()));
+  }
+  return () => unlistens.forEach((fn) => fn());
 }
