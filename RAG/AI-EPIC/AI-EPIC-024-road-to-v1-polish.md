@@ -54,19 +54,19 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 
 ### Functional Requirements
 
-- [ ] FR-1: Hue x lightness frequency sizing validated or chart removed if non-functional.
+- [x] FR-1: Hue x lightness frequency sizing validated or chart removed if non-functional.
 - [ ] FR-2: Video frames can be captured to media bucket via overlay interaction.
-- [ ] FR-3: All settings labels reviewed and updated for multi-view context.
-- [ ] FR-4: Video frame click guarded during processing with visual feedback.
-- [ ] FR-5: Drag-and-drop pathways evaluated and unified where beneficial.
-- [ ] FR-6: Drag-and-drop on batch view loads and pins dropped files.
+- [x] FR-3: All settings labels reviewed and updated for multi-view context.
+- [x] FR-4: Video frame click guarded during processing with visual feedback.
+- [x] FR-5: Drag-and-drop pathways evaluated and unified where beneficial.
+- [x] FR-6: Drag-and-drop on batch view loads and pins dropped files.
 - [ ] FR-7: Media bucket sidebar images cached to prevent repeated loading.
-- [ ] FR-8: Batch pin thumbnails support click-to-expand and dismiss.
-- [ ] FR-9: Batch analysis parameters persist between sessions.
+- [x] FR-8: Batch pin thumbnails support click-to-expand and dismiss.
+- [x] FR-9: Batch analysis parameters persist between sessions.
 - [ ] FR-10: Right-click context menus on graphs for direct PNG/SVG export.
 - [ ] FR-11: OS zoom scales only center content, not navigation/sidebars.
-- [ ] FR-12: Media bucket thumbnails properly faded on settings tab.
-- [ ] FR-13: Clear pins button styled consistently with app design language.
+- [x] FR-12: Media bucket thumbnails properly faded on settings tab.
+- [x] FR-13: Clear pins button styled consistently with app design language.
 
 ### Non-Functional Requirements
 
@@ -78,12 +78,12 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 
 | Status | Ticket | Title |
 |--------|--------|-------|
-| planned | AI-IMP-144 | Validate hue x lightness frequency sizing |
+| completed | AI-IMP-144 | Validate hue x lightness frequency sizing |
 | planned | AI-IMP-145 | Video frame snapshot to media bucket |
 | completed | AI-IMP-146 | Review settings phrasings for new views |
 | completed | AI-IMP-147 | Guard video frame click during processing |
 | completed | AI-IMP-148 | Evaluate and unify drag-and-drop pathways |
-| planned | AI-IMP-149 | Drag-and-drop on batch view (load + pin) |
+| completed | AI-IMP-149 | Drag-and-drop on batch view (load + pin) |
 | planned | AI-IMP-150 | Media bucket sidebar image caching |
 | completed | AI-IMP-151 | Batch pin management UX |
 | completed | AI-IMP-152 | Persist batch settings between sessions |

@@ -5,12 +5,12 @@ tags:
   - Implementation
   - analysis
   - charts
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-024-road-to-v1-polish]]
 confidence_score: 0.9
 date_created: 2026-03-19
-date_completed:
+date_completed: 2026-06-09
 ---
 
 # AI-IMP-144-hue-lightness-frequency-validation
@@ -42,13 +42,13 @@ Trace the data flow from `AnalysisCluster.count` through `generateHueLightnessSv
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Read `generateHueLightnessSvg()` and trace frequency size calculation
-- [ ] Create synthetic cluster data with varied counts (1%, 50%, 0.1%)
-- [ ] Verify SVG output shows visible size differences
-- [ ] Fix normalization formula if broken
-- [ ] If mode is uninformative, remove from toggle group in HomeView and BatchView
-- [ ] Add/update unit test for frequency sizing
-- [ ] `npm run check && npm run lint && npm run test`
+- [x] Read `generateHueLightnessSvg()` and trace frequency size calculation
+- [x] Create synthetic cluster data with varied counts (1%, 50%, 0.1%)
+- [x] Verify SVG output shows visible size differences
+- [x] Fix normalization formula if broken — normalized by `sqrt(maxShare)`
+- [x] If mode is uninformative, remove from toggle group in HomeView and BatchView — N/A, mode is informative after fix
+- [x] Add/update unit test for frequency sizing — `__tests__/hue-lightness.spec.ts` incl. K=300 regression
+- [x] `npm run check && npm run lint && npm run test` — 155 tests pass
 
 ### Acceptance Criteria
 
@@ -59,6 +59,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 
 ### Issues Encountered
 
-<!--
-This section is filled out post work.
--->
+None. Root cause was exactly as identified in the review pass: frequency mode lacked the max-normalization that chroma mode has, so `sqrt(share) * maxRadius` fell below the 2px floor for all clusters at typical K. One-line fix plus three unit tests (size ordering, K=300 regression, chroma-mode unchanged). Mode kept; visual smoke pending user validation in app.

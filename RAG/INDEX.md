@@ -7,10 +7,10 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 1 | 0 |
-| Planned | 1 | 14 |
+| Planned | 1 | 12 |
 | Deferred | 2 | 4 |
 | Cancelled | 0 | 0 |
-| Completed | 15 | 105 |
+| Completed | 15 | 107 |
 | **Total** | **19** | **123** |
 
 ## In Progress
@@ -19,12 +19,12 @@
 > The core batch analysis, media bucket, and multi-view architecture are functional but lack the polish expected for a v1 release. Users encounter vi...
 
 **IMPs:**
-- [[AI-IMP-144-hue-lightness-frequency-validation|IMP-144]] Validate hue x lightness frequency sizing — planned
+- [[AI-IMP-144-hue-lightness-frequency-validation|IMP-144]] Validate hue x lightness frequency sizing — completed
 - [[AI-IMP-145-video-frame-snapshot|IMP-145]] Video frame snapshot to media bucket — planned
 - [[AI-IMP-146-settings-phrasing-review|IMP-146]] Review settings phrasings for new views — completed
 - [[AI-IMP-147-guard-video-frame-click|IMP-147]] Guard video frame click during processing — completed
 - [[AI-IMP-148-drag-drop-unification|IMP-148]] Evaluate and unify drag-and-drop pathways — completed
-- [[AI-IMP-149-batch-drag-drop|IMP-149]] Drag-and-drop on batch view (load + pin) — planned
+- [[AI-IMP-149-batch-drag-drop|IMP-149]] Drag-and-drop on batch view (load + pin) — completed
 - [[AI-IMP-150-media-bucket-image-caching|IMP-150]] Media bucket sidebar image caching — planned
 - [[AI-IMP-151-batch-pin-management-ux|IMP-151]] Batch pin management UX — completed
 - [[AI-IMP-152-persist-batch-settings|IMP-152]] Persist batch settings between sessions — completed
@@ -105,7 +105,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>15 EPICs, 74 IMPs completed</summary>
+<summary>15 EPICs, 76 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed
