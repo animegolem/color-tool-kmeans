@@ -5,12 +5,12 @@ tags:
   - Implementation
   - video
   - bug
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-024-road-to-v1-polish]]
 confidence_score: 0.85
 date_created: 2026-06-10
-date_completed:
+date_completed: 2026-06-10
 ---
 
 # AI-IMP-158-video-switch-race
@@ -28,7 +28,7 @@ The frame-decode path already has the correct pattern (`videoDecodeToken` stalen
 
 - Cancelling in-flight ffmpeg processes (guard-and-discard is sufficient).
 - ValuesView scrubber (separate factory; extraction is token-guarded there).
-- Cache repair for already-corrupted entries (re-clicking the video regenerates).
+- Cache repair for already-corrupted entries — `videoStateCache` is in-memory and session-scoped, so existing corruption clears on app restart (or via the strip-mode regenerate path).
 
 ### Design/Approach
 
@@ -44,13 +44,13 @@ Mirror the existing token pattern. Strip generation: capture the request's `stri
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Guard strip generation `.then` against stale stripId/path
-- [ ] Guard strip generation `.finally` pending-flag clear
-- [ ] Guard probe post-await writes against changed selection path
-- [ ] Guard probe `finally` pending-flag clear
-- [ ] Log stale skips for diagnosability
-- [ ] `npm run check && npm run lint && npm run test`
-- [ ] Manual smoke: click video A, immediately click video B → B's state/cache never contains A's strip or duration
+- [x] Guard strip generation `.then` against stale stripId/path
+- [x] Guard strip generation `.finally` pending-flag clear
+- [x] Guard probe post-await writes against changed selection path
+- [x] Guard probe `finally` pending-flag clear
+- [x] Log stale skips for diagnosability — `video:strip:stale` / `video:probe:stale` events
+- [x] `npm run check && npm run lint && npm run test` — 155 tests pass
+- [ ] Manual smoke: click video A, immediately click video B → B's state/cache never contains A's strip or duration — pending user validation
 
 ### Acceptance Criteria
 
@@ -62,6 +62,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 
 ### Issues Encountered
 
-<!--
-This section is filled out post work.
--->
+Confirmed `videoStateCache` is an in-memory session store, so pre-fix corruption is not persisted to disk and clears on restart. Both guards follow the established `videoDecodeToken` pattern; `resetVideoState()` nulling `videoStripId` and `regenerateStrip()` rotating it invalidate in-flight strip runs without any new token plumbing.

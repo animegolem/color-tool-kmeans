@@ -95,4 +95,4 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 | completed | AI-IMP-155 | Settings tab media bucket fading |
 | completed | AI-IMP-156 | Clear pins button styling alignment |
 | completed | AI-IMP-157 | Batch export section in Exports view |
-| planned | AI-IMP-158 | Stale async writes when switching videos mid-load |
+| completed | AI-IMP-158 | Stale async writes when switching videos mid-load |

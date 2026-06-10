@@ -7,10 +7,10 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 1 | 0 |
-| Planned | 1 | 13 |
+| Planned | 1 | 12 |
 | Deferred | 2 | 4 |
 | Cancelled | 0 | 0 |
-| Completed | 15 | 108 |
+| Completed | 15 | 109 |
 | **Total** | **19** | **125** |
 
 ## In Progress
@@ -33,7 +33,7 @@
 - [[AI-IMP-155-settings-tab-media-fading|IMP-155]] Settings tab media bucket fading — completed
 - [[AI-IMP-156-clear-pins-button-styling|IMP-156]] Clear pins button styling alignment — completed
 - [[AI-IMP-157-batch-export-section|IMP-157]] Batch export section in Exports view — completed
-- [[AI-IMP-158-video-switch-race|IMP-158]] Stale async writes when switching videos mid-load — planned
+- [[AI-IMP-158-video-switch-race|IMP-158]] Stale async writes when switching videos mid-load — completed
 
 ---
 
@@ -107,7 +107,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>15 EPICs, 77 IMPs completed</summary>
+<summary>15 EPICs, 78 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed
