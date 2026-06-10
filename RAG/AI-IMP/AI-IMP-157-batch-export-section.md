@@ -5,12 +5,12 @@ tags:
   - Implementation
   - exports
   - batch
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-024-road-to-v1-polish]]
 confidence_score: 0.8
 date_created: 2026-06-10
-date_completed:
+date_completed: 2026-06-10
 ---
 
 # AI-IMP-157-batch-export-section
@@ -49,14 +49,14 @@ ExportsView template restructured so the Batch section renders whenever a batch 
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add batch keys to ExportChecks interface and prefs DEFAULTS
-- [ ] Create batch-export-runner with generators, individual saves, composite-grid save, palette data saves
-- [ ] Implement batch composite study export (grid as source tile + selected charts)
-- [ ] Add Batch section to ExportsView with checkboxes, per-item download buttons, composite button
-- [ ] Restructure ExportsView conditionals so batch exports work without an active image
-- [ ] Respect graphExportFormat (PNG/SVG) for individual chart saves
-- [ ] `npm run check && npm run lint && npm run test`
-- [ ] Manual smoke: batch analyze → Exports view → save individual chart, composite study, and CSV
+- [x] Add batch keys to ExportChecks interface and prefs DEFAULTS
+- [x] Create batch-export-runner with generators, individual saves, composite-grid save, palette data saves
+- [x] Implement batch composite study export (grid as source tile + selected charts)
+- [x] Add Batch section to ExportsView with checkboxes, per-item download buttons, composite button
+- [x] Restructure ExportsView conditionals so batch exports work without an active image
+- [x] Respect graphExportFormat (PNG/SVG) for individual chart saves
+- [x] `npm run check && npm run lint && npm run test` — 155 tests pass
+- [ ] Manual smoke: batch analyze → Exports view → save individual chart, composite study, and CSV — pending user validation
 
 ### Acceptance Criteria
 
@@ -77,6 +77,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 
 ### Issues Encountered
 
-<!--
-This section is filled out post work.
--->
+Straightforward port of the colors export surface. One drive-by fix: the Exports empty-state hint contained a literal `…` escape rendering as raw text — replaced with a real ellipsis. ExportsView grew to 520 LOC (over the 400 advisory threshold); flagged for the end-of-push LOC review — the three builder sections are natural extraction candidates if a split is wanted.

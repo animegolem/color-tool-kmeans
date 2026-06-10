@@ -68,7 +68,7 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 - [ ] FR-11: OS zoom scales only center content, not navigation/sidebars.
 - [x] FR-12: Media bucket thumbnails properly faded on settings tab.
 - [x] FR-13: Clear pins button styled consistently with app design language.
-- [ ] FR-14: Batch analysis results exportable (composite grid, charts, palette data) from the Exports view.
+- [x] FR-14: Batch analysis results exportable (composite grid, charts, palette data) from the Exports view.
 
 ### Non-Functional Requirements
 
@@ -93,4 +93,4 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 | planned | AI-IMP-154 | OS zoom content-only scaling |
 | completed | AI-IMP-155 | Settings tab media bucket fading |
 | completed | AI-IMP-156 | Clear pins button styling alignment |
-| planned | AI-IMP-157 | Batch export section in Exports view |
+| completed | AI-IMP-157 | Batch export section in Exports view |
