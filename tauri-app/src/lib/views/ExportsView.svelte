@@ -12,9 +12,12 @@
     graphExportFormat
   } from '../stores/ui';
   import { convertFileSrc } from '@tauri-apps/api/core';
+  import { multiAnalysisResult, multiCompositePath, pinnedImageIds } from '../stores/multi-analysis';
+  import { batchParams } from '../stores/batch-params';
   import { logEvent } from '../bridges/log';
   import { createColorsExportRunner } from './exports/colors-export-runner.svelte';
   import { createValuesExportRunner } from './exports/values-export-runner.svelte';
+  import { createBatchExportRunner } from './exports/batch-export-runner.svelte';
 
   // --- Store-derived state ---
   const file = $derived($selectedFile);
@@ -31,6 +34,12 @@
   );
   const valuesAnyChecked = $derived(
     $exportChecks.valuesNeutral || $exportChecks.valuesRangeFinder || $exportChecks.valuesHistogram || $exportChecks.valuesSimplified
+  );
+
+  const batchResult = $derived($multiAnalysisResult);
+  const batchAnyChecked = $derived(
+    $exportChecks.batchCompositeGrid || $exportChecks.batchPolarChart || $exportChecks.batchHistogram ||
+    $exportChecks.batchHueLightness || $exportChecks.batchPaletteStrip
   );
 
   // --- Runners ---
@@ -60,6 +69,18 @@
     getGraphExportFormat: () => $graphExportFormat,
     performSave: colorsRunner.performSave,
     baseName: colorsRunner.baseName,
+    setStatus: colorsRunner.setStatus
+  });
+
+  const batchRunner = createBatchExportRunner({
+    getResult: () => batchResult,
+    getCompositePath: () => $multiCompositePath,
+    getParams: () => $batchParams,
+    getExportScale: () => $exportScale,
+    getExportChecks: () => $exportChecks,
+    getGraphExportFormat: () => $graphExportFormat,
+    getPinCount: () => $pinnedImageIds.size,
+    performSave: colorsRunner.performSave,
     setStatus: colorsRunner.setStatus
   });
 
@@ -207,7 +228,76 @@
           <button disabled={colorsRunner.isSaving} onclick={colorsRunner.savePaletteJson}>Save JSON</button>
         </div>
       </div>
-      <div class="scale-control">
+    </div>
+  {/if}
+
+  {#if batchResult}
+    <div class="builder-section">
+      <h2>Batch</h2>
+      <div class="builder-items">
+        <label class="builder-item" class:disabled={!$multiCompositePath}>
+          <input type="checkbox" bind:checked={$exportChecks.batchCompositeGrid} disabled={!$multiCompositePath} />
+          <span>Composite Grid</span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving || !$multiCompositePath} onclick={batchRunner.saveCompositeGridImage}>↓</button>
+        </label>
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={$exportChecks.batchPolarChart} />
+          <span>Polar Chart</span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={() => batchRunner.saveIndividualChart(batchRunner.polarGenerator, 'polar')}>↓</button>
+        </label>
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={$exportChecks.batchHistogram} />
+          <span>Cluster Histogram</span>
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <span class="sub-toggle" onclick={(e) => e.stopPropagation()}>
+            <label class="sub-toggle-inner" title="Include frequency, hue, and lightness sort modes">
+              <input type="checkbox" bind:checked={$exportChecks.batchHistogramAll} disabled={!$exportChecks.batchHistogram} />
+              <span class="sub-toggle-label">All sorts</span>
+            </label>
+          </span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={() => batchRunner.saveIndividualChart(batchRunner.histogramGenerator, 'histogram')}>↓</button>
+        </label>
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={$exportChecks.batchHueLightness} />
+          <span>Hue × Lightness</span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={() => batchRunner.saveIndividualChart(batchRunner.hueLightnessGenerator, 'hue-lightness')}>↓</button>
+        </label>
+        <label class="builder-item">
+          <input type="checkbox" bind:checked={$exportChecks.batchPaletteStrip} />
+          <span>Palette Strip (top 20)</span>
+          <span class="spacer"></span>
+          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={() => batchRunner.saveIndividualChart(batchRunner.paletteGenerator, 'palette')}>↓</button>
+        </label>
+        <div class="data-row">
+          <span>Palette CSV</span>
+          <span class="spacer"></span>
+          <button disabled={colorsRunner.isSaving} onclick={batchRunner.savePaletteCsv}>Save CSV</button>
+        </div>
+        <div class="data-row">
+          <span>Palette .ase</span>
+          <span class="spacer"></span>
+          <button disabled={colorsRunner.isSaving} onclick={batchRunner.savePaletteAse}>Save .ase</button>
+        </div>
+        <div class="data-row">
+          <span>Palette JSON</span>
+          <span class="spacer"></span>
+          <button disabled={colorsRunner.isSaving} onclick={batchRunner.savePaletteJson}>Save JSON</button>
+        </div>
+      </div>
+      <button class="composite-btn" disabled={colorsRunner.isSaving || !batchAnyChecked} onclick={batchRunner.exportBatchComposite}>
+        Export Batch Composite
+      </button>
+    </div>
+  {/if}
+
+  {#if (file && result) || batchResult}
+    <div class="builder-section">
+      <div class="scale-control scale-control--standalone">
         <label>
           <span>PNG Scale</span>
           <span class="scale-value">{$exportScale}×</span>
@@ -218,9 +308,9 @@
   {:else}
     <div class="empty" class:analyzing={file && $analysisState === 'pending'}>
       {#if file && $analysisState === 'pending'}
-        Analyzing\u2026
+        Analyzing…
       {:else}
-        Select an image and complete analysis to unlock exports.
+        Select an image and complete analysis, or run a batch analysis, to unlock exports.
       {/if}
     </div>
   {/if}
@@ -370,6 +460,12 @@
     margin-top: 16px;
     border-top: 1px solid var(--line, rgba(33, 33, 32, 0.1));
     padding-top: 12px;
+  }
+
+  .scale-control--standalone {
+    margin-top: 0;
+    border-top: none;
+    padding-top: 0;
   }
 
   .scale-control label {

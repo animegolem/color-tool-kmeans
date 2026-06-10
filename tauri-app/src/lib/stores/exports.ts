@@ -21,6 +21,12 @@ export interface ExportChecks {
   valuesHistogram: boolean;
   valuesSimplified: boolean;
   valuesAllStudies: boolean;
+  batchCompositeGrid: boolean;
+  batchPolarChart: boolean;
+  batchHistogram: boolean;
+  batchHistogramAll: boolean;
+  batchHueLightness: boolean;
+  batchPaletteStrip: boolean;
 }
 export const exportChecks = writable<ExportChecks>({ ...DEFAULTS.exports });
 

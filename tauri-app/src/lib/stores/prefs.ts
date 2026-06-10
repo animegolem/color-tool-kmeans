@@ -58,6 +58,12 @@ export interface PrefsV1 {
     valuesHistogram: boolean;
     valuesSimplified: boolean;
     valuesAllStudies: boolean;
+    batchCompositeGrid: boolean;
+    batchPolarChart: boolean;
+    batchHistogram: boolean;
+    batchHistogramAll: boolean;
+    batchHueLightness: boolean;
+    batchPaletteStrip: boolean;
   };
   exportScale: number;
   exportDir: string | null;
@@ -121,7 +127,13 @@ export const DEFAULTS: PrefsV1 = {
     valuesRangeFinder: true,
     valuesHistogram: true,
     valuesSimplified: true,
-    valuesAllStudies: false
+    valuesAllStudies: false,
+    batchCompositeGrid: true,
+    batchPolarChart: true,
+    batchHistogram: true,
+    batchHistogramAll: false,
+    batchHueLightness: true,
+    batchPaletteStrip: false
   },
   exportScale: 2,
   exportDir: null,
