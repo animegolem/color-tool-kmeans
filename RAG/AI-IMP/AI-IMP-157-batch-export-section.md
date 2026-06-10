@@ -56,7 +56,7 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 - [x] Restructure ExportsView conditionals so batch exports work without an active image
 - [x] Respect graphExportFormat (PNG/SVG) for individual chart saves
 - [x] `npm run check && npm run lint && npm run test` — 155 tests pass
-- [ ] Manual smoke: batch analyze → Exports view → save individual chart, composite study, and CSV — pending user validation
+- [x] Manual smoke: batch analyze → Exports view → save individual chart, composite study, and CSV — user smoke passed (2026-06-10)
 
 ### Acceptance Criteria
 

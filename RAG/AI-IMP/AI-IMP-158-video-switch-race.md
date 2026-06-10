@@ -50,7 +50,7 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 - [x] Guard probe `finally` pending-flag clear
 - [x] Log stale skips for diagnosability — `video:strip:stale` / `video:probe:stale` events
 - [x] `npm run check && npm run lint && npm run test` — 155 tests pass
-- [ ] Manual smoke: click video A, immediately click video B → B's state/cache never contains A's strip or duration — pending user validation
+- [x] Manual smoke: click video A, immediately click video B → B's state/cache never contains A's strip or duration — user confirmed not reproducible after fix (2026-06-10)
 
 ### Acceptance Criteria
 

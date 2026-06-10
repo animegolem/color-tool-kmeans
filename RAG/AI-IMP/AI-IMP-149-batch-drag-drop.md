@@ -51,7 +51,7 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 - [x] Load new files into media bucket via ingestion pipeline — `ingestFileAsEntry` + `appendFile`, deduped by path
 - [x] Auto-pin all dropped files (new and existing) — under 36-pin cap
 - [x] `npm run check && npm run lint` — plus full test suite, 155 pass
-- [ ] Manual smoke: drop 3 images on batch → all appear in sidebar and as pins — pending user validation
+- [x] Manual smoke: drop 3 images on batch → all appear in sidebar and as pins — user smoke passed (2026-06-10)
 
 ### Acceptance Criteria
 
