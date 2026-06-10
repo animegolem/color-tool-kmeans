@@ -24,6 +24,7 @@ AI_IMP_spawned:
   - AI-IMP-155
   - AI-IMP-156
   - AI-IMP-157
+  - AI-IMP-158
 ---
 
 # AI-EPIC-024-road-to-v1-polish
@@ -45,7 +46,7 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 
 ## Success Metrics
 
-- All 14 IMP tickets completed and verified.
+- All 15 IMP tickets completed and verified.
 - No visual inconsistencies between batch, home, values, and settings views.
 - Batch view settings persist across app restarts.
 - Export context menus functional on all chart types.
@@ -94,3 +95,4 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 | completed | AI-IMP-155 | Settings tab media bucket fading |
 | completed | AI-IMP-156 | Clear pins button styling alignment |
 | completed | AI-IMP-157 | Batch export section in Exports view |
+| planned | AI-IMP-158 | Stale async writes when switching videos mid-load |
