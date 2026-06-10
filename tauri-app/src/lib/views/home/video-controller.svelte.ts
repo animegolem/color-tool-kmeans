@@ -198,8 +198,10 @@ export function createVideoController(deps: VideoControllerDeps) {
     }
 
     void logEvent(`video:strip:start mode=${mode} count=${thumbCount}`);
+    const requestPath = videoSelection.path;
+    const isStale = () => videoStripId !== stripId || videoSelection?.path !== requestPath;
     extractVideoStrip({
-      path: videoSelection.path,
+      path: requestPath,
       stripId,
       duration: videoDuration,
       thumbCount,
@@ -208,6 +210,10 @@ export function createVideoController(deps: VideoControllerDeps) {
       stripMode: mode
     })
       .then((response) => {
+        if (isStale()) {
+          void logEvent(`video:strip:stale mode=${mode} path=${requestPath}`);
+          return;
+        }
         videoStripPath = response.path;
         videoStripUrl = assetUrl(response.path);
         pushVideoState();
@@ -219,7 +225,7 @@ export function createVideoController(deps: VideoControllerDeps) {
         void logEvent(`video:strip:error message=${message}`);
       })
       .finally(() => {
-        videoStripPending = false;
+        if (!isStale()) videoStripPending = false;
       });
   }
 
@@ -326,6 +332,10 @@ export function createVideoController(deps: VideoControllerDeps) {
     videoProbePending = true;
     try {
       const response = await probeVideo(path);
+      if (videoSelection?.path !== path) {
+        void logEvent(`video:probe:stale path=${path}`);
+        return;
+      }
       if (Number.isFinite(response.duration) && response.duration > 0) {
         videoDuration = response.duration;
       }
@@ -350,7 +360,7 @@ export function createVideoController(deps: VideoControllerDeps) {
       const message = error instanceof Error ? error.message : String(error);
       void logEvent(`video:probe:error message=${message}`);
     } finally {
-      videoProbePending = false;
+      if (videoSelection?.path === path) videoProbePending = false;
     }
   }
 
