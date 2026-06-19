@@ -20,6 +20,8 @@
   import { createVideoScrubber } from './values/video-scrubber.svelte';
   import { createValuesFileIngestion } from './values/file-ingestion-values.svelte';
   import VideoScrubber from './values/VideoScrubber.svelte';
+  import SnapshotButton from '../components/SnapshotButton.svelte';
+  import { snapshotCurrentFrame } from '../services/frame-snapshot';
 
   let videoEl = $state<HTMLVideoElement | null>(null);
 
@@ -126,6 +128,16 @@
     openImageZoom(src, alt);
   }
 
+  function captureFrame() {
+    const framePath = runner.file?.path;
+    if (!framePath) return;
+    void snapshotCurrentFrame({
+      framePath,
+      name: runner.file?.name ?? 'frame',
+      timestamp: scrubber.currentTime
+    });
+  }
+
   function bucketLabel(bucket: { lower: number; upper: number; share: number }) {
     return `${formatPercent(bucket.lower)}-${formatPercent(bucket.upper)} | ${formatPercent(
       bucket.share
@@ -211,12 +223,14 @@
           <span>Original</span>
           {#if scrubber.isVideo}
             <div
+              class="video-shot-host"
               class:zoomable={!!runner.file.previewUrl}
               role={runner.file.previewUrl ? 'button' : undefined}
               tabindex={runner.file.previewUrl ? 0 : undefined}
               onclick={runner.file.previewUrl ? () => openImageZoom(runner.file.previewUrl ?? '', runner.file.name) : undefined}
               onkeydown={runner.file.previewUrl ? (event: KeyboardEvent) => handleZoomKeydown(event, runner.file.previewUrl ?? '', runner.file.name) : undefined}
             >
+              <SnapshotButton onCapture={captureFrame} disabled={scrubber.extracting || !runner.file.path} />
               <video
                 bind:this={videoEl}
                 class="preview"
@@ -423,6 +437,10 @@
     color: rgba(33, 33, 32, 0.7);
     text-transform: uppercase;
     letter-spacing: 0.08em;
+  }
+
+  .video-shot-host {
+    position: relative;
   }
 
   .preview-shell {

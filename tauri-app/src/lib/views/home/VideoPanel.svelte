@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { createVideoController } from './video-controller.svelte';
+  import SnapshotButton from '../../components/SnapshotButton.svelte';
+  import { snapshotCurrentFrame } from '../../services/frame-snapshot';
 
   interface Props {
     video: ReturnType<typeof createVideoController>;
@@ -13,6 +15,16 @@
   $effect(() => {
     video.setVideoElementRef(videoEl);
   });
+
+  function captureFrame() {
+    const framePath = video.videoPosterPath;
+    if (!framePath) return;
+    void snapshotCurrentFrame({
+      framePath,
+      name: video.videoSelection?.name ?? 'frame',
+      timestamp: video.videoCurrentTime
+    });
+  }
 </script>
 
 <div class="media-panel">
@@ -32,6 +44,7 @@
         } : undefined}
         style={video.videoAspectRatio ? `aspect-ratio: ${video.videoAspectRatio}` : undefined}
       >
+        <SnapshotButton onCapture={captureFrame} disabled={video.frameDecoding || !video.videoPosterPath} />
         <video
           bind:this={videoEl}
           poster={video.videoDisplayUrl ?? undefined}
@@ -120,6 +133,7 @@
   }
 
   .video-frame {
+    position: relative;
     width: 100%;
     display: grid;
     place-items: center;
