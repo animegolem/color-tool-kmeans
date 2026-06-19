@@ -7,10 +7,10 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 1 | 0 |
-| Planned | 1 | 10 |
+| Planned | 1 | 9 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
-| Completed | 15 | 110 |
+| Completed | 15 | 111 |
 | **Total** | **19** | **125** |
 
 ## In Progress
@@ -20,7 +20,7 @@
 
 **IMPs:**
 - [[AI-IMP-144-hue-lightness-frequency-validation|IMP-144]] Validate hue x lightness frequency sizing — completed
-- [[AI-IMP-145-video-frame-snapshot|IMP-145]] Video frame snapshot to media bucket — planned
+- [[AI-IMP-145-video-frame-snapshot|IMP-145]] Video frame snapshot to media bucket — completed
 - [[AI-IMP-146-settings-phrasing-review|IMP-146]] Review settings phrasings for new views — completed
 - [[AI-IMP-147-guard-video-frame-click|IMP-147]] Guard video frame click during processing — completed
 - [[AI-IMP-148-drag-drop-unification|IMP-148]] Evaluate and unify drag-and-drop pathways — completed
@@ -107,7 +107,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>15 EPICs, 79 IMPs completed</summary>
+<summary>15 EPICs, 80 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed

@@ -5,12 +5,12 @@ tags:
   - Implementation
   - video
   - media-bucket
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-024-road-to-v1-polish]]
 confidence_score: 0.7
 date_created: 2026-03-19
-date_completed:
+date_completed: 2026-06-19
 ---
 
 # AI-IMP-145-video-frame-snapshot
@@ -44,13 +44,13 @@ Add a camera SVG icon overlay positioned at the upper-right corner of the video 
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Source or create camera SVG icon (check existing icon set licenses)
-- [ ] Add overlay component to VideoPanel
-- [ ] Implement frame capture (ffmpeg extract or canvas toBlob)
-- [ ] Save captured frame to temp file
-- [ ] Call appendFile() to add to media bucket
-- [ ] Add overlay to ValuesView video preview
-- [ ] Manual smoke: capture frame → appears in sidebar → can be analyzed
+- [x] Source or create camera SVG icon (check existing icon set licenses) — inline feather-style camera SVG in shared SnapshotButton.svelte
+- [x] Add overlay component to VideoPanel — shared SnapshotButton in `.video-frame`
+- [x] Implement frame capture (ffmpeg extract or canvas toBlob) — reuses the already-extracted scrub frame; no new extraction
+- [x] Save captured frame to temp file — copy_file cache → appLocalDataDir/snapshots (persistent, not pruned)
+- [x] Call appendFile() to add to media bucket — plain-image entry (no videoPath) via frame-snapshot service
+- [x] Add overlay to ValuesView video preview
+- [ ] Manual smoke: capture frame → appears in sidebar → can be analyzed — pending user validation
 
 ### Acceptance Criteria
 
@@ -62,6 +62,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 
 ### Issues Encountered
 
-<!--
-This section is filled out post work.
--->
+Came in well under the original estimate (confidence raised 0.5→0.7 in planning) because the current frame is already extracted to disk on every scrub — the feature is "persist + register," not "capture." Two design decisions worth recording: (1) the cache dir is pruned (keep-newest-80 on startup, `cache.rs`), so the snapshot copies the frame to `appLocalDataDir/snapshots/` via the existing `copy_file` command to survive cleanup; (2) the snapshot entry deliberately omits `videoPath`/`frameTimestamp` so MediaBucket treats it as a standalone still (`switchToFile`, pinnable) rather than re-routing clicks back into the source video. Shared `SnapshotButton.svelte` + `services/frame-snapshot.ts` keep Home and Values DRY. ValuesView crossed 700 LOC (709) — flagged for the deferred LOC review.

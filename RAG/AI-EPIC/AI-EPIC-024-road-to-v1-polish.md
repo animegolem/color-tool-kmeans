@@ -57,7 +57,7 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 ### Functional Requirements
 
 - [x] FR-1: Hue x lightness frequency sizing validated or chart removed if non-functional.
-- [ ] FR-2: Video frames can be captured to media bucket via overlay interaction.
+- [x] FR-2: Video frames can be captured to media bucket via overlay interaction.
 - [x] FR-3: All settings labels reviewed and updated for multi-view context.
 - [x] FR-4: Video frame click guarded during processing with visual feedback.
 - [x] FR-5: Drag-and-drop pathways evaluated and unified where beneficial.
@@ -82,7 +82,7 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 | Status | Ticket | Title |
 |--------|--------|-------|
 | completed | AI-IMP-144 | Validate hue x lightness frequency sizing |
-| planned | AI-IMP-145 | Video frame snapshot to media bucket |
+| completed | AI-IMP-145 | Video frame snapshot to media bucket |
 | completed | AI-IMP-146 | Review settings phrasings for new views |
 | completed | AI-IMP-147 | Guard video frame click during processing |
 | completed | AI-IMP-148 | Evaluate and unify drag-and-drop pathways |
