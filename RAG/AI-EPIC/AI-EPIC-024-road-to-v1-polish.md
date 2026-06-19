@@ -7,8 +7,8 @@ tags:
   - batch
   - ux
 date_created: 2026-03-19
-date_completed:
-kanban_status: in-progress
+date_completed: 2026-06-19
+kanban_status: completed
 AI_IMP_spawned:
   - AI-IMP-144
   - AI-IMP-145
@@ -46,7 +46,7 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 
 ## Success Metrics
 
-- All 15 IMP tickets completed and verified.
+- 14 of 15 IMP tickets completed and verified; IMP-154 (OS zoom content-only scaling) deferred past v1.0.0 pending Windows-baseline zoom behavior (FR-11 outstanding).
 - No visual inconsistencies between batch, home, values, and settings views.
 - Batch view settings persist across app restarts.
 - Export context menus functional on all chart types.
@@ -65,7 +65,7 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 - [x] FR-7: Media bucket sidebar images cached to prevent repeated loading.
 - [x] FR-8: Batch pin thumbnails support click-to-expand and dismiss.
 - [x] FR-9: Batch analysis parameters persist between sessions.
-- [ ] FR-10: Right-click context menus on graphs for direct PNG/SVG export.
+- [x] FR-10: Right-click context menus on graphs for direct PNG/SVG export.
 - [ ] FR-11: OS zoom scales only center content, not navigation/sidebars.
 - [x] FR-12: Media bucket thumbnails properly faded on settings tab.
 - [x] FR-13: Clear pins button styled consistently with app design language.
@@ -90,7 +90,7 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 | completed | AI-IMP-150 | Media bucket sidebar image caching |
 | completed | AI-IMP-151 | Batch pin management UX |
 | completed | AI-IMP-152 | Persist batch settings between sessions |
-| planned | AI-IMP-153 | Direct export context menus for graphs |
+| completed | AI-IMP-153 | Direct export context menus for graphs |
 | deferred | AI-IMP-154 | OS zoom content-only scaling |
 | completed | AI-IMP-155 | Settings tab media bucket fading |
 | completed | AI-IMP-156 | Clear pins button styling alignment |

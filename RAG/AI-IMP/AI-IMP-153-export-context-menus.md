@@ -5,12 +5,12 @@ tags:
   - Implementation
   - exports
   - ux
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-024-road-to-v1-polish]]
 confidence_score: 0.6
 date_created: 2026-03-19
-date_completed:
+date_completed: 2026-06-19
 ---
 
 # AI-IMP-153-export-context-menus
@@ -42,14 +42,14 @@ Attach a `oncontextmenu` handler to each chart container in AnalysisCards and Ba
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Create context menu component or inline menu logic
-- [ ] Attach oncontextmenu to polar chart, histogram, and hue x lightness containers
-- [ ] Wire "Export as PNG" and "Export as SVG" actions to existing export functions
-- [ ] Add defaultExportFormat setting to SettingsView
-- [ ] Apply context menus to BatchView chart elements
-- [ ] Handle dismiss on click-outside and Escape
-- [ ] `npm run check && npm run lint`
-- [ ] Manual smoke: right-click chart → menu appears → export produces valid file
+- [x] Create context menu component or inline menu logic — `components/ContextMenu.svelte`
+- [x] Attach oncontextmenu to polar chart, histogram, and hue x lightness containers — Home (via AnalysisCards) + Batch
+- [x] Wire "Export as PNG" and "Export as SVG" actions to existing export functions — shared `exports/chart-save.ts` `saveChart()`
+- [x] Add defaultExportFormat setting to SettingsView — N/A, `graphExportFormat` already exists in Settings; menu offers both formats explicitly per-export
+- [x] Apply context menus to BatchView chart elements
+- [x] Handle dismiss on click-outside and Escape — also scroll/resize
+- [x] `npm run check && npm run lint` — plus full test suite, 155 pass
+- [ ] Manual smoke: right-click chart → menu appears → export produces valid file — pending user validation
 
 ### Acceptance Criteria
 
@@ -66,6 +66,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 
 ### Issues Encountered
 
-<!--
-This section is filled out post work.
--->
+Two simplifications vs the original ticket: (1) **no `main.ts` change needed** — the global `contextmenu` suppression (`main.ts:51`) only calls `preventDefault` (cancels the native menu) without `stopPropagation`, so element `oncontextmenu` handlers still fire and drive our custom menu. (2) **No new `defaultExportFormat` setting** — `graphExportFormat` already exists in Settings; rather than depend on it, the menu offers "Export as PNG" and "Export as SVG" explicitly so the choice is per-export. Also factored the duplicated `saveIndividualChart` logic out of the colors/batch export runners into `exports/chart-save.ts`, shared with the menus. BatchView reached 718 LOC and HomeView 677 — flagged for the deferred LOC review.

@@ -6,36 +6,12 @@
 
 | Status | EPICs | IMPs |
 |--------|-------|------|
-| In Progress | 1 | 0 |
-| Planned | 1 | 9 |
+| In Progress | 0 | 0 |
+| Planned | 1 | 8 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
-| Completed | 15 | 111 |
+| Completed | 16 | 112 |
 | **Total** | **19** | **125** |
-
-## In Progress
-
-### [[AI-EPIC-024-road-to-v1-polish|EPIC-024: Road to v1 polish]]
-> The core batch analysis, media bucket, and multi-view architecture are functional but lack the polish expected for a v1 release. Users encounter vi...
-
-**IMPs:**
-- [[AI-IMP-144-hue-lightness-frequency-validation|IMP-144]] Validate hue x lightness frequency sizing — completed
-- [[AI-IMP-145-video-frame-snapshot|IMP-145]] Video frame snapshot to media bucket — completed
-- [[AI-IMP-146-settings-phrasing-review|IMP-146]] Review settings phrasings for new views — completed
-- [[AI-IMP-147-guard-video-frame-click|IMP-147]] Guard video frame click during processing — completed
-- [[AI-IMP-148-drag-drop-unification|IMP-148]] Evaluate and unify drag-and-drop pathways — completed
-- [[AI-IMP-149-batch-drag-drop|IMP-149]] Drag-and-drop on batch view (load + pin) — completed
-- [[AI-IMP-150-media-bucket-image-caching|IMP-150]] Media bucket sidebar image caching — completed
-- [[AI-IMP-151-batch-pin-management-ux|IMP-151]] Batch pin management UX — completed
-- [[AI-IMP-152-persist-batch-settings|IMP-152]] Persist batch settings between sessions — completed
-- [[AI-IMP-153-export-context-menus|IMP-153]] Direct export context menus for graphs — planned
-- [[AI-IMP-154-os-zoom-content-scaling|IMP-154]] OS zoom content-only scaling — deferred
-- [[AI-IMP-155-settings-tab-media-fading|IMP-155]] Settings tab media bucket fading — completed
-- [[AI-IMP-156-clear-pins-button-styling|IMP-156]] Clear pins button styling alignment — completed
-- [[AI-IMP-157-batch-export-section|IMP-157]] Batch export section in Exports view — completed
-- [[AI-IMP-158-video-switch-race|IMP-158]] Stale async writes when switching videos mid-load — completed
-
----
 
 ## Planned
 
@@ -61,6 +37,7 @@
 - [[AI-IMP-099-folder-browser|IMP-099]] — open but parent epic AI-EPIC-020 is completed
 - [[AI-IMP-112-session-management-toggle|IMP-112]] — open but parent epic AI-EPIC-020 is completed
 - [[AI-IMP-124-unify-video-frame-extraction|IMP-124]] — open but parent epic AI-EPIC-023 is completed
+- [[AI-IMP-154-os-zoom-content-scaling|IMP-154]] — open but parent epic AI-EPIC-024 is completed
 
 ---
 
@@ -107,7 +84,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>15 EPICs, 80 IMPs completed</summary>
+<summary>16 EPICs, 81 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed
@@ -174,5 +151,21 @@ Generated from tracked files; binary assets excluded.
   - [[AI-IMP-130-deduplicate-values-view-utilities|IMP-130]] Deduplicate ValuesView Utility Functions — completed
   - [[AI-IMP-131-post-review-bugfixes|IMP-131]] Post-review bug fixes (EPIC-023) — completed
   - [[AI-IMP-132-pre-merge-dead-code-cleanup|IMP-132]] Pre-merge dead code and duplicate cleanup — completed
+- [[AI-EPIC-024-road-to-v1-polish|EPIC-024]] Road to v1 polish — 2026-06-19
+  - [[AI-IMP-144-hue-lightness-frequency-validation|IMP-144]] Validate hue x lightness frequency sizing — completed
+  - [[AI-IMP-145-video-frame-snapshot|IMP-145]] Video frame snapshot to media bucket — completed
+  - [[AI-IMP-146-settings-phrasing-review|IMP-146]] Review settings phrasings for new views — completed
+  - [[AI-IMP-147-guard-video-frame-click|IMP-147]] Guard video frame click during processing — completed
+  - [[AI-IMP-148-drag-drop-unification|IMP-148]] Evaluate and unify drag-and-drop pathways — completed
+  - [[AI-IMP-149-batch-drag-drop|IMP-149]] Drag-and-drop on batch view (load + pin) — completed
+  - [[AI-IMP-150-media-bucket-image-caching|IMP-150]] Media bucket sidebar image caching — completed
+  - [[AI-IMP-151-batch-pin-management-ux|IMP-151]] Batch pin management UX — completed
+  - [[AI-IMP-152-persist-batch-settings|IMP-152]] Persist batch settings between sessions — completed
+  - [[AI-IMP-153-export-context-menus|IMP-153]] Direct export context menus for graphs — completed
+  - [[AI-IMP-154-os-zoom-content-scaling|IMP-154]] OS zoom content-only scaling — deferred
+  - [[AI-IMP-155-settings-tab-media-fading|IMP-155]] Settings tab media bucket fading — completed
+  - [[AI-IMP-156-clear-pins-button-styling|IMP-156]] Clear pins button styling alignment — completed
+  - [[AI-IMP-157-batch-export-section|IMP-157]] Batch export section in Exports view — completed
+  - [[AI-IMP-158-video-switch-race|IMP-158]] Stale async writes when switching videos mid-load — completed
 
 </details>
