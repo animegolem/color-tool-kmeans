@@ -17,6 +17,12 @@ Desktop app for analyzing color palettes and tonal structure in images and video
 - Frame extraction via ffmpeg with 250ms debounce
 - Thumbnail strip (60 frames) for quick navigation
 - Analyze any frame by scrubbing to it
+- Snapshot the current frame to the media bucket as a standalone still
+
+### Batch Analysis
+- Pin multiple images and analyze them together as one composite palette
+- Drag-and-drop images directly onto the batch view to load and pin them
+- Same chart suite (polar, histogram, hue × lightness) across the pinned set
 
 ### Values/Tonality Analysis
 - Extracts lightness distribution from OKLab L channel
@@ -26,9 +32,27 @@ Desktop app for analyzing color palettes and tonal structure in images and video
 - Generates neutral grayscale and simplified tone previews
 
 ### Exports
-- PNG, SVG, and CSV export for charts and palettes
+- PNG, SVG, and CSV export for charts and palettes (plus `.ase` and JSON palettes)
+- Composite study exports for Colors, Values, and Batch
+- Right-click any chart to export it directly as PNG or SVG
 
-## Quick Start
+## Install
+
+Download the latest installer from the [Releases](../../releases) page:
+
+- **macOS** — `Color Tool_x.y.z_aarch64.dmg` (or `x64`). Open the DMG and drag the app to Applications.
+- **Windows** — `Color Tool_x.y.z_x64-setup.msi`. Run the installer.
+
+### Unsigned builds
+
+These builds are **not code-signed**, so the OS will warn on first launch:
+
+- **macOS**: right-click the app → **Open** (or run `xattr -cr "/Applications/Color Tool.app"`), then confirm.
+- **Windows**: SmartScreen → **More info** → **Run anyway**.
+
+Requirements: macOS 11+ or Windows 10+. Video features ship with bundled ffmpeg/ffprobe — no separate install needed.
+
+## Build from source
 
 ### Prerequisites
 - Node 20
