@@ -34,6 +34,9 @@
   import { createBatchRunner } from './batch/batch-runner.svelte';
   import { createBatchDrop } from './batch/batch-drop.svelte';
   import PinExpandOverlay from './batch/PinExpandOverlay.svelte';
+  import ContextMenu, { type ContextMenuItem } from '../components/ContextMenu.svelte';
+  import { saveChart, type ChartOutput } from '../exports/chart-save';
+  import { exportScale } from '../stores/ui';
 
   const MAX_PINS = 36;
   const runner = createBatchRunner();
@@ -232,6 +235,23 @@
     togglePin(expandedPinId);
     expandedPinId = null;
   }
+
+  // Right-click chart export (IMP-153)
+  let chartMenu = $state<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+
+  function openChartMenu(event: MouseEvent, chart: ChartOutput | null, suffix: string) {
+    if (!chart) return;
+    event.preventDefault();
+    const base = `batch-${pinCount}-images`;
+    chartMenu = {
+      x: event.clientX,
+      y: event.clientY,
+      items: [
+        { label: 'Export as PNG', onSelect: () => void saveChart('png', chart, base, suffix, get(exportScale)) },
+        { label: 'Export as SVG', onSelect: () => void saveChart('svg', chart, base, suffix, get(exportScale)) }
+      ]
+    };
+  }
 </script>
 
 <div class="batch" class:drag-over={drop.dragOver}>
@@ -346,6 +366,7 @@
               tabindex="0"
               onclick={() => openSvgZoom(histogram?.svg, histogram?.width, histogram?.height, openZoomOverlay)}
               onkeydown={(e) => handleZoomKeydown(e, histogram?.svg, histogram?.width, histogram?.height, openZoomOverlay)}
+              oncontextmenu={(e) => openChartMenu(e, histogram, 'histogram')}
             >
               {@html histogram.svg}
             </div>
@@ -370,6 +391,7 @@
               tabindex="0"
               onclick={() => openSvgZoom(polarChart?.svg, polarChart?.width, polarChart?.height, openZoomOverlay)}
               onkeydown={(e) => handleZoomKeydown(e, polarChart?.svg, polarChart?.width, polarChart?.height, openZoomOverlay)}
+              oncontextmenu={(e) => openChartMenu(e, polarChart, 'polar')}
             >
               {@html polarChart.svg}
             </div>
@@ -391,6 +413,7 @@
               tabindex="0"
               onclick={() => openSvgZoom(hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height, openZoomOverlay)}
               onkeydown={(e) => handleZoomKeydown(e, hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height, openZoomOverlay)}
+              oncontextmenu={(e) => openChartMenu(e, hueLightnessChart, 'hue-lightness')}
             >
               {@html hueLightnessChart.svg}
             </div>
@@ -408,6 +431,10 @@
       onUnpin={handlePinUnpin}
       onClose={() => (expandedPinId = null)}
     />
+  {/if}
+
+  {#if chartMenu}
+    <ContextMenu x={chartMenu.x} y={chartMenu.y} items={chartMenu.items} onClose={() => (chartMenu = null)} />
   {/if}
 </div>
 

@@ -18,6 +18,7 @@ import { svgToTile, imageToTile } from '../../exports/compositor';
 import { composeColorStudy, type ColorStudyInput } from '../../exports/color-study-compositor';
 import { getFsBridge, saveFromPath } from '../../bridges/fs';
 import { svgToPngBlob } from '../../exports/png';
+import { saveChart } from '../../exports/chart-save';
 
 export interface ColorsExportDeps {
   getFile: () => SelectedImage | null;
@@ -267,21 +268,10 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     suffix: string
   ) {
     await performSave(async () => {
-      const { svg, width, height } = generator();
-      const format = deps.getGraphExportFormat();
-      const bridge = await getFsBridge();
-      if (format === 'svg') {
-        const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-        const { canceled } = await bridge.saveBlob(blob, `${baseName()}-${suffix}.svg`);
-        if (canceled) setStatus('Export canceled.', 'info');
-        else setStatus(`${suffix} SVG saved.`, 'info');
-      } else {
-        const scale = Math.max(1, Math.min(4, deps.getExportScale()));
-        const blob = await svgToPngBlob(svg, width, height, scale);
-        const { canceled } = await bridge.saveBlob(blob, `${baseName()}-${suffix}.png`);
-        if (canceled) setStatus('Export canceled.', 'info');
-        else setStatus(`${suffix} PNG saved.`, 'info');
-      }
+      const format = deps.getGraphExportFormat() === 'svg' ? 'svg' : 'png';
+      const { canceled } = await saveChart(format, generator(), baseName(), suffix, deps.getExportScale());
+      if (canceled) setStatus('Export canceled.', 'info');
+      else setStatus(`${suffix} ${format.toUpperCase()} saved.`, 'info');
     });
   }
 

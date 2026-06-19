@@ -50,6 +50,9 @@
   import AnalysisCards from './home/AnalysisCards.svelte';
   import ParameterControls from './home/ParameterControls.svelte';
   import DevBanner from './home/DevBanner.svelte';
+  import ContextMenu, { type ContextMenuItem } from '../components/ContextMenu.svelte';
+  import { saveChart, type ChartOutput } from '../exports/chart-save';
+  import { exportScale } from '../stores/ui';
   import { inferMimeType } from '../bridges/fs';
 
   const devEnabled = import.meta.env.DEV ?? false;
@@ -63,6 +66,22 @@
 
   let file = $state<SelectedImage | null>(get(selectedFile));
   let currentParams = $state<AnalysisParams>(get(params));
+
+  // Right-click chart export (IMP-153)
+  let chartMenu = $state<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+
+  function openChartMenu(event: MouseEvent, chart: ChartOutput, suffix: string) {
+    event.preventDefault();
+    const base = (file?.name ?? 'export').replace(/\.[^.]+$/, '');
+    chartMenu = {
+      x: event.clientX,
+      y: event.clientY,
+      items: [
+        { label: 'Export as PNG', onSelect: () => void saveChart('png', chart, base, suffix, get(exportScale)) },
+        { label: 'Export as SVG', onSelect: () => void saveChart('svg', chart, base, suffix, get(exportScale)) }
+      ]
+    };
+  }
   let status = $state<AnalysisState>(get(analysisState));
   let result = $state<AnalysisResult | null>(null);
   let displayResult = $state<AnalysisResult | null>(null);
@@ -452,6 +471,7 @@
             hueLightnessChart={null}
             {histogramSortLabel}
             showHistogramFrame={currentParams.showHistogram}
+            onChartContext={openChartMenu}
           />
         {/if}
       </div>
@@ -465,6 +485,7 @@
             histogramSortLabel=""
             showPolarFrame={currentParams.showPolarChart}
             showHueLightnessFrame={currentParams.showHueLightness}
+            onChartContext={openChartMenu}
           />
         </div>
       {/if}
@@ -546,6 +567,10 @@
     <ParameterControls onScrubStart={handleScrubStart} onScrubEnd={handleScrubEnd} />
   {/if}
 </section>
+
+{#if chartMenu}
+  <ContextMenu x={chartMenu.x} y={chartMenu.y} items={chartMenu.items} onClose={() => (chartMenu = null)} />
+{/if}
 
 <style>
   .home {

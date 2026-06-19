@@ -19,9 +19,10 @@
     showPolarFrame?: boolean;
     showHueLightnessFrame?: boolean;
     showHistogramFrame?: boolean;
+    onChartContext?: (event: MouseEvent, chart: ChartOutput, suffix: string) => void;
   }
 
-  let { result = null, histogram = null, polarChart = null, hueLightnessChart = null, histogramSortLabel = '', showPolarFrame = false, showHueLightnessFrame = false, showHistogramFrame = false }: Props = $props();
+  let { result = null, histogram = null, polarChart = null, hueLightnessChart = null, histogramSortLabel = '', showPolarFrame = false, showHueLightnessFrame = false, showHistogramFrame = false, onChartContext }: Props = $props();
 </script>
 
 {#if histogram || showHistogramFrame}
@@ -69,6 +70,7 @@
         onclick={() => openSvgZoom(histogram?.svg, histogram?.width, histogram?.height, openZoomOverlay)}
         onkeydown={(event) =>
           handleZoomKeydown(event, histogram?.svg, histogram?.width, histogram?.height, openZoomOverlay)}
+        oncontextmenu={(event) => onChartContext?.(event, histogram, 'histogram')}
       >
         {@html histogram.svg}
       </div>
@@ -116,6 +118,7 @@
         tabindex="0"
         onclick={() => openSvgZoom(polarChart?.svg, polarChart?.width, polarChart?.height, openZoomOverlay)}
         onkeydown={(event) => handleZoomKeydown(event, polarChart?.svg, polarChart?.width, polarChart?.height, openZoomOverlay)}
+        oncontextmenu={(event) => onChartContext?.(event, polarChart, 'polar')}
       >
         {@html polarChart.svg}
       </div>
@@ -157,6 +160,7 @@
         onclick={() => openSvgZoom(hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height, openZoomOverlay)}
         onkeydown={(event) =>
           handleZoomKeydown(event, hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height, openZoomOverlay)}
+        oncontextmenu={(event) => onChartContext?.(event, hueLightnessChart, 'hue-lightness')}
       >
         {@html hueLightnessChart.svg}
       </div>
