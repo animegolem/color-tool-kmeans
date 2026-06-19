@@ -1,126 +1,129 @@
-# Color Tool — Perceptual Color & Tonality Analyzer
+<div align="center">
 
-Desktop app for analyzing color palettes and tonal structure in images and video. Built with Tauri (Rust + Svelte), using OKLab/OKLch color spaces for perceptually accurate results.
+# Color Tool
+
+**Perceptual color & tonality analysis for artists.**
+
+A desktop app for studying the color and value structure of images and video —
+k-means clustering in OKLab/OKLch color space, frame-by-frame video analysis,
+batch palettes, and notan/value studies, all exportable.
+
+[![Release](https://img.shields.io/github/v/release/animegolem/color-tool-kmeans)](https://github.com/animegolem/color-tool-kmeans/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)
+
+<!--
+  DEMO VIDEO GOES HERE.
+  To add it: open this README on github.com, click the pencil (edit), and drag your
+  screen recording into the editor. GitHub uploads it and inserts a URL like
+  https://github.com/user-attachments/assets/XXXX — put that on its own line below,
+  replacing the screenshot, to render a centered inline player.
+-->
+
+<img src="RAG/assets/Export-Color-PrimaryExport.png" alt="Color Tool — color analysis export" width="820">
+
+### [⬇ Download for macOS & Windows](https://github.com/animegolem/color-tool-kmeans/releases/latest)
+
+</div>
+
+---
+
+## What it is
+
+Color Tool helps painters, colorists, and designers *see* how an image is built —
+which colors dominate, how chroma and hue are distributed, and how the values read
+when you squint. It works on stills **and** video frames, and it can analyze a set
+of images together as a single composite palette.
+
+Everything runs locally. Color processing happens in **OKLab/OKLch**, a perceptual
+color space where distances match how different colors actually *look* to the eye —
+so the clusters and charts reflect perception, not just RGB math.
 
 ## Features
 
-### Color Analysis
-- K-means clustering in OKLab space extracts dominant colors
-- Three visualization modes:
-  - **Cluster histogram**: Top clusters sorted by frequency, hue, or lightness
-  - **Polar chart**: Hue × chroma plot in OKLCH (default) or HSL ("Gurney circles") mode
-  - **Hue × Lightness**: Scatter plot showing color distribution across hue and value
-- Configurable cluster count (K), sampling stride, and quality settings
+**Color analysis** — k-means clustering in OKLab extracts dominant colors, shown as:
+- a **polar chart** (hue × chroma) in OKLCH, OKHSV, or HSV ("Gurney circle") mode
+- a **cluster histogram** sorted by frequency, hue, or lightness
+- a **hue × lightness** scatter plot
+- configurable cluster count, sampling quality, exclusions, and merge threshold
 
-### Video Support
-- HTML5 video player with timeline scrubbing
-- Frame extraction via ffmpeg with 250ms debounce
-- Thumbnail strip (60 frames) for quick navigation
-- Analyze any frame by scrubbing to it
-- Snapshot the current frame to the media bucket as a standalone still
+**Value / tonality analysis** — lightness distribution from the OKLab L channel:
+- configurable tonal buckets (2–5 levels) via k-means
+- notan mode (2-tone simplification via Otsu thresholding)
+- range finder showing image key (high-key, low-key, full-range)
+- neutral grayscale and simplified-tone previews
 
-### Batch Analysis
-- Pin multiple images and analyze them together as one composite palette
-- Drag-and-drop images directly onto the batch view to load and pin them
-- Same chart suite (polar, histogram, hue × lightness) across the pinned set
+**Video** — scrub a timeline, analyze any frame, snapshot frames into the library
+(ffmpeg-powered, bundled — no separate install).
 
-### Values/Tonality Analysis
-- Extracts lightness distribution from OKLab L channel
-- Configurable tonal buckets (2–5 levels) via k-means
-- Notan mode: 2-tone simplification using Otsu thresholding
-- Range finder showing image key (high key, low key, full range)
-- Generates neutral grayscale and simplified tone previews
+**Batch** — pin multiple images (or drag-and-drop them in) and analyze the whole set
+as one composite palette with the same chart suite.
 
-### Exports
-- PNG, SVG, and CSV export for charts and palettes (plus `.ase` and JSON palettes)
-- Composite study exports for Colors, Values, and Batch
-- Right-click any chart to export it directly as PNG or SVG
+**Exports** — PNG, SVG, CSV, Adobe `.ase`, and JSON palettes; composite study sheets
+for Colors / Values / Batch; right-click any chart to export it directly.
 
-## Install
+## Gallery
 
-Download the latest installer from the [Releases](../../releases) page:
+<div align="center">
 
-- **macOS** — `Color Tool_x.y.z_aarch64.dmg` (or `x64`). Open the DMG and drag the app to Applications.
-- **Windows** — `Color Tool_x.y.z_x64-setup.msi`. Run the installer.
+| Value & notan study | Palette strip |
+|:---:|:---:|
+| <img src="RAG/assets/assets-archive/Values-Export-All-Merged.png" width="380"> | <img src="RAG/assets/assets-archive/colors-export-palette-strip.png" width="380"> |
 
-### Unsigned builds
+</div>
 
-These builds are **not code-signed**, so the OS will warn on first launch:
+## Download & install
 
-- **macOS**: right-click the app → **Open** (or run `xattr -cr "/Applications/Color Tool.app"`), then confirm.
-- **Windows**: SmartScreen → **More info** → **Run anyway**.
+Grab the latest installer from the [**Releases**](https://github.com/animegolem/color-tool-kmeans/releases/latest) page:
 
-Requirements: macOS 11+ or Windows 10+. Video features ship with bundled ffmpeg/ffprobe — no separate install needed.
+| Platform | File |
+|---|---|
+| macOS (Apple Silicon) | `Color Tool_x.y.z_aarch64.dmg` |
+| Windows 10+ (x64) | `Color Tool_x.y.z_x64_en-US.msi` |
+
+The builds are **unsigned**, so the OS warns on first launch:
+
+- **macOS** — right-click the app → **Open** (or run `xattr -cr "/Applications/Color Tool.app"`), then confirm.
+- **Windows** — SmartScreen → **More info** → **Run anyway**.
+
+Video features ship with bundled ffmpeg/ffprobe; nothing else to install.
+
+## Why OKLab?
+
+Most palette tools cluster in RGB or HSL, where equal numeric steps don't look equally
+different — greens compress, blues stretch, and the resulting "dominant colors" can
+misrepresent what you see. Color Tool clusters in **OKLab**, a perceptually uniform
+space, so a color that's twice as far in the data really does look about twice as
+different. Charts default to **OKLCH** (OKLab in cylindrical hue/chroma/lightness form);
+an HSL "Gurney circle" mode is included for artists used to traditional color wheels.
 
 ## Build from source
 
-### Prerequisites
-- Node 20
-- Rust (stable)
-- Tauri CLI: `npm i -g @tauri-apps/cli`
-- ffmpeg/ffprobe (for video features)
+Requires **Node 20**, **Rust (stable)**, and ffmpeg/ffprobe for video.
 
-### Development
 ```bash
 cd tauri-app
 npm ci
-npm run tauri dev
+npm run tauri dev          # run in development
+npm run tauri build        # produce a release bundle (dmg / msi)
 ```
 
-### Build
-```bash
-cd tauri-app
-npm run build           # build renderer
-npm run tauri build     # bundle native app
-```
+ffmpeg/ffprobe are vendored as sidecars; helper scripts in `tauri-app/scripts/`
+fetch or build LGPL-licensed binaries. On Linux/NVIDIA/Wayland, launch packaged
+builds with `WEBKIT_DISABLE_DMABUF_RENDERER=1` for WebKit stability.
 
-### Linux/NVIDIA/Wayland
-WebKit stability fix for packaged builds:
-```bash
-WEBKIT_DISABLE_DMABUF_RENDERER=1 ./src-tauri/target/release/tauri-app
-```
+## Tech
 
-## Architecture
-
-### UI Structure
-- **Home tab**: Image/video upload, color analysis, three chart views
-- **Values tab**: Tonality analysis with tonal buckets and histograms
-- **Exports tab**: Export charts and palettes
-
-### Color Pipeline
-All color processing uses OKLab/OKLch for perceptual uniformity (colors that look equally different to humans are equally distant in the color space). The one exception is HSL mode in the polar chart, included for artists familiar with traditional color wheels.
-
-### Video Pipeline
-1. `ffprobe` extracts duration and frame rate
-2. Thumbnail strip generated on load (60 frames tiled)
-3. Scrubbing triggers debounced frame extraction via `ffmpeg`
-4. Extracted frame analyzed with same pipeline as images
-
-### State Management
-Analysis results are cached per image/frame. Video state (position, paths) persists across sessions for quick restoration.
-
-## FFmpeg
-
-Video features require ffmpeg and ffprobe binaries.
-
-**Release builds**: Include ffmpeg binaries with LGPL license sidecars.
-
-**Building from source**: Helper scripts are available for compiling ffmpeg with the required features. See `scripts/` directory.
-
-**System ffmpeg**: The app auto-discovers ffmpeg in standard locations if not bundled.
-
-## Troubleshooting
-
-- **"Could not connect to localhost"** in packaged debug builds: Start the dev server (`npm run dev`) or use the release bundle.
-- **Linux/NVIDIA crash**: Use `WEBKIT_DISABLE_DMABUF_RENDERER=1` (and optionally `GDK_BACKEND=x11`).
-
+[Tauri](https://tauri.app) shell with a **Svelte 5** (runes) frontend and a **Rust**
+core: k-means clustering, OKLab/OKLch conversions, and image/video sampling run
+natively; ffmpeg handles frame extraction.
 
 ## Credits
 
-- OKLab color space by Björn Ottosson
-- ffmpeg for video processing (LGPL)
-- K-means clustering and color conversions implemented in Rust
+- OKLab color space by [Björn Ottosson](https://bottosson.github.io/posts/oklab/)
+- [ffmpeg](https://ffmpeg.org) for video processing (LGPL)
+- Sidebar icons: VS Code Codicons (CC BY 4.0)
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [`LICENSE`](LICENSE).
