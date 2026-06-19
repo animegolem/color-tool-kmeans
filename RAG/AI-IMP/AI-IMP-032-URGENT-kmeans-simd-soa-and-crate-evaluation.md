@@ -11,9 +11,10 @@ tags:
   - URGENT
 kanban_status: completed
 depends_on: [AI-IMP-013, AI-IMP-014, AI-IMP-031, AI-EPIC-002, AI-EPIC-003]
+parent_epic: [[AI-EPIC-002]]
 confidence_score: 0.9
-created_date: 2025-09-22
-close_date: 2025-09-23
+date_created: 2025-09-22
+date_completed: 2025-09-23
 ---  
 
 

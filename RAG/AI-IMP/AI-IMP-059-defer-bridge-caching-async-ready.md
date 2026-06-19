@@ -11,8 +11,8 @@ depends_on:
   - AI-EPIC-006
   - AI-IMP-058
 confidence_score: 0.85
-created_date: 2025-10-08
-close_date: 2025-11-20
+date_created: 2025-10-08
+date_completed: 2025-11-20
 ---
 
 # AI-IMP-059-defer-bridge-caching-async-ready

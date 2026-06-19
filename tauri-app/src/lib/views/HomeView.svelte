@@ -1,228 +1,534 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
-  // NOTE: Temporary inline overlays to bypass slot/runtime issue in container
   import type {
     AnalysisParams,
     SelectedImage,
     AnalysisResult,
-    AnalysisCluster,
     AnalysisState
   } from '../stores/ui';
   import {
     selectedFile,
+    images,
+    activeImageId,
     params,
-    setFile,
     clearFile,
+    appendFile,
+    updateEntryPreview,
     analysisState,
     analysisResult,
     analysisError,
-    topClusters,
+    resetAnalysis,
     setAnalysisPending,
     setAnalysisSuccess,
     setAnalysisError,
-    clearAnalysisError
+    clearAnalysisError,
+    openZoomOverlay,
+    videoState,
+    setVideoState,
+    setFile,
+    getCachedVideoState,
+    cacheVideoState,
+    videoStripMode,
+    libraryDrawerOpen,
   } from '../stores/ui';
-  import { isTauriEnv, getBridgeOverride } from '../bridges/tauri';
-  import DevDetectionBanner from './home/DevDetectionBanner.svelte';
-  import SelectionSummary from './home/SelectionSummary.svelte';
-  import ClusterPreview from './home/ClusterPreview.svelte';
+  import { analysisById } from '../stores/analysis';
+  import { isTauriEnv, tauriDetectionInfo } from '../bridges/tauri';
+  import { getFfmpegVersion } from '../bridges/ffmpeg';
+  import { logEvent } from '../bridges/log';
+  import { devlog } from '../utils/devlog';
+  import { generateCircleGraphSvg } from '../exports/polar-chart';
+  import { generateHueLightnessSvg } from '../exports/hue-lightness';
+  import { generateHistogramSvg } from '../exports/histogram';
+  import { openImageZoom as zoomImage } from '../utils/zoom';
+  import { createVideoController } from './home/video-controller.svelte';
+  import { createAnalysisRunner } from './home/analysis-runner.svelte';
+  import { createFileIngestion } from './home/file-ingestion.svelte';
+  import { clearActivePath } from '../services/active-image';
+  import { subscribePendingVideoSwitch, subscribeMediaLoadRequested } from '../services/view-subscriptions';
+  import VideoPanel from './home/VideoPanel.svelte';
+  import AnalysisCards from './home/AnalysisCards.svelte';
   import ParameterControls from './home/ParameterControls.svelte';
-  import type { DevBannerDetails } from './home/dev-banner-types';
-  import { createAnalysisRunner } from './home/analysis-runner';
-  import { createFileIngestionHandlers } from './home/file-ingestion';
-  import { createDevBannerController } from './home/dev-banner-controller';
+  import DevBanner from './home/DevBanner.svelte';
+  import ContextMenu, { type ContextMenuItem } from '../components/ContextMenu.svelte';
+  import { saveChart, type ChartOutput } from '../exports/chart-save';
+  import { exportScale } from '../stores/ui';
+  import { inferMimeType } from '../bridges/fs';
 
   const devEnabled = import.meta.env.DEV ?? false;
-  const isNativeModeActive = () => isTauriEnv() || getBridgeOverride() === 'tauri';
-  const nativeDragCopy = 'Native mode uses file paths. Use Upload to pick files.';
 
-  let dragging = $state(false);
-  let draggingWindow = $state(false);
   let bannerMessage = $state<string | null>(null);
-  let spinnerVisible = $state(false);
-  let nativeMode = $state(isNativeModeActive());
   let devBannerVisible = $state(false);
   let devBannerData = $state<DevBannerDetails | null>(null);
-  const { recordDevEvent, dismissDevBanner } = createDevBannerController({
-    devEnabled,
-    getCurrentData: () => devBannerData,
-    setData: (details) => {
-      devBannerData = details;
-    },
-    setVisible: (visible) => {
-      devBannerVisible = visible;
-    }
-  });
+  let devBannerFileLogged = false;
+  let devBannerAnalysisLogged = false;
+  let isScrubbing = $state(false);
 
-  let file = $state<SelectedImage | null>(null);
+  let file = $state<SelectedImage | null>(get(selectedFile));
   let currentParams = $state<AnalysisParams>(get(params));
-  let status = $state<AnalysisState>('idle');
+
+  // Right-click chart export (IMP-153)
+  let chartMenu = $state<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+
+  function openChartMenu(event: MouseEvent, chart: ChartOutput, suffix: string) {
+    event.preventDefault();
+    const base = (file?.name ?? 'export').replace(/\.[^.]+$/, '');
+    chartMenu = {
+      x: event.clientX,
+      y: event.clientY,
+      items: [
+        { label: 'Export as PNG', onSelect: () => void saveChart('png', chart, base, suffix, get(exportScale)) },
+        { label: 'Export as SVG', onSelect: () => void saveChart('svg', chart, base, suffix, get(exportScale)) }
+      ]
+    };
+  }
+  let status = $state<AnalysisState>(get(analysisState));
   let result = $state<AnalysisResult | null>(null);
+  let displayResult = $state<AnalysisResult | null>(null);
   let analysisErr = $state<string | null>(null);
-  let clusters = $state<AnalysisCluster[]>([]);
 
-  const updateNativeMode = () => {
-    nativeMode = isNativeModeActive();
-  };
+  interface DevBannerDetails {
+    detection: ReturnType<typeof tauriDetectionInfo>;
+    fsBridge?: string;
+    computeVariant?: string;
+  }
 
-  const { scheduleAnalysisWith, cancelPending, retryAnalysis } = createAnalysisRunner({
-    getStatus: () => status,
-    getFile: () => file,
-    getParams: () => currentParams,
-    setSpinnerVisible: (visible) => (spinnerVisible = visible),
-    onPending: () => setAnalysisPending(),
-    onSuccess: (payload) => setAnalysisSuccess(payload),
-    onError: (message) => setAnalysisError(message),
-    clearError: () => clearAnalysisError(),
+  function isNativeModeActive(): boolean {
+    return isTauriEnv();
+  }
+
+  function ensureDevBannerDetails(): DevBannerDetails {
+    const base = devBannerData ?? {
+      detection: tauriDetectionInfo()
+    };
+    return {
+      ...base,
+      detection: tauriDetectionInfo()
+    };
+  }
+
+  function recordDevEvent(update: Partial<DevBannerDetails>, type: 'file' | 'analysis') {
+    if (!devEnabled) return;
+    const details = { ...ensureDevBannerDetails(), ...update };
+    devBannerData = details;
+
+    const shouldShow =
+      (type === 'file' && !devBannerFileLogged) ||
+      (type === 'analysis' && !devBannerAnalysisLogged);
+    if (shouldShow) {
+      devBannerVisible = true;
+      console.info('[dev] tauri detection', {
+        detection: details.detection,
+        fsBridge: details.fsBridge ?? 'pending',
+        computeBridge: details.computeVariant ?? 'pending'
+      });
+    }
+
+    if (type === 'file') {
+      devBannerFileLogged = true;
+    } else {
+      devBannerAnalysisLogged = true;
+    }
+  }
+
+  function dismissDevBanner() {
+    devBannerVisible = false;
+  }
+
+  // --- Analysis runner ---
+  const runner = createAnalysisRunner({
+    setAnalysisPending,
+    setAnalysisSuccess,
+    setAnalysisError,
     recordDevEvent
   });
 
-  const {
-    chooseFile,
-    handleDropzoneKeydown,
-    handleDragOver,
-    handleDragLeave,
-    handleDrop,
-    dropTargetAction: dropTarget,
-    createWindowDragHandlers
-  } = createFileIngestionHandlers({
-    updateNativeMode,
-    setDragging: (value) => (dragging = value),
-    setDraggingWindow: (value) => (draggingWindow = value),
-    setBannerMessage: (value) => (bannerMessage = value),
+  // Seed dedup key so remount doesn't re-trigger cached analysis
+  {
+    const cachedResult = get(analysisResult);
+    const cachedFile = get(selectedFile);
+    if (cachedResult && cachedFile) {
+      runner.seedLastRequestKey(cachedFile, get(params));
+    }
+  }
+
+  // --- File ingestion ---
+  const ingestion = createFileIngestion({
     setFile,
-    getParamsSnapshot: () => get(params),
-    scheduleAnalysisWith,
-    setAnalysisError: (message) => setAnalysisError(message),
-    cancelPending,
-    recordDevEvent
+    appendFile,
+    setAnalysisError,
+    cancelPending: runner.cancelPending,
+    scheduleAnalysisWith: (f, p, s) => runner.scheduleAnalysisWith(f, p, s),
+    recordDevEvent,
+    setBannerMessage: (msg) => { bannerMessage = msg; },
+    getParams: () => currentParams,
+    getStatus: () => status,
+    clearVideoSelection: () => video.clearVideoSelection(),
+    loadVideoSelection: (sel) => {
+      clearActivePath();
+      runner.cancelPending();
+      video.loadVideoSelection(sel);
+    },
+    openLibraryDrawer: () => libraryDrawerOpen.set(true),
+    updateEntryPreview
   });
 
-  $effect(() => {
-    const unsubFile = selectedFile.subscribe((value) => {
-      file = value;
-    });
-    const unsubParams = params.subscribe((value) => {
-      currentParams = value;
-    });
-    const unsubStatus = analysisState.subscribe((value) => {
-      status = value;
-    });
-    const unsubResult = analysisResult.subscribe((value) => {
-      result = value;
-    });
-    const unsubError = analysisError.subscribe((value) => {
-      analysisErr = value;
-    });
-    const unsubClusters = topClusters.subscribe((value) => {
-      clusters = value;
-    });
-    return () => {
-      unsubFile();
-      unsubParams();
-      unsubStatus();
-      unsubResult();
-      unsubError();
-      unsubClusters();
-    };
+  // --- Video controller ---
+  const video = createVideoController({
+    isNativeModeActive,
+    buildPreviewUrl: ingestion.buildPreviewUrl,
+    maxDimensionForQuality: ingestion.maxDimensionForQuality,
+    setFile,
+    setVideoState,
+    clearFile,
+    getQuality: () => currentParams.quality ?? 2,
+    setBannerMessage: (msg) => { bannerMessage = msg; },
+    scheduleAnalysisWith: (f, p) => runner.scheduleAnalysisWith(f, p, status),
+    getCurrentParams: () => currentParams,
+    clearLastRequestKey: () => runner.clearLastRequestKey(),
+    captureAnalysisScroll: () => runner.captureAnalysisScroll(),
+    getVideoStripMode: () => get(videoStripMode),
+    getCachedVideoState,
+    cacheVideoState,
+    findExistingFrameId: (videoPath: string) => {
+      const entry = get(images).find(item => item.videoPath === videoPath);
+      return entry?.id ?? null;
+    },
+    seedAnalysisKey: (imageId: string, paramSnapshot: any) => {
+      runner.seedLastRequestKey({ id: imageId } as SelectedImage, paramSnapshot);
+    },
+    hasAnalysisForImage: (id: string) => !!get(analysisById)[id]
   });
 
-  const clearSelection = () => {
-    clearFile();
-    cancelPending();
-    updateNativeMode();
-  };
+  // --- Derived chart state ---
+  const chartResult = $derived(displayResult ?? result);
 
-  const dismissBanner = () => {
+  const polarChart = $derived.by(() => {
+    if (!chartResult) return null;
+    return generateCircleGraphSvg(chartResult.clusters, {
+      symbolScale: currentParams.symbolScale,
+      showAxisLabels: currentParams.showAxisLabels,
+      showStroke: currentParams.showClusterOutline,
+      mode: currentParams.polarMode,
+      size: 420
+    });
+  });
+
+  const hueLightnessChart = $derived.by(() => {
+    if (!chartResult) return null;
+    return generateHueLightnessSvg(chartResult.clusters, {
+      symbolScale: currentParams.symbolScale,
+      showAxisLabels: currentParams.showAxisLabels,
+      showStroke: currentParams.showClusterOutline,
+      sizeMode: currentParams.hueLightnessSizeMode,
+      width: 420,
+      height: 240
+    });
+  });
+
+  const histogram = $derived.by(() => {
+    if (!chartResult) return null;
+    return generateHistogramSvg(chartResult.clusters, {
+      width: 520,
+      height: 180,
+      maxBars: 120,
+      sortBy: currentParams.histogramSort
+    });
+  });
+
+  const histogramSortLabel = $derived.by(() => {
+    if (currentParams.histogramSort === 'hue') return 'Top clusters by hue';
+    if (currentParams.histogramSort === 'lightness') return 'Top clusters by lightness';
+    return 'Top clusters by frequency';
+  });
+
+  // --- Scrub handlers ---
+  function handleScrubStart(_event: PointerEvent) {
+    isScrubbing = true;
+    runner.captureAnalysisScroll();
+  }
+
+  function handleScrubEnd() {
+    if (!isScrubbing) return;
+    isScrubbing = false;
+    if (file) {
+      runner.scheduleAnalysisWith(file, currentParams, status);
+    }
+  }
+
+  function retryAnalysis() {
+    clearAnalysisError();
+    runner.clearLastRequestKey();
+    const currentFile = file;
+    if (currentFile) {
+      runner.scheduleAnalysisWith(currentFile, currentParams, status);
+    }
+  }
+
+  function dismissBanner() {
     bannerMessage = null;
-  };
+  }
 
+  function handleImageZoom() {
+    zoomImage(file?.previewUrl, file?.name ?? 'Selected image', openZoomOverlay);
+  }
+
+  // --- FFmpeg check ---
+  let ffmpegChecked = false;
+  async function checkFfmpegVersion() {
+    if (ffmpegChecked || !isTauriEnv()) return;
+    ffmpegChecked = true;
+    try {
+      const version = await getFfmpegVersion();
+      void logEvent(`ffmpeg:version ${version}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      void logEvent(`ffmpeg:version unavailable message=${message}`);
+    }
+  }
+
+  // --- Lifecycle ---
   onMount(() => {
-    updateNativeMode();
+    devlog('home:mount', 'HomeView mounted');
+    void logEvent('home:view:mount');
+    void checkFfmpegVersion();
+    let unlistenDragDrop: (() => void) | null = null;
+    ingestion.setupDragDrop().then((fn) => { unlistenDragDrop = fn ?? null; });
+    const unsubs = [
+      selectedFile.subscribe((value) => {
+        file = value;
+        if (!value && !video.videoSelection) {
+          displayResult = null;
+        }
+      }),
+      params.subscribe((value) => { currentParams = { ...value }; }),
+      analysisState.subscribe((value) => { status = value; }),
+      analysisResult.subscribe((value) => {
+        result = value;
+        if (value !== null) {
+          displayResult = value;
+        }
+      }),
+      analysisError.subscribe((value) => { analysisErr = value; }),
+      videoState.subscribe((state) => {
+        devlog('home:videoState', 'Video state changed', { hasState: state !== null, path: state?.path ?? null });
+        video.handleVideoStateChange(state);
+      }),
+      (() => { let first = true; return videoStripMode.subscribe(() => { if (first) { first = false; return; } video.regenerateStrip(); }); })(),
+      subscribePendingVideoSwitch(({ entry, videoPath, id, cid }) => {
+        devlog('home:videoSwitch', 'Pending video switch', {
+          id, cid, entryFound: true, path: entry.path ?? null
+        });
+        if (video.videoSelection?.path === videoPath) {
+          devlog('home:videoSwitch:skip', 'Already active — skipping', { cid, videoPath });
+          return;
+        }
+        clearActivePath();
+        runner.cancelPending();
+        devlog('home:videoSwitch:load', 'Loading video selection', { cid, existingId: entry.id, videoPath });
+        video.loadVideoSelection({
+          name: entry.name,
+          path: videoPath,
+          size: entry.size,
+          blob: new Blob([], { type: inferMimeType(entry.name) }),
+          mimeType: inferMimeType(entry.name)
+        }, entry.id, cid);
+      }),
+      subscribeMediaLoadRequested(() => ingestion.chooseMedia())
+    ];
+    let dragDepth = 0;
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === 'bridge.force') {
-        updateNativeMode();
-      }
+    const showOverlay = () => {
+      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+      ingestion.draggingWindow = true;
+    };
+    const hideOverlay = () => {
+      if (hideTimer) { clearTimeout(hideTimer); }
+      hideTimer = setTimeout(() => {
+        if (dragDepth <= 0) {
+          ingestion.draggingWindow = false;
+          ingestion.dragging = false;
+        }
+        hideTimer = null;
+      }, 60);
     };
 
-    window.addEventListener('storage', onStorage);
-    const detachDragHandlers = createWindowDragHandlers();
+    const onDragEnter = (event: DragEvent) => {
+      event.preventDefault();
+      dragDepth += 1;
+      showOverlay();
+    };
+    const onDragLeave = (event: DragEvent) => {
+      event.preventDefault();
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) hideOverlay();
+    };
+    const onDrop = () => {
+      dragDepth = 0;
+      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+      ingestion.draggingWindow = false;
+      ingestion.dragging = false;
+    };
+
+    window.addEventListener('dragenter', onDragEnter);
+    window.addEventListener('dragleave', onDragLeave);
+    window.addEventListener('drop', onDrop);
+    window.addEventListener('pointerup', handleScrubEnd);
+    window.addEventListener('pointercancel', handleScrubEnd);
     return () => {
-      window.removeEventListener('storage', onStorage);
-      detachDragHandlers();
+      unsubs.forEach((unsub) => unsub());
+      window.removeEventListener('dragenter', onDragEnter);
+      window.removeEventListener('dragleave', onDragLeave);
+      window.removeEventListener('drop', onDrop);
+      window.removeEventListener('pointerup', handleScrubEnd);
+      window.removeEventListener('pointercancel', handleScrubEnd);
+      if (unlistenDragDrop) unlistenDragDrop();
+      devlog('home:unmount', 'HomeView unmounting');
+      devlog.resources('home:unmount');
+      void logEvent('home:view:unmount');
     };
   });
 
   onDestroy(() => {
-    cancelPending();
+    runner.cancelPending();
+  });
+
+  $effect(() => {
+    video.loadSrcEffect();
   });
 
   $effect(() => {
     const activeFile = file;
     const paramSnapshot = currentParams;
     if (!activeFile) {
-      cancelPending();
+      runner.cancelPending();
       return;
     }
-    scheduleAnalysisWith(activeFile, paramSnapshot);
+    if (isScrubbing) {
+      return;
+    }
+    if (status === 'error') {
+      return;
+    }
+    devlog('home:analysis:effect', 'Analysis effect triggered', {
+      imageId: activeFile.id,
+      status,
+      clusters: paramSnapshot.clusters
+    });
+    runner.scheduleAnalysisWith(activeFile, paramSnapshot, status);
   });
 </script>
 
 <section class="home">
-  <header>
-    <h1>Load an image</h1>
-    <p class="note">
-      Drop a file anywhere or use the upload button. Supported formats: PNG, JPEG, WebP.
-    </p>
-  </header>
-
   {#if devEnabled && devBannerVisible && devBannerData}
-    <DevDetectionBanner data={devBannerData} onDismiss={dismissDevBanner} />
+    <DevBanner data={devBannerData} onDismiss={dismissDevBanner} />
   {/if}
 
-  {#if nativeMode}
-    <div class="native-chip" role="status">Native mode</div>
-    <p class="native-copy">{nativeDragCopy}</p>
-  {/if}
-
-  <div
-    use:dropTarget
-    class:dragging={dragging}
-    class="dropzone"
-    tabindex="0"
-    role="button"
-    aria-label="Image dropzone"
-    aria-busy={status === 'pending'}
-    ondragover={handleDragOver}
-    ondragleave={handleDragLeave}
-    ondrop={handleDrop}
-    onkeydown={handleDropzoneKeydown}
-  >
-    <div class="inner">
-      <p class="title">Drop anywhere</p>
-      <p class="note">or</p>
-      <button class="upload" onclick={chooseFile}>Upload</button>
+  {#if file || video.videoSelection}
+    <section class="analysis-layout" class:two-columns={currentParams.showPolarChart || currentParams.showHueLightness}>
+      <div class="analysis-column">
+        {#if video.videoSelection}
+          <VideoPanel {video} onZoom={() => zoomImage(video.videoDisplayUrl, video.videoSelection?.name ?? 'Video frame', openZoomOverlay)} />
+        {:else}
+          <div
+            bind:this={ingestion.dropRef}
+            class:dragging={ingestion.dragging}
+            class="dropzone dropzone--image"
+            tabindex="0"
+            role="button"
+            aria-label="Image dropzone"
+            aria-busy={status === 'pending'}
+            ondragover={ingestion.handleDragOver}
+            ondragleave={ingestion.handleDragLeave}
+            ondrop={ingestion.handleDrop}
+            onkeydown={ingestion.handleDropzoneKeydown}
+          >
+            <div
+              class="image-preview zoomable"
+              role="button"
+              tabindex="0"
+              onclick={handleImageZoom}
+              onkeydown={(event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                handleImageZoom();
+              }}
+            >
+              {#if file?.previewUrl}
+                <img src={file.previewUrl} alt={file?.name ?? 'Selected image'} />
+              {:else}
+                <div class="preview-placeholder">Image preview unavailable.</div>
+              {/if}
+            </div>
+          </div>
+        {/if}
+        {#if currentParams.showHistogram}
+          <AnalysisCards
+            result={chartResult}
+            {histogram}
+            polarChart={null}
+            hueLightnessChart={null}
+            {histogramSortLabel}
+            showHistogramFrame={currentParams.showHistogram}
+            onChartContext={openChartMenu}
+          />
+        {/if}
+      </div>
+      {#if currentParams.showPolarChart || currentParams.showHueLightness}
+        <div class="analysis-column">
+          <AnalysisCards
+            result={chartResult}
+            histogram={null}
+            polarChart={currentParams.showPolarChart ? polarChart : null}
+            hueLightnessChart={currentParams.showHueLightness ? hueLightnessChart : null}
+            histogramSortLabel=""
+            showPolarFrame={currentParams.showPolarChart}
+            showHueLightnessFrame={currentParams.showHueLightness}
+            onChartContext={openChartMenu}
+          />
+        </div>
+      {/if}
+    </section>
+  {:else}
+    <div
+      bind:this={ingestion.dropRef}
+      class:dragging={ingestion.dragging}
+      class="dropzone"
+      tabindex="0"
+      role="button"
+      aria-label="Image dropzone"
+      aria-busy={status === 'pending'}
+      ondragover={ingestion.handleDragOver}
+      ondragleave={ingestion.handleDragLeave}
+      ondrop={ingestion.handleDrop}
+      onkeydown={ingestion.handleDropzoneKeydown}
+    >
+      <div class="inner">
+        <p class="title">Drop anywhere</p>
+        <p>or</p>
+        <button class="upload" onclick={ingestion.chooseMedia}>Add media</button>
+        <p class="formats">PNG, JPEG, WebP, BMP, GIF, TIFF, MP4</p>
+      </div>
     </div>
-  </div>
+  {/if}
 
   <!-- Full-window drag overlay -->
-  {#if draggingWindow}
+  {#if ingestion.draggingWindow}
     <div class="overlay-root visible" aria-hidden="true">
       <div class="overlay-panel">
         <div style="display:grid;place-items:center;gap:8px;min-width:280px">
           <div class="spinner" aria-hidden="true" style="display:none"></div>
           <div style="font-size:20px;font-weight:500">Drop Anywhere</div>
-          <div style="font-size:12px;opacity:.8">PNG · JPEG · WebP</div>
+          <div style="font-size:12px;opacity:.8">PNG · JPEG · WebP · BMP · GIF · TIFF · MP4</div>
         </div>
       </div>
     </div>
   {/if}
 
   <!-- Loading overlay -->
-  {#if status === 'pending' && spinnerVisible}
-    <div class="overlay-root visible" role="dialog" aria-label="Analyzing…">
+  {#if status === 'pending' && runner.spinnerVisible}
+    <div class="overlay-root overlay-root--content visible" role="dialog" aria-label="Analyzing…">
       <div class="overlay-panel">
         <div style="display:grid;place-items:center;gap:12px">
           <div class="spinner" aria-label="loading"></div>
@@ -234,7 +540,7 @@
 
   <!-- Drag/drop notice overlay -->
   {#if bannerMessage}
-    <div class="overlay-root visible" role="dialog" aria-label="Notice">
+    <div class="overlay-root overlay-root--content visible" role="dialog" aria-label="Notice">
       <div class="overlay-panel">
         <p style="margin:0">{bannerMessage}</p>
         <div class="overlay-actions" style="margin-top:16px">
@@ -257,46 +563,35 @@
     </div>
   {/if}
 
-  <SelectionSummary {file} onClear={clearSelection} />
-
-  {#if status === 'ready' && result}
-    <ClusterPreview {result} {clusters} />
+  {#if file}
+    <ParameterControls onScrubStart={handleScrubStart} onScrubEnd={handleScrubEnd} />
   {/if}
-
-  <ParameterControls />
 </section>
+
+{#if chartMenu}
+  <ContextMenu x={chartMenu.x} y={chartMenu.y} items={chartMenu.items} onClose={() => (chartMenu = null)} />
+{/if}
 
 <style>
   .home {
-    max-width: 720px;
-  }
-
-  .native-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--accent);
-    color: #fff;
-    border-radius: 999px;
-    padding: 4px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 6px;
-  }
-
-  .native-copy {
-    margin: 0 0 16px 0;
-    font-size: 13px;
-    color: rgba(33, 33, 32, 0.75);
+    max-width: 1120px;
+    margin: 0 auto;
+    container-type: inline-size;
   }
 
   .dropzone {
+    width: 100%;
     border: 2px dashed var(--accent);
     border-radius: 12px;
-    padding: 48px;
+    padding: 56px;
     text-align: center;
     background: rgba(130, 76, 50, 0.06);
     transition: background 0.2s ease, border-color 0.2s ease;
+  }
+
+  .dropzone--image {
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.7);
   }
 
   .dropzone:focus-visible {
@@ -309,9 +604,55 @@
     border-color: var(--accent);
   }
 
+  .image-preview {
+    width: 100%;
+    display: grid;
+    place-items: center;
+  }
+
+  .image-preview img {
+    max-width: 100%;
+    max-height: 320px;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+
+  .preview-placeholder {
+    padding: 24px;
+    color: rgba(33, 33, 32, 0.6);
+  }
+
+  .analysis-layout {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    align-content: start;
+  }
+
+  @container (min-width: 760px) {
+    .analysis-layout.two-columns {
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      align-items: center;
+    }
+  }
+
+  .analysis-column {
+    display: grid;
+    gap: 20px;
+    align-content: start;
+  }
+
   .dropzone .title {
     font-size: 20px;
     margin-bottom: 8px;
+  }
+
+  .formats {
+    margin-top: 12px;
+    font-size: 12px;
+    color: rgba(33, 33, 32, 0.6);
   }
 
   .upload {

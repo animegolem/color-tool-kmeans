@@ -10,9 +10,10 @@ tags:
   - Tauri
 kanban_status: completed
 depends_on: [AI-IMP-031, AI-IMP-032, AI-EPIC-002, AI-EPIC-003]
+parent_epic: [[AI-EPIC-002]]
 confidence_score: 0.88
-created_date: 2025-09-23
-close_date: 2025-09-24
+date_created: 2025-09-23
+date_completed: 2025-09-24
 ---  
 
 

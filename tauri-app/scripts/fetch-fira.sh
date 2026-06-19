@@ -4,21 +4,21 @@ set -euo pipefail
 FONT_DIR="$(dirname "$0")/../src/assets/fonts"
 mkdir -p "$FONT_DIR"
 
-BASE="https://fonts.gstatic.com/s/firasans/v35"
-
-declare -A FILES=(
-  ["FiraSans-Regular.woff2"]="${BASE}/va9E4kDNxMZdWfMOD5VvWXM.woff2"
-  ["FiraSans-Medium.woff2"]="${BASE}/va9C4kDNxMZdWfMOD7hW.woff2"
-  ["FiraSans-Bold.woff2"]="${BASE}/va9B4kDNxMZdWfMOD7gXDA.woff2"
-)
+# Google Fonts v18 — Latin subset woff2
+BASE="https://fonts.gstatic.com/s/firasans/v18"
 
 echo "Downloading Fira Sans variants..."
-for file in "${!FILES[@]}"; do
-  url="${FILES[$file]}"
-  echo " - $file"
-  curl -fsSL "$url" -o "$FONT_DIR/$file"
-  chmod 644 "$FONT_DIR/$file"
 
-done
+echo " - FiraSans-Regular.woff2"
+curl -fsSL "${BASE}/va9E4kDNxMZdWfMOD5Vvl4jLazX3dA.woff2" -o "$FONT_DIR/FiraSans-Regular.woff2"
+chmod 644 "$FONT_DIR/FiraSans-Regular.woff2"
+
+echo " - FiraSans-Medium.woff2"
+curl -fsSL "${BASE}/va9B4kDNxMZdWfMOD5VnZKveRhf6Xl7Glw.woff2" -o "$FONT_DIR/FiraSans-Medium.woff2"
+chmod 644 "$FONT_DIR/FiraSans-Medium.woff2"
+
+echo " - FiraSans-Bold.woff2"
+curl -fsSL "${BASE}/va9B4kDNxMZdWfMOD5VnLK3eRhf6Xl7Glw.woff2" -o "$FONT_DIR/FiraSans-Bold.woff2"
+chmod 644 "$FONT_DIR/FiraSans-Bold.woff2"
 
 echo "Done. Font files stored in $FONT_DIR"

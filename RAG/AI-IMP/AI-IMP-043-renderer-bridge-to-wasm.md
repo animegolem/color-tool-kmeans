@@ -10,8 +10,8 @@ tags:
 kanban_status: completed
 depends_on: [AI-IMP-041, AI-IMP-042]
 confidence_score: 0.86
-created_date: 2025-09-25
-close_date: 2025-09-26
+date_created: 2025-09-25
+date_completed: 2025-09-26
 ---
 
 # AI-IMP-043-renderer-bridge-to-wasm

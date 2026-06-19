@@ -4,40 +4,91 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Color analysis tool using k-means clustering. Multiple implementations:
-- **Tauri app** (`tauri-app/`) — primary native desktop app (Svelte + Rust)
-- **Electron app** (`electron-app/`) — planned desktop implementation (not yet coded)
-- **WASM compute** (`compute-wasm/`) — browser compute fallback
-- **Reference** — Observable notebook (`pkgs/src/`) and prior Electron app (`pkgs/proportions-et-relations-colorees/`)
+Color analysis tool using k-means clustering. Primary implementation:
+- **Tauri app** (`tauri-app/`) — native desktop app (Svelte 5 + Rust)
 
 ## Core Architecture
 
 ### Tauri App (Primary Implementation)
 
-**Renderer** (`tauri-app/src/`):
-- **Bridges** (`lib/bridges/`) — platform abstraction layer
-  - `tauri.ts` — native Tauri API detection/invocation
-  - `compute.ts` — compute backend selection (native/WASM/worker)
-  - `fs.ts` — filesystem abstraction
-- **Compute** (`lib/compute/`) — analysis orchestration
-  - `bridge.ts` — routes to native (`analyze_image` command) or WASM
-  - `image-loader.ts` — image decode with HTMLImage fallback
-  - `wasm.ts` — WASM module loader
-- **Views** (`lib/views/`) — Svelte UI components
-- **Exports** (`lib/exports/`) — PNG/SVG/CSV export logic
+**App Shell** (`tauri-app/src/App.svelte`):
+- CSS Grid layout: left nav + header bar + view-container + library rail (right sidebar)
+- Grid columns: `var(--nav-width) 1fr var(--library-width)` with CSS var transitions for collapse/expand
+- Header bar spans columns 2-3, contains: left sidebar toggle, view title, file label + Clear, right sidebar toggle
+- Left nav: 200px collapsible via `navCollapsed` store, routes between Colors/Values/Exports views
+- Library rail: toggleable right sidebar for image library (placeholder content), auto-collapses <980px
+- ZoomOverlay: modal pan/zoom for images and SVG charts
+
+**Views** (`tauri-app/src/lib/views/`):
+- `HomeView.svelte` — orchestration shell (~600 LOC): wires submodules, owns lifecycle/store subscriptions, renders layout with subcomponents
+- `ValuesView.svelte` — value/lightness analysis with multi-level k-means bucketing
+
+**ValuesView Submodules** (`tauri-app/src/lib/views/values/`):
+- `value-analysis-runner.svelte.ts` — analysis orchestration, store subscriptions, lifecycle management
+- `ExportsView.svelte` — SVG/PNG/CSV export UI (~300 LOC)
+
+**HomeView Submodules** (`tauri-app/src/lib/views/home/`):
+- `video-controller.svelte.ts` — video state, playback, scrubbing, frame decode, strip generation, probe logic
+- `analysis-runner.svelte.ts` — analysis debounce, spinner lifecycle, error mapping, scroll lock
+- `file-ingestion.svelte.ts` — file dialog, drag-drop, image decoding, preview URL building
+- `VideoPanel.svelte` — video preview + transport controls + filmstrip
+- `AnalysisCards.svelte` — histogram + polar + hue-lightness chart cards (conditionally rendered)
+- `ParameterControls.svelte` — k-means parameter sliders and checkboxes
+- `DevBanner.svelte` — development-mode Tauri detection summary
+
+**Utilities** (`tauri-app/src/lib/utils/`):
+- `zoom.ts` — shared `openImageZoom`, `openSvgZoom`, `handleZoomKeydown` (used by HomeView and ValuesView)
+
+**Stores** (`tauri-app/src/lib/stores/ui.ts`):
+- **Navigation**: `currentView`, `libraryDrawerOpen`, `navCollapsed`
+- **Image management**: `images` (array), `activeImageId`, `selectedFile` (derived), `hasFile` (derived)
+- **Analysis params**: `params` (clusters, quality, ignoreTopN, mergeThreshold, symbolScale, chart options)
+- **Color analysis**: `analysisState`, `analysisById` (cached by image ID), `analysisResult` (derived), `analysisError`
+- **Value analysis**: `valueAnalysisLevels`, `valueAnalysisNotanMode`, `valueAnalysisByKey` (cached by composite key), derived state/result/error
+- **Zoom overlay**: `zoomOverlay`, `openZoomOverlay`, `closeZoomOverlay`
+- **Video**: `videoState`, `setVideoState`
+
+**Components** (`tauri-app/src/lib/components/`):
+- `ZoomOverlay.svelte` — pan/zoom modal for images and SVG charts
+
+**Bridges** (`tauri-app/src/lib/bridges/`):
+- `tauri.ts` — native Tauri API detection/invocation
+- `compute.ts` — compute backend selection (native-only)
+- `fs.ts` — filesystem abstraction (image + video file dialogs)
+- `video.ts` — video frame extraction, strip generation, probing (via ffmpeg)
+- `ffmpeg.ts` — ffmpeg version check
+- `log.ts` — event logging bridge
+- `value-analysis.ts` — value/lightness analysis Tauri bridge
+
+**Compute** (`tauri-app/src/lib/compute/`):
+- `bridge.ts` — routes to native (`analyze_image` command)
+- `image-loader.ts` — image decode with HTMLImage fallback
+
+**Exports** (`tauri-app/src/lib/exports/`):
+- `polar-chart.ts` — OKLCH/OKHSV/HSV polar chart SVG generation
+- `hue-lightness.ts` — hue x lightness scatter SVG
+- `histogram.ts` — cluster histogram SVG
+- `value-analysis.ts` — value analysis export
+- `palette.ts`, `svg.ts`, `png.ts`, `font-embed.ts` — shared export utilities
+
+**Assets** (`tauri-app/src/lib/assets/`):
+- Sidebar toggle SVG icons (VS Code Codicons, CC BY 4.0)
 
 **Native Backend** (`tauri-app/src-tauri/src/`):
 - `lib.rs` — core module exports
+- `main.rs` — Tauri setup, plugin init, command registration
+- `commands.rs` — `#[tauri::command]` handler implementations
+- `commands_types.rs` — request/response DTOs
+- `merge.rs` — cluster merge algorithm (`merge_clusters_by_threshold`)
+- `cache.rs` — event log + cache pruning utilities
 - `kmeans.rs` — k-means clustering (SIMD-enabled via `wide` feature)
-- `color.rs` — Lab/LCh color space conversions
+- `color.rs` — OKLab/OKLch color space conversions (perceptual)
 - `image_pipeline.rs` — image sampling and analysis entry point
-- `main.rs` — Tauri commands: `analyze_image`, `open_image_dialog`
-- **Binaries** (`bin/`) — CLI tools: `compute_cli`, `kmeans_baseline`, `rmpc_theme_gen`
+- `value_analysis.rs` — value/lightness analysis
+- `ffmpeg.rs` — video frame extraction via ffmpeg CLI
+- **Binaries** (`bin/`) — `kmeans_baseline` (perf microbenchmark)
 
-**Key Design Pattern**: Detection-based bridge selection. Native Tauri API preferred; falls back to WASM for browser. Force native with `localStorage.setItem('bridge.force','tauri')`.
-
-### WASM Compute (`compute-wasm/`)
-Scalar k-means implementation (no SIMD/rayon on wasm). Shared color/kmeans logic with Tauri backend.
+**Key Design Pattern**: Detection-based bridge selection. Native Tauri API required.
 
 ## Development Commands
 
@@ -64,7 +115,7 @@ npm run check        # svelte-check
 npm run test         # vitest
 ```
 
-**Environment**: Node 18.20.8
+**Environment**: Node 20
 
 **Linux/NVIDIA/Wayland stability** (required for WebKit crashes):
 ```bash
@@ -82,27 +133,8 @@ cd tauri-app/src-tauri
 cargo fmt --all -- --check
 cargo clippy --workspace -- -D warnings
 
-# Run CLI tools
-cargo run --bin compute_cli -- <args>
-cargo run --bin rmpc-theme-gen -- <args>
-```
-
-### WASM Build
-
-```bash
-cd compute-wasm
-wasm-pack build --target web
-```
-
-### Reference Apps
-
-```bash
-# Observable notebook preview
-cd pkgs/src && npx http-server
-
-# Prior Electron app
-cd pkgs/proportions-et-relations-colorees/color-analyzer-electron
-npm ci && npm start
+# Run baseline benchmark
+cargo run --bin kmeans_baseline
 ```
 
 ## Git Hooks & CI
@@ -128,9 +160,10 @@ git config core.hooksPath .githooks
   - Functions: `camelCase`
   - Classes: `PascalCase`
   - Constants: `UPPER_SNAKE`
-  - Files: `kebab-case.ts`
+  - Files: `kebab-case.ts`, Svelte components: `PascalCase.svelte`
 - **Svelte**: Use runes (`$state`, `$derived`, `onclick`) not legacy reactivity/`on:` syntax
 - **Font**: Fira Sans (vendor locally, no CDNs)
+- **Module extraction pattern**: Use `create*()` factory functions returning reactive objects with `$state` getters/setters for extracting logic from Svelte components (see `views/home/*.svelte.ts`)
 
 ## Testing
 
@@ -149,23 +182,21 @@ git config core.hooksPath .githooks
 
 ## Project Documentation
 
-- **Epics**: `RAG/AI-EPIC/` — scope & success metrics
+- **Epics**: `RAG/AI-EPIC/` — active: EPIC-010 through EPIC-014; completed: EPIC-006 through EPIC-009, EPIC-015 through EPIC-019 (archived in `RAG/AI-EPIC-ARCHIVED/`)
 - **Tickets**: `RAG/AI-IMP/` — implementation checklists & acceptance criteria
-- **Design**: `figma/` — exported frames (Figma is visual source of truth; fetch updates before UI work)
+- **Sub-tickets**: Use `AI-IMP-NNN-N` naming (e.g., `AI-IMP-105-1`). Sub-tickets set `depends_on` to their parent IMP and `parent_epic` to the epic ID.
+- **Design**: `figma/` — exported frames; reference designs in `RAG/assets/`
 - **Logs**: `RAG/AI-LOG/` — development session notes
 - **Runbooks**: `TAURI-NATIVE-RUNBOOK.md` — Tauri-specific troubleshooting
 
 ## Key Technical Notes
 
 ### Tauri-Specific Issues (see `TAURI-NATIVE-RUNBOOK.md`)
-- Native analysis requires filesystem path → Upload button preferred over drag-drop
-- Dev sessions may not inject Tauri API globals; force with `localStorage.setItem('bridge.force','tauri')`
-- Packaged debug builds default to `devUrl` → run Vite first or use release bundle
+- Native analysis requires filesystem path — Upload button preferred over drag-drop
+- Packaged debug builds default to `devUrl` — run Vite first or use release bundle
 
-### Security (Electron/Tauri)
-- `contextIsolation: true`, `nodeIntegration: false`
+### Security (Tauri)
 - IPC bridge only; load local files via `file://`
-- Preferences: `electron-store` (no telemetry)
 - No secrets in commits; Figma tooling uses `FIGMA_API_KEY` env var
 
 ### Offline-First

@@ -1,16 +1,6 @@
-export function getBridgeOverride(): string | null {
-  try {
-    return typeof localStorage !== 'undefined' ? localStorage.getItem('bridge.force') : null;
-  } catch {
-    return null;
-  }
-}
-
 export function isTauriEnv(): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    const override = getBridgeOverride();
-    if (override === 'tauri') return true;
     const w = globalThis as any;
     const ua = (globalThis as any).navigator?.userAgent || '';
     return !!(
@@ -86,7 +76,6 @@ export function tauriDetectionInfo() {
   const w = globalThis as any;
   const ua = (globalThis as any).navigator?.userAgent || '';
   return {
-    override: getBridgeOverride(),
     hasGlobal: !!w?.__TAURI__,
     hasInvoke: typeof w?.__TAURI__?.invoke === 'function',
     hasCoreInvoke: typeof w?.__TAURI__?.core?.invoke === 'function',

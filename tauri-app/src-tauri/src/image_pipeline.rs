@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use image::imageops::FilterType;
-use image::{DynamicImage, ImageReader, RgbImage};
+use image::{DynamicImage, ImageReader, RgbaImage};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use serde::Serialize;
@@ -44,12 +44,50 @@ impl SampleParams {
 #[derive(Debug, Serialize)]
 pub struct SampleResult {
     pub samples: Vec<[u8; 3]>,
-    pub samples_lab: Option<Vec<[f32; 3]>>,
+    pub samples_oklab: Option<Vec<[f32; 3]>>,
     pub width: u32,
     pub height: u32,
     pub total_pixels: u64,
     pub sampled_pixels: usize,
     pub duration_ms: u128,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QualityPreset {
+    pub stride: u32,
+    pub max_samples: usize,
+    pub max_dimension: Option<u32>,
+}
+
+pub fn quality_preset(step: i8) -> QualityPreset {
+    let clamped = step.clamp(0, 4);
+    match clamped {
+        0 => QualityPreset {
+            stride: 16,
+            max_samples: 50_000,
+            max_dimension: Some(1200),
+        },
+        1 => QualityPreset {
+            stride: 8,
+            max_samples: 100_000,
+            max_dimension: Some(1600),
+        },
+        2 => QualityPreset {
+            stride: 4,
+            max_samples: 180_000,
+            max_dimension: Some(2200),
+        },
+        3 => QualityPreset {
+            stride: 2,
+            max_samples: 260_000,
+            max_dimension: Some(2600),
+        },
+        _ => QualityPreset {
+            stride: 1,
+            max_samples: 350_000,
+            max_dimension: Some(3200),
+        },
+    }
 }
 
 const LUMA_R: f32 = 0.2126;
@@ -65,18 +103,18 @@ pub fn prepare_samples(params: &SampleParams) -> Result<SampleResult> {
         .with_guessed_format()?
         .decode()?;
 
-    let rgb = to_rgb_with_downscale(img, params.max_dimension);
-    let (width, height) = rgb.dimensions();
-    let samples = sample_pixels(&rgb, params);
-    let samples_lab = samples
+    let rgba = to_rgba_with_downscale(img, params.max_dimension);
+    let (width, height) = rgba.dimensions();
+    let samples = sample_pixels(&rgba, params);
+    let samples_oklab = samples
         .iter()
-        .map(|rgb| crate::color::rgb8_to_lab(*rgb))
+        .map(|rgb| crate::color::rgb8_to_oklab(*rgb))
         .collect::<Vec<_>>();
     let sampled_pixels = samples.len();
 
     Ok(SampleResult {
         samples,
-        samples_lab: Some(samples_lab),
+        samples_oklab: Some(samples_oklab),
         width,
         height,
         total_pixels: width as u64 * height as u64,
@@ -85,24 +123,24 @@ pub fn prepare_samples(params: &SampleParams) -> Result<SampleResult> {
     })
 }
 
-fn to_rgb_with_downscale(img: DynamicImage, limit: Option<u32>) -> RgbImage {
-    let rgb = img.to_rgb8();
+fn to_rgba_with_downscale(img: DynamicImage, limit: Option<u32>) -> RgbaImage {
+    let rgba = img.to_rgba8();
     if let Some(max_dim) = limit {
-        let (w, h) = rgb.dimensions();
+        let (w, h) = rgba.dimensions();
         let current_max = w.max(h);
         if current_max > max_dim {
             let scale = max_dim as f32 / current_max as f32;
             let dst_w = ((w as f32) * scale).round().max(1.0) as u32;
             let dst_h = ((h as f32) * scale).round().max(1.0) as u32;
-            return image::imageops::resize(&rgb, dst_w, dst_h, FilterType::Lanczos3);
+            return image::imageops::resize(&rgba, dst_w, dst_h, FilterType::Lanczos3);
         }
     }
-    rgb
+    rgba
 }
 
-fn sample_pixels(img: &RgbImage, params: &SampleParams) -> Vec<[u8; 3]> {
+fn sample_pixels(img: &RgbaImage, params: &SampleParams) -> Vec<[u8; 3]> {
     let stride = params.stride.max(1) as usize;
-    let min_lum = params.min_lum as f32;
+    let min_lum = params.min_lum as f32 / 255.0;
     let max_samples = if params.max_samples == 0 {
         usize::MAX
     } else {
@@ -119,10 +157,16 @@ fn sample_pixels(img: &RgbImage, params: &SampleParams) -> Vec<[u8; 3]> {
     for y in (0..height as usize).step_by(stride) {
         for x in (0..width as usize).step_by(stride) {
             let pixel = img.get_pixel(x as u32, y as u32);
-            let [r, g, b] = pixel.0;
-            let lum = LUMA_R * (r as f32) + LUMA_G * (g as f32) + LUMA_B * (b as f32);
-            if lum < min_lum {
+            let [r, g, b, a] = pixel.0;
+            if a == 0 {
                 continue;
+            }
+            if min_lum > 0.0 {
+                let linear = crate::color::srgb8_to_linear([r, g, b]);
+                let lum = LUMA_R * linear[0] + LUMA_G * linear[1] + LUMA_B * linear[2];
+                if lum < min_lum {
+                    continue;
+                }
             }
             seen += 1;
             if samples.len() < max_samples {
@@ -173,9 +217,9 @@ mod tests {
         assert!(result.sampled_pixels > 0);
         assert!(result.sampled_pixels <= 25);
         for rgb in result.samples {
-            let lum =
-                LUMA_R * (rgb[0] as f32) + LUMA_G * (rgb[1] as f32) + LUMA_B * (rgb[2] as f32);
-            assert!(lum >= params.min_lum as f32);
+            let linear = crate::color::srgb8_to_linear(rgb);
+            let lum = LUMA_R * linear[0] + LUMA_G * linear[1] + LUMA_B * linear[2];
+            assert!(lum >= params.min_lum as f32 / 255.0);
         }
     }
 
@@ -215,5 +259,33 @@ mod tests {
         };
         let result = prepare_samples(&params).expect("sample");
         assert!(result.width <= 1024 && result.height <= 1024);
+    }
+
+    #[test]
+    fn quality_preset_maps_steps() {
+        assert_eq!(
+            quality_preset(0),
+            QualityPreset {
+                stride: 16,
+                max_samples: 50_000,
+                max_dimension: Some(1200)
+            }
+        );
+        assert_eq!(
+            quality_preset(2),
+            QualityPreset {
+                stride: 4,
+                max_samples: 180_000,
+                max_dimension: Some(2200)
+            }
+        );
+        assert_eq!(
+            quality_preset(4),
+            QualityPreset {
+                stride: 1,
+                max_samples: 350_000,
+                max_dimension: Some(3200)
+            }
+        );
     }
 }

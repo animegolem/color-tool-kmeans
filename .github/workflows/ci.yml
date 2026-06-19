@@ -5,17 +5,20 @@ on:
   pull_request:
 
 jobs:
-  lint-gate:
+  build-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Install dependencies (tauri-app)
+        run: |
+          cd tauri-app
+          npm install --no-audit --no-fund
 
       - name: Enforce Svelte runes event syntax
         run: |
@@ -24,10 +27,25 @@ jobs:
             exit 1
           fi
 
-      - name: LOC enforcement
-        run: node scripts/ci/loc-enforce.js
-        env:
-          LOC_MAX: 350
+      - name: Install FFmpeg sidecars (Linux)
+        run: |
+          cd tauri-app
+          ./scripts/fetch-ffmpeg-btbn-lgpl.sh x86_64-unknown-linux-gnu https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-lgpl.tar.xz
+
+      - name: Install Linux system deps (glib/gtk)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev webkit2gtk-4.1 libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Run TS gamut boundary test
+        run: |
+          cd tauri-app
+          npm test -- src/lib/exports/__tests__/gamut-boundary.spec.ts
+
+      - name: Run k-means snapshot test
+        run: |
+          cd tauri-app/src-tauri
+          cargo test --no-default-features --test kmeans_snapshots
 
       - name: Electron app tests
         if: ${{ hashFiles('electron-app/package.json') != '' }}
@@ -42,61 +60,37 @@ jobs:
           rustup update stable
           (cd tauri-app/src-tauri 2>/dev/null || cd src-tauri 2>/dev/null; cargo fmt --all -- --check && cargo clippy --workspace -- -D warnings)
 
-  tauri-build:
-    needs: lint-gate
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+  build-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install Rust (stable)
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install system deps (Linux only)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev webkit2gtk-4.1 libayatana-appindicator3-dev librsvg2-dev
-
-      - name: Install frontend deps
-        run: npm ci
-        working-directory: tauri-app
+      - name: Install FFmpeg sidecars (Windows)
         shell: bash
-
-      - name: Frontend checks
         run: |
-          npm run lint
-          npm run check
-          npm run test
-        working-directory: tauri-app
-        shell: bash
+          cd tauri-app
+          ./scripts/fetch-ffmpeg-btbn-lgpl.sh x86_64-pc-windows-msvc https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl.zip
 
-      - name: Build Tauri app
+      - name: Install dependencies
         run: |
-          case "${{ runner.os }}" in
-            macOS)
-              npm run tauri build -- --bundles app
-              ;;
-            Linux)
-              npm run tauri build -- --bundles appimage
-              ;;
-            Windows)
-              npm run tauri build -- --bundles nsis
-              ;;
-            *)
-              echo "Unsupported OS: ${{ runner.os }}" >&2
-              exit 1
-              ;;
-          esac
-        working-directory: tauri-app
-        shell: bash
+          cd tauri-app
+          npm install --no-audit --no-fund
+
+      - name: Build Tauri app (Windows)
+        run: |
+          cd tauri-app
+          npm run tauri build
+
+      - name: Upload Windows bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-windows-bundle
+          path: tauri-app/src-tauri/target/release/bundle

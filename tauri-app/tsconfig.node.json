@@ -4,9 +4,10 @@
     "moduleResolution": "Node",
     "target": "ESNext",
     "lib": ["ESNext", "DOM"],
+    "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
-    "types": ["svelte", "vite/client"]
+    "types": ["svelte", "vite/client", "node"]
   }
 }

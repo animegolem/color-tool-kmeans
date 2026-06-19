@@ -9,8 +9,8 @@ tags:
 kanban_status: completed
 depends_on: [AI-IMP-041]
 confidence_score: 0.8
-created_date: 2025-09-25
-close_date: 2025-09-26
+date_created: 2025-09-25
+date_completed: 2025-09-26
 ---
 
 # AI-IMP-046-bench-wasm-variant

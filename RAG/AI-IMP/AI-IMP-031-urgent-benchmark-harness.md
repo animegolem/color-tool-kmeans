@@ -10,8 +10,8 @@ tags:
 kanban_status: completed
 depends_on: [AI-IMP-012, AI-IMP-013, AI-IMP-014]
 confidence_score: 0.72
-created_date: 2025-09-22
-close_date: 2025-09-22
+date_created: 2025-09-22
+date_completed: 2025-09-22
 ---
 
 # AI-IMP-031-urgent-benchmark-harness

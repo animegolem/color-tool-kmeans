@@ -24,6 +24,8 @@ yarn-debug.log*
 Thumbs.db
 .idea/
 .vscode/
+.obsidian/
+*.base
 
 # Generated assets
 figma_curl.txt
@@ -33,12 +35,12 @@ pkgs/proportions-et-relations-colorees/
 # Other
 pkgs/
 archive/
+figma/
 tauri-app/src-tauri/gen/
 bench-assets/
 bench-reports/*
 !bench-reports/README.md
-
-# Local reference docs / utilities
-svelte-llms-full.txt
-svelte-llms-small.txt
-tauri-app/src-tauri/src/bin/rmpc_theme_gen.rs
+tauri-app/.ffmpeg-build/
+tauri-app/src-tauri/bin/
+tauri-app/src-tauri/bin/ffmpeg-*
+tauri-app/src-tauri/bin/ffprobe-*

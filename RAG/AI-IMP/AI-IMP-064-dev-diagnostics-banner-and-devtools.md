@@ -9,8 +9,8 @@ depends_on:
   - ADR-002
   - AI-EPIC-006
 confidence_score: 0.9
-created_date: 2025-10-10
-close_date: 2025-11-20
+date_created: 2025-10-10
+date_completed: 2025-11-20
 ---
 
 ## Dev Diagnostics: Detection Banner, Force‑Override Warning, DevTools Hotkey

@@ -1,0 +1,18 @@
+The sidebar toggle icons in this directory are derived from VS Code Codicons.
+
+Source: https://github.com/microsoft/vscode-codicons
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+         https://creativecommons.org/licenses/by/4.0/
+
+Files:
+  layout-sidebar-left.svg
+  layout-sidebar-left-off.svg
+  layout-sidebar-right.svg
+  layout-sidebar-right-off.svg
+
+The media type icons (media-image.svg, media-video.svg) are from Figma's
+Simple Design System.
+
+Source: https://github.com/figma/sds
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+         https://creativecommons.org/licenses/by/4.0/

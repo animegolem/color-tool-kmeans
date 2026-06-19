@@ -7,11 +7,12 @@ tags:
   - Graphs
   - Exports
   - Epic-007
-kanban_status: in-progress
+kanban_status: completed
 depends_on: [AI-EPIC-007, AI-IMP-052]
+parent_epic: [[AI-EPIC-007-tauri-ui-graphs-exports]]
 confidence_score: 0.86
-created_date: 2025-11-21
-close_date:
+date_created: 2025-11-21
+date_completed: 2026-02-02
 ---
 
 
@@ -71,4 +72,4 @@ WHEN the SVG is opened on a host without Fira Sans installed
 THEN the text labels still render with the intended typography because the font is embedded in the SVG.
 
 ### Issues Encountered 
-{LOC|20}
+- Graphs view removed from current UI; work superseded by Home-based visualization flow.

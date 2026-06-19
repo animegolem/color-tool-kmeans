@@ -8,9 +8,10 @@ tags:
   - Scaffold
 kanban_status: completed
 depends_on: [AI-EPIC-002-tauri_rust_compute_pivot]
+parent_epic: [[AI-EPIC-002]]
 confidence_score: 0.9
-created_date: 2025-09-21
-close_date: 2025-09-21
+date_created: 2025-09-21
+date_completed: 2025-09-21
 --- 
 
 # AI-IMP-011-tauri-svelte-scaffold

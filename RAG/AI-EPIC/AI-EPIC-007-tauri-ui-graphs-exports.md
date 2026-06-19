@@ -8,8 +8,8 @@ tags:
   - ui
   - exports
 date_created: 2025-10-10
-date_completed: 
-kanban-status: backlog
+date_completed: 2026-01-21
+kanban_status: completed
 AI_IMP_spawned: 
 ---
 
@@ -63,4 +63,7 @@ Users need a stable, offline desktop experience to load an image, run native ana
 ### Completed Tickets
 
 ## Future Follow‑up
-- Consider a minimal “Overview” composite export after graph/export parity is stable.
+- Consider a minimal "Overview" composite export after graph/export parity is stable.
+- FR-E (preferences persistence) deferred to global settings tab work.
+- FR-F (keyboard shortcuts, a11y) deferred to UI polish phase; low priority given visual nature of app.
+- Multi-image support and export shape changes planned for future epic.

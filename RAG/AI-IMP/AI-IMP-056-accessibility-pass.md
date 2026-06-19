@@ -8,9 +8,10 @@ tags:
   - Epic-005
 kanban_status: planned
 depends_on: [AI-EPIC-005, AI-IMP-052, AI-IMP-053, AI-IMP-054]
+parent_epic: [[AI-EPIC-005]]
 confidence_score: 0.83
-created_date: 2025-09-29
-close_date:
+date_created: 2025-09-29
+date_completed:
 ---
 
 # AI-IMP-056-accessibility-pass

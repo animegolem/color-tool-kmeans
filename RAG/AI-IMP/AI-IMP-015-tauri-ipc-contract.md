@@ -8,9 +8,10 @@ tags:
   - API
 kanban_status: planned
 depends_on: [AI-EPIC-002-tauri_rust_compute_pivot, AI-IMP-011, AI-IMP-012, AI-IMP-014]
+parent_epic: [[AI-EPIC-002]]
 confidence_score: 0.86
-created_date: 2025-09-21
-close_date:
+date_created: 2025-09-21
+date_completed:
 --- 
 
 # AI-IMP-015-tauri-ipc-contract

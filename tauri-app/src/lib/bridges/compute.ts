@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { isTauriEnv, tauriInvoke, tauriDetectionInfo, getBridgeOverride } from './tauri';
+import { isTauriEnv, tauriInvoke, tauriDetectionInfo } from './tauri';
+import { getActivePath } from '../services/active-image';
 import type { ImageDataset } from '../compute/image-loader';
 import type { AnalysisParams, AnalysisResult } from '../stores/ui';
 
@@ -7,6 +8,9 @@ const DEFAULT_TOLERANCE = 1e-3;
 const DEFAULT_MAX_ITER = 40;
 const DEFAULT_MAX_SAMPLES = 300_000;
 const DEFAULT_SEED = 1;
+const DEFAULT_QUALITY = 2;
+const DEFAULT_IGNORE_TOP_N = 0;
+const DEFAULT_MERGE_THRESHOLD = 0;
 
 export interface AnalyzeOptions extends AnalysisParams {
   tol?: number;
@@ -16,7 +20,7 @@ export interface AnalyzeOptions extends AnalysisParams {
 }
 
 export interface ComputeBridge {
-  readonly id: 'wasm' | 'tauri-native';
+  readonly id: 'tauri-native';
   analyze(dataset: ImageDataset, params: AnalyzeOptions): Promise<AnalysisResult>;
 }
 
@@ -35,8 +39,6 @@ export class TauriComputeError extends Error {
   }
 }
 
-// Electron path removed: Tauri-only baseline.
-
 const finiteNumberSchema = z
   .number()
   .refine((value) => Number.isFinite(value), { message: 'must be a finite number' });
@@ -47,6 +49,10 @@ const tauriClusterSchema = z
     share: finiteNumberSchema,
     centroidSpace: z.any().optional(),
     centroid_space: z.any().optional(),
+    oklab: z.any().optional(),
+    oklch: z.any().optional(),
+    ok_lab: z.any().optional(),
+    ok_lch: z.any().optional(),
     rgb: z
       .object({
         r: finiteNumberSchema,
@@ -61,9 +67,19 @@ const tauriClusterSchema = z
   })
   .transform((data, ctx) => {
     const sourceCentroid = data.centroidSpace ?? data.centroid_space;
+    const oklabSource = data.oklab ?? data.ok_lab ?? sourceCentroid;
+    const oklchSource = data.oklch ?? data.ok_lch;
     const centroid = coerceTriple(sourceCentroid);
+    const oklab = coerceTriple(oklabSource);
+    const oklch = coerceTriple(oklchSource);
     if (!centroid) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['centroidSpace'], message: 'centroidSpace must contain three finite numbers' });
+    }
+    if (!oklab) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['oklab'], message: 'oklab must contain three finite numbers' });
+    }
+    if (!oklch) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['oklch'], message: 'oklch must contain three finite numbers' });
     }
     const hsvTriple = coerceTriple(data.hsv);
     if (!hsvTriple) {
@@ -76,6 +92,8 @@ const tauriClusterSchema = z
       count: data.count,
       share: data.share,
       centroidSpace: centroid as [number, number, number],
+      oklab: oklab as [number, number, number],
+      oklch: oklch as [number, number, number],
       rgb: data.rgb,
       hsv: hsvTriple as [number, number, number]
     };
@@ -96,8 +114,6 @@ const tauriComputeResponseSchema = z
 type ParsedTauriCluster = z.infer<typeof tauriClusterSchema>;
 type ParsedTauriResponse = z.infer<typeof tauriComputeResponseSchema>;
 
-// tupleFrom and Electron schemas removed with Electron path.
-
 function coerceTriple(value: unknown): [number, number, number] | null {
   if (value instanceof Float32Array || value instanceof ArrayBuffer) {
     value = Array.from(value as ArrayLike<number>);
@@ -117,12 +133,18 @@ function normalizeTauriCluster(raw: unknown): Record<string, unknown> {
   }
   const cluster = raw as Record<string, unknown>;
   const centroidSource = cluster.centroidSpace ?? cluster.centroid_space;
+  const oklabSource = cluster.oklab ?? cluster.ok_lab ?? centroidSource;
+  const oklchSource = cluster.oklch ?? cluster.ok_lch;
   const rgb = cluster.rgb as Record<string, unknown> | undefined;
   return {
     count: Number(cluster.count),
     share: Number(cluster.share),
     centroidSpace: centroidSource,
     centroid_space: centroidSource,
+    oklab: oklabSource,
+    ok_lab: oklabSource,
+    oklch: oklchSource,
+    ok_lch: oklchSource,
     rgb: rgb
       ? {
           r: Number(rgb.r),
@@ -134,7 +156,7 @@ function normalizeTauriCluster(raw: unknown): Record<string, unknown> {
   };
 }
 
-function normalizeTauriResponse(raw: unknown): Record<string, unknown> {
+export function normalizeTauriResponse(raw: unknown): Record<string, unknown> {
   if (!raw || typeof raw !== 'object') {
     return {};
   }
@@ -149,7 +171,7 @@ function normalizeTauriResponse(raw: unknown): Record<string, unknown> {
   };
 }
 
-function parseTauriResponse(raw: unknown): ParsedTauriResponse {
+export function parseTauriResponse(raw: unknown): ParsedTauriResponse {
   const normalized = normalizeTauriResponse(raw);
   try {
     return tauriComputeResponseSchema.parse(normalized);
@@ -166,28 +188,19 @@ function parseTauriResponse(raw: unknown): ParsedTauriResponse {
   }
 }
 
-// Electron bridge removed.
-
-function createWasmComputeBridge(): ComputeBridge {
-  return {
-    id: 'wasm',
-    async analyze() {
-      throw new Error('Browser/WASM compute is no longer included in this build. Use the native Tauri path.');
-    }
-  } satisfies ComputeBridge;
-}
-
 function createTauriComputeBridge(): ComputeBridge | null {
   if (!isTauriEnv()) return null;
   return {
     id: 'tauri-native',
     async analyze(_dataset, params) {
       const req = {
-        path: (globalThis as any).__ACTIVE_IMAGE_PATH__ ?? '',
+        path: getActivePath() ?? '',
         k: params.clusters,
-        stride: params.stride,
-        minLum: params.minLum,
-        space: params.colorSpace,
+        quality: params.quality ?? DEFAULT_QUALITY,
+        ignoreTopN: params.ignoreTopN ?? DEFAULT_IGNORE_TOP_N,
+        mergeThreshold: params.mergeThreshold ?? DEFAULT_MERGE_THRESHOLD,
+        snapToReal: params.snapToReal ?? false,
+        minLum: 0,
         tol: params.tol ?? DEFAULT_TOLERANCE,
         maxIter: params.maxIter ?? DEFAULT_MAX_ITER,
         seed: params.seed ?? DEFAULT_SEED,
@@ -209,6 +222,8 @@ function createTauriComputeBridge(): ComputeBridge | null {
         count: cluster.count,
         share: cluster.share,
         centroidSpace: cluster.centroidSpace,
+        oklab: cluster.oklab,
+        oklch: cluster.oklch,
         rgb: cluster.rgb,
         hsv: cluster.hsv
       })) as AnalysisResult['clusters'];
@@ -228,7 +243,7 @@ function logSelection(label: string, id: ComputeBridge['id']) {
   console.info(`[bridges] ${label} bridge selected: ${id}`);
 }
 
-export function selectComputeBridge(): ComputeBridge {
+function selectComputeBridge(): ComputeBridge {
   const tauriBridge = createTauriComputeBridge();
   if (tauriBridge) {
     const info = tauriDetectionInfo();
@@ -236,43 +251,14 @@ export function selectComputeBridge(): ComputeBridge {
     logSelection('compute', tauriBridge.id);
     return tauriBridge;
   }
-  const fallback = createWasmComputeBridge();
-  logSelection('compute', fallback.id);
-  return fallback;
+  throw new Error('Tauri environment not detected. Native compute requires Tauri runtime.');
 }
 
 let cachedComputeBridge: ComputeBridge | null = null;
-let bridgeReadyPromise: Promise<void> | null = null;
 
-async function ensureBridgeReady(): Promise<void> {
-  if (bridgeReadyPromise) return bridgeReadyPromise;
-
-  bridgeReadyPromise = (async () => {
-    // Event-based readiness: return immediately if not Tauri or if forced
-    const forced = getBridgeOverride() === 'tauri';
-    if (!forced && !isTauriEnv()) {
-      // Poll briefly for Tauri globals to appear in dev; cap at ~300ms
-      const start = Date.now();
-      while (Date.now() - start < 300) {
-        if (isTauriEnv()) break;
-        await new Promise((r) => setTimeout(r, 20));
-      }
-    }
-    console.info('[bridges] ensureBridgeReady complete; proceeding to bridge selection');
-  })();
-
-  return bridgeReadyPromise;
-}
-
-export async function getComputeBridge(): Promise<ComputeBridge> {
-  console.info('[bridges] getComputeBridge called, awaiting ready...');
-  await ensureBridgeReady();
-
+export function getComputeBridge(): ComputeBridge {
   if (!cachedComputeBridge) {
-    console.info('[bridges] cache miss, selecting bridge now');
     cachedComputeBridge = selectComputeBridge();
-  } else {
-    console.info('[bridges] cache hit, returning existing bridge:', cachedComputeBridge.id);
   }
   return cachedComputeBridge;
 }

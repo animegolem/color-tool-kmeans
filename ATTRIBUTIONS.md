@@ -1,26 +1,18 @@
 # Attributions
 
+While no code is shared this project is deeply inspired by **Color-tool** by Laurent Jégou. It wouldn't exist without you! 
+
+--- 
+
 This project uses and builds upon work from the following sources under their respective licenses:
 
-## Color Space Algorithms
+## Media Decode
 
-The color space conversion implementations in this project are based on algorithms from:
+This project bundles FFmpeg for video frame extraction (LGPL build only, no GPL components enabled).
 
-**Color-tool** by Laurent Jégou
-License: CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/)
-Source: https://github.com/ljegou/Color-tool
-Author: L. Jégou, Université Toulouse-2 Jean Jaurès, Dépt. de Géographie, UMR LISST
-
-The following color space transformations are derived from this work:
-- RGB ↔ HSV conversions
-- RGB ↔ YUV conversions (BT.601 coefficients)
-- RGB ↔ CIE L\*a\*b\* via XYZ (D65 white point, sRGB primaries)
-- RGB ↔ CIE L\*u\*v\* via XYZ (D65 white point, sRGB primaries)
-
-These implementations also reference published international standards:
-- sRGB color space: IEC 61966-2-1:1999
-- CIE L\*a\*b\* and L\*u\*v\*: CIE 15:2018 (Colorimetry, 4th Edition)
-- XYZ transformation matrices: IEC 61966-2-1 (sRGB to XYZ, D65 illuminant)
+**FFmpeg** by the FFmpeg Project
+License: LGPL 2.1+ (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html)
+Source: https://ffmpeg.org
 
 ## K-Means Clustering
 
@@ -42,8 +34,9 @@ This project vendors UI assets locally for offline use:
 - Icons and UI elements (CC BY) from Figma Community files:
   - https://www.figma.com/community/file/1380235722331273046
   - https://www.figma.com/community/file/1035203688168086460
-
-- VisionOS reference components were viewed for inspiration only. We do not redistribute Apple-provided assets. Our slider/controls are custom-rendered to be OS‑neutral.
+- Sidebar layout toggle icons derived from VS Code Codicons
+  License: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+  Source: https://github.com/microsoft/vscode-codicons
 
 ---
 

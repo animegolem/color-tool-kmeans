@@ -43,4 +43,11 @@ fi
 # LOC warning
 bash scripts/loc-check.sh || true
 
+# Generate RAG index and stage changes
+if [ -x "$ROOT_DIR/RAG/scripts/generate-index.sh" ]; then
+  echo "[pre-commit] generating RAG index..."
+  "$ROOT_DIR/RAG/scripts/generate-index.sh"
+  git add RAG/INDEX.md RAG/AI-EPIC/*.md RAG/AI-IMP/*.md 2>/dev/null || true
+fi
+
 echo "[pre-commit] done"

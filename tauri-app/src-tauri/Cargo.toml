@@ -1,33 +1,30 @@
 [package]
 name = "tauri-app"
-version = "0.0.1"
+version = "1.0.0"
 edition = "2021"
 authors = ["color-tool"]
 default-run = "tauri-app"
 
 [features]
 default = ["simd"]
-bench-crate = ["kmeans_colors", "palette"]
 simd = ["dep:wide"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-anyhow = "1.0"
 rand = { version = "0.8", features = ["small_rng"] }
 rayon = "1.8"
-image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
-tauri = { version = "2.0", features = [] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp", "tiff"] }
+tauri = { version = "2.0", features = ["protocol-asset", "devtools"] }
 tauri-plugin-shell = "2.0"
 tauri-plugin-dialog = "2.0"
+tauri-plugin-store = "2"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 wide = { version = "0.7", optional = true, default-features = false, features = ["std"] }
-kmeans_colors = { version = "0.6", optional = true, default-features = false, features = ["palette_color"] }
-palette = { version = "0.7", optional = true, default-features = false, features = ["std"] }
-clap = { version = "4.5", features = ["derive"] }
 
 [dev-dependencies]
+proptest = "1.4"
 tempfile = "3.10"
 
 [build-dependencies]

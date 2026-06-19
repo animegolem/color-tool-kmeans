@@ -8,9 +8,10 @@ tags:
   - critical-bug
 kanban_status: completed
 depends_on: AI-EPIC-006
+parent_epic: [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes]]
 confidence_score: 0.95
-created_date: 2025-10-08
-close_date: 2025-11-20
+date_created: 2025-10-08
+date_completed: 2025-11-20
 ---
 
 # AI-IMP-058-fix-tauri-fs-bridge-env-detection
