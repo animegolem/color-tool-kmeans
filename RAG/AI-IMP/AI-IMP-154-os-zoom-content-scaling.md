@@ -5,7 +5,7 @@ tags:
   - Implementation
   - ux
   - layout
-kanban_status: planned
+kanban_status: deferred
 depends_on: []
 parent_epic: [[AI-EPIC-024-road-to-v1-polish]]
 confidence_score: 0.5
@@ -66,6 +66,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 
 ### Issues Encountered
 
-<!--
-This section is filled out post work.
--->
+**Deferred (2026-06-19) past the v1.0.0 release.** Current behavior: `App.svelte` intercepts Cmd/Ctrl +/-/0 and applies whole-webview `setZoom()`. The content-only variant (CSS `zoom` on `.view-container`) is a ~20-line experiment but is a nice-to-have, not a release blocker. Deferred pending verification of how OS/webview zoom actually behaves on the Windows baseline build — the decision to scope content-only scaling depends on whether the whole-webview zoom is acceptable there. Revisit after the Windows remote-build phase.

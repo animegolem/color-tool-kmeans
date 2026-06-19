@@ -5,12 +5,12 @@ tags:
   - Implementation
   - performance
   - media-bucket
-kanban_status: planned
+kanban_status: completed
 depends_on: []
 parent_epic: [[AI-EPIC-024-road-to-v1-polish]]
 confidence_score: 0.6
 date_created: 2026-03-19
-date_completed:
+date_completed: 2026-06-19
 ---
 
 # AI-IMP-150-media-bucket-image-caching
@@ -42,12 +42,12 @@ Investigate whether the reload is caused by DOM remounting (component destroyed 
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Profile current behavior: identify why thumbnails reload on expand
-- [ ] Determine root cause (DOM remount, blob URL revocation, or re-decode)
-- [ ] Implement caching fix (keep mounted, cache URLs, or prevent re-decode)
-- [ ] Verify no memory leaks from cached blob URLs
-- [ ] Test with 10+ images: expand/collapse cycle should be near-instant
-- [ ] `npm run check && npm run lint`
+- [x] Profile current behavior: identify why thumbnails reload on expand — MediaBucket stays mounted (visibility:hidden), `<img>` elements persist
+- [x] Determine root cause (DOM remount, blob URL revocation, or re-decode) — no remount; no reload flash reproducible on macOS
+- [x] Implement caching fix (keep mounted, cache URLs, or prevent re-decode) — N/A, already satisfied by mounted architecture
+- [x] Verify no memory leaks from cached blob URLs — N/A
+- [x] Test with 10+ images: expand/collapse cycle should be near-instant — user confirmed no issue (2026-06-19)
+- [x] `npm run check && npm run lint` — N/A, no code change
 
 ### Acceptance Criteria
 
@@ -58,6 +58,4 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 
 ### Issues Encountered
 
-<!--
-This section is filled out post work.
--->
+**Closed as cannot-reproduce (2026-06-19).** The ticket premise (component destroyed on collapse → thumbnails re-decode) is wrong: the library rail collapses via `visibility: hidden` (`.library-rail--hidden` in `app.css`), not an `{#if}`, so MediaBucket remains mounted and its `<img>` elements persist across collapse/expand cycles. No reload flash is reproducible on macOS, confirmed by the user during the EPIC-024 wrap. FR-7 (thumbnails cached / no repeated loading) is satisfied by the existing mounted architecture. If a flash ever surfaces on Linux WebKitGTK (decoded-bitmap discard for hidden subtrees), revisit as a platform-specific follow-up — but Linux is deprioritized for v1.

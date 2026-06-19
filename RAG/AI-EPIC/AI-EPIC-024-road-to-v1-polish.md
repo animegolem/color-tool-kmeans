@@ -62,7 +62,7 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 - [x] FR-4: Video frame click guarded during processing with visual feedback.
 - [x] FR-5: Drag-and-drop pathways evaluated and unified where beneficial.
 - [x] FR-6: Drag-and-drop on batch view loads and pins dropped files.
-- [ ] FR-7: Media bucket sidebar images cached to prevent repeated loading.
+- [x] FR-7: Media bucket sidebar images cached to prevent repeated loading.
 - [x] FR-8: Batch pin thumbnails support click-to-expand and dismiss.
 - [x] FR-9: Batch analysis parameters persist between sessions.
 - [ ] FR-10: Right-click context menus on graphs for direct PNG/SVG export.
@@ -87,11 +87,11 @@ A series of targeted IMP tickets addressing: analysis validation (hue x lightnes
 | completed | AI-IMP-147 | Guard video frame click during processing |
 | completed | AI-IMP-148 | Evaluate and unify drag-and-drop pathways |
 | completed | AI-IMP-149 | Drag-and-drop on batch view (load + pin) |
-| planned | AI-IMP-150 | Media bucket sidebar image caching |
+| completed | AI-IMP-150 | Media bucket sidebar image caching |
 | completed | AI-IMP-151 | Batch pin management UX |
 | completed | AI-IMP-152 | Persist batch settings between sessions |
 | planned | AI-IMP-153 | Direct export context menus for graphs |
-| planned | AI-IMP-154 | OS zoom content-only scaling |
+| deferred | AI-IMP-154 | OS zoom content-only scaling |
 | completed | AI-IMP-155 | Settings tab media bucket fading |
 | completed | AI-IMP-156 | Clear pins button styling alignment |
 | completed | AI-IMP-157 | Batch export section in Exports view |
