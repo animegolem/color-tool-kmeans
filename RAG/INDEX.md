@@ -67,7 +67,6 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src-tauri/src/value_analysis.rs (594 LOC)
 - tauri-app/src-tauri/src/kmeans.rs (581 LOC)
 - RAG/scripts/generate-index.sh (575 LOC)
-- .../scripts/generate-index.sh (575 LOC)
 - tauri-app/src/lib/views/ExportsView.svelte (520 LOC)
 - tauri-app/src/lib/exports/value-analysis.ts (429 LOC)
 - tauri-app/src-tauri/src/commands.rs (395 LOC)
