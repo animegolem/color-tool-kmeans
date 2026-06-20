@@ -1,6 +1,6 @@
 [package]
 name = "tauri-app"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 authors = ["color-tool"]
 default-run = "tauri-app"
