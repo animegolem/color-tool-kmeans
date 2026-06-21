@@ -12,6 +12,7 @@ import {
   setValueAnalysisError
 } from '../../stores/ui';
 import { requestValueAnalysis } from '../../bridges/value-analysis';
+import { inferMimeType } from '../../bridges/fs';
 import { logEvent } from '../../bridges/log';
 
 export function createValueAnalysisRunner() {
@@ -106,6 +107,13 @@ export function createValueAnalysisRunner() {
     captureAnalysisScroll();
     valueAnalysisLevels.set(next);
     void logEvent(`values:levels ${next}`);
+    // Explicit trigger: the file-change $effect deliberately skips video frames
+    // (those analyze via onFrameExtracted), so a levels change on a video frame
+    // has no other trigger. Re-analyze the current still or extracted frame here.
+    if (!file?.path) return;
+    // Skip a raw, unextracted video container; extracted frames carry videoPath.
+    if (!file.videoPath && inferMimeType(file.path).startsWith('video/')) return;
+    void ensureAnalysis(file, next, next === 2);
   }
 
   function trackMaskKey(currentAnalysis: ValueAnalysisResult | null) {
