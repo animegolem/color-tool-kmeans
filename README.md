@@ -12,13 +12,7 @@ batch palettes, and notan/value studies, all exportable.
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)
 
-<!--
-  DEMO VIDEO GOES HERE.
-  To add it: open this README on github.com, click the pencil (edit), and drag your
-  screen recording into the editor. GitHub uploads it and inserts a URL like
-  https://github.com/user-attachments/assets/XXXX — put that on its own line below,
-  replacing the screenshot, to render a centered inline player.
--->
+https://github.com/user-attachments/assets/641e879c-258c-4b8b-9b5f-8c10b1799aec
 
 <img src="RAG/assets/Export-Color-PrimaryExport.png" alt="Color Tool — color analysis export" width="820">
 
