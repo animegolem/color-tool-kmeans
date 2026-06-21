@@ -114,6 +114,7 @@ natively; ffmpeg handles frame extraction.
 
 ## Credits
 
+- Laurent Jégou for the initial spark and inspiration.
 - OKLab color space by [Björn Ottosson](https://bottosson.github.io/posts/oklab/)
 - [ffmpeg](https://ffmpeg.org) for video processing (LGPL)
 - Sidebar icons: VS Code Codicons (CC BY 4.0)
