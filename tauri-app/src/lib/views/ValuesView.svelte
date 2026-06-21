@@ -174,15 +174,18 @@
   });
 
   $effect(() => {
-    if (!runner.file) return;
-    if (runner.status !== 'idle') return;
+    const f = runner.file;
+    const lvl = runner.levels;
+    const mode = runner.effectiveNotanMode;
+    if (!f) return;
+    if (runner.status === 'pending') return;
     if (runner.hasCurrentAnalysis) return;
-    if (runner.file.path && /\.mp4$/i.test(runner.file.path) && !runner.file.videoPath) {
-      ingestion.handleVideoFile(runner.file.path, runner.file.name);
+    if (f.path && /\.mp4$/i.test(f.path) && !f.videoPath) {
+      ingestion.handleVideoFile(f.path, f.name);
       return;
     }
-    if (runner.file.videoPath) return;
-    void runner.ensureAnalysis(runner.file, runner.levels, runner.effectiveNotanMode);
+    if (f.videoPath) return;
+    void runner.ensureAnalysis(f, lvl, mode);
   });
 
   $effect(() => {
@@ -348,7 +351,7 @@
         <div class="analysis-controls">
           <label class="levels">
             <span>Levels</span>
-            <input type="range" min="2" max="5" step="1" bind:value={runner.levels} oninput={runner.updateLevels} />
+            <input type="range" min="2" max="5" step="1" value={runner.levels} oninput={(e) => runner.updateLevels(e.currentTarget.valueAsNumber)} />
             <strong>{runner.levels}</strong>
           </label>
         </div>

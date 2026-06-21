@@ -101,10 +101,11 @@ export function createValueAnalysisRunner() {
     }
   }
 
-  function updateLevels() {
+  function updateLevels(next: number) {
+    levels = next;
     captureAnalysisScroll();
-    valueAnalysisLevels.set(levels);
-    void logEvent(`values:levels ${levels}`);
+    valueAnalysisLevels.set(next);
+    void logEvent(`values:levels ${next}`);
   }
 
   function trackMaskKey(currentAnalysis: ValueAnalysisResult | null) {

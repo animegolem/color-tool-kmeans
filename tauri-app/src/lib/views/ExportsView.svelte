@@ -208,27 +208,6 @@
         Export Values Composite
       </button>
     </div>
-
-    <div class="builder-section">
-      <h2>Data</h2>
-      <div class="builder-items">
-        <div class="data-row">
-          <span>Palette CSV</span>
-          <span class="spacer"></span>
-          <button disabled={colorsRunner.isSaving} onclick={colorsRunner.savePaletteCsv}>Save CSV</button>
-        </div>
-        <div class="data-row">
-          <span>Palette .ase</span>
-          <span class="spacer"></span>
-          <button disabled={colorsRunner.isSaving} onclick={colorsRunner.savePaletteAse}>Save .ase</button>
-        </div>
-        <div class="data-row">
-          <span>Palette JSON</span>
-          <span class="spacer"></span>
-          <button disabled={colorsRunner.isSaving} onclick={colorsRunner.savePaletteJson}>Save JSON</button>
-        </div>
-      </div>
-    </div>
   {/if}
 
   {#if batchResult}
@@ -292,6 +271,29 @@
       <button class="composite-btn" disabled={colorsRunner.isSaving || !batchAnyChecked} onclick={batchRunner.exportBatchComposite}>
         Export Batch Composite
       </button>
+    </div>
+  {/if}
+
+  {#if file && result}
+    <div class="builder-section">
+      <h2>Data</h2>
+      <div class="builder-items">
+        <div class="data-row">
+          <span>Palette CSV</span>
+          <span class="spacer"></span>
+          <button disabled={colorsRunner.isSaving} onclick={colorsRunner.savePaletteCsv}>Save CSV</button>
+        </div>
+        <div class="data-row">
+          <span>Palette .ase</span>
+          <span class="spacer"></span>
+          <button disabled={colorsRunner.isSaving} onclick={colorsRunner.savePaletteAse}>Save .ase</button>
+        </div>
+        <div class="data-row">
+          <span>Palette JSON</span>
+          <span class="spacer"></span>
+          <button disabled={colorsRunner.isSaving} onclick={colorsRunner.savePaletteJson}>Save JSON</button>
+        </div>
+      </div>
     </div>
   {/if}
 
