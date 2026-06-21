@@ -71,7 +71,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/exports/value-analysis.ts (429 LOC)
 - tauri-app/src-tauri/src/commands.rs (395 LOC)
 - tauri-app/src/App.svelte (380 LOC)
-- tauri-app/src/app.css (375 LOC)
+- tauri-app/src/app.css (374 LOC)
 - tauri-app/src-tauri/src/ffmpeg.rs (369 LOC)
 - tauri-app/src/lib/views/exports/colors-export-runner.svelte.ts (368 LOC)
 - tauri-app/src/lib/exports/polar-chart.ts (358 LOC)

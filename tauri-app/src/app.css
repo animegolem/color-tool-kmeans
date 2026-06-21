@@ -84,7 +84,6 @@ main.library-open {
   padding: 10px 12px;
   text-align: left;
   background: transparent;
-  transition: background 0.15s ease;
   white-space: nowrap;
 }
 
