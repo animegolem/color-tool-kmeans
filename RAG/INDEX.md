@@ -56,7 +56,7 @@ Generated from tracked files; binary assets excluded.
 
 ### > 600 LOC
 
-- tauri-app/src/lib/views/BatchView.svelte (718 LOC)
+- tauri-app/src/lib/views/BatchView.svelte (729 LOC)
 - tauri-app/src/lib/views/ValuesView.svelte (712 LOC)
 - tauri-app/src-tauri/src/color.rs (706 LOC)
 - tauri-app/src/lib/views/HomeView.svelte (677 LOC)
@@ -67,7 +67,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src-tauri/src/value_analysis.rs (594 LOC)
 - tauri-app/src-tauri/src/kmeans.rs (581 LOC)
 - RAG/scripts/generate-index.sh (575 LOC)
-- tauri-app/src/lib/views/ExportsView.svelte (522 LOC)
+- tauri-app/src/lib/views/ExportsView.svelte (514 LOC)
 - tauri-app/src/lib/exports/value-analysis.ts (429 LOC)
 - tauri-app/src-tauri/src/commands.rs (395 LOC)
 - tauri-app/src/App.svelte (380 LOC)
