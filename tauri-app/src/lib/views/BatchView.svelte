@@ -75,9 +75,13 @@
     drop.setup().then((fn) => {
       unlistenDrop = fn ?? null;
     });
+    // Defer heavy content one frame so the nav + header paint first (avoids the
+    // ~0.25s nav-label lag when entering Batch with a loaded analysis).
+    const readyRaf = requestAnimationFrame(() => { bodyReady = true; });
     window.addEventListener('pointerup', handleScrubEnd);
     window.addEventListener('pointercancel', handleScrubEnd);
     return () => {
+      cancelAnimationFrame(readyRaf);
       unlistenDrop?.();
       window.removeEventListener('pointerup', handleScrubEnd);
       window.removeEventListener('pointercancel', handleScrubEnd);
@@ -92,6 +96,9 @@
 
   const pinCount = $derived(pinned.length);
   const overLimit = $derived(pinCount > MAX_PINS);
+
+  // Gates heavy content (pin grid / results) until after the first paint.
+  let bodyReady = $state(false);
 
   type ViewState = 'empty' | 'selection' | 'results';
   const viewState = $derived.by((): ViewState => {
@@ -286,22 +293,24 @@
     {/if}
 
     <div class="pin-grid" style:--cols={previewCols}>
-      {#each pinned as img (img.id)}
-        <div
-          class="pin-thumb"
-          role="button"
-          tabindex="0"
-          title={`Expand ${img.name}`}
-          onclick={() => handlePinExpand(img.id)}
-          onkeydown={(e) => handlePinExpandKeydown(e, img.id)}
-        >
-          {#if img.previewUrl}
-            <img src={img.previewUrl} alt={img.name} />
-          {:else}
-            <div class="pin-thumb__placeholder">{img.name}</div>
-          {/if}
-        </div>
-      {/each}
+      {#if bodyReady}
+        {#each pinned as img (img.id)}
+          <div
+            class="pin-thumb"
+            role="button"
+            tabindex="0"
+            title={`Expand ${img.name}`}
+            onclick={() => handlePinExpand(img.id)}
+            onkeydown={(e) => handlePinExpandKeydown(e, img.id)}
+          >
+            {#if img.previewUrl}
+              <img src={img.previewUrl} alt={img.name} />
+            {:else}
+              <div class="pin-thumb__placeholder">{img.name}</div>
+            {/if}
+          </div>
+        {/each}
+      {/if}
     </div>
 
     <ParameterControls paramsStore={batchParams} onScrubStart={handleScrubStart} onScrubEnd={handleScrubEnd} />
@@ -334,6 +343,7 @@
       </p>
     {/if}
 
+    {#if bodyReady}
     <section class="results-layout two-columns">
       <div class="results-column">
         <article class="analysis-card">
@@ -421,6 +431,7 @@
         </article>
       </div>
     </section>
+    {/if}
 
     <ParameterControls paramsStore={batchParams} onScrubStart={handleScrubStart} onScrubEnd={handleScrubEnd} />
   {/if}
