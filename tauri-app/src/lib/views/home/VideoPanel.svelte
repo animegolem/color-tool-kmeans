@@ -58,6 +58,18 @@
         >
           <source src={video.videoSrcUrl} type={video.videoSelection?.mimeType ?? 'video/mp4'} />
         </video>
+        {#if video.videoDisplayUrl}
+          <!-- Settled-frame overlay: the exact ffmpeg-extracted frame analysis used.
+               Reactive <img> (can't go dormant like the <video>), so the displayed
+               frame and the analyzed frame stay in lockstep. Transparent during an
+               active drag / pending decode so the live <video> shows through. -->
+          <img
+            class="settled-frame"
+            src={video.videoDisplayUrl}
+            alt=""
+            style:opacity={video.videoScrubbing || video.frameDecoding ? 0 : 1}
+          />
+        {/if}
       </div>
     {:else}
       <div class="preview-placeholder">Loading video frame…</div>
@@ -152,6 +164,16 @@
     width: 100%;
     height: auto;
     display: block;
+  }
+
+  .settled-frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    transition: opacity 0.1s ease;
   }
 
   .preview-placeholder {

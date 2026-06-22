@@ -59,8 +59,8 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/views/BatchView.svelte (729 LOC)
 - tauri-app/src/lib/views/ValuesView.svelte (712 LOC)
 - tauri-app/src-tauri/src/color.rs (706 LOC)
+- tauri-app/src/lib/views/home/video-controller.svelte.ts (678 LOC)
 - tauri-app/src/lib/views/HomeView.svelte (677 LOC)
-- tauri-app/src/lib/views/home/video-controller.svelte.ts (677 LOC)
 
 ### > 300 LOC
 
