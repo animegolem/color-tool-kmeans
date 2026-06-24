@@ -657,6 +657,7 @@ export function createVideoController(deps: VideoControllerDeps) {
     get videoStripPending() { return videoStripPending; },
     get videoDisplayUrl() { return videoPosterUrl ?? null; },
     get videoPosterPath() { return videoPosterPath; },
+    get videoScrubbing() { return videoScrubbing; },
     get frameDecoding() { return frameDecoding; },
     loadVideoSelection,
     clearVideoSelection,

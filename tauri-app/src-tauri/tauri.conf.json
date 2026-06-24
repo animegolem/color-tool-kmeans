@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Color Tool",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "identifier": "com.color.tool",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -11,7 +11,7 @@
   },
   "app": {
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: blob: asset: tauri:; media-src 'self' data: blob: asset: tauri:; font-src 'self' data:; style-src 'self' 'unsafe-inline';",
+      "csp": "default-src 'self'; img-src 'self' data: blob: asset: http://asset.localhost https://asset.localhost tauri:; media-src 'self' data: blob: asset: http://asset.localhost https://asset.localhost tauri:; font-src 'self' data:; style-src 'self' 'unsafe-inline';",
       "devCsp": null,
       "assetProtocol": {
         "enable": true,
