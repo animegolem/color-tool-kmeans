@@ -1,0 +1,52 @@
+name: Preview Build
+
+# On-demand Windows build for VM/manual testing without a public release.
+# Uploads the msi as a downloadable Actions artifact (not a GitHub Release).
+# The branch-scoped push trigger lets it run before this lands on main;
+# drop that branch entry (or this whole file) at merge time.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/video-frame-freeze-and-windows-assets
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install FFmpeg sidecars (Windows)
+        shell: bash
+        run: |
+          cd tauri-app
+          ./scripts/fetch-ffmpeg-btbn-lgpl.sh x86_64-pc-windows-msvc https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl.zip
+
+      - name: Install dependencies
+        run: |
+          cd tauri-app
+          npm install --no-audit --no-fund
+
+      - name: Build Tauri app (Windows)
+        run: |
+          cd tauri-app
+          npm run tauri build
+
+      - name: Upload msi artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: color-tool-windows-msi
+          path: tauri-app/src-tauri/target/release/bundle/**/*.msi
+          if-no-files-found: error
