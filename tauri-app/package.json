@@ -8,8 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "prettier --write . \"!dist/**\" \"!coverage/**\" \"!.svelte-kit/**\" \"!.turbo/**\" \"!.ffmpeg-build/**\" \"!src-tauri/target/**\" \"!src-tauri/.fingerprint/**\" \"!src-tauri/gen/**\" \"!src-tauri/bin/**\"",
+    "format:check": "prettier --check . \"!dist/**\" \"!coverage/**\" \"!.svelte-kit/**\" \"!.turbo/**\" \"!.ffmpeg-build/**\" \"!src-tauri/target/**\" \"!src-tauri/.fingerprint/**\" \"!src-tauri/gen/**\" \"!src-tauri/bin/**\"",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "tauri": "tauri"

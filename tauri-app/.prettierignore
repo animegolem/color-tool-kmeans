@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+.svelte-kit/
+.turbo/
+.ffmpeg-build/
+src-tauri/target/
+src-tauri/.fingerprint/
+src-tauri/gen/
+src-tauri/bin/

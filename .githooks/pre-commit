@@ -15,7 +15,12 @@ fi
 run_npm_script() {
   local dir=$1
   local script=$2
-  if [ -f "$dir/package.json" ] && jq -e ".scripts['$script']" < "$dir/package.json" >/dev/null 2>&1; then
+  if [ -f "$dir/package.json" ] && node -e '
+    const fs = require("node:fs");
+    const packageJson = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    const scripts = packageJson.scripts ?? {};
+    process.exit(Object.prototype.hasOwnProperty.call(scripts, process.argv[2]) ? 0 : 1);
+  ' "$dir/package.json" "$script"; then
     echo "[pre-commit] $dir -> npm run $script"
     (cd "$dir" && npm run -s "$script") || {
       echo "[pre-commit] $script failed in $dir" >&2

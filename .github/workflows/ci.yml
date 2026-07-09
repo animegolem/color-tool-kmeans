@@ -18,7 +18,7 @@ jobs:
       - name: Install dependencies (tauri-app)
         run: |
           cd tauri-app
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
 
       - name: Enforce Svelte runes event syntax
         run: |
@@ -37,6 +37,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev webkit2gtk-4.1 libayatana-appindicator3-dev librsvg2-dev
 
+      - name: Run frontend format, lint, and type checks
+        run: |
+          cd tauri-app
+          npm run format:check
+          npm run lint
+          npm run check
+
+      - name: Run full frontend test suite
+        run: |
+          cd tauri-app
+          npm run test -- --run
+
       - name: Run TS gamut boundary test
         run: |
           cd tauri-app
@@ -46,6 +58,11 @@ jobs:
         run: |
           cd tauri-app/src-tauri
           cargo test --no-default-features --test kmeans_snapshots
+
+      - name: Run full Rust workspace test suite
+        run: |
+          cd tauri-app/src-tauri
+          cargo test --workspace
 
       - name: Electron app tests
         if: ${{ hashFiles('electron-app/package.json') != '' }}
@@ -82,7 +99,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd tauri-app
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
 
       - name: Build Tauri app (Windows)
         run: |
