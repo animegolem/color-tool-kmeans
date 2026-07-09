@@ -41,6 +41,16 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
   const mimeType = $derived(videoName ? inferMimeType(videoName) : null);
 
   function syncFromVideoState(vs: VideoState | null) {
+    const nextPath = vs?.path ?? null;
+    if (nextPath !== videoPath) {
+      decodeToken += 1;
+      extracting = false;
+      frameId = null;
+      if (decodeTimer) {
+        clearTimeout(decodeTimer);
+        decodeTimer = null;
+      }
+    }
     if (!vs) {
       videoPath = null;
       videoName = null;
@@ -63,6 +73,8 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
   function scheduleFrameExtract() {
     if (!videoPath) return;
     if (decodeTimer) clearTimeout(decodeTimer);
+    const requestPath = videoPath;
+    const requestName = videoName ?? requestPath;
     const requestTime = currentTime;
     const fid =
       globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
@@ -71,14 +83,15 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
     const token = ++decodeToken;
 
     decodeTimer = setTimeout(async () => {
-      if (!videoPath || token !== decodeToken) return;
+      decodeTimer = null;
+      if (token !== decodeToken) return;
       extracting = true;
       try {
         void logEvent(
           `values:video:frame:start t=${requestTime.toFixed(2)} max=${maxDimension}`
         );
         const response = await extractVideoFrame({
-          path: videoPath,
+          path: requestPath,
           frameId: fid,
           timestamp: requestTime,
           maxDimension,
@@ -93,11 +106,11 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
           framePath,
           fid,
           requestTime,
-          videoPath,
-          videoName ?? videoPath
+          requestPath,
+          requestName
         );
         deps.updateVideoState(requestTime, framePath);
-        deps.cacheVideoState?.(videoPath, requestTime, framePath);
+        deps.cacheVideoState?.(requestPath, requestTime, framePath);
       } catch (error) {
         if (token !== decodeToken) return;
         const message = error instanceof Error ? error.message : String(error);

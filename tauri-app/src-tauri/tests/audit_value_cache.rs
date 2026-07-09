@@ -15,6 +15,16 @@ fn mtime_seconds(path: &Path) -> u64 {
         .as_secs()
 }
 
+fn mtime_nanos(path: &Path) -> u128 {
+    std::fs::metadata(path)
+        .expect("metadata")
+        .modified()
+        .expect("mtime")
+        .duration_since(UNIX_EPOCH)
+        .expect("mtime after epoch")
+        .as_nanos()
+}
+
 fn align_away_from_second_boundary() {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -26,8 +36,7 @@ fn align_away_from_second_boundary() {
 }
 
 #[test]
-#[should_panic(expected = "same-second file replacement must invalidate")]
-fn audit_same_second_source_replacement_is_not_cached() {
+fn aud_005_same_second_source_replacement_is_not_cached() {
     align_away_from_second_boundary();
     let source_dir = TempDir::new().expect("source temp dir");
     let cache_dir = TempDir::new().expect("cache temp dir");
@@ -37,6 +46,8 @@ fn audit_same_second_source_replacement_is_not_cached() {
         .save(&source)
         .expect("save red frame");
     let first_mtime = mtime_seconds(&source);
+    let first_mtime_nanos = mtime_nanos(&source);
+    let first_length = std::fs::metadata(&source).expect("red metadata").len();
     let first = generate_value_analysis(&source, "same-logical-frame", 3, false, cache_dir.path())
         .expect("first analysis");
 
@@ -44,9 +55,19 @@ fn audit_same_second_source_replacement_is_not_cached() {
         .save(&source)
         .expect("save blue frame");
     let second_mtime = mtime_seconds(&source);
+    let second_mtime_nanos = mtime_nanos(&source);
+    let second_length = std::fs::metadata(&source).expect("blue metadata").len();
     assert_eq!(
         first_mtime, second_mtime,
         "test setup crossed a second boundary"
+    );
+    assert_eq!(
+        first_length, second_length,
+        "replacement must keep the same file length"
+    );
+    assert_ne!(
+        first_mtime_nanos, second_mtime_nanos,
+        "test filesystem must expose subsecond mtime precision"
     );
 
     let second = generate_value_analysis(&source, "same-logical-frame", 3, false, cache_dir.path())

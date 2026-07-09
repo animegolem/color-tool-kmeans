@@ -49,6 +49,22 @@ export const valueAnalysisErrorByKey = writable<Record<string, string | null>>(
   {}
 );
 
+function removeKeysForImage<T>(cache: Record<string, T>, imageId: string) {
+  const next: Record<string, T> = {};
+  for (const [key, value] of Object.entries(cache)) {
+    if (!key.startsWith(`${imageId}:`)) next[key] = value;
+  }
+  return next;
+}
+
+export function invalidateValueAnalysisForImage(imageId: string) {
+  valueAnalysisByKey.update((cache) => removeKeysForImage(cache, imageId));
+  valueAnalysisStateByKey.update((state) => removeKeysForImage(state, imageId));
+  valueAnalysisErrorByKey.update((errors) =>
+    removeKeysForImage(errors, imageId)
+  );
+}
+
 export function setValueAnalysisPending(
   imageId: string,
   levels: number,

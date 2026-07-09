@@ -41,7 +41,10 @@
   import { generateHueLightnessSvg } from '../exports/hue-lightness';
   import { generateHistogramSvg } from '../exports/histogram';
   import { openImageZoom as zoomImage } from '../utils/zoom';
-  import { createVideoController } from './home/video-controller.svelte';
+  import {
+    createVideoController,
+    subscribeToVideoStripMode,
+  } from './home/video-controller.svelte';
   import { createAnalysisRunner } from './home/analysis-runner.svelte';
   import { createFileIngestion } from './home/file-ingestion.svelte';
   import { clearActivePath } from '../services/active-image';
@@ -361,16 +364,7 @@
         });
         video.handleVideoStateChange(state);
       }),
-      (() => {
-        let first = true;
-        return videoStripMode.subscribe(() => {
-          if (first) {
-            first = false;
-            return;
-          }
-          video.regenerateStrip();
-        });
-      })(),
+      subscribeToVideoStripMode(videoStripMode, video.regenerateStrip),
       subscribePendingVideoSwitch(({ entry, videoPath, id, cid }) => {
         devlog('home:videoSwitch', 'Pending video switch', {
           id,

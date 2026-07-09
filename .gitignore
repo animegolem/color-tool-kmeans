@@ -44,3 +44,4 @@ tauri-app/.ffmpeg-build/
 tauri-app/src-tauri/bin/
 tauri-app/src-tauri/bin/ffmpeg-*
 tauri-app/src-tauri/bin/ffprobe-*
+.claude/

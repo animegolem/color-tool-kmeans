@@ -42,7 +42,10 @@ vi.mock('@tauri-apps/api/core', () => ({
   convertFileSrc: (path: string) => `asset://${path}`,
 }));
 
-import { createVideoController } from '../home/video-controller.svelte';
+import {
+  createVideoController,
+  subscribeToVideoStripMode,
+} from '../home/video-controller.svelte';
 import { createAnalysisRunner } from '../home/analysis-runner.svelte';
 import { createValuesFileIngestion } from '../values/file-ingestion-values.svelte';
 import { createValueAnalysisRunner } from '../values/value-analysis-runner.svelte';
@@ -63,6 +66,7 @@ import {
   valueAnalysisResult,
   valueAnalysisStateByKey,
   videoState,
+  videoStripMode,
 } from '../../stores/ui';
 import {
   setValueAnalysisSuccess,
@@ -122,8 +126,56 @@ function valueResult(): ValueAnalysisResult {
   };
 }
 
+function auditVideoController(
+  overrides: Partial<Parameters<typeof createVideoController>[0]> = {}
+) {
+  return createVideoController({
+    isNativeModeActive: () => true,
+    buildPreviewUrl: () => 'asset:///tmp/a.mp4',
+    maxDimensionForQuality: () => 1200,
+    setFile: vi.fn(),
+    setVideoState: vi.fn(),
+    clearFile: vi.fn(),
+    getQuality: () => 2,
+    setBannerMessage: vi.fn(),
+    scheduleAnalysisWith: vi.fn(),
+    getCurrentParams: () => ({}),
+    clearLastRequestKey: vi.fn(),
+    captureAnalysisScroll: vi.fn(),
+    getVideoStripMode: () => 'filmstrip',
+    getCachedVideoState: () => ({
+      duration: 10,
+      fps: 24,
+      currentTime: 0,
+      stripPath: null,
+      stripId: null,
+      posterPath: null,
+      frameId: 'frame-1',
+    }),
+    cacheVideoState: vi.fn(),
+    findExistingFrameId: () => 'frame-1',
+    seedAnalysisKey: vi.fn(),
+    hasAnalysisForImage: () => false,
+    ...overrides,
+  });
+}
+
+function videoSelection() {
+  return {
+    name: 'a.mp4',
+    path: '/tmp/a.mp4',
+    size: 0,
+    blob: new Blob([]),
+    mimeType: 'video/mp4',
+  };
+}
+
 describe('audit reproductions for async control-flow invariants', () => {
   beforeEach(() => {
+    Object.assign(globalThis, {
+      $state: <T>(initial: T) => initial,
+      $derived: <T>(initial: T) => initial,
+    });
     vi.useFakeTimers();
     vi.clearAllMocks();
     clearFile();
@@ -141,136 +193,153 @@ describe('audit reproductions for async control-flow invariants', () => {
     valueAnalysisStateByKey.set({});
     valueAnalysisErrorByKey.set({});
     resetAnalysis();
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
-  it.fails(
-    'discards a Values frame completion after switching to another video',
-    async () => {
-      const firstFrame = deferred<{ path: string; timestampUsed: string }>();
-      mocks.extractVideoFrame.mockReturnValueOnce(firstFrame.promise);
-      const onFrameExtracted = vi.fn();
-      const scrubber = createVideoScrubber({
-        getMaxDimension: () => 1200,
-        onFrameExtracted,
-        updateVideoState: vi.fn(),
-      });
+  it('AUD-001: discards a Values frame completion after switching to another video', async () => {
+    const firstFrame = deferred<{ path: string; timestampUsed: string }>();
+    mocks.extractVideoFrame.mockReturnValueOnce(firstFrame.promise);
+    const onFrameExtracted = vi.fn();
+    const scrubber = createVideoScrubber({
+      getMaxDimension: () => 1200,
+      onFrameExtracted,
+      updateVideoState: vi.fn(),
+    });
 
-      scrubber.syncFromVideoState({
-        path: '/tmp/a.mp4',
-        name: 'a.mp4',
+    scrubber.syncFromVideoState({
+      path: '/tmp/a.mp4',
+      name: 'a.mp4',
+      duration: 10,
+      fps: 24,
+      currentTime: 1,
+    });
+    scrubber.scheduleFrameExtract();
+    await vi.advanceTimersByTimeAsync(250);
+
+    scrubber.syncFromVideoState({
+      path: '/tmp/b.mp4',
+      name: 'b.mp4',
+      duration: 20,
+      fps: 24,
+      currentTime: 2,
+    });
+    firstFrame.resolve({ path: '/cache/a-frame.png', timestampUsed: '1.000' });
+    await vi.runAllTimersAsync();
+
+    expect(onFrameExtracted).not.toHaveBeenCalled();
+  });
+
+  it('AUD-002: keeps the newest Values probe result when video probes resolve out of order', async () => {
+    const probeA = deferred<{ duration: number; fps: number }>();
+    const probeB = deferred<{ duration: number; fps: number }>();
+    mocks.probeVideo.mockImplementation((path: string) =>
+      path === '/tmp/a.mp4' ? probeA.promise : probeB.promise
+    );
+    const ingestion = createValuesFileIngestion({ cancelPending: vi.fn() });
+
+    ingestion.handleVideoFile('/tmp/a.mp4', 'a.mp4');
+    ingestion.handleVideoFile('/tmp/b.mp4', 'b.mp4');
+    probeB.resolve({ duration: 20, fps: 24 });
+    await vi.runAllTimersAsync();
+    probeA.resolve({ duration: 10, fps: 24 });
+    await vi.runAllTimersAsync();
+
+    expect(get(videoState)?.path).toBe('/tmp/b.mp4');
+  });
+
+  it('AUD-008: preserves cached strip metadata when Values activates a cached video', () => {
+    cacheVideoState('/tmp/a.mp4', {
+      duration: 10,
+      fps: 24,
+      currentTime: 2,
+      stripPath: '/cache/a-strip.png',
+      stripId: 'strip-a',
+      posterPath: '/cache/a-frame.png',
+      frameId: 'frame-a',
+    });
+    const ingestion = createValuesFileIngestion({ cancelPending: vi.fn() });
+
+    ingestion.handleVideoFile('/tmp/a.mp4', 'a.mp4');
+
+    expect(get(videoState)?.stripPath).toBe('/cache/a-strip.png');
+    expect((get(videoState) as { stripId?: string } | null)?.stripId).toBe(
+      'strip-a'
+    );
+  });
+
+  it('AUD-007: serializes Home frame decodes that share a logical frame ID', async () => {
+    const firstFrame = deferred<{ path: string; timestampUsed: string }>();
+    const setFileForFrame = vi.fn();
+    mocks.extractVideoFrame
+      .mockReturnValueOnce(firstFrame.promise)
+      .mockResolvedValueOnce({
+        path: '/cache/current-frame.png',
+        timestampUsed: '0.042',
+      });
+    const controller = auditVideoController({ setFile: setFileForFrame });
+
+    controller.loadVideoSelection(videoSelection());
+    await vi.advanceTimersByTimeAsync(250);
+    controller.stepVideoFrames(1);
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(mocks.extractVideoFrame).toHaveBeenCalledTimes(1);
+    firstFrame.resolve({
+      path: '/cache/stale-frame.png',
+      timestampUsed: '0.000',
+    });
+    await vi.runAllTimersAsync();
+
+    expect(mocks.extractVideoFrame).toHaveBeenCalledTimes(2);
+    expect(setFileForFrame).toHaveBeenCalledTimes(1);
+    expect(setFileForFrame).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'frame-1',
+        path: '/cache/current-frame.png',
+        frameTimestamp: 1 / 24,
+      }),
+      emptyDataset
+    );
+  });
+
+  it('AUD-009: starts a replacement strip request when the strip mode changes in flight', () => {
+    const strip = deferred<{ path: string }>();
+    mocks.extractVideoStrip.mockReturnValue(strip.promise);
+    const controller = auditVideoController();
+
+    controller.loadVideoSelection(videoSelection());
+    controller.regenerateStrip();
+    controller.regenerateStrip();
+
+    expect(mocks.extractVideoStrip).toHaveBeenCalledTimes(2);
+  });
+
+  it('AUD-009: regenerates the current strip on Home remount', () => {
+    mocks.extractVideoStrip.mockReturnValue(
+      deferred<{ path: string }>().promise
+    );
+    const controller = auditVideoController({
+      getCachedVideoState: () => ({
         duration: 10,
         fps: 24,
-        currentTime: 1,
-      });
-      scrubber.scheduleFrameExtract();
-      await vi.advanceTimersByTimeAsync(250);
+        currentTime: 0,
+        stripPath: '/cache/old-strip.png',
+        stripId: 'old-strip',
+        posterPath: null,
+        frameId: 'frame-1',
+      }),
+    });
+    controller.loadVideoSelection(videoSelection());
 
-      scrubber.syncFromVideoState({
-        path: '/tmp/b.mp4',
-        name: 'b.mp4',
-        duration: 20,
-        fps: 24,
-        currentTime: 2,
-      });
-      firstFrame.resolve({
-        path: '/cache/a-frame.png',
-        timestampUsed: '1.000',
-      });
-      await vi.runAllTimersAsync();
+    const unsubscribe = subscribeToVideoStripMode(
+      videoStripMode,
+      controller.regenerateStrip
+    );
 
-      expect(onFrameExtracted).not.toHaveBeenCalled();
-    }
-  );
-
-  it.fails(
-    'keeps the newest Values probe result when video probes resolve out of order',
-    async () => {
-      const probeA = deferred<{ duration: number; fps: number }>();
-      const probeB = deferred<{ duration: number; fps: number }>();
-      mocks.probeVideo.mockImplementation((path: string) =>
-        path === '/tmp/a.mp4' ? probeA.promise : probeB.promise
-      );
-      const ingestion = createValuesFileIngestion({ cancelPending: vi.fn() });
-
-      ingestion.handleVideoFile('/tmp/a.mp4', 'a.mp4');
-      ingestion.handleVideoFile('/tmp/b.mp4', 'b.mp4');
-      probeB.resolve({ duration: 20, fps: 24 });
-      await vi.runAllTimersAsync();
-      probeA.resolve({ duration: 10, fps: 24 });
-      await vi.runAllTimersAsync();
-
-      expect(get(videoState)?.path).toBe('/tmp/b.mp4');
-    }
-  );
-
-  it.fails(
-    'preserves a cached strip when Values activates a cached video',
-    () => {
-      cacheVideoState('/tmp/a.mp4', {
-        duration: 10,
-        fps: 24,
-        currentTime: 2,
-        stripPath: '/cache/a-strip.png',
-        stripId: 'strip-a',
-        posterPath: '/cache/a-frame.png',
-        frameId: 'frame-a',
-      });
-      const ingestion = createValuesFileIngestion({ cancelPending: vi.fn() });
-
-      ingestion.handleVideoFile('/tmp/a.mp4', 'a.mp4');
-
-      expect(get(videoState)?.stripPath).toBe('/cache/a-strip.png');
-    }
-  );
-
-  it.fails(
-    'starts a replacement strip request when the strip mode changes in flight',
-    () => {
-      const strip = deferred<{ path: string }>();
-      mocks.extractVideoStrip.mockReturnValue(strip.promise);
-      const controller = createVideoController({
-        isNativeModeActive: () => true,
-        buildPreviewUrl: () => 'asset:///tmp/a.mp4',
-        maxDimensionForQuality: () => 1200,
-        setFile: vi.fn(),
-        setVideoState: vi.fn(),
-        clearFile: vi.fn(),
-        getQuality: () => 2,
-        setBannerMessage: vi.fn(),
-        scheduleAnalysisWith: vi.fn(),
-        getCurrentParams: () => ({}),
-        clearLastRequestKey: vi.fn(),
-        captureAnalysisScroll: vi.fn(),
-        getVideoStripMode: () => 'filmstrip',
-        getCachedVideoState: () => ({
-          duration: 10,
-          fps: 24,
-          currentTime: 0,
-          stripPath: null,
-          stripId: null,
-          posterPath: null,
-          frameId: 'frame-1',
-        }),
-        cacheVideoState: vi.fn(),
-        findExistingFrameId: () => 'frame-1',
-        seedAnalysisKey: vi.fn(),
-        hasAnalysisForImage: () => false,
-      });
-
-      controller.loadVideoSelection({
-        name: 'a.mp4',
-        path: '/tmp/a.mp4',
-        size: 0,
-        blob: new Blob([]),
-        mimeType: 'video/mp4',
-      });
-      controller.regenerateStrip();
-      controller.regenerateStrip();
-
-      expect(mocks.extractVideoStrip).toHaveBeenCalledTimes(2);
-    }
-  );
+    expect(mocks.extractVideoStrip).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
 
   it.fails(
     'clears a canceled Values request out of the pending state',
@@ -314,37 +383,57 @@ describe('audit reproductions for async control-flow invariants', () => {
     }
   );
 
-  it.fails(
-    'invalidates cached Values analysis when a logical video entry receives a new frame',
-    () => {
-      const first = imageEntry({
-        id: 'video-entry',
-        name: 'clip.mp4',
-        path: '/cache/frame.png',
-        videoPath: '/tmp/clip.mp4',
-        frameTimestamp: 1,
-      });
-      setFile(first, emptyDataset);
-      setValueAnalysisSuccess(first.id, 3, false, valueResult());
-      expect(get(valueAnalysisResult)).not.toBeNull();
+  it('AUD-004: invalidates cached Values analysis when a logical video entry receives a new frame', () => {
+    const first = imageEntry({
+      id: 'video-entry',
+      name: 'clip.mp4',
+      path: '/cache/frame.png',
+      videoPath: '/tmp/clip.mp4',
+      frameTimestamp: 1,
+    });
+    setFile(first, emptyDataset);
+    setValueAnalysisSuccess(first.id, 3, false, valueResult());
+    const key = valueAnalysisKey(first.id, 3, false);
+    valueAnalysisErrorByKey.update((errors) => ({
+      ...errors,
+      [key]: 'stale error',
+    }));
+    expect(get(valueAnalysisResult)).not.toBeNull();
 
-      setFile({ ...first, frameTimestamp: 2 }, emptyDataset);
+    setFile({ ...first, frameTimestamp: 2 }, emptyDataset);
 
-      expect(get(valueAnalysisResult)).toBeNull();
-    }
-  );
+    expect(get(valueAnalysisResult)).toBeNull();
+    expect(get(valueAnalysisByKey)[key]).toBeUndefined();
+    expect(get(valueAnalysisStateByKey)[key]).toBeUndefined();
+    expect(get(valueAnalysisErrorByKey)[key]).toBeUndefined();
+  });
 
-  it.fails(
-    'does not retain an unreachable dataset when appendFile deduplicates by path',
-    async () => {
-      const imageStore = await import('../../stores/image');
-      imageStore.appendFile(imageEntry({ id: 'first' }), emptyDataset);
-      imageStore.appendFile(imageEntry({ id: 'duplicate' }), emptyDataset);
+  it('AUD-010: deduplicates resources by path before registering them', async () => {
+    const imageStore = await import('../../stores/image');
+    const revokeObjectUrl = vi
+      .spyOn(URL, 'revokeObjectURL')
+      .mockImplementation(() => {});
+    imageStore.appendFile(imageEntry({ id: 'first' }), emptyDataset);
+    imageStore.appendFile(
+      imageEntry({
+        id: 'duplicate',
+        source: { kind: 'blob' },
+        previewUrl: 'blob:duplicate',
+      }),
+      emptyDataset
+    );
 
-      expect(get(images)).toHaveLength(1);
-      expect(imageStore.getResourceCounts().datasets).toBe(1);
-    }
-  );
+    expect(get(images)).toHaveLength(1);
+    expect(imageStore.getResourceCounts().datasets).toBe(1);
+    expect(imageStore.getResourceCounts().objectUrls).toBe(0);
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:duplicate');
+
+    setFile(imageEntry({ id: 'replacement' }), { ...emptyDataset, width: 1 });
+
+    expect(get(images)).toHaveLength(1);
+    expect(get(selectedFile)?.id).toBe('first');
+    expect(imageStore.getResourceCounts().datasets).toBe(1);
+  });
 
   it.fails(
     'does not promote a raw video into the image pipeline after removing the active image',

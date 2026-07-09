@@ -44,6 +44,15 @@ export interface VideoControllerDeps {
   hasAnalysisForImage: (id: string) => boolean;
 }
 
+export function subscribeToVideoStripMode(
+  store: {
+    subscribe: (run: (mode: 'filmstrip' | 'barcode') => void) => () => void;
+  },
+  regenerateStrip: () => void
+) {
+  return store.subscribe(regenerateStrip);
+}
+
 export function createVideoController(deps: VideoControllerDeps) {
   let videoSelection: FileSelection | null = $state(null);
   let videoSrcUrl: string | null = $state(null);
@@ -57,6 +66,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   let videoFrameId: string | null = $state(null);
   let videoDecodeToken = 0;
   let videoDecodeTimer: ReturnType<typeof setTimeout> | null = null;
+  const videoDecodeQueues = new Map<string, Promise<void>>();
   let videoProbePending = $state(false);
   let frameDecoding = $state(false);
   let videoStripUrl: string | null = $state(null);
@@ -270,7 +280,102 @@ export function createVideoController(deps: VideoControllerDeps) {
     videoStripUrl = null;
     videoStripId =
       globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    videoStripPending = false;
     scheduleVideoStripGeneration();
+  }
+
+  async function runVideoFrameDecode(
+    requestPath: string,
+    requestName: string,
+    requestTime: number,
+    frameId: string,
+    maxDimension: number,
+    token: number,
+    decodeCid: string | null
+  ) {
+    if (videoSelection?.path !== requestPath || token !== videoDecodeToken) {
+      devlog('video:frameDecode:stale', 'Stale token — skipping', {
+        expectedToken: token,
+        currentToken: videoDecodeToken,
+      });
+      if (token === videoDecodeToken) frameDecoding = false;
+      return;
+    }
+    devlog('video:frameDecode:exec', 'Execute frame decode', {
+      frameId,
+      token,
+      cid: decodeCid,
+    });
+    try {
+      void logEvent(
+        `video:frame:start t=${requestTime.toFixed(2)} max=${maxDimension}`
+      );
+      const response = await extractVideoFrame({
+        path: requestPath,
+        frameId,
+        timestamp: requestTime,
+        maxDimension,
+      });
+      if (token !== videoDecodeToken) {
+        devlog('video:frameDecode:stale', 'Stale after extract', {
+          expectedToken: token,
+          currentToken: videoDecodeToken,
+        });
+        return;
+      }
+      const framePath = response.path;
+      if (!framePath) return;
+      setActivePath(framePath);
+      const previewUrl = assetUrl(framePath);
+      videoPosterUrl = previewUrl;
+      videoPosterPath = framePath;
+      const dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
+      const entry: ImageEntry = {
+        id: frameId,
+        name: requestName,
+        path: framePath,
+        videoPath: requestPath,
+        frameTimestamp: requestTime,
+        size: 0,
+        source: { kind: 'path', path: framePath },
+        previewUrl,
+      };
+      const wasRestoring = _restoringFromSessionCache;
+      _restoringFromSessionCache = false;
+      deps.setFile(entry, dataset);
+      if (wasRestoring && deps.hasAnalysisForImage(frameId)) {
+        // setFile already restored analysisState='ready' from analysisById cache.
+        // Seed the dedup key so the HomeView $effect won't re-trigger analysis.
+        deps.seedAnalysisKey(frameId, deps.getCurrentParams());
+      } else {
+        deps.clearLastRequestKey();
+        deps.scheduleAnalysisWith(
+          { ...entry, dataset },
+          deps.getCurrentParams()
+        );
+      }
+      pushVideoState();
+      saveToCache(); // capture posterPath so cache restores show hasPoster=true
+      devlog('video:frameDecode:done', 'Frame decode done', {
+        frameId,
+        framePath,
+        cid: decodeCid,
+        ...videoResourceSnapshot(),
+      });
+      void logEvent(
+        `video:frame:done t_req=${requestTime.toFixed(4)} t_ffmpeg=${response.timestampUsed}`
+      );
+    } catch (error) {
+      if (token !== videoDecodeToken) return;
+      console.error('[home] Video frame decode failed', error);
+      const message = error instanceof Error ? error.message : String(error);
+      void logEvent(`video:frame:error message=${message}`);
+      deps.setBannerMessage(
+        'Failed to decode video frame. Please try another file.'
+      );
+    } finally {
+      if (token === videoDecodeToken) frameDecoding = false;
+    }
   }
 
   function scheduleVideoFrameDecode() {
@@ -282,6 +387,8 @@ export function createVideoController(deps: VideoControllerDeps) {
     if (videoDecodeTimer) {
       clearTimeout(videoDecodeTimer);
     }
+    const requestPath = videoSelection.path;
+    const requestName = videoSelection.name;
     const requestTime = videoCurrentTime;
     const wasNull = videoFrameId === null;
     const frameId =
@@ -300,90 +407,33 @@ export function createVideoController(deps: VideoControllerDeps) {
       token,
     });
     frameDecoding = true;
-    videoDecodeTimer = setTimeout(async () => {
-      if (!videoSelection?.path || token !== videoDecodeToken) {
-        devlog('video:frameDecode:stale', 'Stale token — skipping', {
-          expectedToken: token,
-          currentToken: videoDecodeToken,
-        });
-        if (token === videoDecodeToken) frameDecoding = false;
-        return;
-      }
-      devlog('video:frameDecode:exec', 'Execute frame decode', {
-        frameId,
-        token,
-        cid: decodeCid,
-      });
-      try {
-        void logEvent(
-          `video:frame:start t=${requestTime.toFixed(2)} max=${maxDimension}`
+    videoDecodeTimer = setTimeout(() => {
+      videoDecodeTimer = null;
+      const previous = videoDecodeQueues.get(frameId) ?? Promise.resolve();
+      const queued = previous
+        .catch(() => undefined)
+        .then(() =>
+          runVideoFrameDecode(
+            requestPath,
+            requestName,
+            requestTime,
+            frameId,
+            maxDimension,
+            token,
+            decodeCid
+          )
         );
-        const response = await extractVideoFrame({
-          path: videoSelection.path,
-          frameId,
-          timestamp: requestTime,
-          maxDimension,
-        });
-        if (token !== videoDecodeToken) {
-          devlog('video:frameDecode:stale', 'Stale after extract', {
-            expectedToken: token,
-            currentToken: videoDecodeToken,
-          });
-          return;
+      videoDecodeQueues.set(frameId, queued);
+      void queued.then(
+        () => {
+          if (videoDecodeQueues.get(frameId) === queued)
+            videoDecodeQueues.delete(frameId);
+        },
+        () => {
+          if (videoDecodeQueues.get(frameId) === queued)
+            videoDecodeQueues.delete(frameId);
         }
-        const framePath = response.path;
-        if (!framePath) return;
-        setActivePath(framePath);
-        const previewUrl = assetUrl(framePath);
-        videoPosterUrl = previewUrl;
-        videoPosterPath = framePath;
-        const dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
-        const entry: ImageEntry = {
-          id: frameId,
-          name: videoSelection.name,
-          path: framePath,
-          videoPath: videoSelection.path,
-          frameTimestamp: requestTime,
-          size: 0,
-          source: { kind: 'path', path: framePath },
-          previewUrl,
-        };
-        const wasRestoring = _restoringFromSessionCache;
-        _restoringFromSessionCache = false;
-        deps.setFile(entry, dataset);
-        if (wasRestoring && deps.hasAnalysisForImage(frameId)) {
-          // setFile already restored analysisState='ready' from analysisById cache.
-          // Seed the dedup key so the HomeView $effect won't re-trigger analysis.
-          deps.seedAnalysisKey(frameId, deps.getCurrentParams());
-        } else {
-          deps.clearLastRequestKey();
-          deps.scheduleAnalysisWith(
-            { ...entry, dataset },
-            deps.getCurrentParams()
-          );
-        }
-        pushVideoState();
-        saveToCache(); // capture posterPath so cache restores show hasPoster=true
-        devlog('video:frameDecode:done', 'Frame decode done', {
-          frameId,
-          framePath,
-          cid: decodeCid,
-          ...videoResourceSnapshot(),
-        });
-        void logEvent(
-          `video:frame:done t_req=${requestTime.toFixed(4)} t_ffmpeg=${response.timestampUsed}`
-        );
-      } catch (error) {
-        if (token !== videoDecodeToken) return;
-        console.error('[home] Video frame decode failed', error);
-        const message = error instanceof Error ? error.message : String(error);
-        void logEvent(`video:frame:error message=${message}`);
-        deps.setBannerMessage(
-          'Failed to decode video frame. Please try another file.'
-        );
-      } finally {
-        if (token === videoDecodeToken) frameDecoding = false;
-      }
+      );
     }, 250);
   }
 

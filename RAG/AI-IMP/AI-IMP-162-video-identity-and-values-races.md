@@ -6,12 +6,12 @@ tags:
   - defects
   - video
   - stores
-kanban_status: in-progress
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-028-audit-remediation]]
 confidence_score: 0.7
 date_created: 2026-07-09
-date_completed:
+date_completed: 2026-07-09
 ---
 
 # AI-IMP-162-video-identity-and-values-races
@@ -63,15 +63,15 @@ Each fix flips its repro; rewrite that repro in place as a positive regression t
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] AUD-001 fixed; repro converted to regression test.
-- [ ] AUD-002 fixed; repro converted.
-- [ ] AUD-004 fixed; repro converted.
-- [ ] AUD-005 fixed; Rust expected-panic repro converted to a passing freshness test.
-- [ ] AUD-007 fixed; add a regression test (unique path per request or serialized decode) — no repro existed.
-- [ ] AUD-008 fixed; repro converted.
-- [ ] AUD-009 fixed; repro converted; verify strip-mode change from Settings regenerates on Home remount.
-- [ ] AUD-010 fixed; repro converted; object-URL release verified.
-- [ ] Full gates: `npm run test -- --run`, `npm run check`, `npm run lint`, `cargo fmt --all -- --check`, `cargo clippy --workspace -- -D warnings`, `cargo test --workspace`.
+- [x] AUD-001 fixed; repro converted to regression test.
+- [x] AUD-002 fixed; repro converted.
+- [x] AUD-004 fixed; repro converted.
+- [x] AUD-005 fixed; Rust expected-panic repro converted to a passing freshness test.
+- [x] AUD-007 fixed; add a regression test (unique path per request or serialized decode) — no repro existed.
+- [x] AUD-008 fixed; repro converted.
+- [x] AUD-009 fixed; repro converted; verify strip-mode change from Settings regenerates on Home remount.
+- [x] AUD-010 fixed; repro converted; object-URL release verified.
+- [x] Full gates: `npm run test -- --run`, `npm run check`, `npm run lint`, `cargo fmt --all -- --check`, `cargo clippy --workspace -- -D warnings`, `cargo test --workspace`.
 
 ### Acceptance Criteria
 
@@ -95,3 +95,9 @@ This section is filled out post work as you fill out the checklists.
 You SHOULD document any issues encountered and resolved during the sprint.
 You MUST document any failed implementations, blockers or missing tests.
 -->
+
+- **AUD-007 mechanism:** serialized Home decodes per logical frame ID, preserving the stable output path without allowing concurrent FFmpeg writers. This avoided changing `commands.rs` or adding superseded cache files.
+- **Test harness surprise:** the audit controller repros' former `it.fails` wrappers were satisfied by Svelte's `rune_outside_svelte` guard before reaching their assertions. The converted test file now installs test-local `$state`/`$derived` shims so the positive controller regressions exercise the actual race behavior.
+- **Formatting gate friction:** the repository's known AUD-015 `prettier.config.cjs` syntax defect prevented normal Prettier loading. Scoped frontend files were formatted with Prettier's `--config /dev/null` plus the repository's Svelte plugin, single-quote, semicolon, and ES5 trailing-comma options; the config itself remains untouched for IMP-165.
+- **Boundary note:** `VideoState` does not type `stripId`, and its store module was outside this ticket's Files-to-Touch list. Values restores `stripId` in the runtime state through a structurally compatible local object, with a regression assertion covering the metadata.
+- `npm run check` passed with the two pre-existing AUD-020 accessibility warnings in `VideoPanel.svelte` and `ValuesView.svelte`; no new warnings were introduced.

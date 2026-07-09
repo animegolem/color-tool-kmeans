@@ -19,6 +19,7 @@ import {
   valueAnalysisKey,
   valueAnalysisLevels,
   valueAnalysisNotanMode,
+  invalidateValueAnalysisForImage,
 } from './value-analysis';
 import { setVideoState, videoStateCache } from './video';
 
@@ -129,13 +130,19 @@ function revokeObjectUrl(url: string) {
 }
 
 function trackPreviewUrl(entry: ImageEntry) {
-  if (entry.source.kind !== 'blob') return;
-  if (!entry.previewUrl) return;
+  const nextUrl = entry.source.kind === 'blob' ? entry.previewUrl : null;
   const existing = objectUrls.get(entry.id);
-  if (existing && existing !== entry.previewUrl) {
+  if (existing && existing !== nextUrl) {
     revokeObjectUrl(existing);
+    objectUrls.delete(entry.id);
   }
-  objectUrls.set(entry.id, entry.previewUrl);
+  if (nextUrl) objectUrls.set(entry.id, nextUrl);
+}
+
+function releaseRejectedPreviewUrl(entry: ImageEntry) {
+  if (entry.source.kind !== 'blob' || !entry.previewUrl) return;
+  const isTracked = [...objectUrls.values()].includes(entry.previewUrl);
+  if (!isTracked) revokeObjectUrl(entry.previewUrl);
 }
 
 function releaseImage(entry: ImageEntry) {
@@ -148,29 +155,27 @@ function releaseImage(entry: ImageEntry) {
 }
 
 export function setFile(entry: ImageEntry, dataset: ImageDataset) {
+  const current = get(images);
+  const existingById = current.find((item) => item.id === entry.id);
+  const existingByPath = entry.path
+    ? current.find((item) => item.path === entry.path)
+    : undefined;
+  const existing = existingByPath ?? existingById;
+  if (existingByPath) entry.id = existingByPath.id;
+
   imageDatasets.set(entry.id, dataset);
   trackPreviewUrl(entry);
-  let matched = false;
+  const matched = existing !== undefined;
   images.update((list) => {
     const index = list.findIndex((item) => item.id === entry.id);
     if (index !== -1) {
-      matched = true;
       const next = list.slice();
       next[index] = entry;
       return next;
     }
-    if (entry.path) {
-      const pathIndex = list.findIndex((item) => item.path === entry.path);
-      if (pathIndex !== -1) {
-        matched = true;
-        entry.id = list[pathIndex].id;
-        const next = list.slice();
-        next[pathIndex] = entry;
-        return next;
-      }
-    }
     return [...list, entry];
   });
+  if (matched) invalidateValueAnalysisForImage(entry.id);
   activeImageId.set(entry.id);
   devlog('store:setFile', 'Set file', {
     id: entry.id,
@@ -195,6 +200,22 @@ export function updateEntryPreview(id: string, previewUrl: string) {
 }
 
 export function appendFile(entry: ImageEntry, dataset: ImageDataset) {
+  const current = get(images);
+  const duplicatePath = entry.path
+    ? current.find((item) => item.path === entry.path && item.id !== entry.id)
+    : undefined;
+  if (duplicatePath) {
+    releaseRejectedPreviewUrl(entry);
+    devlog('store:appendFile', 'Append file', {
+      id: entry.id,
+      name: entry.name,
+      matched: true,
+      imagesAfter: current.length,
+    });
+    devlog.resources('store:appendFile');
+    return;
+  }
+
   imageDatasets.set(entry.id, dataset);
   trackPreviewUrl(entry);
   let matched = false;
@@ -205,10 +226,6 @@ export function appendFile(entry: ImageEntry, dataset: ImageDataset) {
       const next = list.slice();
       next[index] = entry;
       return next;
-    }
-    if (entry.path && list.some((item) => item.path === entry.path)) {
-      matched = true;
-      return list;
     }
     return [...list, entry];
   });
