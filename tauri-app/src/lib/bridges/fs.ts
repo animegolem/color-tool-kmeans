@@ -28,6 +28,22 @@ export interface FsBridge {
   saveTextFile(text: string, defaultName: string): Promise<SaveResult>;
 }
 
+export function sourceImageExtension(name: string): string {
+  const extension = name
+    .match(/\.(jpe?g|png|webp|bmp|gif|tiff?)$/i)?.[1]
+    ?.toLowerCase();
+  if (!extension) return 'png';
+  if (extension === 'tiff') return 'tif';
+  return extension === 'jpeg' ? 'jpg' : extension;
+}
+
+export function sourceImageExportName(
+  sourceName: string,
+  baseName: string
+): string {
+  return `${baseName}-source.${sourceImageExtension(sourceName)}`;
+}
+
 function extLabel(ext: string): string {
   const map: Record<string, string> = {
     png: 'PNG Image',

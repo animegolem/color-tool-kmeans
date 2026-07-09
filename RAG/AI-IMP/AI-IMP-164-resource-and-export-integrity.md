@@ -6,12 +6,12 @@ tags:
   - defects
   - exports
   - resources
-kanban_status: in-progress
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-028-audit-remediation]]
 confidence_score: 0.75
 date_created: 2026-07-09
-date_completed:
+date_completed: 2026-07-09
 ---
 
 # AI-IMP-164-resource-and-export-integrity
@@ -55,11 +55,11 @@ Audit findings AUD-011, 012, 013, 014 (`RAG/AI-LOG/2026-07-09-LOG-AI-control-flo
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] AUD-011: session-time prune + `artifact-cleanup.ts` entry-removal service covering value-analysis dirs, clipboard images, and frame snapshots; hook calls wired from `removeFile()`/`clearFile()`; Rust test or documented invariant for the prune path.
-- [ ] AUD-012: TIFF/GIF exports carry honest extensions (or are converted); repro converted to regression test.
-- [ ] AUD-013: all three registration sites are unmount-safe; regression test for the resolve-after-cleanup path.
-- [ ] AUD-014: fps filter decision uses real fps; 60 fps arithmetic covered by a unit test on the filter-construction logic.
-- [ ] Full gates: `npm run test -- --run`, `npm run check`, `npm run lint`, `cargo fmt/clippy/test`.
+- [x] AUD-011: session-time prune + `artifact-cleanup.ts` entry-removal service covering value-analysis dirs, clipboard images, and frame snapshots; hook calls wired from `removeFile()`/`clearFile()`; Rust test or documented invariant for the prune path.
+- [x] AUD-012: TIFF/GIF exports carry honest extensions (or are converted); repro converted to regression test.
+- [x] AUD-013: all three registration sites are unmount-safe; regression test for the resolve-after-cleanup path.
+- [x] AUD-014: fps filter decision uses real fps; 60 fps arithmetic covered by a unit test on the filter-construction logic.
+- [x] Full gates: `npm run test -- --run`, `npm run check`, `npm run lint`, `cargo fmt/clippy/test`.
 
 ### Acceptance Criteria
 
@@ -82,3 +82,9 @@ This section is filled out post work as you fill out the checklists.
 You SHOULD document any issues encountered and resolved during the sprint.
 You MUST document any failed implementations, blockers or missing tests.
 -->
+
+- The work order was revised during implementation to require a dedicated cleanup service, two narrowly authorized store hooks, `.tif` normalization, and real-fps filter decisions. The implementation was adjusted to the revised boundaries; no production files outside that list were changed.
+- The original AUD-012 `it.fails` repro was passing because constructing the Svelte rune controller threw `rune_outside_svelte`, not because the asserted filename failed. The production naming path now uses a pure helper, and the in-place test is a positive deterministic regression.
+- `frame-snapshot.ts` needed only a lifecycle-invariant clarification: its existing managed snapshot path is passed through the media entry to the centralized cleanup service.
+- The Cargo registry was warm, but the local Rust target cache was initially absent, so the first targeted Rust test incurred a one-time offline compile. No dependencies were installed and no network access was used.
+- `npm run check` remains green with the two pre-existing AUD-020 accessibility warnings in `VideoPanel.svelte` and `ValuesView.svelte`; they are outside this ticket.

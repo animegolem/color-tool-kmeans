@@ -124,44 +124,15 @@ pub async fn extract_strip_png<R: Runtime>(
     }
     ensure_parent_dir(&req.output_path)?;
 
-    let filter = match req.strip_mode {
-        StripMode::Barcode => {
-            // Barcode: scale each frame to 1px wide, then tile into Nx1.
-            // When thumb_count < total frames, a fps filter was already applied
-            // by the caller via the thumb_count param, so we subsample implicitly.
-            let needs_fps = req.duration_seconds > 0.0 && req.thumb_count > 0 && {
-                let total_approx = req.duration_seconds * 30.0; // conservative estimate
-                (req.thumb_count as f32) < total_approx * 0.95
-            };
-            if needs_fps {
-                let fps = (req.thumb_count as f32 / req.duration_seconds).max(0.1);
-                format!(
-                    "fps={fps:.5},scale=1:{h}:flags=area,tile={count}x1",
-                    h = req.thumb_height,
-                    count = req.thumb_count
-                )
-            } else {
-                format!(
-                    "scale=1:{h}:flags=area,tile={count}x1",
-                    h = req.thumb_height,
-                    count = req.thumb_count
-                )
-            }
-        }
-        StripMode::Filmstrip => {
-            let fps = if req.duration_seconds > 0.0 {
-                (req.thumb_count as f32 / req.duration_seconds).max(0.1)
-            } else {
-                0.1
-            };
-            format!(
-                "fps={fps:.5},scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,tile={count}x1",
-                w = req.thumb_width,
-                h = req.thumb_height,
-                count = req.thumb_count
-            )
-        }
+    let source_fps = if req.strip_mode == StripMode::Barcode {
+        ffprobe_details(app, &req.input_path)
+            .await
+            .ok()
+            .and_then(|(_, fps)| fps)
+    } else {
+        None
     };
+    let filter = build_strip_filter(req, source_fps);
 
     let (command, path) = build_ffmpeg_command(app)?;
     let output = command
@@ -193,7 +164,50 @@ pub async fn extract_strip_png<R: Runtime>(
         return Err(detail);
     }
 
+    prune_sibling_pngs(&req.output_path, "video-strip-", 10);
     Ok(())
+}
+
+fn build_strip_filter(req: &StripExtractRequest, source_fps: Option<f32>) -> String {
+    match req.strip_mode {
+        StripMode::Barcode => {
+            // Barcode: scale each frame to 1px wide, then tile into Nx1.
+            // Unknown frame rates are sampled defensively so the tile cannot
+            // silently consume only the first `thumb_count` decoded frames.
+            let needs_fps = req.duration_seconds > 0.0
+                && req.thumb_count > 0
+                && source_fps
+                    .map(|fps| (req.thumb_count as f32) < req.duration_seconds * fps * 0.95)
+                    .unwrap_or(true);
+            if needs_fps {
+                let fps = (req.thumb_count as f32 / req.duration_seconds).max(0.1);
+                format!(
+                    "fps={fps:.5},scale=1:{h}:flags=area,tile={count}x1",
+                    h = req.thumb_height,
+                    count = req.thumb_count
+                )
+            } else {
+                format!(
+                    "scale=1:{h}:flags=area,tile={count}x1",
+                    h = req.thumb_height,
+                    count = req.thumb_count
+                )
+            }
+        }
+        StripMode::Filmstrip => {
+            let fps = if req.duration_seconds > 0.0 {
+                (req.thumb_count as f32 / req.duration_seconds).max(0.1)
+            } else {
+                0.1
+            };
+            format!(
+                "fps={fps:.5},scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,tile={count}x1",
+                w = req.thumb_width,
+                h = req.thumb_height,
+                count = req.thumb_count
+            )
+        }
+    }
 }
 
 pub async fn extract_frame_png<R: Runtime>(
@@ -245,7 +259,46 @@ pub async fn extract_frame_png<R: Runtime>(
         return Err(detail);
     }
 
+    prune_sibling_pngs(&req.output_path, "video-frame-", 80);
     Ok(timestamp)
+}
+
+fn prune_sibling_pngs(output_path: &Path, prefix: &str, keep: usize) {
+    let Some(directory) = output_path.parent() else {
+        return;
+    };
+    let Ok(entries) = fs::read_dir(directory) else {
+        return;
+    };
+    let mut artifacts: Vec<(PathBuf, std::time::SystemTime)> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            let name = path.file_name()?.to_str()?;
+            if !name.starts_with(prefix) || !name.ends_with(".png") {
+                return None;
+            }
+            let modified = entry
+                .metadata()
+                .and_then(|metadata| metadata.modified())
+                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+            Some((path, modified))
+        })
+        .collect();
+    artifacts.sort_by_key(|(_, modified)| *modified);
+
+    let mut to_remove = artifacts.len().saturating_sub(keep.max(1));
+    for (path, _) in artifacts {
+        if to_remove == 0 {
+            break;
+        }
+        if path == output_path {
+            continue;
+        }
+        if fs::remove_file(path).is_ok() {
+            to_remove -= 1;
+        }
+    }
 }
 
 fn ensure_parent_dir(path: &Path) -> Result<(), String> {
@@ -366,4 +419,28 @@ fn parse_frame_rate(value: &str) -> Option<f32> {
         return None;
     }
     value.trim().parse::<f32>().ok().filter(|v| *v > 0.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn barcode_request(duration_seconds: f32, thumb_count: u32) -> StripExtractRequest {
+        StripExtractRequest {
+            input_path: PathBuf::from("clip.mp4"),
+            duration_seconds,
+            thumb_count,
+            thumb_width: 1,
+            thumb_height: 100,
+            output_path: PathBuf::from("strip.png"),
+            strip_mode: StripMode::Barcode,
+        }
+    }
+
+    #[test]
+    fn aud_014_samples_a_capped_60_fps_barcode_across_the_full_duration() {
+        let filter = build_strip_filter(&barcode_request(600.0, 30_000), Some(60.0));
+
+        assert_eq!(filter, "fps=50.00000,scale=1:100:flags=area,tile=30000x1");
+    }
 }

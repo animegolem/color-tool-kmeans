@@ -22,6 +22,10 @@ import {
   invalidateValueAnalysisForImage,
 } from './value-analysis';
 import { setVideoState, videoStateCache } from './video';
+import {
+  cleanupAllMediaArtifacts,
+  cleanupMediaArtifacts,
+} from '../services/artifact-cleanup';
 
 export type ImageSource = { kind: 'path'; path: string } | { kind: 'blob' };
 
@@ -264,6 +268,7 @@ export function removeFile(id: string) {
   const list = get(images);
   const entry = list.find((item) => item.id === id);
   const found = !!entry;
+  if (entry) void cleanupMediaArtifacts(entry);
   if (entry) releaseImage(entry);
   images.update((items) => items.filter((item) => item.id !== id));
   devlog('store:removeFile', 'Remove file', {
@@ -358,6 +363,7 @@ export function requestMediaLoad() {
 
 export function clearFile() {
   const count = get(images).length;
+  void cleanupAllMediaArtifacts(get(images));
   devlog('store:clearFile', 'Clear all files', { count });
   images.update((list) => {
     list.forEach((entry) => releaseImage(entry));
