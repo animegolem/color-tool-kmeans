@@ -6,24 +6,12 @@
 
 | Status | EPICs | IMPs |
 |--------|-------|------|
-| In Progress | 1 | 0 |
-| Planned | 3 | 9 |
+| In Progress | 0 | 0 |
+| Planned | 3 | 8 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
-| Completed | 16 | 114 |
+| Completed | 17 | 115 |
 | **Total** | **22** | **128** |
-
-## In Progress
-
-### [[AI-EPIC-025-live-analysis-performance-spike|EPIC-025: Live analysis performance spike]]
-> We want to play a video clip with full color analysis updating live at the clip's native frame rate (24 fps for our animation-centric audience). To...
-
-**IMPs:**
-- [[AI-IMP-159-warm-start-frame-sequence-benchmark|IMP-159]] Warm start frame sequence benchmark — completed
-- [[AI-IMP-160-rawvideo-pipe-and-conversion-fast-path|IMP-160]] Rawvideo pipe and conversion fast path — completed
-- [[AI-IMP-161-live-loop-prototype-and-findings|IMP-161]] Live loop prototype and findings — planned
-
----
 
 ## Planned
 
@@ -99,6 +87,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/views/exports/colors-export-runner.svelte.ts (368 LOC)
 - tauri-app/src/lib/exports/polar-chart.ts (358 LOC)
 - tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (350 LOC)
+- tauri-app/src-tauri/src/bin/live_loop_probe.rs (347 LOC)
 - tauri-app/src/lib/views/batch/batch-runner.svelte.ts (303 LOC)
 - tauri-app/src/lib/components/MediaBucket.svelte (302 LOC)
 
@@ -106,7 +95,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>16 EPICs, 83 IMPs completed</summary>
+<summary>17 EPICs, 84 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed
@@ -189,5 +178,9 @@ Generated from tracked files; binary assets excluded.
   - [[AI-IMP-156-clear-pins-button-styling|IMP-156]] Clear pins button styling alignment — completed
   - [[AI-IMP-157-batch-export-section|IMP-157]] Batch export section in Exports view — completed
   - [[AI-IMP-158-video-switch-race|IMP-158]] Stale async writes when switching videos mid-load — completed
+- [[AI-EPIC-025-live-analysis-performance-spike|EPIC-025]] Live analysis performance spike — 2026-07-09
+  - [[AI-IMP-159-warm-start-frame-sequence-benchmark|IMP-159]] Warm start frame sequence benchmark — completed
+  - [[AI-IMP-160-rawvideo-pipe-and-conversion-fast-path|IMP-160]] Rawvideo pipe and conversion fast path — completed
+  - [[AI-IMP-161-live-loop-prototype-and-findings|IMP-161]] Live loop prototype and findings — completed
 
 </details>

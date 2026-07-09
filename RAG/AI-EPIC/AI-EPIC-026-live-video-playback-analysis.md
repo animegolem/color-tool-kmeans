@@ -18,13 +18,13 @@ AI_IMP_spawned:
 
 Video analysis today is frame-at-a-time: scrub to a frame, wait for extraction + analysis, look at the charts. The compelling use for our animation-focused audience is different — drop in a clip (e.g. a downloaded Sakugabooru cut) and *play* it while the color analysis runs live: histogram, polar chart, and palette ledger animating in sync with the footage at the clip's native rate (24 fps target; we explicitly do not chase 60). That turns the tool from a still-frame inspector into an instrument for studying color scripting across a cut.
 
-Gated on EPIC-025 (performance spike) delivering a "go": warm-started clustering plus streamed rawvideo ingestion inside the 41.7 ms/frame budget.
+**Gate cleared 2026-07-09: EPIC-025 delivered a GO** (see ADR-003). Measured on real anime clips: every k ∈ {64,128,300} sustains >24 fps with a warm-started, fixed-4-iteration budget; quality within 1.5–6% of converged. No k ceiling needed.
 
 ## Proposed Solution(s)
 
-A **live mode** for loaded videos, built on the architecture the spike validates:
+A **live mode** for loaded videos, built on the architecture ADR-003 fixes:
 
-1. **Rust live-analysis loop** — a dedicated task owning a persistent ffmpeg rawvideo stream at analysis resolution; per frame: convert (LUT + parallel) → k-means warm-started from the previous frame's centroids → emit a cluster-result event. Start/stop/seek/params-change commands from the frontend; loop lifecycle tied to the loaded clip.
+1. **Rust live-analysis loop** — a dedicated task owning a persistent ffmpeg rawvideo stream at 320×180 (`flags=area`); per frame: LUT + rayon OKLab conversion → k-means warm-started from the previous frame's centroids with a **fixed 4-iteration budget (tol=0)**, not convergence-to-tol → emit a cluster-result event. Single-stage (no pipelining — measured unnecessary). Scene cuts detected via inertia jump get extra iterations that frame. Start/stop/seek/params-change commands from the frontend; loop lifecycle tied to the loaded clip.
 2. **Event-driven frontend** — playback UI subscribes to analysis events instead of request/response `analyze_image` per frame. Charts update per event; warm-start continuity means clusters are temporally stable (no flicker/reshuffle between frames).
 3. **Transport integration** — live mode rides the existing VideoPanel transport (play/pause/scrub); scrubbing while paused keeps today's single-frame path. Parameter changes (k, quality) re-seed the loop.
 4. **Degradation policy** — if a frame misses budget (high k, large clip), drop analysis frames rather than stall playback; surface effective analysis fps quietly in the metrics line.

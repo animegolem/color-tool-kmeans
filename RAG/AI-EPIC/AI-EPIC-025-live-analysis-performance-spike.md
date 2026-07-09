@@ -7,8 +7,8 @@ tags:
   - video
   - spike
 date_created: 2026-07-09
-date_completed:
-kanban_status: in-progress
+date_completed: 2026-07-09
+kanban_status: completed
 AI_IMP_spawned:
   - AI-IMP-159
   - AI-IMP-160
@@ -59,8 +59,8 @@ Deliverable: a findings report (AI-LOG + ADR) with measured sustained fps per co
 - [x] FR-1: Extend `kmeans_baseline` (or add a sibling bench binary) with a warm-start frame-sequence scenario; report iterations and ms/frame at k=64/128/300. **(IMP-159 — warm start ~halves iterations; key finding: tol-convergence is statistically unreachable on streaming data, so live mode = warm start + fixed iteration budget at ~1.3/2.0/5.1 ms per iteration for k=64/128/300. IMP-161 must measure capped-vs-converged inertia on real clips.)**
 - [x] FR-2: Prototype persistent-ffmpeg rawvideo streaming into memory at analysis resolution; measure sustained delivery and read cost per frame. **(IMP-160 — ~1000 fps sustained at 320×180, ~1 ms/frame reads.)**
 - [x] FR-3: Benchmark LUT-based + rayon-parallel sRGB→OKLab conversion against the current path. **(IMP-160 — 2.86 → 0.30–0.38 ms/frame; ingestion + conversion together ≈1.3 ms of the 41.7 ms budget.)**
-- [ ] FR-4: End-to-end prototype loop over ≥2 real animation clips; report sustained fps per k, with and without 2-stage pipelining.
-- [ ] FR-5: Findings report (AI-LOG + ADR): numbers, go/no-go for EPIC-026, recommended live-loop architecture and event contract sketch.
+- [x] FR-4: End-to-end prototype loop over ≥2 real animation clips; report sustained fps per k, with and without 2-stage pipelining. **(IMP-161 — every configuration >24 fps on real 1986/1998 anime; worst case k=300/budget-4 at 32–36 fps; budget-4 quality within 1.5–6% of converged. Two-stage pipelining unnecessary.)**
+- [x] FR-5: Findings report (AI-LOG + ADR): numbers, go/no-go for EPIC-026, recommended live-loop architecture and event contract sketch. **(ADR-003 — GO. Architecture: persistent rawvideo pipe, LUT+rayon conversion, warm start + fixed 4-iteration budget, single-stage loop, cut detection via inertia jump, event per analyzed frame.)**
 
 ### Non-Functional Requirements
 
