@@ -10,7 +10,10 @@ vi.mock('../../bridges/fs', async (importOriginal) => ({
   getFsBridge: vi.fn(),
 }));
 
-import { createColorsExportRunner } from '../exports/colors-export-runner.svelte';
+import {
+  createColorsExportRunner,
+  formatTimestamp,
+} from '../exports/colors-export-runner.svelte';
 import { sourceImageExportName } from '../../bridges/fs';
 import type {
   AnalysisParams,
@@ -89,19 +92,17 @@ describe('audit regressions for export naming', () => {
     );
   });
 
-  it.fails(
-    'AUD-017: normalizes a rounded 100-centisecond timestamp into the next second',
-    () => {
-      const runner = makeRunner(
-        selectedFile({
-          name: 'clip.mp4',
-          path: '/tmp/frame.png',
-          videoPath: '/tmp/clip.mp4',
-          frameTimestamp: 1.999,
-        })
-      );
+  it('AUD-017 normalizes a rounded 100-centisecond timestamp into the next second', () => {
+    expect(formatTimestamp(1.999)).toBe('00m02s00');
+  });
 
-      expect(runner.baseName()).toBe('clip-00m02s00');
+  it.each([
+    [0.999, '00m01s00'],
+    [59.999, '01m00s00'],
+  ])(
+    'AUD-017 carries a rounded timestamp boundary at %s seconds',
+    (frameTimestamp, expected) => {
+      expect(formatTimestamp(frameTimestamp)).toBe(expected);
     }
   );
 });

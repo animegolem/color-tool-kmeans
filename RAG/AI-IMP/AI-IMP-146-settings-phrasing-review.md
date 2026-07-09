@@ -40,11 +40,11 @@ Audit all text in SettingsView.svelte and ParameterControls.svelte. Cross-refere
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Audit all labels in SettingsView
-- [ ] Audit all tooltips in ParameterControls
-- [ ] Update any misleading or incomplete text
-- [ ] `npm run check && npm run lint`
-- [ ] Manual review: all settings text makes sense in multi-view context
+- [x] Audit all labels in SettingsView
+- [x] Audit all tooltips in ParameterControls
+- [x] Update any misleading or incomplete text
+- [x] `npm run check && npm run lint`
+- [x] Manual review: all settings text makes sense in multi-view context
 
 ### Acceptance Criteria
 
@@ -58,3 +58,5 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 <!--
 This section is filled out post work.
 -->
+
+Implementation and validation were completed on 2026-04-28 in commits `3372b15` and `d6a46ae`; the checklist was reconciled with that history during AI-IMP-166.

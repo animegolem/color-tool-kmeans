@@ -5,12 +5,12 @@ tags:
   - Implementation
   - defects
   - hygiene
-kanban_status: in-progress
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-028-audit-remediation]]
 confidence_score: 0.85
 date_created: 2026-07-09
-date_completed:
+date_completed: 2026-07-09
 ---
 
 # AI-IMP-166-p4-sweep
@@ -50,11 +50,11 @@ Audit P4 findings AUD-017, 018, 019, 021 (`RAG/AI-LOG/2026-07-09-LOG-AI-control-
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] AUD-017 fixed with carry; repro converted; boundary cases (0.999→01s00, 59.999→01m00s00) tested.
-- [ ] AUD-018 fixed; unit test for `frameTimestamp: 0` pinning eligibility.
-- [ ] AUD-019 resolved (wiring or copy); choice documented; test or render assertion as applicable.
-- [ ] AUD-021: front matter reconciled against ticket bodies/git history; `generate-index.sh` reports no orphan/mismatch warnings; INDEX.md regenerated.
-- [ ] Full gates: `npm run test -- --run`, `npm run check`, `npm run lint`, `cargo fmt/clippy/test`.
+- [x] AUD-017 fixed with carry; repro converted; boundary cases (0.999→01s00, 59.999→01m00s00) tested.
+- [x] AUD-018 fixed; unit test for `frameTimestamp: 0` pinning eligibility.
+- [x] AUD-019 resolved (wiring or copy); choice documented; test or render assertion as applicable.
+- [x] AUD-021: front matter reconciled against ticket bodies/git history; `generate-index.sh` reports no orphan/mismatch warnings; INDEX.md regenerated.
+- [x] Full gates: `npm run test -- --run`, `npm run check`, `npm run lint`, `cargo fmt/clippy/test`.
 
 ### Acceptance Criteria
 
@@ -71,3 +71,9 @@ This section is filled out post work as you fill out the checklists.
 You SHOULD document any issues encountered and resolved during the sprint.
 You MUST document any failed implementations, blockers or missing tests.
 -->
+
+- **AUD-019 choice:** corrected the Settings copy to say chart visibility applies to the Colors view. Batch has independent parameters and renders all charts, so wiring a shared display preference would expand behavior beyond the cheaper honest-copy resolution.
+- The original AUD-017 `it.fails` repro constructed a Svelte-runes runner under the Node Vitest environment and failed with `rune_outside_svelte` before its filename assertion. The positive regression now exercises an exported pure timestamp helper used directly by `baseName()`, plus both required carry boundaries.
+- IMP-099, IMP-112, IMP-124, and IMP-154 already had accurate `deferred` front matter matching their ticket/epic bodies. IMP-146's implementation was verified in commits `3372b15` and `d6a46ae`; its stale checklist was reconciled without changing its accurate `completed` status.
+- **AUD-021 resolution:** lead authorization expanded scope to `RAG/scripts/generate-index.sh`. The mismatch detector now treats deferred and cancelled child IMPs as compatible with completed parent epics while leaving orphan detection unchanged. Regeneration reduced status mismatches from 4 to 0, retained 0 orphan warnings, and two consecutive runs produced identical output.
+- All required frontend and Rust gates passed. `npm run check` retained the two known AUD-020 accessibility warnings, which are explicitly out of scope.

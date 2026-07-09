@@ -6,11 +6,11 @@
 
 | Status | EPICs | IMPs |
 |--------|-------|------|
-| In Progress | 1 | 5 |
+| In Progress | 1 | 0 |
 | Planned | 3 | 8 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
-| Completed | 17 | 115 |
+| Completed | 17 | 120 |
 | **Total** | **23** | **133** |
 
 ## In Progress
@@ -19,11 +19,11 @@
 > An external control-flow audit (Sol, 2026-07-09 — `RAG/AI-LOG/2026-07-09-LOG-AI-control-flow-and-defect-audit.md`) validated 21 defects in the ship...
 
 **IMPs:**
-- [[AI-IMP-162-video-identity-and-values-races|IMP-162]] Video identity and values races — in-progress
-- [[AI-IMP-163-cancellation-and-media-promotion|IMP-163]] Cancellation and media promotion — in-progress
-- [[AI-IMP-164-resource-and-export-integrity|IMP-164]] Resource and export integrity — in-progress
-- [[AI-IMP-165-repo-gates-repair|IMP-165]] Repo gates repair — in-progress
-- [[AI-IMP-166-p4-sweep|IMP-166]] P4 sweep — in-progress
+- [[AI-IMP-162-video-identity-and-values-races|IMP-162]] Video identity and values races — completed
+- [[AI-IMP-163-cancellation-and-media-promotion|IMP-163]] Cancellation and media promotion — completed
+- [[AI-IMP-164-resource-and-export-integrity|IMP-164]] Resource and export integrity — completed
+- [[AI-IMP-165-repo-gates-repair|IMP-165]] Repo gates repair — completed
+- [[AI-IMP-166-p4-sweep|IMP-166]] P4 sweep — completed
 
 ---
 
@@ -55,16 +55,6 @@
 
 ---
 
-## Anomalies
-
-### Status Mismatches
-- [[AI-IMP-099-folder-browser|IMP-099]] — open but parent epic AI-EPIC-020 is completed
-- [[AI-IMP-112-session-management-toggle|IMP-112]] — open but parent epic AI-EPIC-020 is completed
-- [[AI-IMP-124-unify-video-frame-extraction|IMP-124]] — open but parent epic AI-EPIC-023 is completed
-- [[AI-IMP-154-os-zoom-content-scaling|IMP-154]] — open but parent epic AI-EPIC-024 is completed
-
----
-
 ## Cancelled / Deferred
 
 - [[AI-EPIC-012-color-picker|EPIC-012]] Color picker — deferred — "Users want to quickly sample colors from anywhere in the app (source image, clusters, charts) and get color codes for use in illustration programs...."
@@ -80,37 +70,43 @@ Generated from tracked files; binary assets excluded.
 
 ### > 600 LOC
 
-- tauri-app/src/lib/views/BatchView.svelte (729 LOC)
-- tauri-app/src/lib/views/ValuesView.svelte (712 LOC)
+- RAG/Colors Tool.fig (10051 LOC)
+- tauri-app/src/lib/views/BatchView.svelte (912 LOC)
+- tauri-app/src/lib/views/home/video-controller.svelte.ts (847 LOC)
+- tauri-app/src/lib/views/ValuesView.svelte (806 LOC)
+- tauri-app/src/lib/views/HomeView.svelte (793 LOC)
+- tauri-app/src/lib/views/ExportsView.svelte (743 LOC)
+- tauri-app/src-tauri/src/value_analysis.rs (741 LOC)
 - tauri-app/src-tauri/src/color.rs (706 LOC)
-- tauri-app/src/lib/views/home/video-controller.svelte.ts (678 LOC)
-- tauri-app/src/lib/views/HomeView.svelte (677 LOC)
+- tauri-app/src/lib/views/__tests__/audit-control-flow-races.spec.ts (630 LOC)
 
 ### > 300 LOC
 
-- tauri-app/src-tauri/src/value_analysis.rs (594 LOC)
 - tauri-app/src-tauri/src/kmeans.rs (581 LOC)
-- RAG/scripts/generate-index.sh (575 LOC)
-- tauri-app/src/lib/views/ExportsView.svelte (514 LOC)
-- tauri-app/src/lib/exports/value-analysis.ts (429 LOC)
+- RAG/scripts/generate-index.sh (576 LOC)
+- tauri-app/src/lib/exports/value-analysis.ts (570 LOC)
+- tauri-app/src-tauri/src/ffmpeg.rs (446 LOC)
+- tauri-app/src/lib/views/exports/colors-export-runner.svelte.ts (442 LOC)
+- tauri-app/src/App.svelte (423 LOC)
+- tauri-app/src/lib/exports/polar-chart.ts (417 LOC)
+- tauri-app/src/app.css (403 LOC)
 - tauri-app/src-tauri/src/commands.rs (395 LOC)
-- tauri-app/src/App.svelte (380 LOC)
+- tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (390 LOC)
+- tauri-app/src/lib/stores/image.ts (384 LOC)
 - tauri-app/src-tauri/src/bin/live_pipe_probe.rs (379 LOC)
-- tauri-app/src/app.css (374 LOC)
-- tauri-app/src-tauri/src/ffmpeg.rs (369 LOC)
-- tauri-app/src/lib/views/exports/colors-export-runner.svelte.ts (368 LOC)
-- tauri-app/src/lib/exports/polar-chart.ts (358 LOC)
-- tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (350 LOC)
+- tauri-app/src/lib/exports/color-study-compositor.ts (368 LOC)
+- tauri-app/src/lib/views/SettingsView.svelte (351 LOC)
 - tauri-app/src-tauri/src/bin/live_loop_probe.rs (347 LOC)
-- tauri-app/src/lib/views/__tests__/audit-control-flow-races.spec.ts (325 LOC)
-- tauri-app/src/lib/views/batch/batch-runner.svelte.ts (303 LOC)
-- tauri-app/src/lib/components/MediaBucket.svelte (302 LOC)
+- tauri-app/src/lib/components/MediaBucket.svelte (324 LOC)
+- tauri-app/src/lib/bridges/compute.ts (321 LOC)
+- tauri-app/src/lib/exports/__tests__/color-study-compositor.spec.ts (319 LOC)
+- tauri-app/src/lib/views/batch/batch-runner.svelte.ts (315 LOC)
 
 ---
 
 ## Completed
 <details>
-<summary>17 EPICs, 84 IMPs completed</summary>
+<summary>17 EPICs, 89 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed
