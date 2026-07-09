@@ -7,7 +7,7 @@ import {
   imageToTile,
   computeGridLayout,
   composeTiles,
-  type CompositorTile
+  type CompositorTile,
 } from '../compositor';
 import { generateCircleGraphSvg } from '../polar-chart';
 import { generateHistogramSvg } from '../histogram';
@@ -27,13 +27,15 @@ function buildRealisticTiles(): CompositorTile[] {
     symbolScale: 1,
     showAxisLabels: true,
     showStroke: true,
-    mode: 'oklch'
+    mode: 'oklch',
   });
-  const histogram = generateHistogramSvg(FIXED_CLUSTERS, { sortBy: 'frequency' });
+  const histogram = generateHistogramSvg(FIXED_CLUSTERS, {
+    sortBy: 'frequency',
+  });
   const hueLightness = generateHueLightnessSvg(FIXED_CLUSTERS, {
     symbolScale: 1,
     showAxisLabels: true,
-    showStroke: true
+    showStroke: true,
   });
   const palette = generatePaletteSvg(FIXED_CLUSTERS);
 
@@ -41,7 +43,7 @@ function buildRealisticTiles(): CompositorTile[] {
     svgToTile(polar.svg, 'polar-chart'),
     svgToTile(histogram.svg, 'histogram'),
     svgToTile(hueLightness.svg, 'hue-lightness'),
-    svgToTile(palette.svg, 'palette-strip')
+    svgToTile(palette.svg, 'palette-strip'),
   ];
 }
 
@@ -69,7 +71,8 @@ describe('extractSvgInner', () => {
 
 describe('parseSvgDimensions', () => {
   it('extracts width and height', () => {
-    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="620" height="360"><rect /></svg>';
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="620" height="360"><rect /></svg>';
     const { width, height } = parseSvgDimensions(svg);
     expect(width).toBe(620);
     expect(height).toBe(360);
@@ -90,7 +93,7 @@ describe('computeGridLayout', () => {
     [3, 2, 2],
     [4, 2, 2],
     [5, 3, 2],
-    [6, 3, 2]
+    [6, 3, 2],
   ])('count=%i → cols=%i, rows=%i', (count, expectedCols, expectedRows) => {
     const { cols, rows } = computeGridLayout(count);
     expect(cols).toBe(expectedCols);
@@ -100,7 +103,12 @@ describe('computeGridLayout', () => {
 
 describe('imageToTile', () => {
   it('stores escaped data URL and marks as raster', () => {
-    const tile = imageToTile('data:image/png;base64,abc', 100, 80, 'test-image');
+    const tile = imageToTile(
+      'data:image/png;base64,abc',
+      100,
+      80,
+      'test-image'
+    );
     expect(tile.key).toBe('test-image');
     expect(tile.width).toBe(100);
     expect(tile.height).toBe(80);
@@ -110,7 +118,12 @@ describe('imageToTile', () => {
   });
 
   it('emits root-level <image> when composed', () => {
-    const tile = imageToTile('data:image/png;base64,abc', 100, 80, 'test-image');
+    const tile = imageToTile(
+      'data:image/png;base64,abc',
+      100,
+      80,
+      'test-image'
+    );
     const result = composeTiles([tile]);
     expect(result.svg).toContain('<image href="data:image/png;base64,abc"');
     // No nested <svg> wrapper for raster tiles — only root <svg>
@@ -165,8 +178,9 @@ describe('composeTiles', () => {
 
   it('is deterministic over N runs', () => {
     const tiles = buildRealisticTiles();
-    const results = Array.from({ length: STABILITY_RUNS }, () =>
-      composeTiles(tiles).svg
+    const results = Array.from(
+      { length: STABILITY_RUNS },
+      () => composeTiles(tiles).svg
     );
     expect(new Set(results).size).toBe(1);
   });
@@ -183,7 +197,7 @@ describe('svgToTile', () => {
   it('extracts inner content and dimensions from a full SVG', () => {
     const { svg, width, height } = generateCircleGraphSvg(FIXED_CLUSTERS, {
       symbolScale: 1,
-      mode: 'oklch'
+      mode: 'oklch',
     });
     const tile = svgToTile(svg, 'polar');
     expect(tile.key).toBe('polar');

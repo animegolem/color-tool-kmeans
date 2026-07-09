@@ -7,8 +7,14 @@ import { ingestFileAsEntry } from '../../services/media-ingestion';
 import { setActivePath } from '../../services/active-image';
 import { setupTauriDragDrop } from '../../services/drag-drop';
 import {
-  videoState, setVideoState, images, setFile, appendFile,
-  libraryDrawerOpen, getCachedVideoState, updateEntryPreview
+  videoState,
+  setVideoState,
+  images,
+  setFile,
+  appendFile,
+  libraryDrawerOpen,
+  getCachedVideoState,
+  updateEntryPreview,
 } from '../../stores/ui';
 
 export interface ValuesFileIngestionDeps {
@@ -27,7 +33,7 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
         duration: cached.duration,
         fps: cached.fps ?? null,
         currentTime: cached.currentTime ?? 0,
-        posterPath: cached.posterPath ?? null
+        posterPath: cached.posterPath ?? null,
       });
       return;
     }
@@ -39,7 +45,7 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
         duration: probe.duration,
         fps: probe.fps ?? null,
         currentTime: 0,
-        posterPath: null
+        posterPath: null,
       });
     } catch (err) {
       console.error('[values] Video probe failed', err);
@@ -61,9 +67,10 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
     setVideoState(null);
     const nativeMode = isTauriEnv() && !!sel.path;
 
-    const existing = nativeMode && sel.path
-      ? get(images).find((item) => item.path === sel.path && !item.videoPath)
-      : null;
+    const existing =
+      nativeMode && sel.path
+        ? get(images).find((item) => item.path === sel.path && !item.videoPath)
+        : null;
 
     const { entry, dataset } = ingestFileAsEntry(sel);
 
@@ -127,6 +134,6 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
     handleVideoFile,
     handleImageFile,
     processBatch,
-    setupDragDrop
+    setupDragDrop,
   };
 }

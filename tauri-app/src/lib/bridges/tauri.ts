@@ -16,7 +16,10 @@ export function isTauriEnv(): boolean {
 
 type InvokeFn = (cmd: string, args?: Record<string, unknown>) => Promise<any>;
 
-export async function tauriInvoke(cmd: string, args?: Record<string, unknown>): Promise<any> {
+export async function tauriInvoke(
+  cmd: string,
+  args?: Record<string, unknown>
+): Promise<any> {
   const argKeys = args ? Object.keys(args) : [];
   const argsPreview = argKeys.length > 0 ? `(${argKeys.join(', ')})` : '()';
   console.info(`[tauri-invoke] command: ${cmd} args: ${argsPreview}`);
@@ -48,9 +51,14 @@ export async function tauriInvoke(cmd: string, args?: Record<string, unknown>): 
         console.info('[tauri-invoke] success via: @tauri-apps/api invoke');
         return mod.invoke(cmd, args);
       }
-      console.warn('[tauri-invoke] @tauri-apps/api imported but no invoke found', { mod });
+      console.warn(
+        '[tauri-invoke] @tauri-apps/api imported but no invoke found',
+        { mod }
+      );
     } else {
-      console.warn('[tauri-invoke] dynamic import @tauri-apps/api returned falsy module');
+      console.warn(
+        '[tauri-invoke] dynamic import @tauri-apps/api returned falsy module'
+      );
     }
   } catch (err) {
     console.warn('[tauri-invoke] dynamic import @tauri-apps/api failed', err);
@@ -62,9 +70,14 @@ export async function tauriInvoke(cmd: string, args?: Record<string, unknown>): 
       console.info('[tauri-invoke] success via: @tauri-apps/api/core invoke');
       return core.invoke(cmd, args);
     }
-    console.warn('[tauri-invoke] @tauri-apps/api/core imported but no invoke', { core });
+    console.warn('[tauri-invoke] @tauri-apps/api/core imported but no invoke', {
+      core,
+    });
   } catch (err) {
-    console.warn('[tauri-invoke] dynamic import @tauri-apps/api/core failed', err);
+    console.warn(
+      '[tauri-invoke] dynamic import @tauri-apps/api/core failed',
+      err
+    );
   }
 
   const errorMsg = `Tauri API unavailable: unable to resolve invoke for command '${cmd}'`;
@@ -81,6 +94,6 @@ export function tauriDetectionInfo() {
     hasCoreInvoke: typeof w?.__TAURI__?.core?.invoke === 'function',
     hasInternals: !!w?.__TAURI_INTERNALS__,
     hasIpc: !!w?.__TAURI_IPC__,
-    uaIncludesTauri: /Tauri/i.test(ua)
+    uaIncludesTauri: /Tauri/i.test(ua),
   };
 }

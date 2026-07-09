@@ -1,5 +1,12 @@
 import type { AnalysisCluster } from '../stores/ui';
-import { svgCircle, svgDocument, svgGroup, svgLine, svgRect, svgText } from './svg';
+import {
+  svgCircle,
+  svgDocument,
+  svgGroup,
+  svgLine,
+  svgRect,
+  svgText,
+} from './svg';
 import { svgToPngBlob } from './png';
 
 export interface HueLightnessOptions {
@@ -28,10 +35,24 @@ export function generateHueLightnessSvg(
   const plotWidth = Math.max(1, width - padding * 2);
   const plotHeight = Math.max(1, height - padding * 2);
   const sizeMode = options.sizeMode ?? 'chroma';
-  const maxChroma = Math.max(1e-6, ...clusters.map((cluster) => getChroma(cluster)));
-  const maxShare = Math.max(1e-6, ...clusters.map((cluster) => Math.max(cluster.share, 0)));
-  const maxSymbolRadius = Math.min(plotWidth, plotHeight) * 0.06 * (options.symbolScale || 1);
-  const points: Array<{ x: number; y: number; radius: number; r: number; g: number; b: number }> = [];
+  const maxChroma = Math.max(
+    1e-6,
+    ...clusters.map((cluster) => getChroma(cluster))
+  );
+  const maxShare = Math.max(
+    1e-6,
+    ...clusters.map((cluster) => Math.max(cluster.share, 0))
+  );
+  const maxSymbolRadius =
+    Math.min(plotWidth, plotHeight) * 0.06 * (options.symbolScale || 1);
+  const points: Array<{
+    x: number;
+    y: number;
+    radius: number;
+    r: number;
+    g: number;
+    b: number;
+  }> = [];
   const circleParts: string[] = [];
   const axisGroup = svgGroup([
     svgRect({
@@ -41,7 +62,7 @@ export function generateHueLightnessSvg(
       height: plotHeight,
       fill: 'none',
       stroke: 'rgba(16,17,17,0.6)',
-      'stroke-width': 1
+      'stroke-width': 1,
     }),
     svgLine({
       x1: padding + plotWidth / 2,
@@ -49,7 +70,7 @@ export function generateHueLightnessSvg(
       x2: padding + plotWidth / 2,
       y2: padding + plotHeight,
       stroke: 'rgba(16,17,17,0.2)',
-      'stroke-width': 1
+      'stroke-width': 1,
     }),
     svgLine({
       x1: padding,
@@ -57,8 +78,8 @@ export function generateHueLightnessSvg(
       x2: padding + plotWidth,
       y2: padding + plotHeight / 2,
       stroke: 'rgba(16,17,17,0.2)',
-      'stroke-width': 1
-    })
+      'stroke-width': 1,
+    }),
   ]);
   const svgParts: string[] = [];
 
@@ -75,7 +96,8 @@ export function generateHueLightnessSvg(
           ? chroma / maxChroma
           : 0;
     const fill = `rgb(${cluster.rgb.r},${cluster.rgb.g},${cluster.rgb.b})`;
-    const stroke = options.showStroke === false ? 'none' : contrastStroke(cluster.rgb);
+    const stroke =
+      options.showStroke === false ? 'none' : contrastStroke(cluster.rgb);
     const radius = Math.max(2, sizeFactor * maxSymbolRadius);
     points.push({
       x,
@@ -83,7 +105,7 @@ export function generateHueLightnessSvg(
       radius: Math.max(3, radius * 2),
       r: cluster.rgb.r,
       g: cluster.rgb.g,
-      b: cluster.rgb.b
+      b: cluster.rgb.b,
     });
     circleParts.push(
       svgCircle({
@@ -92,7 +114,7 @@ export function generateHueLightnessSvg(
         r: radius.toFixed(2),
         fill,
         stroke,
-        'stroke-width': options.showStroke === false ? 0 : 1
+        'stroke-width': options.showStroke === false ? 0 : 1,
       })
     );
   }
@@ -110,7 +132,7 @@ export function generateHueLightnessSvg(
           'font-family': 'Fira Sans',
           'font-size': labelFontSize,
           fill: 'rgba(16,17,17,0.6)',
-          'text-anchor': 'middle'
+          'text-anchor': 'middle',
         },
         'Hue'
       )
@@ -124,7 +146,7 @@ export function generateHueLightnessSvg(
           'font-size': labelFontSize,
           fill: 'rgba(16,17,17,0.6)',
           'text-anchor': 'middle',
-          transform: `rotate(-90 12 ${padding + plotHeight / 2})`
+          transform: `rotate(-90 12 ${padding + plotHeight / 2})`,
         },
         'Lightness'
       )
@@ -138,11 +160,11 @@ export function generateHueLightnessSvg(
       content: svgParts.join(''),
       attrs: {
         'data-color-model': 'oklch',
-        'data-view': 'hue-lightness'
-      }
+        'data-view': 'hue-lightness',
+      },
     }),
     width,
-    height
+    height,
   };
 }
 

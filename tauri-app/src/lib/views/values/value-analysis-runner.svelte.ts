@@ -1,6 +1,10 @@
 import { tick } from 'svelte';
 import { get } from 'svelte/store';
-import type { SelectedImage, ValueAnalysisResult, ValueAnalysisState } from '../../stores/ui';
+import type {
+  SelectedImage,
+  ValueAnalysisResult,
+  ValueAnalysisState,
+} from '../../stores/ui';
 import {
   selectedFile,
   valueAnalysisLevels,
@@ -9,7 +13,7 @@ import {
   valueAnalysisError,
   setValueAnalysisPending,
   setValueAnalysisSuccess,
-  setValueAnalysisError
+  setValueAnalysisError,
 } from '../../stores/ui';
 import { requestValueAnalysis } from '../../bridges/value-analysis';
 import { inferMimeType } from '../../bridges/fs';
@@ -79,8 +83,14 @@ export function createValueAnalysisRunner() {
       analysisScrollLock.token = token;
     }
     const startedAt = performance.now();
-    void logEvent(`values:analysis:start levels=${requestedLevels} twoTone=${requestedNotanMode}`);
-    setValueAnalysisPending(currentFile.id, requestedLevels, requestedNotanMode);
+    void logEvent(
+      `values:analysis:start levels=${requestedLevels} twoTone=${requestedNotanMode}`
+    );
+    setValueAnalysisPending(
+      currentFile.id,
+      requestedLevels,
+      requestedNotanMode
+    );
     try {
       const result = await requestValueAnalysis(
         currentFile.path,
@@ -91,14 +101,24 @@ export function createValueAnalysisRunner() {
       if (token !== currentToken) return;
       const duration = Math.round(performance.now() - startedAt);
       void logEvent(`values:analysis:success ms=${duration}`);
-      setValueAnalysisSuccess(currentFile.id, requestedLevels, requestedNotanMode, result);
+      setValueAnalysisSuccess(
+        currentFile.id,
+        requestedLevels,
+        requestedNotanMode,
+        result
+      );
       restoreAnalysisScroll(token);
     } catch (err) {
       if (token !== currentToken) return;
       const message = err instanceof Error ? err.message : 'Unknown error';
       const duration = Math.round(performance.now() - startedAt);
       void logEvent(`values:analysis:error ms=${duration} message=${message}`);
-      setValueAnalysisError(currentFile.id, requestedLevels, requestedNotanMode, message);
+      setValueAnalysisError(
+        currentFile.id,
+        requestedLevels,
+        requestedNotanMode,
+        message
+      );
     }
   }
 
@@ -112,7 +132,8 @@ export function createValueAnalysisRunner() {
     // has no other trigger. Re-analyze the current still or extracted frame here.
     if (!file?.path) return;
     // Skip a raw, unextracted video container; extracted frames carry videoPath.
-    if (!file.videoPath && inferMimeType(file.path).startsWith('video/')) return;
+    if (!file.videoPath && inferMimeType(file.path).startsWith('video/'))
+      return;
     void ensureAnalysis(file, next, next === 2);
   }
 
@@ -152,7 +173,8 @@ export function createValueAnalysisRunner() {
         file = value;
         const nextId = value?.id ?? null;
         if (displayImageId && nextId !== displayImageId) {
-          const sameVideo = value?.videoPath && prevFile?.videoPath === value.videoPath;
+          const sameVideo =
+            value?.videoPath && prevFile?.videoPath === value.videoPath;
           if (!sameVideo) {
             displayAnalysis = null;
           }
@@ -183,7 +205,7 @@ export function createValueAnalysisRunner() {
       }),
       valueAnalysisLevels.subscribe((value) => {
         levels = value;
-      })
+      }),
     ];
     void logEvent('values:view:mount');
     queueMicrotask(() => {
@@ -208,19 +230,35 @@ export function createValueAnalysisRunner() {
   }
 
   return {
-    get file() { return file; },
-    get analysis() { return renderAnalysis; },
-    get hasCurrentAnalysis() { return hasCurrentAnalysis; },
-    get status() { return status; },
-    get error() { return error; },
-    get levels() { return levels; },
-    set levels(v: number) { levels = v; },
-    get effectiveNotanMode() { return effectiveNotanMode; },
+    get file() {
+      return file;
+    },
+    get analysis() {
+      return renderAnalysis;
+    },
+    get hasCurrentAnalysis() {
+      return hasCurrentAnalysis;
+    },
+    get status() {
+      return status;
+    },
+    get error() {
+      return error;
+    },
+    get levels() {
+      return levels;
+    },
+    set levels(v: number) {
+      levels = v;
+    },
+    get effectiveNotanMode() {
+      return effectiveNotanMode;
+    },
     updateLevels,
     ensureAnalysis,
     cancelPending,
     captureAnalysisScroll,
     trackMaskKey,
-    mount
+    mount,
   };
 }

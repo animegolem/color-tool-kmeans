@@ -1,7 +1,10 @@
 import type { AnalysisCluster } from '../stores/ui';
 
 function rgbToHex(rgb: { r: number; g: number; b: number }): string {
-  const h = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+  const h = (v: number) =>
+    Math.max(0, Math.min(255, Math.round(v)))
+      .toString(16)
+      .padStart(2, '0');
   return `#${h(rgb.r)}${h(rgb.g)}${h(rgb.b)}`.toUpperCase();
 }
 
@@ -24,12 +27,18 @@ export function generateAseBlob(clusters: AnalysisCluster[]): Blob {
     const nameChars = name.length + 1; // +1 for null terminator
     const nameBytes = nameChars * 2; // UTF-16BE
     const nameLenField = 2; // uint16 char count
-    const blockDataSize = nameLenField + nameBytes + COLOR_MODEL_SIZE + FLOAT_CHANNELS + COLOR_TYPE_SIZE;
+    const blockDataSize =
+      nameLenField +
+      nameBytes +
+      COLOR_MODEL_SIZE +
+      FLOAT_CHANNELS +
+      COLOR_TYPE_SIZE;
     return { cluster: c, name, nameChars, blockDataSize };
   });
 
   // Total buffer: header + per-swatch (type(2) + length(4) + data)
-  const totalSize = HEADER_SIZE + swatches.reduce((sum, s) => sum + 2 + 4 + s.blockDataSize, 0);
+  const totalSize =
+    HEADER_SIZE + swatches.reduce((sum, s) => sum + 2 + 4 + s.blockDataSize, 0);
   const buffer = new ArrayBuffer(totalSize);
   const view = new DataView(buffer);
   let offset = 0;

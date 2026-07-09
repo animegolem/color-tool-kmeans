@@ -34,12 +34,15 @@ export function extractSvgInner(fullSvg: string): string {
 /**
  * Parse width/height from an SVG string's root element attributes.
  */
-export function parseSvgDimensions(fullSvg: string): { width: number; height: number } {
+export function parseSvgDimensions(fullSvg: string): {
+  width: number;
+  height: number;
+} {
   const wMatch = fullSvg.match(/<svg[^>]*\bwidth="(\d+(?:\.\d+)?)"/);
   const hMatch = fullSvg.match(/<svg[^>]*\bheight="(\d+(?:\.\d+)?)"/);
   return {
     width: wMatch ? parseFloat(wMatch[1]) : 0,
-    height: hMatch ? parseFloat(hMatch[1]) : 0
+    height: hMatch ? parseFloat(hMatch[1]) : 0,
   };
 }
 
@@ -52,7 +55,7 @@ export function svgToTile(fullSvg: string, key: string): CompositorTile {
     key,
     svgContent: extractSvgInner(fullSvg),
     width,
-    height
+    height,
   };
 }
 
@@ -71,14 +74,17 @@ export function imageToTile(
     svgContent: escaped,
     width,
     height,
-    isRaster: true
+    isRaster: true,
   };
 }
 
 /**
  * Compute grid cols/rows for a given tile count.
  */
-export function computeGridLayout(count: number): { cols: number; rows: number } {
+export function computeGridLayout(count: number): {
+  cols: number;
+  rows: number;
+} {
   if (count <= 1) return { cols: 1, rows: 1 };
   if (count === 2) return { cols: 2, rows: 1 };
   if (count <= 4) return { cols: 2, rows: Math.ceil(count / 2) };
@@ -102,10 +108,16 @@ export function composeTiles(
       svg: svgDocument({
         width: canvasWidth,
         height: h,
-        content: svgRect({ x: 0, y: 0, width: canvasWidth, height: h, fill: background })
+        content: svgRect({
+          x: 0,
+          y: 0,
+          width: canvasWidth,
+          height: h,
+          fill: background,
+        }),
       }),
       width: canvasWidth,
-      height: h
+      height: h,
     };
   }
 
@@ -131,7 +143,13 @@ export function composeTiles(
 
   const parts: string[] = [];
   parts.push(
-    svgRect({ x: 0, y: 0, width: canvasWidth, height: totalHeight, fill: background })
+    svgRect({
+      x: 0,
+      y: 0,
+      width: canvasWidth,
+      height: totalHeight,
+      fill: background,
+    })
   );
 
   let cursorY = margin;
@@ -163,8 +181,12 @@ export function composeTiles(
   }
 
   return {
-    svg: svgDocument({ width: canvasWidth, height: totalHeight, content: parts.join('') }),
+    svg: svgDocument({
+      width: canvasWidth,
+      height: totalHeight,
+      content: parts.join(''),
+    }),
     width: canvasWidth,
-    height: totalHeight
+    height: totalHeight,
   };
 }

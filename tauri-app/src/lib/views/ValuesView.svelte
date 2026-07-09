@@ -4,16 +4,35 @@
   import { assetUrl } from '../utils/asset-url';
   import type { ImageEntry } from '../stores/ui';
   import {
-    openZoomOverlay, setFile, videoState, params, activeImageId,
+    openZoomOverlay,
+    setFile,
+    videoState,
+    params,
+    activeImageId,
     images,
-    showSimplifiedTones, setVideoState, invalidateAnalysisForImage,
-    cacheVideoState
+    showSimplifiedTones,
+    setVideoState,
+    invalidateAnalysisForImage,
+    cacheVideoState,
   } from '../stores/ui';
-  import { subscribePendingVideoSwitch, subscribeMediaLoadRequested } from '../services/view-subscriptions';
+  import {
+    subscribePendingVideoSwitch,
+    subscribeMediaLoadRequested,
+  } from '../services/view-subscriptions';
   import { logEvent } from '../bridges/log';
-  import { openImageZoom as zoomImage, openSvgZoom, handleZoomKeydown as svgZoomKeydown } from '../utils/zoom';
+  import {
+    openImageZoom as zoomImage,
+    openSvgZoom,
+    handleZoomKeydown as svgZoomKeydown,
+  } from '../utils/zoom';
   import { generateValuesHistogramSvg } from '../exports/values-histogram';
-  import { formatPercent, keyLabel, contrastLabel, grayFill, bucketTextColor } from '../exports/value-analysis';
+  import {
+    formatPercent,
+    keyLabel,
+    contrastLabel,
+    grayFill,
+    bucketTextColor,
+  } from '../exports/value-analysis';
   import { maxDimensionForQuality } from '../services/media-ingestion';
   import { setActivePath } from '../services/active-image';
   import { createValueAnalysisRunner } from './values/value-analysis-runner.svelte';
@@ -26,7 +45,9 @@
   let videoEl = $state<HTMLVideoElement | null>(null);
 
   const runner = createValueAnalysisRunner();
-  const ingestion = createValuesFileIngestion({ cancelPending: () => runner.cancelPending() });
+  const ingestion = createValuesFileIngestion({
+    cancelPending: () => runner.cancelPending(),
+  });
 
   const scrubber = createVideoScrubber({
     getMaxDimension: () => maxDimensionForQuality($params.quality),
@@ -46,11 +67,15 @@
         frameTimestamp: timestamp,
         size: 0,
         source: { kind: 'path', path: framePath },
-        previewUrl
+        previewUrl,
       };
       const dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
       setFile(entry, dataset);
-      runner.ensureAnalysis({ ...entry, dataset }, runner.levels, runner.effectiveNotanMode);
+      runner.ensureAnalysis(
+        { ...entry, dataset },
+        runner.levels,
+        runner.effectiveNotanMode
+      );
     },
     updateVideoState: (currentTime, posterPath) => {
       const vs = $videoState;
@@ -70,7 +95,7 @@
         posterPath,
         frameId: activeId ?? '',
       });
-    }
+    },
   });
 
   const renderAnalysis = $derived.by(() => runner.analysis);
@@ -102,18 +127,18 @@
     return renderAnalysis.bucketValues.map((value, idx) => {
       const count = counts[idx] ?? 0;
       const share = count / total;
-      const lower = idx === 0 ? 0 : renderAnalysis.boundaries[idx - 1] ?? 0;
+      const lower = idx === 0 ? 0 : (renderAnalysis.boundaries[idx - 1] ?? 0);
       const upper =
         idx === renderAnalysis.bucketValues.length - 1
           ? 1
-          : renderAnalysis.boundaries[idx] ?? 1;
+          : (renderAnalysis.boundaries[idx] ?? 1);
       return {
         idx,
         value,
         count,
         share,
         lower,
-        upper
+        upper,
       };
     });
   });
@@ -134,11 +159,15 @@
     void snapshotCurrentFrame({
       framePath,
       name: runner.file?.name ?? 'frame',
-      timestamp: scrubber.currentTime
+      timestamp: scrubber.currentTime,
     });
   }
 
-  function bucketLabel(bucket: { lower: number; upper: number; share: number }) {
+  function bucketLabel(bucket: {
+    lower: number;
+    upper: number;
+    share: number;
+  }) {
     return `${formatPercent(bucket.lower)}-${formatPercent(bucket.upper)} | ${formatPercent(
       bucket.share
     )}`;
@@ -148,11 +177,16 @@
     const cleanupRunner = runner.mount();
     scrubber.syncFromVideoState($videoState);
     if (runner.file?.videoPath && !runner.hasCurrentAnalysis) {
-      void runner.ensureAnalysis(runner.file, runner.levels, runner.effectiveNotanMode);
+      void runner.ensureAnalysis(
+        runner.file,
+        runner.levels,
+        runner.effectiveNotanMode
+      );
     }
     let unlistenDragDrop: (() => void) | null = null;
-    ingestion.setupDragDrop()
-      .then((fn) => { unlistenDragDrop = fn; });
+    ingestion.setupDragDrop().then((fn) => {
+      unlistenDragDrop = fn;
+    });
     const unsubs = [
       videoState.subscribe((vs) => {
         scrubber.syncFromVideoState(vs);
@@ -163,7 +197,7 @@
       subscribePendingVideoSwitch(({ entry, videoPath }) => {
         ingestion.handleVideoFile(videoPath, entry.name);
       }),
-      subscribeMediaLoadRequested(() => ingestion.handleUpload())
+      subscribeMediaLoadRequested(() => ingestion.handleUpload()),
     ];
     return () => {
       cleanupRunner();
@@ -215,7 +249,9 @@
     {#if runner.status === 'pending'}
       <div class="empty">Generating values analysis...</div>
     {:else if runner.status === 'error'}
-      <div class="empty">Values analysis failed. {runner.error ?? 'Unknown error.'}</div>
+      <div class="empty">
+        Values analysis failed. {runner.error ?? 'Unknown error.'}
+      </div>
     {:else}
       <div class="empty">Select media to view the values analysis.</div>
     {/if}
@@ -230,10 +266,26 @@
               class:zoomable={!!runner.file.previewUrl}
               role={runner.file.previewUrl ? 'button' : undefined}
               tabindex={runner.file.previewUrl ? 0 : undefined}
-              onclick={runner.file.previewUrl ? () => openImageZoom(runner.file.previewUrl ?? '', runner.file.name) : undefined}
-              onkeydown={runner.file.previewUrl ? (event: KeyboardEvent) => handleZoomKeydown(event, runner.file.previewUrl ?? '', runner.file.name) : undefined}
+              onclick={runner.file.previewUrl
+                ? () =>
+                    openImageZoom(
+                      runner.file.previewUrl ?? '',
+                      runner.file.name
+                    )
+                : undefined}
+              onkeydown={runner.file.previewUrl
+                ? (event: KeyboardEvent) =>
+                    handleZoomKeydown(
+                      event,
+                      runner.file.previewUrl ?? '',
+                      runner.file.name
+                    )
+                : undefined}
             >
-              <SnapshotButton onCapture={captureFrame} disabled={scrubber.extracting || !runner.file.path} />
+              <SnapshotButton
+                onCapture={captureFrame}
+                disabled={scrubber.extracting || !runner.file.path}
+              />
               <video
                 bind:this={videoEl}
                 class="preview"
@@ -243,7 +295,10 @@
                 preload="auto"
               >
                 {#if scrubber.videoSrcUrl}
-                  <source src={scrubber.videoSrcUrl} type={scrubber.mimeType ?? 'video/mp4'} />
+                  <source
+                    src={scrubber.videoSrcUrl}
+                    type={scrubber.mimeType ?? 'video/mp4'}
+                  />
                 {/if}
               </video>
             </div>
@@ -252,8 +307,14 @@
               class="zoomable"
               role="button"
               tabindex="0"
-              onclick={() => openImageZoom(runner.file.previewUrl ?? '', runner.file.name)}
-              onkeydown={(event) => handleZoomKeydown(event, runner.file.previewUrl ?? '', runner.file.name)}
+              onclick={() =>
+                openImageZoom(runner.file.previewUrl ?? '', runner.file.name)}
+              onkeydown={(event) =>
+                handleZoomKeydown(
+                  event,
+                  runner.file.previewUrl ?? '',
+                  runner.file.name
+                )}
             >
               <img
                 class="preview"
@@ -275,7 +336,8 @@
               role="button"
               tabindex="0"
               onclick={() => openImageZoom(neutralSrc, 'Neutral values')}
-              onkeydown={(event) => handleZoomKeydown(event, neutralSrc, 'Neutral values')}
+              onkeydown={(event) =>
+                handleZoomKeydown(event, neutralSrc, 'Neutral values')}
             >
               <img
                 class="preview"
@@ -312,96 +374,128 @@
           <span>{contrastLabel(safeP10, safeP90)}</span>
         </div>
       </div>
-    <div class="range-track">
-      <div class="range-extension" style={`left: ${extremeStart}%; width: ${extremeWidth}%;`}></div>
-      <div class="range-core" style={`left: ${rangeStart}%; width: ${rangeWidth}%;`}></div>
-      <div class="range-outline" style={`left: ${extremeStart}%; width: ${extremeWidth}%;`}></div>
-    </div>
-    <div class="range-scale">
-      <span>0</span>
-      <span>100</span>
+      <div class="range-track">
+        <div
+          class="range-extension"
+          style={`left: ${extremeStart}%; width: ${extremeWidth}%;`}
+        ></div>
+        <div
+          class="range-core"
+          style={`left: ${rangeStart}%; width: ${rangeWidth}%;`}
+        ></div>
+        <div
+          class="range-outline"
+          style={`left: ${extremeStart}%; width: ${extremeWidth}%;`}
+        ></div>
+      </div>
+      <div class="range-scale">
+        <span>0</span>
+        <span>100</span>
       </div>
       <div class="range-meta">
-        <span>Mass range {formatPercent(safeP10)}-{formatPercent(safeP90)}</span>
+        <span>Mass range {formatPercent(safeP10)}-{formatPercent(safeP90)}</span
+        >
         <span>Extremes {formatPercent(safeP01)}-{formatPercent(safeP99)}</span>
       </div>
     </div>
 
     {#if valuesHistogram}
-    <div class="histogram-section">
-      <div class="histogram-header">
-        <div class="histogram-title">Values Histogram</div>
+      <div class="histogram-section">
+        <div class="histogram-header">
+          <div class="histogram-title">Values Histogram</div>
+        </div>
+        <div
+          class="histogram-chart zoomable"
+          role="button"
+          tabindex="0"
+          onclick={() =>
+            openSvgZoom(
+              valuesHistogram?.svg,
+              valuesHistogram?.width,
+              valuesHistogram?.height,
+              openZoomOverlay
+            )}
+          onkeydown={(event) =>
+            svgZoomKeydown(
+              event,
+              valuesHistogram?.svg,
+              valuesHistogram?.width,
+              valuesHistogram?.height,
+              openZoomOverlay
+            )}
+        >
+          {@html valuesHistogram.svg}
+        </div>
       </div>
-      <div
-        class="histogram-chart zoomable"
-        role="button"
-        tabindex="0"
-        onclick={() => openSvgZoom(valuesHistogram?.svg, valuesHistogram?.width, valuesHistogram?.height, openZoomOverlay)}
-        onkeydown={(event) => svgZoomKeydown(event, valuesHistogram?.svg, valuesHistogram?.width, valuesHistogram?.height, openZoomOverlay)}
-      >
-        {@html valuesHistogram.svg}
-      </div>
-    </div>
     {/if}
 
     {#if $showSimplifiedTones}
-    <div class="analysis-section">
-      <div class="analysis-header">
-        <div class="analysis-title">Simplified tones</div>
-        <div class="analysis-controls">
-          <label class="levels">
-            <span>Levels</span>
-            <input type="range" min="2" max="5" step="1" value={runner.levels} oninput={(e) => runner.updateLevels(e.currentTarget.valueAsNumber)} />
-            <strong>{runner.levels}</strong>
-          </label>
+      <div class="analysis-section">
+        <div class="analysis-header">
+          <div class="analysis-title">Simplified tones</div>
+          <div class="analysis-controls">
+            <label class="levels">
+              <span>Levels</span>
+              <input
+                type="range"
+                min="2"
+                max="5"
+                step="1"
+                value={runner.levels}
+                oninput={(e) =>
+                  runner.updateLevels(e.currentTarget.valueAsNumber)}
+              />
+              <strong>{runner.levels}</strong>
+            </label>
+          </div>
         </div>
-      </div>
 
-      <div class="bucket-strip" role="list">
-        {#each bucketData as bucket}
-          <button
-            class="bucket"
-            type="button"
-            style={`flex: ${Math.max(1, bucket.count)}; background: ${grayFill(bucket.value)}; color: ${bucketTextColor(
-              bucket.value
-            )};`}
-            title={bucketLabel(bucket)}
-            aria-pressed="false"
-          >
-            <span class="bucket-percent">{formatPercent(bucket.share)}</span>
-          </button>
-        {/each}
-      </div>
+        <div class="bucket-strip" role="list">
+          {#each bucketData as bucket}
+            <button
+              class="bucket"
+              type="button"
+              style={`flex: ${Math.max(1, bucket.count)}; background: ${grayFill(bucket.value)}; color: ${bucketTextColor(
+                bucket.value
+              )};`}
+              title={bucketLabel(bucket)}
+              aria-pressed="false"
+            >
+              <span class="bucket-percent">{formatPercent(bucket.share)}</span>
+            </button>
+          {/each}
+        </div>
 
-      <div class="preview-panel">
-        <div class="preview-card">
-          <div class="preview-shell">
-            {#if previewSrc}
-              <div
-                class="zoomable"
-                role="button"
-                tabindex="0"
-                onclick={() => openImageZoom(previewSrc, 'Simplified tones')}
-                onkeydown={(event) => handleZoomKeydown(event, previewSrc, 'Simplified tones')}
-              >
-                <img
-                  class="preview"
-                  src={previewSrc}
-                  alt="Simplified tones"
-                  onload={() => void logEvent('values:image:preview:load')}
-                  onerror={() => void logEvent('values:image:preview:error')}
-                />
-              </div>
-            {:else}
-              <div class="empty">Preview unavailable.</div>
-            {/if}
-            {#if isRefreshing}
-              <div class="preview-overlay">Updating...</div>
-            {/if}
+        <div class="preview-panel">
+          <div class="preview-card">
+            <div class="preview-shell">
+              {#if previewSrc}
+                <div
+                  class="zoomable"
+                  role="button"
+                  tabindex="0"
+                  onclick={() => openImageZoom(previewSrc, 'Simplified tones')}
+                  onkeydown={(event) =>
+                    handleZoomKeydown(event, previewSrc, 'Simplified tones')}
+                >
+                  <img
+                    class="preview"
+                    src={previewSrc}
+                    alt="Simplified tones"
+                    onload={() => void logEvent('values:image:preview:load')}
+                    onerror={() => void logEvent('values:image:preview:error')}
+                  />
+                </div>
+              {:else}
+                <div class="empty">Preview unavailable.</div>
+              {/if}
+              {#if isRefreshing}
+                <div class="preview-overlay">Updating...</div>
+              {/if}
+            </div>
           </div>
         </div>
       </div>
-    </div>
     {/if}
   {/if}
 </section>
@@ -646,7 +740,9 @@
     display: grid;
     place-items: center;
     text-align: center;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease;
   }
 
   .bucket:hover {

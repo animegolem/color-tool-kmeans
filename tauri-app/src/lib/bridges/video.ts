@@ -31,7 +31,9 @@ export interface VideoStripResponse {
   path: string;
 }
 
-export async function extractVideoFrame(req: VideoFrameRequest): Promise<VideoFrameResponse> {
+export async function extractVideoFrame(
+  req: VideoFrameRequest
+): Promise<VideoFrameResponse> {
   const response = await tauriInvoke('extract_video_frame', { req });
   return response as VideoFrameResponse;
 }
@@ -41,7 +43,9 @@ export async function probeVideo(path: string): Promise<VideoProbeResponse> {
   return response as VideoProbeResponse;
 }
 
-export async function extractVideoStrip(req: VideoStripRequest): Promise<VideoStripResponse> {
+export async function extractVideoStrip(
+  req: VideoStripRequest
+): Promise<VideoStripResponse> {
   const response = await tauriInvoke('extract_video_strip', { req });
   return response as VideoStripResponse;
 }

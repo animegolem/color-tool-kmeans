@@ -11,7 +11,9 @@ function rgbToHex(rgb: { r: number; g: number; b: number }): string {
 }
 
 function toHex(value: number): string {
-  return Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, '0');
+  return Math.max(0, Math.min(255, Math.round(value)))
+    .toString(16)
+    .padStart(2, '0');
 }
 
 function contrastStroke(rgb: { r: number; g: number; b: number }): string {
@@ -25,7 +27,10 @@ export interface PaletteOptions {
   maxClusters?: number;
 }
 
-export function generatePaletteSvg(clusters: AnalysisCluster[], options: PaletteOptions = {}): { svg: string; width: number; height: number } {
+export function generatePaletteSvg(
+  clusters: AnalysisCluster[],
+  options: PaletteOptions = {}
+): { svg: string; width: number; height: number } {
   const rowHeight = options.rowHeight ?? DEFAULT_ROW_HEIGHT;
   const width = options.width ?? 320;
   const maxClusters = options.maxClusters;
@@ -37,7 +42,7 @@ export function generatePaletteSvg(clusters: AnalysisCluster[], options: Palette
       hex,
       rgbLabel,
       y: index * rowHeight,
-      textColor: 'rgba(33,33,32,0.85)'
+      textColor: 'rgba(33,33,32,0.85)',
     };
   });
   const height = rows.length * rowHeight;
@@ -51,7 +56,7 @@ export function generatePaletteSvg(clusters: AnalysisCluster[], options: Palette
           height: rowHeight - 8,
           fill: row.hex,
           stroke: 'none',
-          rx: 4
+          rx: 4,
         }),
         svgText(
           {
@@ -60,17 +65,20 @@ export function generatePaletteSvg(clusters: AnalysisCluster[], options: Palette
             fill: row.textColor,
             'font-family': FONT_FAMILY,
             'font-size': 16,
-            'text-anchor': 'start'
+            'text-anchor': 'start',
           },
           row.rgbLabel
-        )
+        ),
       ])
     )
     .join('');
   return { svg: svgDocument({ width, height, content }), width, height };
 }
 
-export async function generatePalettePng(clusters: AnalysisCluster[], options: PaletteOptions & { scale?: number } = {}): Promise<Blob> {
+export async function generatePalettePng(
+  clusters: AnalysisCluster[],
+  options: PaletteOptions & { scale?: number } = {}
+): Promise<Blob> {
   const { svg, width, height } = generatePaletteSvg(clusters, options);
   return svgToPngBlob(svg, width, height, options.scale ?? 1);
 }
@@ -89,7 +97,7 @@ export function generatePaletteCsv(clusters: AnalysisCluster[]): string {
     'oklab_b',
     'oklch_l',
     'oklch_c',
-    'oklch_h'
+    'oklch_h',
   ];
   const rows = clusters.map((cluster, index) => {
     const { r, g, b } = cluster.rgb;
@@ -109,7 +117,7 @@ export function generatePaletteCsv(clusters: AnalysisCluster[]): string {
       oklab[2].toFixed(6),
       oklch[0].toFixed(6),
       oklch[1].toFixed(6),
-      oklch[2].toFixed(6)
+      oklch[2].toFixed(6),
     ];
   });
   return [header, ...rows].map((row) => row.join(',')).join('\n');

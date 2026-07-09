@@ -1,6 +1,9 @@
 import { isTauriEnv, tauriInvoke } from './tauri';
 
-export async function logEvent(message: string, source = 'renderer'): Promise<void> {
+export async function logEvent(
+  message: string,
+  source = 'renderer'
+): Promise<void> {
   if (!message) return;
   if (!isTauriEnv()) return;
   try {

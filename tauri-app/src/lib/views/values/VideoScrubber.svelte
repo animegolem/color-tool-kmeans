@@ -11,8 +11,20 @@
 <div class="video-scrubber">
   <div class="scrub-controls">
     <div class="step-group">
-      <button type="button" class="step-btn" title="Back 10 frames" disabled={scrubber.duration <= 0 || scrubber.extracting} onclick={() => scrubber.stepFrames(-10)}>◀◀</button>
-      <button type="button" class="step-btn" title="Back 1 frame" disabled={scrubber.duration <= 0 || scrubber.extracting} onclick={() => scrubber.stepFrames(-1)}>◀</button>
+      <button
+        type="button"
+        class="step-btn"
+        title="Back 10 frames"
+        disabled={scrubber.duration <= 0 || scrubber.extracting}
+        onclick={() => scrubber.stepFrames(-10)}>◀◀</button
+      >
+      <button
+        type="button"
+        class="step-btn"
+        title="Back 1 frame"
+        disabled={scrubber.duration <= 0 || scrubber.extracting}
+        onclick={() => scrubber.stepFrames(-1)}>◀</button
+      >
     </div>
     <input
       class="video-scrub"
@@ -30,8 +42,20 @@
       title="Scrub through video timeline"
     />
     <div class="step-group step-group--right">
-      <button type="button" class="step-btn" title="Forward 1 frame" disabled={scrubber.duration <= 0 || scrubber.extracting} onclick={() => scrubber.stepFrames(1)}>▶</button>
-      <button type="button" class="step-btn" title="Forward 10 frames" disabled={scrubber.duration <= 0 || scrubber.extracting} onclick={() => scrubber.stepFrames(10)}>▶▶</button>
+      <button
+        type="button"
+        class="step-btn"
+        title="Forward 1 frame"
+        disabled={scrubber.duration <= 0 || scrubber.extracting}
+        onclick={() => scrubber.stepFrames(1)}>▶</button
+      >
+      <button
+        type="button"
+        class="step-btn"
+        title="Forward 10 frames"
+        disabled={scrubber.duration <= 0 || scrubber.extracting}
+        onclick={() => scrubber.stepFrames(10)}>▶▶</button
+      >
     </div>
   </div>
 </div>
@@ -71,5 +95,4 @@
   .video-scrub {
     width: 100%;
   }
-
 </style>

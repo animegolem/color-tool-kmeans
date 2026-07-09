@@ -83,10 +83,10 @@ export const DEFAULTS: PrefsV1 = {
     snapToReal: true,
     polarMode: 'okhsv',
     hueLightnessSizeMode: 'chroma',
-    histogramSort: 'frequency'
+    histogramSort: 'frequency',
   },
   valueAnalysis: {
-    levels: 3
+    levels: 3,
   },
   display: {
     showHistogram: true,
@@ -95,11 +95,11 @@ export const DEFAULTS: PrefsV1 = {
     showSimplifiedTones: true,
     videoStripMode: 'barcode',
     videoFrameLabel: 'timestamp',
-    compactSidebars: false
+    compactSidebars: false,
   },
   limits: {
     clusterMax: 200,
-    excludeTopMax: 10
+    excludeTopMax: 10,
   },
   batchAnalysis: {
     clusters: 45,
@@ -112,7 +112,7 @@ export const DEFAULTS: PrefsV1 = {
     snapToReal: true,
     polarMode: 'okhsv',
     hueLightnessSizeMode: 'chroma',
-    histogramSort: 'frequency'
+    histogramSort: 'frequency',
   },
   exports: {
     colorsSourceImage: true,
@@ -133,11 +133,11 @@ export const DEFAULTS: PrefsV1 = {
     batchHistogram: true,
     batchHistogramAll: false,
     batchHueLightness: true,
-    batchPaletteStrip: false
+    batchPaletteStrip: false,
   },
   exportScale: 2,
   exportDir: null,
-  graphExportFormat: 'svg'
+  graphExportFormat: 'svg',
 };
 
 let store: LazyStore | null = null;
@@ -149,13 +149,18 @@ function getStore(): LazyStore {
   return store;
 }
 
-function deepMerge(defaults: PrefsV1, partial: Record<string, unknown>): PrefsV1 {
+function deepMerge(
+  defaults: PrefsV1,
+  partial: Record<string, unknown>
+): PrefsV1 {
   const result = { ...defaults };
 
   if (partial.analysis && typeof partial.analysis === 'object') {
     const a = partial.analysis as Record<string, unknown>;
     result.analysis = { ...defaults.analysis };
-    for (const key of Object.keys(defaults.analysis) as (keyof PrefsV1['analysis'])[]) {
+    for (const key of Object.keys(
+      defaults.analysis
+    ) as (keyof PrefsV1['analysis'])[]) {
       if (key in a && typeof a[key] === typeof defaults.analysis[key]) {
         (result.analysis as Record<string, unknown>)[key] = a[key];
       }
@@ -171,26 +176,37 @@ function deepMerge(defaults: PrefsV1, partial: Record<string, unknown>): PrefsV1
   if (partial.display && typeof partial.display === 'object') {
     const d = partial.display as Record<string, unknown>;
     result.display = { ...defaults.display };
-    if (typeof d.showHistogram === 'boolean') result.display.showHistogram = d.showHistogram;
-    if (typeof d.showPolarChart === 'boolean') result.display.showPolarChart = d.showPolarChart;
-    if (typeof d.showHueLightness === 'boolean') result.display.showHueLightness = d.showHueLightness;
-    if (typeof d.showSimplifiedTones === 'boolean') result.display.showSimplifiedTones = d.showSimplifiedTones;
-    if (d.videoStripMode === 'filmstrip' || d.videoStripMode === 'barcode') result.display.videoStripMode = d.videoStripMode;
-    if (d.videoFrameLabel === 'timestamp' || d.videoFrameLabel === 'frame') result.display.videoFrameLabel = d.videoFrameLabel;
-    if (typeof d.compactSidebars === 'boolean') result.display.compactSidebars = d.compactSidebars;
+    if (typeof d.showHistogram === 'boolean')
+      result.display.showHistogram = d.showHistogram;
+    if (typeof d.showPolarChart === 'boolean')
+      result.display.showPolarChart = d.showPolarChart;
+    if (typeof d.showHueLightness === 'boolean')
+      result.display.showHueLightness = d.showHueLightness;
+    if (typeof d.showSimplifiedTones === 'boolean')
+      result.display.showSimplifiedTones = d.showSimplifiedTones;
+    if (d.videoStripMode === 'filmstrip' || d.videoStripMode === 'barcode')
+      result.display.videoStripMode = d.videoStripMode;
+    if (d.videoFrameLabel === 'timestamp' || d.videoFrameLabel === 'frame')
+      result.display.videoFrameLabel = d.videoFrameLabel;
+    if (typeof d.compactSidebars === 'boolean')
+      result.display.compactSidebars = d.compactSidebars;
   }
 
   if (partial.limits && typeof partial.limits === 'object') {
     const lim = partial.limits as Record<string, unknown>;
     result.limits = { ...defaults.limits };
-    if (typeof lim.clusterMax === 'number') result.limits.clusterMax = lim.clusterMax;
-    if (typeof lim.excludeTopMax === 'number') result.limits.excludeTopMax = lim.excludeTopMax;
+    if (typeof lim.clusterMax === 'number')
+      result.limits.clusterMax = lim.clusterMax;
+    if (typeof lim.excludeTopMax === 'number')
+      result.limits.excludeTopMax = lim.excludeTopMax;
   }
 
   if (partial.batchAnalysis && typeof partial.batchAnalysis === 'object') {
     const ba = partial.batchAnalysis as Record<string, unknown>;
     result.batchAnalysis = { ...defaults.batchAnalysis };
-    for (const key of Object.keys(defaults.batchAnalysis) as (keyof PrefsV1['batchAnalysis'])[]) {
+    for (const key of Object.keys(
+      defaults.batchAnalysis
+    ) as (keyof PrefsV1['batchAnalysis'])[]) {
       if (key in ba && typeof ba[key] === typeof defaults.batchAnalysis[key]) {
         (result.batchAnalysis as Record<string, unknown>)[key] = ba[key];
       }
@@ -200,7 +216,9 @@ function deepMerge(defaults: PrefsV1, partial: Record<string, unknown>): PrefsV1
   if (partial.exports && typeof partial.exports === 'object') {
     const e = partial.exports as Record<string, unknown>;
     result.exports = { ...defaults.exports };
-    for (const key of Object.keys(defaults.exports) as (keyof PrefsV1['exports'])[]) {
+    for (const key of Object.keys(
+      defaults.exports
+    ) as (keyof PrefsV1['exports'])[]) {
       if (key in e && typeof e[key] === 'boolean') {
         (result.exports as Record<string, unknown>)[key] = e[key];
       }
@@ -215,7 +233,10 @@ function deepMerge(defaults: PrefsV1, partial: Record<string, unknown>): PrefsV1
     result.exportDir = partial.exportDir as string | null;
   }
 
-  if (partial.graphExportFormat === 'png' || partial.graphExportFormat === 'svg') {
+  if (
+    partial.graphExportFormat === 'png' ||
+    partial.graphExportFormat === 'svg'
+  ) {
     result.graphExportFormat = partial.graphExportFormat;
   }
 
@@ -240,17 +261,25 @@ export async function savePrefs(partial: Partial<PrefsV1>): Promise<void> {
   try {
     const s = getStore();
     const current = await s.get<Record<string, unknown>>('prefs');
-    const base = current && typeof current === 'object' ? deepMerge(DEFAULTS, current) : { ...DEFAULTS };
+    const base =
+      current && typeof current === 'object'
+        ? deepMerge(DEFAULTS, current)
+        : { ...DEFAULTS };
 
-    if (partial.analysis) base.analysis = { ...base.analysis, ...partial.analysis };
-    if (partial.valueAnalysis) base.valueAnalysis = { ...base.valueAnalysis, ...partial.valueAnalysis };
+    if (partial.analysis)
+      base.analysis = { ...base.analysis, ...partial.analysis };
+    if (partial.valueAnalysis)
+      base.valueAnalysis = { ...base.valueAnalysis, ...partial.valueAnalysis };
     if (partial.display) base.display = { ...base.display, ...partial.display };
     if (partial.limits) base.limits = { ...base.limits, ...partial.limits };
-    if (partial.batchAnalysis) base.batchAnalysis = { ...base.batchAnalysis, ...partial.batchAnalysis };
+    if (partial.batchAnalysis)
+      base.batchAnalysis = { ...base.batchAnalysis, ...partial.batchAnalysis };
     if (partial.exports) base.exports = { ...base.exports, ...partial.exports };
-    if (partial.exportScale !== undefined) base.exportScale = partial.exportScale;
+    if (partial.exportScale !== undefined)
+      base.exportScale = partial.exportScale;
     if (partial.exportDir !== undefined) base.exportDir = partial.exportDir;
-    if (partial.graphExportFormat !== undefined) base.graphExportFormat = partial.graphExportFormat;
+    if (partial.graphExportFormat !== undefined)
+      base.graphExportFormat = partial.graphExportFormat;
 
     await s.set('prefs', base);
     await s.save();

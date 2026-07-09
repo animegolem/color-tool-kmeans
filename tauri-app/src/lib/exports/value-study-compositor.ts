@@ -1,5 +1,9 @@
 import { svgDocument, svgRect } from './svg';
-import { svgToTile, type CompositorTile, type CompositorResult } from './compositor';
+import {
+  svgToTile,
+  type CompositorTile,
+  type CompositorResult,
+} from './compositor';
 
 export interface ValueStudyInput {
   col1Svg: string;
@@ -15,12 +19,20 @@ export interface ValueStudyOptions {
 
 const COL1_RATIO = 1.2;
 
-function renderTile(tile: CompositorTile, x: number, y: number, w: number, h: number): string {
-  return `<svg x="${x}" y="${y}" width="${w}" height="${h}" ` +
+function renderTile(
+  tile: CompositorTile,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): string {
+  return (
+    `<svg x="${x}" y="${y}" width="${w}" height="${h}" ` +
     `viewBox="0 0 ${tile.width} ${tile.height}" ` +
     `preserveAspectRatio="xMidYMid meet">` +
     tile.svgContent +
-    '</svg>';
+    '</svg>'
+  );
 }
 
 function scaledHeight(tile: CompositorTile, width: number): number {
@@ -41,7 +53,7 @@ export function composeValueStudy(
   const col1Tile = svgToTile(input.col1Svg, 'values-col1');
   const col2Tile = svgToTile(input.col2Svg, 'values-col2');
 
-  const col1Width = contentWidth * COL1_RATIO / (1 + COL1_RATIO) - gap / 2;
+  const col1Width = (contentWidth * COL1_RATIO) / (1 + COL1_RATIO) - gap / 2;
   const col2Width = contentWidth / (1 + COL1_RATIO) - gap / 2;
 
   const col1Height = scaledHeight(col1Tile, col1Width);
@@ -51,7 +63,15 @@ export function composeValueStudy(
   const totalHeight = 2 * margin + mainHeight;
 
   const parts: string[] = [];
-  parts.push(svgRect({ x: 0, y: 0, width: canvasWidth, height: totalHeight, fill: background }));
+  parts.push(
+    svgRect({
+      x: 0,
+      y: 0,
+      width: canvasWidth,
+      height: totalHeight,
+      fill: background,
+    })
+  );
 
   // Col 1 — vertically centered
   const col1Y = margin + (mainHeight - col1Height) / 2;
@@ -63,8 +83,12 @@ export function composeValueStudy(
   parts.push(renderTile(col2Tile, col2X, col2Y, col2Width, col2Height));
 
   return {
-    svg: svgDocument({ width: canvasWidth, height: totalHeight, content: parts.join('') }),
+    svg: svgDocument({
+      width: canvasWidth,
+      height: totalHeight,
+      content: parts.join(''),
+    }),
     width: canvasWidth,
-    height: totalHeight
+    height: totalHeight,
   };
 }

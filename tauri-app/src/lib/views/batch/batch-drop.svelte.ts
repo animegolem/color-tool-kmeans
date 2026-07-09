@@ -3,7 +3,12 @@ import type { FileSelection } from '../../bridges/fs';
 import { isVideoFile } from '../../bridges/fs';
 import { setupTauriDragDrop } from '../../services/drag-drop';
 import { ingestFileAsEntry } from '../../services/media-ingestion';
-import { images, appendFile, updateEntryPreview, libraryDrawerOpen } from '../../stores/ui';
+import {
+  images,
+  appendFile,
+  updateEntryPreview,
+  libraryDrawerOpen,
+} from '../../stores/ui';
 import { pinnedImageIds, togglePin } from '../../stores/multi-analysis';
 import { logEvent } from '../../bridges/log';
 
@@ -47,7 +52,9 @@ export function createBatchDrop(opts: BatchDropOptions) {
       }
     }
     if (added > 0) libraryDrawerOpen.set(true);
-    void logEvent(`batch:drop added=${added} pinned=${pinned} skippedVideos=${skippedVideos}`);
+    void logEvent(
+      `batch:drop added=${added} pinned=${pinned} skippedVideos=${skippedVideos}`
+    );
   }
 
   function setup(): Promise<(() => void) | null> {
@@ -57,7 +64,7 @@ export function createBatchDrop(opts: BatchDropOptions) {
       },
       onLeave: () => {
         dragOver = false;
-      }
+      },
     });
   }
 
@@ -66,6 +73,6 @@ export function createBatchDrop(opts: BatchDropOptions) {
       return dragOver;
     },
     processDrop,
-    setup
+    setup,
   };
 }

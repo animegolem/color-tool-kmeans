@@ -31,7 +31,7 @@ export const params = writable<AnalysisParams>({
   histogramSort: 'frequency',
   showHistogram: true,
   showPolarChart: true,
-  showHueLightness: true
+  showHueLightness: true,
 });
 
 export type AnalysisState = 'idle' | 'pending' | 'ready' | 'error';
@@ -63,7 +63,10 @@ export function setAnalysisPending() {
   analysisError.set(null);
 }
 
-export function setAnalysisSuccess(result: AnalysisResult, imageId: string | null) {
+export function setAnalysisSuccess(
+  result: AnalysisResult,
+  imageId: string | null
+) {
   if (imageId) {
     analysisById.update((cache) => ({ ...cache, [imageId]: result }));
   }

@@ -18,7 +18,10 @@ describe('generateAseBlob', () => {
     it('starts with ASEF magic bytes', async () => {
       const view = await blobToBuffer(generateAseBlob(FIXED_CLUSTERS));
       const magic = String.fromCharCode(
-        view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3)
+        view.getUint8(0),
+        view.getUint8(1),
+        view.getUint8(2),
+        view.getUint8(3)
       );
       expect(magic).toBe('ASEF');
     });
@@ -50,11 +53,17 @@ describe('generateAseBlob', () => {
     });
 
     it('encodes name as UTF-16BE with null terminator', async () => {
-      const singleCluster: AnalysisCluster[] = [{
-        count: 100, share: 1.0,
-        centroidSpace: [0.5, 0, 0], oklab: [0.5, 0, 0], oklch: [0.5, 0, 0],
-        rgb: { r: 255, g: 0, b: 0 }, hsv: [0, 1, 1]
-      }];
+      const singleCluster: AnalysisCluster[] = [
+        {
+          count: 100,
+          share: 1.0,
+          centroidSpace: [0.5, 0, 0],
+          oklab: [0.5, 0, 0],
+          oklch: [0.5, 0, 0],
+          rgb: { r: 255, g: 0, b: 0 },
+          hsv: [0, 1, 1],
+        },
+      ];
       const view = await blobToBuffer(generateAseBlob(singleCluster));
 
       // Name starts at offset 18 (header 12 + type 2 + length 4)
@@ -74,18 +83,26 @@ describe('generateAseBlob', () => {
     });
 
     it('has RGB color model after name', async () => {
-      const singleCluster: AnalysisCluster[] = [{
-        count: 100, share: 1.0,
-        centroidSpace: [0.5, 0, 0], oklab: [0.5, 0, 0], oklch: [0.5, 0, 0],
-        rgb: { r: 255, g: 0, b: 0 }, hsv: [0, 1, 1]
-      }];
+      const singleCluster: AnalysisCluster[] = [
+        {
+          count: 100,
+          share: 1.0,
+          centroidSpace: [0.5, 0, 0],
+          oklab: [0.5, 0, 0],
+          oklch: [0.5, 0, 0],
+          rgb: { r: 255, g: 0, b: 0 },
+          hsv: [0, 1, 1],
+        },
+      ];
       const view = await blobToBuffer(generateAseBlob(singleCluster));
 
       // After header(12) + type(2) + length(4) + nameLen(2) + name(16) = 36
       const modelOffset = 36;
       const model = String.fromCharCode(
-        view.getUint8(modelOffset), view.getUint8(modelOffset + 1),
-        view.getUint8(modelOffset + 2), view.getUint8(modelOffset + 3)
+        view.getUint8(modelOffset),
+        view.getUint8(modelOffset + 1),
+        view.getUint8(modelOffset + 2),
+        view.getUint8(modelOffset + 3)
       );
       expect(model).toBe('RGB ');
     });
@@ -116,11 +133,17 @@ describe('generateAseBlob', () => {
 
   describe('golden reference', () => {
     it('produces exact bytes for a single red cluster', async () => {
-      const red: AnalysisCluster[] = [{
-        count: 100, share: 1.0,
-        centroidSpace: [0.5, 0, 0], oklab: [0.5, 0, 0], oklch: [0.5, 0, 0],
-        rgb: { r: 255, g: 0, b: 0 }, hsv: [0, 1, 1]
-      }];
+      const red: AnalysisCluster[] = [
+        {
+          count: 100,
+          share: 1.0,
+          centroidSpace: [0.5, 0, 0],
+          oklab: [0.5, 0, 0],
+          oklch: [0.5, 0, 0],
+          rgb: { r: 255, g: 0, b: 0 },
+          hsv: [0, 1, 1],
+        },
+      ];
       const blob = generateAseBlob(red);
       const buf = await blob.arrayBuffer();
       const bytes = new Uint8Array(buf);
@@ -153,7 +176,10 @@ describe('generateAseBlob', () => {
 
       const view = new DataView(buf);
       const magic = String.fromCharCode(
-        view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3)
+        view.getUint8(0),
+        view.getUint8(1),
+        view.getUint8(2),
+        view.getUint8(3)
       );
       expect(magic).toBe('ASEF');
       expect(view.getUint32(8)).toBe(0); // 0 blocks

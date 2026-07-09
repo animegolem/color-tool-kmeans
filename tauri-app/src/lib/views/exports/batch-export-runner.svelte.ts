@@ -1,4 +1,8 @@
-import type { AnalysisResult, AnalysisParams, ExportChecks } from '../../stores/ui';
+import type {
+  AnalysisResult,
+  AnalysisParams,
+  ExportChecks,
+} from '../../stores/ui';
 import { generateCircleGraphSvg } from '../../exports/polar-chart';
 import { generateHistogramSvg } from '../../exports/histogram';
 import { generateHueLightnessSvg } from '../../exports/hue-lightness';
@@ -7,7 +11,10 @@ import { generateAseBlob } from '../../exports/palette-ase';
 import { generatePaletteJson } from '../../exports/palette-web';
 import { toDataUrl } from '../../exports/value-analysis';
 import { svgToTile, imageToTile } from '../../exports/compositor';
-import { composeColorStudy, type ColorStudyInput } from '../../exports/color-study-compositor';
+import {
+  composeColorStudy,
+  type ColorStudyInput,
+} from '../../exports/color-study-compositor';
 import { getFsBridge, saveFromPath } from '../../bridges/fs';
 import { svgToPngBlob } from '../../exports/png';
 import { saveChart } from '../../exports/chart-save';
@@ -46,7 +53,7 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
       showAxisLabels: paramSnapshot.showAxisLabels,
       showStroke: paramSnapshot.showClusterOutline,
       mode: paramSnapshot.polarMode,
-      fontSize: 20
+      fontSize: 20,
     });
   }
 
@@ -55,7 +62,7 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
     const paramSnapshot = deps.getParams();
     return generateHistogramSvg(result.clusters, {
       sortBy: paramSnapshot.histogramSort,
-      fontSize: 16
+      fontSize: 16,
     });
   }
 
@@ -67,7 +74,7 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
       showAxisLabels: paramSnapshot.showAxisLabels,
       showStroke: paramSnapshot.showClusterOutline,
       sizeMode: paramSnapshot.hueLightnessSizeMode,
-      fontSize: 18
+      fontSize: 18,
     });
   }
 
@@ -78,10 +85,13 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
 
   // --- Helpers ---
 
-  function loadImageDimensions(src: string): Promise<{ width: number; height: number }> {
+  function loadImageDimensions(
+    src: string
+  ): Promise<{ width: number; height: number }> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onload = () =>
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
       img.onerror = () => reject(new Error('Failed to load image dimensions.'));
       img.src = src;
     });
@@ -100,7 +110,12 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
     if (checks.batchCompositeGrid && compositePath) {
       const dataUrl = await toDataUrl(assetUrl(compositePath));
       const img = await loadImageDimensions(dataUrl);
-      input.sourceImage = imageToTile(dataUrl, img.width, img.height, 'composite-grid');
+      input.sourceImage = imageToTile(
+        dataUrl,
+        img.width,
+        img.height,
+        'composite-grid'
+      );
     }
 
     if (checks.batchPolarChart) {
@@ -109,16 +124,28 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
 
     if (checks.batchHistogram) {
       const primarySort = paramSnapshot.histogramSort;
-      const { svg } = generateHistogramSvg(result.clusters, { sortBy: primarySort, hPadding: 0, fontSize: 16 });
+      const { svg } = generateHistogramSvg(result.clusters, {
+        sortBy: primarySort,
+        hPadding: 0,
+        fontSize: 16,
+      });
       input.histogram = svgToTile(svg, 'histogram');
 
       if (checks.batchHistogramAll) {
-        const allModes: Array<'frequency' | 'hue' | 'lightness'> = ['frequency', 'hue', 'lightness'];
+        const allModes: Array<'frequency' | 'hue' | 'lightness'> = [
+          'frequency',
+          'hue',
+          'lightness',
+        ];
         input.secondaryHistograms = allModes
           .filter((m) => m !== primarySort)
           .map((mode) =>
             svgToTile(
-              generateHistogramSvg(result.clusters, { sortBy: mode, hPadding: 0, fontSize: 22 }).svg,
+              generateHistogramSvg(result.clusters, {
+                sortBy: mode,
+                hPadding: 0,
+                fontSize: 22,
+              }).svg,
               `histogram-${mode}`
             )
           );
@@ -126,7 +153,10 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
     }
 
     if (checks.batchHueLightness) {
-      input.hueLightness = svgToTile(hueLightnessGenerator().svg, 'hue-lightness');
+      input.hueLightness = svgToTile(
+        hueLightnessGenerator().svg,
+        'hue-lightness'
+      );
     }
 
     if (checks.batchPaletteStrip) {
@@ -152,7 +182,10 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
       const scale = Math.max(1, Math.min(4, deps.getExportScale()));
       const blob = await svgToPngBlob(svg, width, height, scale);
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-study.png`);
+      const { canceled } = await bridge.saveBlob(
+        blob,
+        `${baseName()}-study.png`
+      );
       if (canceled) deps.setStatus('Export canceled.', 'info');
       else deps.setStatus('Batch study PNG saved.', 'info');
     });
@@ -166,7 +199,13 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
   ) {
     await deps.performSave(async () => {
       const format = deps.getGraphExportFormat() === 'svg' ? 'svg' : 'png';
-      const { canceled } = await saveChart(format, generator(), baseName(), suffix, deps.getExportScale());
+      const { canceled } = await saveChart(
+        format,
+        generator(),
+        baseName(),
+        suffix,
+        deps.getExportScale()
+      );
       if (canceled) deps.setStatus('Export canceled.', 'info');
       else deps.setStatus(`${suffix} ${format.toUpperCase()} saved.`, 'info');
     });
@@ -176,7 +215,10 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
     const compositePath = deps.getCompositePath();
     if (!compositePath) return;
     await deps.performSave(async () => {
-      const { canceled } = await saveFromPath(compositePath, `${baseName()}-grid.png`);
+      const { canceled } = await saveFromPath(
+        compositePath,
+        `${baseName()}-grid.png`
+      );
       if (canceled) deps.setStatus('Export canceled.', 'info');
       else deps.setStatus('Composite grid PNG saved.', 'info');
     });
@@ -190,7 +232,10 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
     await deps.performSave(async () => {
       const csv = generatePaletteCsv(result.clusters);
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveTextFile(csv, `${baseName()}-palette.csv`);
+      const { canceled } = await bridge.saveTextFile(
+        csv,
+        `${baseName()}-palette.csv`
+      );
       if (canceled) deps.setStatus('Export canceled.', 'info');
       else deps.setStatus('Batch palette CSV saved.', 'info');
     });
@@ -202,7 +247,10 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
     await deps.performSave(async () => {
       const blob = generateAseBlob(result.clusters);
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-palette.ase`);
+      const { canceled } = await bridge.saveBlob(
+        blob,
+        `${baseName()}-palette.ase`
+      );
       if (canceled) deps.setStatus('Export canceled.', 'info');
       else deps.setStatus('Batch palette .ase saved.', 'info');
     });
@@ -214,7 +262,10 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
     await deps.performSave(async () => {
       const json = generatePaletteJson(result.clusters);
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveTextFile(json, `${baseName()}-palette.json`);
+      const { canceled } = await bridge.saveTextFile(
+        json,
+        `${baseName()}-palette.json`
+      );
       if (canceled) deps.setStatus('Export canceled.', 'info');
       else deps.setStatus('Batch palette JSON saved.', 'info');
     });
@@ -230,6 +281,6 @@ export function createBatchExportRunner(deps: BatchExportDeps) {
     paletteGenerator,
     savePaletteCsv,
     savePaletteAse,
-    savePaletteJson
+    savePaletteJson,
   };
 }

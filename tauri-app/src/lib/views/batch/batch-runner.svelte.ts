@@ -7,7 +7,7 @@ import {
   multiAnalysisResult,
   multiAnalysisError,
   multiCompositePath,
-  resetMultiAnalysis
+  resetMultiAnalysis,
 } from '../../stores/multi-analysis';
 import type { AnalysisParams, AnalysisResult } from '../../stores/analysis';
 import { logEvent } from '../../bridges/log';
@@ -108,7 +108,7 @@ export function createBatchRunner() {
       quality: params.quality,
       ignoreTopN: params.ignoreTopN,
       mergeThreshold: params.mergeThreshold,
-      snapToReal: params.snapToReal
+      snapToReal: params.snapToReal,
     });
   }
 
@@ -158,7 +158,7 @@ export function createBatchRunner() {
       tol: DEFAULT_TOLERANCE,
       maxIter: DEFAULT_MAX_ITER,
       seed: DEFAULT_SEED,
-      maxSamples: DEFAULT_MAX_SAMPLES
+      maxSamples: DEFAULT_MAX_SAMPLES,
     };
 
     try {
@@ -173,7 +173,7 @@ export function createBatchRunner() {
         oklab: cluster.oklab,
         oklch: cluster.oklch,
         rgb: cluster.rgb,
-        hsv: cluster.hsv
+        hsv: cluster.hsv,
       })) as AnalysisResult['clusters'];
 
       multiAnalysisResult.set({
@@ -181,11 +181,13 @@ export function createBatchRunner() {
         iterations: parsed.iterations,
         durationMs: parsed.durationMs,
         totalSamples: parsed.totalSamples,
-        variant: String(parsed.variant ?? 'tauri-native')
+        variant: String(parsed.variant ?? 'tauri-native'),
       });
       multiAnalysisState.set('ready');
       restoreAnalysisScroll(token);
-      void logEvent(`batch:reanalysis:success ms=${Math.round(parsed.durationMs)} iterations=${parsed.iterations} samples=${parsed.totalSamples}`);
+      void logEvent(
+        `batch:reanalysis:success ms=${Math.round(parsed.durationMs)} iterations=${parsed.iterations} samples=${parsed.totalSamples}`
+      );
     } catch (err) {
       if (token !== currentToken) return;
       console.error('[batch] reanalysis failed', err);
@@ -198,7 +200,10 @@ export function createBatchRunner() {
     }
   }
 
-  async function analyze(paths: string[], params: AnalysisParams): Promise<void> {
+  async function analyze(
+    paths: string[],
+    params: AnalysisParams
+  ): Promise<void> {
     currentToken += 1;
     const token = currentToken;
 
@@ -222,12 +227,15 @@ export function createBatchRunner() {
       if (token !== currentToken) return;
       compositePath = result.path;
       multiCompositePath.set(compositePath);
-      void logEvent(`batch:compositing:done grid=${result.width}x${result.height}`);
+      void logEvent(
+        `batch:compositing:done grid=${result.width}x${result.height}`
+      );
     } catch (err) {
       if (token !== currentToken) return;
       console.error('[batch] compositing failed', err);
       void logEvent('batch:compositing:error');
-      const message = err instanceof Error ? err.message : 'Failed to compose grid image.';
+      const message =
+        err instanceof Error ? err.message : 'Failed to compose grid image.';
       multiAnalysisError.set(message);
       multiAnalysisState.set('error');
       clearSpinner();
@@ -248,7 +256,7 @@ export function createBatchRunner() {
       tol: DEFAULT_TOLERANCE,
       maxIter: DEFAULT_MAX_ITER,
       seed: DEFAULT_SEED,
-      maxSamples: DEFAULT_MAX_SAMPLES
+      maxSamples: DEFAULT_MAX_SAMPLES,
     };
 
     try {
@@ -263,7 +271,7 @@ export function createBatchRunner() {
         oklab: cluster.oklab,
         oklch: cluster.oklch,
         rgb: cluster.rgb,
-        hsv: cluster.hsv
+        hsv: cluster.hsv,
       })) as AnalysisResult['clusters'];
 
       const analysisResult: AnalysisResult = {
@@ -271,13 +279,15 @@ export function createBatchRunner() {
         iterations: parsed.iterations,
         durationMs: parsed.durationMs,
         totalSamples: parsed.totalSamples,
-        variant: String(parsed.variant ?? 'tauri-native')
+        variant: String(parsed.variant ?? 'tauri-native'),
       };
 
       multiAnalysisResult.set(analysisResult);
       multiAnalysisState.set('ready');
       lastRequestKey = buildRequestKey(paths, params);
-      void logEvent(`batch:analysis:success ms=${Math.round(analysisResult.durationMs)} iterations=${analysisResult.iterations} samples=${analysisResult.totalSamples}`);
+      void logEvent(
+        `batch:analysis:success ms=${Math.round(analysisResult.durationMs)} iterations=${analysisResult.iterations} samples=${analysisResult.totalSamples}`
+      );
     } catch (err) {
       if (token !== currentToken) return;
       console.error('[batch] analysis failed', err);
@@ -292,12 +302,14 @@ export function createBatchRunner() {
   }
 
   return {
-    get spinnerVisible() { return spinnerVisible; },
+    get spinnerVisible() {
+      return spinnerVisible;
+    },
     analyze,
     scheduleReanalysis,
     seedRequestKey,
     captureAnalysisScroll,
     cancel,
-    reset
+    reset,
   };
 }

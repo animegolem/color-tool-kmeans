@@ -39,7 +39,10 @@ export function generateValuesHistogramBars(
     if (count === 0) continue;
 
     const heightPct = count / maxCount;
-    const barH = Math.max(Math.round(height * 0.02), Math.round(height * heightPct));
+    const barH = Math.max(
+      Math.round(height * 0.02),
+      Math.round(height * heightPct)
+    );
     const barX = i * (barWidth + barGap);
     const barY = height - barH;
     const fill = grayFill(i / (bins.length - 1));
@@ -50,7 +53,7 @@ export function generateValuesHistogramBars(
       width: Math.max(1, Math.round(barWidth)),
       height: barH,
       fill,
-      rx: barRadius
+      rx: barRadius,
     };
 
     if (showBarStroke) {
@@ -79,6 +82,6 @@ export function generateValuesHistogramSvg(
   return {
     svg: svgDocument({ width, height, content }),
     width,
-    height
+    height,
   };
 }

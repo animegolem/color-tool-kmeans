@@ -11,13 +11,13 @@ export default defineConfig(() => ({
     port: 5175,
     strictPort: true,
     fs: {
-      allow: [resolve(__dirname, '..'), resolve(__dirname, '../compute-wasm')]
-    }
+      allow: [resolve(__dirname, '..'), resolve(__dirname, '../compute-wasm')],
+    },
   },
   optimizeDeps: {
-    exclude: []
+    exclude: [],
   },
   build: {
-    target: 'esnext'
-  }
+    target: 'esnext',
+  },
 }));

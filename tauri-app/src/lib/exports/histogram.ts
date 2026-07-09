@@ -53,7 +53,7 @@ export function generateHistogramSvg(
       height: plotHeight,
       fill: 'none',
       stroke: 'rgba(16,17,17,0.2)',
-      'stroke-width': 1
+      'stroke-width': 1,
     })
   );
 
@@ -67,7 +67,7 @@ export function generateHistogramSvg(
         y: y.toFixed(2),
         width: Math.max(1, barWidth - 1).toFixed(2),
         height: barHeight.toFixed(2),
-        fill: `rgb(${cluster.rgb.r},${cluster.rgb.g},${cluster.rgb.b})`
+        fill: `rgb(${cluster.rgb.r},${cluster.rgb.g},${cluster.rgb.b})`,
       })
     );
   });
@@ -79,7 +79,7 @@ export function generateHistogramSvg(
         y: vPad + plotHeight + captionSpace - 2,
         'font-family': 'Fira Sans',
         'font-size': fontSize,
-        fill: 'rgba(16,17,17,0.55)'
+        fill: 'rgba(16,17,17,0.55)',
       },
       `Top ${bars.length} clusters • ${formatSortLabel(sortBy)}`
     )
@@ -92,11 +92,11 @@ export function generateHistogramSvg(
       content: parts.join(''),
       attrs: {
         'data-view': 'histogram',
-        'data-color-model': 'oklch'
-      }
+        'data-color-model': 'oklch',
+      },
     }),
     width,
-    height
+    height,
   };
 }
 

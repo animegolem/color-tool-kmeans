@@ -30,22 +30,50 @@ describe('color round-trip (TS)', () => {
 
 function fcRgb() {
   return fc
-    .tuple(fc.integer({ min: 0, max: 255 }), fc.integer({ min: 0, max: 255 }), fc.integer({ min: 0, max: 255 }))
-    .filter((rgb) => Number.isFinite(rgb[0]) && Number.isFinite(rgb[1]) && Number.isFinite(rgb[2]));
+    .tuple(
+      fc.integer({ min: 0, max: 255 }),
+      fc.integer({ min: 0, max: 255 }),
+      fc.integer({ min: 0, max: 255 })
+    )
+    .filter(
+      (rgb) =>
+        Number.isFinite(rgb[0]) &&
+        Number.isFinite(rgb[1]) &&
+        Number.isFinite(rgb[2])
+    );
 }
 
-function maxDiff(a: [number, number, number], b: [number, number, number]): number {
-  return Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]), Math.abs(a[2] - b[2]));
+function maxDiff(
+  a: [number, number, number],
+  b: [number, number, number]
+): number {
+  return Math.max(
+    Math.abs(a[0] - b[0]),
+    Math.abs(a[1] - b[1]),
+    Math.abs(a[2] - b[2])
+  );
 }
 
 function rgbToOklab(rgb: [number, number, number]): [number, number, number] {
-  const linear = rgb.map((value) => srgbToLinear(value / 255)) as [number, number, number];
+  const linear = rgb.map((value) => srgbToLinear(value / 255)) as [
+    number,
+    number,
+    number,
+  ];
   return linearSrgbToOklab(linear);
 }
 
 function oklabToRgb8(lab: [number, number, number]): [number, number, number] {
-  const linear = oklabToLinearSrgb(lab).map(clamp01) as [number, number, number];
-  return linear.map((value) => toRgb8(linearToSrgb(value))) as [number, number, number];
+  const linear = oklabToLinearSrgb(lab).map(clamp01) as [
+    number,
+    number,
+    number,
+  ];
+  return linear.map((value) => toRgb8(linearToSrgb(value))) as [
+    number,
+    number,
+    number,
+  ];
 }
 
 function hsvToRgb8(hsv: [number, number, number]): [number, number, number] {
@@ -78,14 +106,12 @@ function hsvToRgb8(hsv: [number, number, number]): [number, number, number] {
     r1 = c;
     b1 = x;
   }
-  return [
-    toRgb8(r1 + m),
-    toRgb8(g1 + m),
-    toRgb8(b1 + m)
-  ];
+  return [toRgb8(r1 + m), toRgb8(g1 + m), toRgb8(b1 + m)];
 }
 
-function oklabToLinearSrgb(lab: [number, number, number]): [number, number, number] {
+function oklabToLinearSrgb(
+  lab: [number, number, number]
+): [number, number, number] {
   const [l, a, b] = lab;
   const l_ = l + 0.3963377774 * a + 0.2158037573 * b;
   const m_ = l - 0.1055613458 * a - 0.0638541728 * b;
@@ -96,7 +122,7 @@ function oklabToLinearSrgb(lab: [number, number, number]): [number, number, numb
   return [
     4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3,
     -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3,
-    -0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3
+    -0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3,
   ];
 }
 

@@ -1,6 +1,9 @@
 import type { AnalysisParams, AnalysisResult } from '../stores/ui';
 import type { ImageDataset } from './image-loader';
-import { getComputeBridge, type AnalyzeOptions as BridgeAnalyzeOptions } from '../bridges/compute';
+import {
+  getComputeBridge,
+  type AnalyzeOptions as BridgeAnalyzeOptions,
+} from '../bridges/compute';
 
 export interface AnalyzeOptions extends AnalysisParams {
   tol?: number;
@@ -9,7 +12,10 @@ export interface AnalyzeOptions extends AnalysisParams {
   maxSamples?: number;
 }
 
-export async function analyzeImage(dataset: ImageDataset, params: AnalyzeOptions): Promise<AnalysisResult> {
+export async function analyzeImage(
+  dataset: ImageDataset,
+  params: AnalyzeOptions
+): Promise<AnalysisResult> {
   const merged: BridgeAnalyzeOptions = { ...params };
   const bridge = await getComputeBridge();
   return bridge.analyze(dataset, merged);

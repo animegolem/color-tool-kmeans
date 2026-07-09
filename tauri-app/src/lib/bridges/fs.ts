@@ -21,7 +21,9 @@ export interface SaveResult {
 
 export interface FsBridge {
   readonly id: typeof TAURI_ID;
-  openMediaFiles(mode?: 'images' | 'videos' | 'all'): Promise<FileSelection[] | null>;
+  openMediaFiles(
+    mode?: 'images' | 'videos' | 'all'
+  ): Promise<FileSelection[] | null>;
   saveBlob(blob: Blob, defaultName: string): Promise<SaveResult>;
   saveTextFile(text: string, defaultName: string): Promise<SaveResult>;
 }
@@ -32,19 +34,22 @@ function extLabel(ext: string): string {
     svg: 'SVG Image',
     csv: 'CSV File',
     ase: 'Adobe Swatch',
-    json: 'JSON File'
+    json: 'JSON File',
   };
   return map[ext.toLowerCase()] ?? 'File';
 }
 
-async function nativeSaveBlob(blob: Blob, defaultName: string): Promise<SaveResult> {
+async function nativeSaveBlob(
+  blob: Blob,
+  defaultName: string
+): Promise<SaveResult> {
   const dir = get(exportDir);
   const defaultPath = dir ? `${dir}/${defaultName}` : defaultName;
   const ext = defaultName.split('.').pop() ?? '';
   const filePath = await save({
     title: 'Save export',
     defaultPath,
-    filters: [{ name: extLabel(ext), extensions: [ext] }]
+    filters: [{ name: extLabel(ext), extensions: [ext] }],
   });
   if (!filePath) return { canceled: true };
   const buffer = await blob.arrayBuffer();
@@ -65,10 +70,12 @@ export async function saveFromPath(
   const filePath = await save({
     title: 'Save export',
     defaultPath,
-    filters: [{ name: extLabel(ext), extensions: [ext] }]
+    filters: [{ name: extLabel(ext), extensions: [ext] }],
   });
   if (!filePath) return { canceled: true };
-  await tauriInvoke('copy_file', { req: { source: sourcePath, dest: filePath } });
+  await tauriInvoke('copy_file', {
+    req: { source: sourcePath, dest: filePath },
+  });
   const savedDir = filePath.replace(/[\\/][^\\/]+$/, '');
   if (savedDir !== get(exportDir)) exportDir.set(savedDir);
   return { canceled: false, path: filePath };
@@ -82,7 +89,7 @@ function buildFilters(mode: 'images' | 'videos' | 'all') {
   return [
     { name: 'All Media', extensions: [...IMG, ...VID] },
     { name: 'Images', extensions: IMG },
-    { name: 'Videos', extensions: VID }
+    { name: 'Videos', extensions: VID },
   ];
 }
 
@@ -108,7 +115,7 @@ function createTauriFsBridge(): FsBridge | null {
           path: String(p),
           size: 0,
           blob: new Blob([], { type: inferMimeType(name) }),
-          mimeType: inferMimeType(name)
+          mimeType: inferMimeType(name),
         } satisfies FileSelection;
       });
     },
@@ -118,7 +125,7 @@ function createTauriFsBridge(): FsBridge | null {
     async saveTextFile(text, defaultName) {
       const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
       return nativeSaveBlob(blob, defaultName);
-    }
+    },
   } satisfies FsBridge;
 }
 
@@ -146,7 +153,9 @@ function selectFsBridge(): FsBridge {
     logSelection('fs', tauri.id);
     return tauri;
   }
-  throw new Error('Tauri environment not detected. Native FS requires Tauri runtime.');
+  throw new Error(
+    'Tauri environment not detected. Native FS requires Tauri runtime.'
+  );
 }
 
 let cachedFsBridge: FsBridge | null = null;

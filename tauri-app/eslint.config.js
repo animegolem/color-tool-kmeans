@@ -3,7 +3,14 @@ import tsParser from '@typescript-eslint/parser';
 import sveltePlugin from 'eslint-plugin-svelte';
 import svelteParser from 'svelte-eslint-parser';
 
-const IGNORE_GLOBS = ['dist/**', 'node_modules/**', 'src-tauri/target/**', '.ffmpeg-build/**', '**/*.js', 'prettier.config.cjs'];
+const IGNORE_GLOBS = [
+  'dist/**',
+  'node_modules/**',
+  'src-tauri/target/**',
+  '.ffmpeg-build/**',
+  '**/*.js',
+  'prettier.config.cjs',
+];
 const BROWSER_GLOBALS = {
   window: 'readonly',
   document: 'readonly',
@@ -14,12 +21,12 @@ const BROWSER_GLOBALS = {
   OffscreenCanvas: 'readonly',
   localStorage: 'readonly',
   setTimeout: 'readonly',
-  createImageBitmap: 'readonly'
+  createImageBitmap: 'readonly',
 };
 
 export default [
   {
-    ignores: IGNORE_GLOBS
+    ignores: IGNORE_GLOBS,
   },
   {
     files: ['**/*.{ts,tsx,cts,mts}'],
@@ -27,16 +34,16 @@ export default [
       parser: tsParser,
       parserOptions: {
         ecmaVersion: 'latest',
-        sourceType: 'module'
+        sourceType: 'module',
       },
-      globals: BROWSER_GLOBALS
+      globals: BROWSER_GLOBALS,
     },
     plugins: {
-      '@typescript-eslint': tsPlugin
+      '@typescript-eslint': tsPlugin,
     },
     rules: {
-      ...tsPlugin.configs['flat/recommended'].rules
-    }
+      ...tsPlugin.configs['flat/recommended'].rules,
+    },
   },
   {
     files: ['**/*.svelte'],
@@ -44,15 +51,15 @@ export default [
       parser: svelteParser,
       parserOptions: {
         parser: tsParser,
-        extraFileExtensions: ['.svelte']
+        extraFileExtensions: ['.svelte'],
       },
-      globals: BROWSER_GLOBALS
+      globals: BROWSER_GLOBALS,
     },
     plugins: {
-      svelte: sveltePlugin
+      svelte: sveltePlugin,
     },
     rules: {
-      ...sveltePlugin.configs['flat/recommended'].rules
-    }
-  }
+      ...sveltePlugin.configs['flat/recommended'].rules,
+    },
+  },
 ];

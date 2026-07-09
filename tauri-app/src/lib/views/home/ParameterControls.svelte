@@ -1,7 +1,11 @@
 <script lang="ts">
   import type { Writable } from 'svelte/store';
   import type { AnalysisParams } from '../../stores/analysis';
-  import { params as globalParams, clusterMax, excludeTopMax } from '../../stores/ui';
+  import {
+    params as globalParams,
+    clusterMax,
+    excludeTopMax,
+  } from '../../stores/ui';
 
   interface Props {
     paramsStore?: Writable<AnalysisParams>;
@@ -9,7 +13,11 @@
     onScrubEnd: () => void;
   }
 
-  let { paramsStore = globalParams, onScrubStart, onScrubEnd }: Props = $props();
+  let {
+    paramsStore = globalParams,
+    onScrubStart,
+    onScrubEnd,
+  }: Props = $props();
 
   const params = $derived(paramsStore);
 </script>
@@ -30,7 +38,14 @@
         onpointercancel={onScrubEnd}
         onblur={onScrubEnd}
       />
-      <input class="number-input" type="number" min="1" max={$clusterMax} step="1" bind:value={$params.clusters} />
+      <input
+        class="number-input"
+        type="number"
+        min="1"
+        max={$clusterMax}
+        step="1"
+        bind:value={$params.clusters}
+      />
     </label>
     <label title="Trade speed for accuracy — higher values sample more pixels">
       <span>Speed ← → Quality: <strong>{$params.quality}</strong></span>
@@ -60,8 +75,14 @@
         onblur={onScrubEnd}
       />
     </label>
-    <label title="Merge clusters closer than this perceptual distance (OKLab ΔE)">
-      <span>Color merge threshold (ΔE OKLab): <strong>{$params.mergeThreshold.toFixed(2)}</strong></span>
+    <label
+      title="Merge clusters closer than this perceptual distance (OKLab ΔE)"
+    >
+      <span
+        >Color merge threshold (ΔE OKLab): <strong
+          >{$params.mergeThreshold.toFixed(2)}</strong
+        ></span
+      >
       <input
         type="range"
         min="0"
@@ -75,7 +96,8 @@
       />
     </label>
     <label title="Scale of chart marker symbols">
-      <span>Symbol size: <strong>{$params.symbolScale.toFixed(1)}</strong></span>
+      <span>Symbol size: <strong>{$params.symbolScale.toFixed(1)}</strong></span
+      >
       <input
         type="range"
         min="0.5"
@@ -96,7 +118,10 @@
       <input type="checkbox" bind:checked={$params.showAxisLabels} />
       Axis labels
     </label>
-    <label class="choice" title="Snap chart markers to actual sampled pixels rather than computed centroids">
+    <label
+      class="choice"
+      title="Snap chart markers to actual sampled pixels rather than computed centroids"
+    >
       <input type="checkbox" bind:checked={$params.snapToReal} />
       Snap to real pixels
     </label>

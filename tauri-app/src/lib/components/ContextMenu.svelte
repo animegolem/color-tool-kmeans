@@ -30,7 +30,12 @@
 
   onMount(() => {
     const onPointerDown = (event: PointerEvent) => {
-      if (menuEl && event.target instanceof Node && menuEl.contains(event.target)) return;
+      if (
+        menuEl &&
+        event.target instanceof Node &&
+        menuEl.contains(event.target)
+      )
+        return;
       onClose();
     };
     const onKeydown = (event: KeyboardEvent) => {
@@ -62,7 +67,12 @@
   style={`left: ${pos.x}px; top: ${pos.y}px;`}
 >
   {#each items as item (item.label)}
-    <button type="button" role="menuitem" class="context-menu__item" onclick={() => handleSelect(item)}>
+    <button
+      type="button"
+      role="menuitem"
+      class="context-menu__item"
+      onclick={() => handleSelect(item)}
+    >
       {item.label}
     </button>
   {/each}

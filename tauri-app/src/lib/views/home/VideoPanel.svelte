@@ -22,7 +22,7 @@
     void snapshotCurrentFrame({
       framePath,
       name: video.videoSelection?.name ?? 'frame',
-      timestamp: video.videoCurrentTime
+      timestamp: video.videoCurrentTime,
     });
   }
 </script>
@@ -37,14 +37,21 @@
         role={onZoom && video.videoDisplayUrl ? 'button' : undefined}
         tabindex={onZoom && video.videoDisplayUrl ? 0 : undefined}
         onclick={onZoom && video.videoDisplayUrl ? onZoom : undefined}
-        onkeydown={onZoom && video.videoDisplayUrl ? (event: KeyboardEvent) => {
-          if (event.key !== 'Enter' && event.key !== ' ') return;
-          event.preventDefault();
-          onZoom!();
-        } : undefined}
-        style={video.videoAspectRatio ? `aspect-ratio: ${video.videoAspectRatio}` : undefined}
+        onkeydown={onZoom && video.videoDisplayUrl
+          ? (event: KeyboardEvent) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return;
+              event.preventDefault();
+              onZoom!();
+            }
+          : undefined}
+        style={video.videoAspectRatio
+          ? `aspect-ratio: ${video.videoAspectRatio}`
+          : undefined}
       >
-        <SnapshotButton onCapture={captureFrame} disabled={video.frameDecoding || !video.videoPosterPath} />
+        <SnapshotButton
+          onCapture={captureFrame}
+          disabled={video.frameDecoding || !video.videoPosterPath}
+        />
         <video
           bind:this={videoEl}
           poster={video.videoDisplayUrl ?? undefined}
@@ -56,7 +63,10 @@
           onseeked={video.handleVideoSeeked}
           onerror={video.handleVideoError}
         >
-          <source src={video.videoSrcUrl} type={video.videoSelection?.mimeType ?? 'video/mp4'} />
+          <source
+            src={video.videoSrcUrl}
+            type={video.videoSelection?.mimeType ?? 'video/mp4'}
+          />
         </video>
         {#if video.videoDisplayUrl}
           <!-- Settled-frame overlay: the exact ffmpeg-extracted frame analysis used.
@@ -77,8 +87,20 @@
   </div>
   <div class="video-controls">
     <div class="step-group">
-      <button type="button" class="step-btn" title="Back 10 frames" disabled={video.frameDecoding} onclick={() => video.stepVideoFrames(-10)}>◀◀</button>
-      <button type="button" class="step-btn" title="Back 1 frame" disabled={video.frameDecoding} onclick={() => video.stepVideoFrames(-1)}>◀</button>
+      <button
+        type="button"
+        class="step-btn"
+        title="Back 10 frames"
+        disabled={video.frameDecoding}
+        onclick={() => video.stepVideoFrames(-10)}>◀◀</button
+      >
+      <button
+        type="button"
+        class="step-btn"
+        title="Back 1 frame"
+        disabled={video.frameDecoding}
+        onclick={() => video.stepVideoFrames(-1)}>◀</button
+      >
     </div>
     <input
       class="video-scrub"
@@ -96,8 +118,20 @@
       title="Scrub through video timeline"
     />
     <div class="step-group step-group--right">
-      <button type="button" class="step-btn" title="Forward 1 frame" disabled={video.frameDecoding} onclick={() => video.stepVideoFrames(1)}>▶</button>
-      <button type="button" class="step-btn" title="Forward 10 frames" disabled={video.frameDecoding} onclick={() => video.stepVideoFrames(10)}>▶▶</button>
+      <button
+        type="button"
+        class="step-btn"
+        title="Forward 1 frame"
+        disabled={video.frameDecoding}
+        onclick={() => video.stepVideoFrames(1)}>▶</button
+      >
+      <button
+        type="button"
+        class="step-btn"
+        title="Forward 10 frames"
+        disabled={video.frameDecoding}
+        onclick={() => video.stepVideoFrames(10)}>▶▶</button
+      >
     </div>
   </div>
   <div class="video-strip">

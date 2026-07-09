@@ -24,7 +24,13 @@
 
 body {
   margin: 0;
-  font-family: 'Fira Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family:
+    'Fira Sans',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   color: var(--ink);
   background: var(--bg);
 }
@@ -69,7 +75,10 @@ main.library-open {
   flex-direction: column;
   gap: 12px;
   overflow: hidden;
-  transition: width 0.2s ease, padding 0.2s ease, border-color 0.2s ease;
+  transition:
+    width 0.2s ease,
+    padding 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .nav.collapsed {
@@ -117,7 +126,9 @@ main.library-open {
   color: var(--ink);
   opacity: 0.6;
   flex-shrink: 0;
-  transition: opacity 0.15s ease, background 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
 }
 
 .header-toggle:hover {
@@ -225,14 +236,15 @@ main.library-open {
   display: grid;
   place-items: center;
   padding: 0;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .library-section__add:hover {
   background: var(--accent);
   color: #fff;
 }
-
 
 /* Scrollbar style (per Style Guide) */
 .view-container::-webkit-scrollbar {
@@ -243,7 +255,8 @@ main.library-open {
   background: #2b2b2b;
   border-radius: 6px;
 }
-.view-container { /* Firefox */
+.view-container {
+  /* Firefox */
   scrollbar-width: thin;
   scrollbar-color: #2b2b2b transparent;
 }
@@ -302,11 +315,15 @@ main.library-open {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  border: 4px solid rgba(0,0,0,0.12);
+  border: 4px solid rgba(0, 0, 0, 0.12);
   border-top-color: var(--ink);
   animation: spin 900ms linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 h1 {
   font-size: 24px;
@@ -333,14 +350,18 @@ main.narrow-mode .view-container {
 
 main.narrow-mode .nav {
   position: fixed;
-  top: 0; left: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  bottom: 0;
   width: 200px;
   padding: 24px 16px;
   background: var(--panel);
   border-right: 1px solid var(--line);
   z-index: 20;
   transform: translateX(-100%);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 main.narrow-mode .nav:not(.collapsed) {
   transform: translateX(0);
@@ -349,11 +370,15 @@ main.narrow-mode .nav:not(.collapsed) {
 
 main.narrow-mode .library-rail {
   position: fixed;
-  top: 0; right: 0; bottom: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
   width: 200px;
   z-index: 20;
   transform: translateX(100%);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   overflow: visible;
 }
 main.narrow-mode.library-open .library-rail {
@@ -369,6 +394,10 @@ main.narrow-mode.library-open .library-rail {
   animation: fadeIn 0.15s ease;
 }
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

@@ -84,15 +84,20 @@ function buildCol1(
   colWidth: number,
   gap: number
 ): ColumnLayout {
-  const allSorts = !!input.secondaryHistograms && input.secondaryHistograms.length === 2;
+  const allSorts =
+    !!input.secondaryHistograms && input.secondaryHistograms.length === 2;
   const primaryTiles: (CompositorTile | undefined)[] = [
     input.sourceImage,
     input.videoBarcode,
-    input.histogram
+    input.histogram,
   ];
   const layout = buildColumn(primaryTiles, colWidth, gap, allSorts);
 
-  if (allSorts && input.secondaryHistograms && input.secondaryHistograms.length === 2) {
+  if (
+    allSorts &&
+    input.secondaryHistograms &&
+    input.secondaryHistograms.length === 2
+  ) {
     const subWidth = (colWidth - gap) / 2;
     const left = input.secondaryHistograms[0];
     const right = input.secondaryHistograms[1];
@@ -101,9 +106,19 @@ function buildCol1(
     const rowHeight = Math.max(leftH, rightH);
 
     layout.sideBySide = {
-      left: { tile: left, renderWidth: subWidth, renderHeight: leftH, xOffset: 0 },
-      right: { tile: right, renderWidth: subWidth, renderHeight: rightH, xOffset: subWidth + gap },
-      totalHeight: rowHeight
+      left: {
+        tile: left,
+        renderWidth: subWidth,
+        renderHeight: leftH,
+        xOffset: 0,
+      },
+      right: {
+        tile: right,
+        renderWidth: subWidth,
+        renderHeight: rightH,
+        xOffset: subWidth + gap,
+      },
+      totalHeight: rowHeight,
     };
 
     if (layout.items.length > 0) {
@@ -115,21 +130,40 @@ function buildCol1(
   return layout;
 }
 
-function buildCol2(input: ColorStudyInput, colWidth: number, gap: number): ColumnLayout {
-  return buildColumn([input.polarChart, input.hueLightness], colWidth, gap, false);
+function buildCol2(
+  input: ColorStudyInput,
+  colWidth: number,
+  gap: number
+): ColumnLayout {
+  return buildColumn(
+    [input.polarChart, input.hueLightness],
+    colWidth,
+    gap,
+    false
+  );
 }
 
-function renderTile(tile: CompositorTile, x: number, y: number, w: number, h: number): string {
+function renderTile(
+  tile: CompositorTile,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): string {
   if (tile.isRaster) {
-    return `<image href="${tile.svgContent}" xlink:href="${tile.svgContent}" ` +
+    return (
+      `<image href="${tile.svgContent}" xlink:href="${tile.svgContent}" ` +
       `x="${x}" y="${y}" width="${w}" height="${h}" ` +
-      `preserveAspectRatio="xMidYMid meet" />`;
+      `preserveAspectRatio="xMidYMid meet" />`
+    );
   }
-  return `<svg x="${x}" y="${y}" width="${w}" height="${h}" ` +
+  return (
+    `<svg x="${x}" y="${y}" width="${w}" height="${h}" ` +
     `viewBox="0 0 ${tile.width} ${tile.height}" ` +
     `preserveAspectRatio="xMidYMid meet">` +
     tile.svgContent +
-    '</svg>';
+    '</svg>'
+  );
 }
 
 function renderColumn(
@@ -146,20 +180,38 @@ function renderColumn(
   const gap = inferGap(layout);
 
   for (const item of layout.items) {
-    parts.push(renderTile(
-      item.tile,
-      colX + item.xOffset,
-      cursor,
-      item.renderWidth,
-      item.renderHeight
-    ));
+    parts.push(
+      renderTile(
+        item.tile,
+        colX + item.xOffset,
+        cursor,
+        item.renderWidth,
+        item.renderHeight
+      )
+    );
     cursor += item.renderHeight + gap;
   }
 
   if (layout.sideBySide) {
     const row = layout.sideBySide;
-    parts.push(renderTile(row.left.tile, colX + row.left.xOffset, cursor, row.left.renderWidth, row.left.renderHeight));
-    parts.push(renderTile(row.right.tile, colX + row.right.xOffset, cursor, row.right.renderWidth, row.right.renderHeight));
+    parts.push(
+      renderTile(
+        row.left.tile,
+        colX + row.left.xOffset,
+        cursor,
+        row.left.renderWidth,
+        row.left.renderHeight
+      )
+    );
+    parts.push(
+      renderTile(
+        row.right.tile,
+        colX + row.right.xOffset,
+        cursor,
+        row.right.renderWidth,
+        row.right.renderHeight
+      )
+    );
   }
 
   return parts.join('');
@@ -168,8 +220,9 @@ function renderColumn(
 function inferGap(layout: ColumnLayout): number {
   const itemCount = layout.items.length + (layout.sideBySide ? 1 : 0);
   if (itemCount <= 1) return 0;
-  const contentHeight = layout.items.reduce((s, i) => s + i.renderHeight, 0)
-    + (layout.sideBySide?.totalHeight ?? 0);
+  const contentHeight =
+    layout.items.reduce((s, i) => s + i.renderHeight, 0) +
+    (layout.sideBySide?.totalHeight ?? 0);
   const gapSpace = layout.totalHeight - contentHeight;
   return gapSpace / (itemCount - 1);
 }
@@ -182,15 +235,19 @@ function renderPaletteColumn(
   mainHeight: number
 ): string {
   if (tile.isRaster) {
-    return `<image href="${tile.svgContent}" xlink:href="${tile.svgContent}" ` +
+    return (
+      `<image href="${tile.svgContent}" xlink:href="${tile.svgContent}" ` +
       `x="${colX}" y="${topY}" width="${colWidth}" height="${mainHeight}" ` +
-      `preserveAspectRatio="xMidYMid meet" />`;
+      `preserveAspectRatio="xMidYMid meet" />`
+    );
   }
-  return `<svg x="${colX}" y="${topY}" width="${colWidth}" height="${mainHeight}" ` +
+  return (
+    `<svg x="${colX}" y="${topY}" width="${colWidth}" height="${mainHeight}" ` +
     `viewBox="0 0 ${tile.width} ${tile.height}" ` +
     `preserveAspectRatio="xMidYMid meet">` +
     tile.svgContent +
-    '</svg>';
+    '</svg>'
+  );
 }
 
 export function composeColorStudy(
@@ -203,7 +260,12 @@ export function composeColorStudy(
   const canvasWidth = options?.canvasWidth ?? 1300;
   const contentWidth = canvasWidth - 2 * margin;
 
-  const hasCol1 = !!(input.sourceImage || input.videoBarcode || input.histogram || input.secondaryHistograms?.length);
+  const hasCol1 = !!(
+    input.sourceImage ||
+    input.videoBarcode ||
+    input.histogram ||
+    input.secondaryHistograms?.length
+  );
   const hasCol2 = !!(input.polarChart || input.hueLightness);
   const hasCol3 = !!input.paletteStrip;
 
@@ -215,10 +277,16 @@ export function composeColorStudy(
       svg: svgDocument({
         width: canvasWidth,
         height: h,
-        content: svgRect({ x: 0, y: 0, width: canvasWidth, height: h, fill: background })
+        content: svgRect({
+          x: 0,
+          y: 0,
+          width: canvasWidth,
+          height: h,
+          fill: background,
+        }),
       }),
       width: canvasWidth,
-      height: h
+      height: h,
     };
   }
 
@@ -230,7 +298,7 @@ export function composeColorStudy(
   let col2Width: number;
 
   if (hasCol1 && hasCol2) {
-    col1Width = remaining * COL1_RATIO / (1 + COL1_RATIO);
+    col1Width = (remaining * COL1_RATIO) / (1 + COL1_RATIO);
     col2Width = remaining / (1 + COL1_RATIO);
   } else if (hasCol1) {
     col1Width = remaining;
@@ -243,14 +311,26 @@ export function composeColorStudy(
     col2Width = 0;
   }
 
-  const col1Layout = hasCol1 ? buildCol1(input, col1Width, gap) : { items: [], totalHeight: 0 };
-  const col2Layout = hasCol2 ? buildCol2(input, col2Width, gap) : { items: [], totalHeight: 0 };
+  const col1Layout = hasCol1
+    ? buildCol1(input, col1Width, gap)
+    : { items: [], totalHeight: 0 };
+  const col2Layout = hasCol2
+    ? buildCol2(input, col2Width, gap)
+    : { items: [], totalHeight: 0 };
 
   const mainHeight = Math.max(col1Layout.totalHeight, col2Layout.totalHeight);
   const totalHeight = 2 * margin + (mainHeight > 0 ? mainHeight : 0);
 
   const parts: string[] = [];
-  parts.push(svgRect({ x: 0, y: 0, width: canvasWidth, height: totalHeight, fill: background }));
+  parts.push(
+    svgRect({
+      x: 0,
+      y: 0,
+      width: canvasWidth,
+      height: totalHeight,
+      fill: background,
+    })
+  );
 
   let cursorX = margin;
 
@@ -265,12 +345,24 @@ export function composeColorStudy(
   }
 
   if (hasCol3) {
-    parts.push(renderPaletteColumn(input.paletteStrip!, cursorX, margin, col3Width, mainHeight));
+    parts.push(
+      renderPaletteColumn(
+        input.paletteStrip!,
+        cursorX,
+        margin,
+        col3Width,
+        mainHeight
+      )
+    );
   }
 
   return {
-    svg: svgDocument({ width: canvasWidth, height: totalHeight, content: parts.join('') }),
+    svg: svgDocument({
+      width: canvasWidth,
+      height: totalHeight,
+      content: parts.join(''),
+    }),
     width: canvasWidth,
-    height: totalHeight
+    height: totalHeight,
   };
 }

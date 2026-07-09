@@ -5,13 +5,13 @@ import {
   valueAnalysisNotanMode,
   setValueAnalysisPending,
   setValueAnalysisSuccess,
-  setValueAnalysisError
+  setValueAnalysisError,
 } from '../../stores/ui';
 import { generateValueAnalysisSvg } from '../../exports/value-analysis';
 import {
   generateNotanStudySvg,
   generateSingleCellSvg,
-  type NotanCellData
+  type NotanCellData,
 } from '../../exports/notan-study';
 import { composeValueStudy } from '../../exports/value-study-compositor';
 import { getFsBridge, saveFromPath } from '../../bridges/fs';
@@ -37,14 +37,22 @@ export interface ValuesExportDeps {
 }
 
 export function createValuesExportRunner(deps: ValuesExportDeps) {
-  async function loadValueAnalysisForExport(levels: number, notanMode: boolean) {
+  async function loadValueAnalysisForExport(
+    levels: number,
+    notanMode: boolean
+  ) {
     const file = deps.getFile();
     if (!file?.path) {
       throw new Error('Values analysis export requires a native file path.');
     }
     setValueAnalysisPending(file.id, levels, notanMode);
     try {
-      const loaded = await requestValueAnalysis(file.path, file.id, levels, notanMode);
+      const loaded = await requestValueAnalysis(
+        file.path,
+        file.id,
+        levels,
+        notanMode
+      );
       setValueAnalysisSuccess(file.id, levels, notanMode, loaded);
       return loaded;
     } catch (error) {
@@ -90,7 +98,7 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
       includeOriginal: false,
       includeRangeFinder: section === 'rangeFinder',
       includeHistogram: section === 'histogram',
-      includeSimplified: section === 'simplified'
+      includeSimplified: section === 'simplified',
     });
   }
 
@@ -124,7 +132,7 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
         boundaries: currentStudy.boundaries,
         counts: currentStudy.counts,
         histogramBins: currentStudy.histogramBins,
-        levels: currentStudy.levels
+        levels: currentStudy.levels,
       };
 
       const cb = deps.getCheckboxState();
@@ -139,7 +147,7 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
           includeOriginal: cb.valuesIncludeOriginal,
           includeRangeFinder: cb.valuesRangeFinder,
           includeHistogram: cb.valuesHistogram,
-          includeSimplified: false
+          includeSimplified: false,
         });
 
         let col2Result: { svg: string; width: number; height: number };
@@ -148,17 +156,22 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
             loadValueAnalysisForExport(2, true),
             loadValueAnalysisForExport(3, false),
             loadValueAnalysisForExport(4, false),
-            loadValueAnalysisForExport(5, false)
+            loadValueAnalysisForExport(5, false),
           ]);
           const toCell = (study: typeof level2): NotanCellData => ({
             previewSrc: assetUrl(study.preview),
             previewWidth: study.previewWidth,
             previewHeight: study.previewHeight,
             bucketValues: study.bucketValues,
-            counts: study.counts
+            counts: study.counts,
           });
           col2Result = await generateNotanStudySvg({
-            cells: [toCell(level2), toCell(level3), toCell(level4), toCell(level5)]
+            cells: [
+              toCell(level2),
+              toCell(level3),
+              toCell(level4),
+              toCell(level5),
+            ],
           });
         } else {
           col2Result = await generateSingleCellSvg({
@@ -166,13 +179,13 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
             previewWidth: currentStudy.previewWidth,
             previewHeight: currentStudy.previewHeight,
             bucketValues: currentStudy.bucketValues,
-            counts: currentStudy.counts
+            counts: currentStudy.counts,
           });
         }
 
         const composed = composeValueStudy({
           col1Svg: col1Result.svg,
-          col2Svg: col2Result.svg
+          col2Svg: col2Result.svg,
         });
         svg = composed.svg;
         width = composed.width;
@@ -184,7 +197,7 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
           includeOriginal: cb.valuesIncludeOriginal,
           includeRangeFinder: cb.valuesRangeFinder,
           includeHistogram: cb.valuesHistogram,
-          includeSimplified: false
+          includeSimplified: false,
         });
         svg = result.svg;
         width = result.width;
@@ -194,7 +207,10 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
       const scale = Math.max(1, Math.min(4, deps.getExportScale()));
       const blob = await svgToPngBlob(svg, width, height, scale);
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${deps.baseName()}-values.png`);
+      const { canceled } = await bridge.saveBlob(
+        blob,
+        `${deps.baseName()}-values.png`
+      );
       if (canceled) {
         deps.setStatus('Export canceled.', 'info');
       } else {
@@ -211,7 +227,8 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
       const cb = deps.getCheckboxState();
       if (cb.valuesIncludeOriginal) {
         const originalSrc = file.previewUrl || '';
-        if (!originalSrc) throw new Error('Original image preview unavailable for export.');
+        if (!originalSrc)
+          throw new Error('Original image preview unavailable for export.');
         const neutralSrc = assetUrl(currentStudy.neutral);
         const { svg, width, height } = await generateValueAnalysisSvg({
           originalSrc,
@@ -235,12 +252,15 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
           includeOriginal: true,
           includeRangeFinder: false,
           includeHistogram: false,
-          includeSimplified: false
+          includeSimplified: false,
         });
         const scale = Math.max(1, Math.min(4, deps.getExportScale()));
         const blob = await svgToPngBlob(svg, width, height, scale);
         const bridge = await getFsBridge();
-        const { canceled } = await bridge.saveBlob(blob, `${deps.baseName()}-neutral.png`);
+        const { canceled } = await bridge.saveBlob(
+          blob,
+          `${deps.baseName()}-neutral.png`
+        );
         if (canceled) deps.setStatus('Export canceled.', 'info');
         else deps.setStatus('Neutral values PNG saved.', 'info');
       } else {
@@ -263,13 +283,19 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
       const bridge = await getFsBridge();
       if (format === 'svg') {
         const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-        const { canceled } = await bridge.saveBlob(blob, `${deps.baseName()}-range-finder.svg`);
+        const { canceled } = await bridge.saveBlob(
+          blob,
+          `${deps.baseName()}-range-finder.svg`
+        );
         if (canceled) deps.setStatus('Export canceled.', 'info');
         else deps.setStatus('Range finder SVG saved.', 'info');
       } else {
         const scale = Math.max(1, Math.min(4, deps.getExportScale()));
         const blob = await svgToPngBlob(svg, width, height, scale);
-        const { canceled } = await bridge.saveBlob(blob, `${deps.baseName()}-range-finder.png`);
+        const { canceled } = await bridge.saveBlob(
+          blob,
+          `${deps.baseName()}-range-finder.png`
+        );
         if (canceled) deps.setStatus('Export canceled.', 'info');
         else deps.setStatus('Range finder PNG saved.', 'info');
       }
@@ -285,13 +311,19 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
       const bridge = await getFsBridge();
       if (format === 'svg') {
         const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-        const { canceled } = await bridge.saveBlob(blob, `${deps.baseName()}-values-histogram.svg`);
+        const { canceled } = await bridge.saveBlob(
+          blob,
+          `${deps.baseName()}-values-histogram.svg`
+        );
         if (canceled) deps.setStatus('Export canceled.', 'info');
         else deps.setStatus('Values histogram SVG saved.', 'info');
       } else {
         const scale = Math.max(1, Math.min(4, deps.getExportScale()));
         const blob = await svgToPngBlob(svg, width, height, scale);
-        const { canceled } = await bridge.saveBlob(blob, `${deps.baseName()}-values-histogram.png`);
+        const { canceled } = await bridge.saveBlob(
+          blob,
+          `${deps.baseName()}-values-histogram.png`
+        );
         if (canceled) deps.setStatus('Export canceled.', 'info');
         else deps.setStatus('Values histogram PNG saved.', 'info');
       }
@@ -309,17 +341,22 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
           loadValueAnalysisForExport(2, true),
           loadValueAnalysisForExport(3, false),
           loadValueAnalysisForExport(4, false),
-          loadValueAnalysisForExport(5, false)
+          loadValueAnalysisForExport(5, false),
         ]);
         const toCell = (study: typeof level2): NotanCellData => ({
           previewSrc: assetUrl(study.preview),
           previewWidth: study.previewWidth,
           previewHeight: study.previewHeight,
           bucketValues: study.bucketValues,
-          counts: study.counts
+          counts: study.counts,
         });
         ({ svg, width, height } = await generateNotanStudySvg({
-          cells: [toCell(level2), toCell(level3), toCell(level4), toCell(level5)]
+          cells: [
+            toCell(level2),
+            toCell(level3),
+            toCell(level4),
+            toCell(level5),
+          ],
         }));
       } else {
         const currentStudy = await ensureValuesData();
@@ -328,13 +365,16 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
           previewWidth: currentStudy.previewWidth,
           previewHeight: currentStudy.previewHeight,
           bucketValues: currentStudy.bucketValues,
-          counts: currentStudy.counts
+          counts: currentStudy.counts,
         }));
       }
       const scale = Math.max(1, Math.min(4, deps.getExportScale()));
       const blob = await svgToPngBlob(svg, width, height, scale);
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${deps.baseName()}-notan.png`);
+      const { canceled } = await bridge.saveBlob(
+        blob,
+        `${deps.baseName()}-notan.png`
+      );
       if (canceled) deps.setStatus('Export canceled.', 'info');
       else deps.setStatus('Notan study PNG saved.', 'info');
     });
@@ -345,6 +385,6 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
     saveNeutralImage,
     saveRangeFinderPng: saveRangeFinderChart,
     saveValuesHistogramPng: saveValuesHistogramChart,
-    saveNotanStudyPng
+    saveNotanStudyPng,
   };
 }

@@ -26,7 +26,10 @@ export function subscribePendingVideoSwitch(
 export function subscribeMediaLoadRequested(callback: () => void): () => void {
   let first = true;
   return mediaLoadRequested.subscribe(() => {
-    if (first) { first = false; return; }
+    if (first) {
+      first = false;
+      return;
+    }
     callback();
   });
 }

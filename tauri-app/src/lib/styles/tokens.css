@@ -9,12 +9,12 @@
   */
 
   /* Colors */
-  --color-bg-page: #F5EFE1;
-  --color-surface: #FFFFFF;
+  --color-bg-page: #f5efe1;
+  --color-surface: #ffffff;
   --color-ink-strong: #262626;
   --color-ink-muted: #5f5b5b;
   --color-border-strong: #000000;
-  --color-border-muted: #928B8B;
+  --color-border-muted: #928b8b;
 
   /* Controls */
   --control-track: #d7d0c4;
@@ -22,8 +22,10 @@
   --focus: #2a5adf;
 
   /* Typography */
-  --font-sans: 'Fira Sans', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  --font-mono: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-sans:
+    'Fira Sans', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --font-mono:
+    'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --text-xs: 12px;
   --text-sm: 14px;
   --text-md: 16px; /* matches TNUFXK */
@@ -38,5 +40,5 @@
   --space-6: 24px;
   --radius-1: 4px;
   --radius-2: 8px;
-  --elev-1: 0 1px 1px rgba(0,0,0,.06);
+  --elev-1: 0 1px 1px rgba(0, 0, 0, 0.06);
 }

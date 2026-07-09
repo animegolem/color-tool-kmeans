@@ -19,10 +19,24 @@
     showPolarFrame?: boolean;
     showHueLightnessFrame?: boolean;
     showHistogramFrame?: boolean;
-    onChartContext?: (event: MouseEvent, chart: ChartOutput, suffix: string) => void;
+    onChartContext?: (
+      event: MouseEvent,
+      chart: ChartOutput,
+      suffix: string
+    ) => void;
   }
 
-  let { result = null, histogram = null, polarChart = null, hueLightnessChart = null, histogramSortLabel = '', showPolarFrame = false, showHueLightnessFrame = false, showHistogramFrame = false, onChartContext }: Props = $props();
+  let {
+    result = null,
+    histogram = null,
+    polarChart = null,
+    hueLightnessChart = null,
+    histogramSortLabel = '',
+    showPolarFrame = false,
+    showHueLightnessFrame = false,
+    showHistogramFrame = false,
+    onChartContext,
+  }: Props = $props();
 </script>
 
 {#if histogram || showHistogramFrame}
@@ -67,10 +81,23 @@
         class="chart zoomable"
         role="button"
         tabindex="0"
-        onclick={() => openSvgZoom(histogram?.svg, histogram?.width, histogram?.height, openZoomOverlay)}
+        onclick={() =>
+          openSvgZoom(
+            histogram?.svg,
+            histogram?.width,
+            histogram?.height,
+            openZoomOverlay
+          )}
         onkeydown={(event) =>
-          handleZoomKeydown(event, histogram?.svg, histogram?.width, histogram?.height, openZoomOverlay)}
-        oncontextmenu={(event) => onChartContext?.(event, histogram, 'histogram')}
+          handleZoomKeydown(
+            event,
+            histogram?.svg,
+            histogram?.width,
+            histogram?.height,
+            openZoomOverlay
+          )}
+        oncontextmenu={(event) =>
+          onChartContext?.(event, histogram, 'histogram')}
       >
         {@html histogram.svg}
       </div>
@@ -85,7 +112,11 @@
     <header class="analysis-header">
       <div>
         <h2>Polar Chart</h2>
-        <span>{$params.polarMode === 'oklch' ? 'Hue · Chroma' : 'Hue · Saturation'}</span>
+        <span
+          >{$params.polarMode === 'oklch'
+            ? 'Hue · Chroma'
+            : 'Hue · Saturation'}</span
+        >
       </div>
       <div class="toggle-group">
         <button
@@ -116,8 +147,21 @@
         class="chart zoomable"
         role="button"
         tabindex="0"
-        onclick={() => openSvgZoom(polarChart?.svg, polarChart?.width, polarChart?.height, openZoomOverlay)}
-        onkeydown={(event) => handleZoomKeydown(event, polarChart?.svg, polarChart?.width, polarChart?.height, openZoomOverlay)}
+        onclick={() =>
+          openSvgZoom(
+            polarChart?.svg,
+            polarChart?.width,
+            polarChart?.height,
+            openZoomOverlay
+          )}
+        onkeydown={(event) =>
+          handleZoomKeydown(
+            event,
+            polarChart?.svg,
+            polarChart?.width,
+            polarChart?.height,
+            openZoomOverlay
+          )}
         oncontextmenu={(event) => onChartContext?.(event, polarChart, 'polar')}
       >
         {@html polarChart.svg}
@@ -157,10 +201,23 @@
         class="chart zoomable"
         role="button"
         tabindex="0"
-        onclick={() => openSvgZoom(hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height, openZoomOverlay)}
+        onclick={() =>
+          openSvgZoom(
+            hueLightnessChart?.svg,
+            hueLightnessChart?.width,
+            hueLightnessChart?.height,
+            openZoomOverlay
+          )}
         onkeydown={(event) =>
-          handleZoomKeydown(event, hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height, openZoomOverlay)}
-        oncontextmenu={(event) => onChartContext?.(event, hueLightnessChart, 'hue-lightness')}
+          handleZoomKeydown(
+            event,
+            hueLightnessChart?.svg,
+            hueLightnessChart?.width,
+            hueLightnessChart?.height,
+            openZoomOverlay
+          )}
+        oncontextmenu={(event) =>
+          onChartContext?.(event, hueLightnessChart, 'hue-lightness')}
       >
         {@html hueLightnessChart.svg}
       </div>

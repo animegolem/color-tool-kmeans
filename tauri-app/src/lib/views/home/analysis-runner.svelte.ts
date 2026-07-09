@@ -1,4 +1,8 @@
-import type { AnalysisParams, SelectedImage, AnalysisResult } from '../../stores/ui';
+import type {
+  AnalysisParams,
+  SelectedImage,
+  AnalysisResult,
+} from '../../stores/ui';
 import { TauriComputeError } from '../../bridges/compute';
 import { analyzeImage } from '../../compute/bridge';
 
@@ -6,7 +10,10 @@ export interface AnalysisRunnerDeps {
   setAnalysisPending: () => void;
   setAnalysisSuccess: (result: AnalysisResult, imageId: string | null) => void;
   setAnalysisError: (message: string) => void;
-  recordDevEvent: (update: { computeVariant?: string }, type: 'analysis') => void;
+  recordDevEvent: (
+    update: { computeVariant?: string },
+    type: 'analysis'
+  ) => void;
 }
 
 const ANALYZE_DEBOUNCE_MS = 400;
@@ -34,7 +41,9 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
       }
     }
     if (error instanceof Error) {
-      return error.message || 'Unexpected error. Check console output for details.';
+      return (
+        error.message || 'Unexpected error. Check console output for details.'
+      );
     }
     return 'Unexpected error. Check console output for details.';
   }
@@ -91,7 +100,7 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
       tol: 1e-3,
       maxIter: 40,
       seed: 1,
-      maxSamples: 300_000
+      maxSamples: 300_000,
     };
     const key = JSON.stringify(keyObj);
     if (key === lastRequestKey && status !== 'error') {
@@ -102,10 +111,16 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
       clearTimeout(debounceTimer);
     }
     const snapshot: AnalysisParams = { ...paramSnapshot };
-    debounceTimer = setTimeout(() => runAnalysis(fileHandle, snapshot), ANALYZE_DEBOUNCE_MS);
+    debounceTimer = setTimeout(
+      () => runAnalysis(fileHandle, snapshot),
+      ANALYZE_DEBOUNCE_MS
+    );
   }
 
-  async function runAnalysis(image: SelectedImage, paramSnapshot: AnalysisParams) {
+  async function runAnalysis(
+    image: SelectedImage,
+    paramSnapshot: AnalysisParams
+  ) {
     currentToken += 1;
     const token = currentToken;
     if (analysisScrollLock) {
@@ -128,7 +143,7 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
         tol: 1e-3,
         maxIter: 40,
         seed: 1,
-        maxSamples: 300_000
+        maxSamples: 300_000,
       });
       if (token !== currentToken) {
         return;
@@ -160,7 +175,10 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
     lastRequestKey = null;
   }
 
-  function seedLastRequestKey(file: SelectedImage, paramSnapshot: AnalysisParams) {
+  function seedLastRequestKey(
+    file: SelectedImage,
+    paramSnapshot: AnalysisParams
+  ) {
     lastRequestKey = JSON.stringify({
       id: file.id,
       clusters: paramSnapshot.clusters,
@@ -171,16 +189,18 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
       tol: 1e-3,
       maxIter: 40,
       seed: 1,
-      maxSamples: 300_000
+      maxSamples: 300_000,
     });
   }
 
   return {
-    get spinnerVisible() { return spinnerVisible; },
+    get spinnerVisible() {
+      return spinnerVisible;
+    },
     scheduleAnalysisWith,
     cancelPending,
     captureAnalysisScroll,
     clearLastRequestKey,
-    seedLastRequestKey
+    seedLastRequestKey,
   };
 }

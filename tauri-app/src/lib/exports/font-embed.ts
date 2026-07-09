@@ -12,7 +12,7 @@ interface FontDescriptor {
 const FIRA_SANS_SOURCES: FontDescriptor[] = [
   { url: regularUrl, weight: 400, style: 'normal', format: 'woff' },
   { url: mediumUrl, weight: 500, style: 'normal', format: 'truetype' },
-  { url: boldUrl, weight: 700, style: 'normal', format: 'woff' }
+  { url: boldUrl, weight: 700, style: 'normal', format: 'woff' },
 ];
 
 let cachedCssPromise: Promise<string> | null = null;
@@ -28,7 +28,13 @@ async function buildFontCss(): Promise<string> {
   const blocks = await Promise.all(
     FIRA_SANS_SOURCES.map(async (descriptor) => {
       const dataUrl = await fetchFontData(descriptor.url);
-      return fontFaceBlock('Fira Sans', descriptor.weight, descriptor.style, dataUrl, descriptor.format);
+      return fontFaceBlock(
+        'Fira Sans',
+        descriptor.weight,
+        descriptor.style,
+        dataUrl,
+        descriptor.format
+      );
     })
   );
   return blocks.join('\n');
@@ -37,7 +43,9 @@ async function buildFontCss(): Promise<string> {
 async function fetchFontData(url: string): Promise<string> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Failed to load font asset: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to load font asset: ${response.status} ${response.statusText}`
+    );
   }
   const buffer = await response.arrayBuffer();
   return bufferToBase64(buffer);

@@ -11,7 +11,7 @@ function pathsToSelections(paths: string[]): FileSelection[] {
       path: p,
       size: 0,
       blob: new Blob([], { type: inferMimeType(name) }),
-      mimeType: inferMimeType(name)
+      mimeType: inferMimeType(name),
     } satisfies FileSelection;
   });
 }
@@ -38,10 +38,14 @@ export async function setupTauriDragDrop(
     })
   );
   if (options?.onEnter) {
-    unlistens.push(await listen('tauri://drag-enter', () => options.onEnter?.()));
+    unlistens.push(
+      await listen('tauri://drag-enter', () => options.onEnter?.())
+    );
   }
   if (options?.onLeave) {
-    unlistens.push(await listen('tauri://drag-leave', () => options.onLeave?.()));
+    unlistens.push(
+      await listen('tauri://drag-leave', () => options.onLeave?.())
+    );
   }
   return () => unlistens.forEach((fn) => fn());
 }

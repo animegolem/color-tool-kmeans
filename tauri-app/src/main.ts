@@ -15,14 +15,18 @@ registerIpcSink((msg) => void logEvent(msg, 'devlog'));
 async function logRuntimeBanner() {
   try {
     const w = globalThis as any;
-    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
+    const ua =
+      typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
     const tauriKeys = w?.__TAURI__ ? Object.keys(w.__TAURI__) : [];
     const hasInternals = typeof w?.__TAURI_INTERNALS__ !== 'undefined';
     console.info('[runtime] userAgent:', ua);
     console.info('[runtime] isTauriEnv():', isTauriEnv());
     console.info('[runtime] __TAURI__ keys:', tauriKeys);
     console.info('[runtime] has __TAURI_INTERNALS__:', hasInternals);
-    const [computeBridge, fsBridge] = await Promise.all([getComputeBridge(), getFsBridge()]);
+    const [computeBridge, fsBridge] = await Promise.all([
+      getComputeBridge(),
+      getFsBridge(),
+    ]);
     console.info('[runtime] compute bridge:', computeBridge.id);
     console.info('[runtime] fs bridge:', fsBridge.id);
   } catch (error) {
@@ -35,15 +39,21 @@ setupDevHotkeys();
 
 // Preload Tauri API (best-effort) to help dev setups resolve the module
 try {
-  void import('@tauri-apps/api').then(() => console.info('[env] tauri api module resolved')).catch(() => {
-    console.info('[env] tauri api module not resolved (will use globals if present)');
-  });
+  void import('@tauri-apps/api')
+    .then(() => console.info('[env] tauri api module resolved'))
+    .catch(() => {
+      console.info(
+        '[env] tauri api module not resolved (will use globals if present)'
+      );
+    });
 } catch {
   // ignore
 }
 
 // Hydrate preferences from persistent store (non-blocking)
-loadPrefs().then(hydrateFromPrefs).catch(() => {});
+loadPrefs()
+  .then(hydrateFromPrefs)
+  .catch(() => {});
 
 // Suppress native WebKit context menus in production —
 // images/video expose Save/Copy/Download that bypass app export settings.
@@ -65,7 +75,10 @@ function setupDevHotkeys() {
   if (!import.meta.env.DEV) return;
   const handler = async (event: KeyboardEvent) => {
     const isF12 = event.key === 'F12';
-    const isDevtoolsCombo = (event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'i';
+    const isDevtoolsCombo =
+      (event.ctrlKey || event.metaKey) &&
+      event.shiftKey &&
+      event.key.toLowerCase() === 'i';
     if (!isF12 && !isDevtoolsCombo) return;
     event.preventDefault();
     try {

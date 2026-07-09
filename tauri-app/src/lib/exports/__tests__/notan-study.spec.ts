@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { generateNotanStudySvg, generateSingleCellSvg, type NotanCellData, type NotanStudyInput } from '../notan-study';
+import {
+  generateNotanStudySvg,
+  generateSingleCellSvg,
+  type NotanCellData,
+  type NotanStudyInput,
+} from '../notan-study';
 
 // Minimal 1×1 PNG data URL for testing (avoids needing real images)
 const TINY_PNG =
@@ -11,7 +16,7 @@ function makeCell(bucketValues: number[], counts: number[]): NotanCellData {
     previewWidth: 400,
     previewHeight: 300,
     bucketValues,
-    counts
+    counts,
   };
 }
 
@@ -21,9 +26,9 @@ function makeInput(overrides?: Partial<NotanStudyInput>): NotanStudyInput {
       makeCell([0.2, 0.8], [280, 720]),
       makeCell([0.15, 0.5, 0.85], [200, 350, 450]),
       makeCell([0.1, 0.35, 0.65, 0.9], [180, 220, 300, 300]),
-      makeCell([0.08, 0.28, 0.5, 0.72, 0.92], [170, 170, 210, 220, 230])
+      makeCell([0.08, 0.28, 0.5, 0.72, 0.92], [170, 170, 210, 220, 230]),
     ],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -63,7 +68,7 @@ describe('generateNotanStudySvg', () => {
     const results = await Promise.all(
       Array.from({ length: 5 }, () => generateNotanStudySvg(input))
     );
-    const svgs = results.map(r => r.svg);
+    const svgs = results.map((r) => r.svg);
     expect(new Set(svgs).size).toBe(1);
   });
 
@@ -73,7 +78,9 @@ describe('generateNotanStudySvg', () => {
   });
 
   it('respects custom background color', async () => {
-    const result = await generateNotanStudySvg(makeInput({ background: '#ffffff' }));
+    const result = await generateNotanStudySvg(
+      makeInput({ background: '#ffffff' })
+    );
     expect(result.svg).toContain('#ffffff');
     expect(result.svg).not.toContain('#f8f2e3');
   });
@@ -89,7 +96,7 @@ describe('generateNotanStudySvg', () => {
     // Create a cell with one tiny bucket that should not get a label
     const tinyCell = makeCell([0.1, 0.5, 0.9], [1, 1, 9998]);
     const input = makeInput({
-      cells: [tinyCell, tinyCell, tinyCell, tinyCell]
+      cells: [tinyCell, tinyCell, tinyCell, tinyCell],
     });
     const result = await generateNotanStudySvg(input);
     // The 0% labels should not appear (segments too narrow)
@@ -133,11 +140,27 @@ describe('generateNotanStudySvg', () => {
   it('handles cells with different dimensions gracefully', async () => {
     const input: NotanStudyInput = {
       cells: [
-        { ...makeCell([0.2, 0.8], [300, 700]), previewWidth: 300, previewHeight: 200 },
-        { ...makeCell([0.2, 0.5, 0.8], [200, 400, 400]), previewWidth: 400, previewHeight: 300 },
-        { ...makeCell([0.1, 0.4, 0.6, 0.9], [250, 250, 250, 250]), previewWidth: 350, previewHeight: 280 },
-        { ...makeCell([0.1, 0.3, 0.5, 0.7, 0.9], [200, 200, 200, 200, 200]), previewWidth: 380, previewHeight: 290 }
-      ]
+        {
+          ...makeCell([0.2, 0.8], [300, 700]),
+          previewWidth: 300,
+          previewHeight: 200,
+        },
+        {
+          ...makeCell([0.2, 0.5, 0.8], [200, 400, 400]),
+          previewWidth: 400,
+          previewHeight: 300,
+        },
+        {
+          ...makeCell([0.1, 0.4, 0.6, 0.9], [250, 250, 250, 250]),
+          previewWidth: 350,
+          previewHeight: 280,
+        },
+        {
+          ...makeCell([0.1, 0.3, 0.5, 0.7, 0.9], [200, 200, 200, 200, 200]),
+          previewWidth: 380,
+          previewHeight: 290,
+        },
+      ],
     };
     const result = await generateNotanStudySvg(input);
     expect(result.svg).toContain('<svg');
@@ -185,7 +208,7 @@ describe('generateSingleCellSvg', () => {
     const results = await Promise.all(
       Array.from({ length: 5 }, () => generateSingleCellSvg(cell))
     );
-    expect(new Set(results.map(r => r.svg)).size).toBe(1);
+    expect(new Set(results.map((r) => r.svg)).size).toBe(1);
   });
 
   it('contains clip-path definitions for bucket strip and image', async () => {

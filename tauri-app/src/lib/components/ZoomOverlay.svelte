@@ -49,7 +49,10 @@
   function fitContent() {
     if (!container || !contentWidth || !contentHeight) return;
     const rect = container.getBoundingClientRect();
-    const fitScale = Math.min(rect.width / contentWidth, rect.height / contentHeight);
+    const fitScale = Math.min(
+      rect.width / contentWidth,
+      rect.height / contentHeight
+    );
     minScale = Number.isFinite(fitScale) && fitScale > 0 ? fitScale : 1;
     maxScale = minScale * 8;
     scale = minScale;
@@ -90,8 +93,8 @@
         startScale: scale,
         centerContent: {
           x: (center.x - offsetX) / scale,
-          y: (center.y - offsetY) / scale
-        }
+          y: (center.y - offsetY) / scale,
+        },
       };
       lastPointer = null;
     } else {
@@ -108,7 +111,9 @@
       const [p1, p2] = Array.from(pointers.values());
       const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
       const newDistance = distance(p1, p2);
-      const nextScale = pinchState.startScale * (newDistance / Math.max(1, pinchState.startDistance));
+      const nextScale =
+        pinchState.startScale *
+        (newDistance / Math.max(1, pinchState.startDistance));
       scale = Math.min(Math.max(nextScale, minScale * 0.5), maxScale);
       offsetX = center.x - pinchState.centerContent.x * scale;
       offsetY = center.y - pinchState.centerContent.y * scale;
@@ -192,7 +197,12 @@
         style={`width:${contentWidth}px;height:${contentHeight}px;transform:translate(${offsetX}px, ${offsetY}px) scale(${scale});`}
       >
         {#if overlay.content.kind === 'image'}
-          <img src={overlay.content.src} alt={overlay.content.alt ?? 'Zoomed image'} onload={handleImageLoad} draggable="false" />
+          <img
+            src={overlay.content.src}
+            alt={overlay.content.alt ?? 'Zoomed image'}
+            onload={handleImageLoad}
+            draggable="false"
+          />
         {:else}
           <div class="zoom-svg" aria-hidden="true">
             {@html overlay.content.svg}

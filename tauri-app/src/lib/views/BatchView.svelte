@@ -7,7 +7,7 @@
     setFile,
     updateEntryPreview,
     libraryDrawerOpen,
-    batchParams
+    batchParams,
   } from '../stores/ui';
   import ParameterControls from './home/ParameterControls.svelte';
   import {
@@ -18,7 +18,7 @@
     multiAnalysisState,
     multiAnalysisResult,
     multiAnalysisError,
-    multiCompositePath
+    multiCompositePath,
   } from '../stores/multi-analysis';
   import type { AnalysisResult } from '../stores/analysis';
   import { generateCircleGraphSvg } from '../exports/polar-chart';
@@ -34,7 +34,9 @@
   import { createBatchRunner } from './batch/batch-runner.svelte';
   import { createBatchDrop } from './batch/batch-drop.svelte';
   import PinExpandOverlay from './batch/PinExpandOverlay.svelte';
-  import ContextMenu, { type ContextMenuItem } from '../components/ContextMenu.svelte';
+  import ContextMenu, {
+    type ContextMenuItem,
+  } from '../components/ContextMenu.svelte';
   import { saveChart, type ChartOutput } from '../exports/chart-save';
   import { exportScale } from '../stores/ui';
 
@@ -44,7 +46,9 @@
 
   // Seed dedup key so reanalysis effect doesn't re-trigger on mount
   if (get(multiAnalysisState) === 'ready' && get(multiAnalysisResult)) {
-    const initPaths = get(pinnedImages).filter((img) => !!img.path).map((img) => img.path!);
+    const initPaths = get(pinnedImages)
+      .filter((img) => !!img.path)
+      .map((img) => img.path!);
     if (initPaths.length >= 2) {
       runner.seedRequestKey(initPaths, get(batchParams));
     }
@@ -56,17 +60,48 @@
   let result: AnalysisResult | null = $state(get(multiAnalysisResult));
   let error: string | null = $state(get(multiAnalysisError));
   let compositePath: string | null = $state(get(multiCompositePath));
-  let compositeUrl: string | null = $state(get(multiCompositePath) ? assetUrl(get(multiCompositePath)!) : null);
+  let compositeUrl: string | null = $state(
+    get(multiCompositePath) ? assetUrl(get(multiCompositePath)!) : null
+  );
   let chartParams = $state(get(batchParams));
 
   const unsubs: (() => void)[] = [];
-  unsubs.push(pinnedImages.subscribe((v) => { pinned = v; }));
-  unsubs.push(pinnedImageIds.subscribe((v) => { pinIds = v; }));
-  unsubs.push(multiAnalysisState.subscribe((v) => { batchStatus = v; }));
-  unsubs.push(multiAnalysisResult.subscribe((v) => { result = v; }));
-  unsubs.push(multiAnalysisError.subscribe((v) => { error = v; }));
-  unsubs.push(multiCompositePath.subscribe((v) => { compositePath = v; compositeUrl = v ? assetUrl(v) : null; }));
-  unsubs.push(batchParams.subscribe((v) => { chartParams = v; }));
+  unsubs.push(
+    pinnedImages.subscribe((v) => {
+      pinned = v;
+    })
+  );
+  unsubs.push(
+    pinnedImageIds.subscribe((v) => {
+      pinIds = v;
+    })
+  );
+  unsubs.push(
+    multiAnalysisState.subscribe((v) => {
+      batchStatus = v;
+    })
+  );
+  unsubs.push(
+    multiAnalysisResult.subscribe((v) => {
+      result = v;
+    })
+  );
+  unsubs.push(
+    multiAnalysisError.subscribe((v) => {
+      error = v;
+    })
+  );
+  unsubs.push(
+    multiCompositePath.subscribe((v) => {
+      compositePath = v;
+      compositeUrl = v ? assetUrl(v) : null;
+    })
+  );
+  unsubs.push(
+    batchParams.subscribe((v) => {
+      chartParams = v;
+    })
+  );
 
   onMount(() => {
     void logEvent('batch:view:mount');
@@ -77,7 +112,9 @@
     });
     // Defer heavy content one frame so the nav + header paint first (avoids the
     // ~0.25s nav-label lag when entering Batch with a loaded analysis).
-    const readyRaf = requestAnimationFrame(() => { bodyReady = true; });
+    const readyRaf = requestAnimationFrame(() => {
+      bodyReady = true;
+    });
     window.addEventListener('pointerup', handleScrubEnd);
     window.addEventListener('pointercancel', handleScrubEnd);
     return () => {
@@ -107,7 +144,9 @@
     return 'selection';
   });
 
-  const inFlight = $derived(batchStatus === 'compositing' || batchStatus === 'analyzing');
+  const inFlight = $derived(
+    batchStatus === 'compositing' || batchStatus === 'analyzing'
+  );
   const showSpinner = $derived(inFlight && runner.spinnerVisible);
   let isScrubbing = $state(false);
 
@@ -179,11 +218,11 @@
   }
 
   function handleAnalyze() {
-    const paths = pinned
-      .filter((img) => !!img.path)
-      .map((img) => img.path!);
+    const paths = pinned.filter((img) => !!img.path).map((img) => img.path!);
     if (paths.length < 2) return;
-    void logEvent(`batch:analyze:start pins=${paths.length} clusters=${chartParams.clusters}`);
+    void logEvent(
+      `batch:analyze:start pins=${paths.length} clusters=${chartParams.clusters}`
+    );
     void runner.analyze(paths, { ...chartParams });
   }
 
@@ -200,14 +239,14 @@
       symbolScale: chartParams.symbolScale,
       showAxisLabels: chartParams.showAxisLabels,
       showStroke: chartParams.showClusterOutline,
-      mode: chartParams.polarMode
+      mode: chartParams.polarMode,
     });
   });
 
   const histogram = $derived.by(() => {
     if (!result) return null;
     return generateHistogramSvg(result.clusters, {
-      sortBy: chartParams.histogramSort
+      sortBy: chartParams.histogramSort,
     });
   });
 
@@ -217,15 +256,18 @@
       symbolScale: chartParams.symbolScale,
       showAxisLabels: chartParams.showAxisLabels,
       showStroke: chartParams.showClusterOutline,
-      sizeMode: chartParams.hueLightnessSizeMode
+      sizeMode: chartParams.hueLightnessSizeMode,
     });
   });
-
 
   const previewCols = $derived(Math.min(pinCount, 4));
 
   let expandedPinId: string | null = $state(null);
-  const expandedPin = $derived(expandedPinId ? pinned.find((img) => img.id === expandedPinId) ?? null : null);
+  const expandedPin = $derived(
+    expandedPinId
+      ? (pinned.find((img) => img.id === expandedPinId) ?? null)
+      : null
+  );
 
   function handlePinExpand(id: string) {
     expandedPinId = id;
@@ -244,9 +286,17 @@
   }
 
   // Right-click chart export (IMP-153)
-  let chartMenu = $state<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+  let chartMenu = $state<{
+    x: number;
+    y: number;
+    items: ContextMenuItem[];
+  } | null>(null);
 
-  function openChartMenu(event: MouseEvent, chart: ChartOutput | null, suffix: string) {
+  function openChartMenu(
+    event: MouseEvent,
+    chart: ChartOutput | null,
+    suffix: string
+  ) {
     if (!chart) return;
     event.preventDefault();
     const base = `batch-${pinCount}-images`;
@@ -254,9 +304,17 @@
       x: event.clientX,
       y: event.clientY,
       items: [
-        { label: 'Export as PNG', onSelect: () => void saveChart('png', chart, base, suffix, get(exportScale)) },
-        { label: 'Export as SVG', onSelect: () => void saveChart('svg', chart, base, suffix, get(exportScale)) }
-      ]
+        {
+          label: 'Export as PNG',
+          onSelect: () =>
+            void saveChart('png', chart, base, suffix, get(exportScale)),
+        },
+        {
+          label: 'Export as SVG',
+          onSelect: () =>
+            void saveChart('svg', chart, base, suffix, get(exportScale)),
+        },
+      ],
     };
   }
 </script>
@@ -265,11 +323,16 @@
   {#if viewState === 'empty'}
     <section class="empty-state">
       <h2>Batch Analysis</h2>
-      <p>Pin 2 or more images from the Media Bucket to analyze them together.</p>
-      <button type="button" class="action-btn" onclick={chooseMedia}>Add media</button>
-      <p class="hint">Min 2, max {MAX_PINS} images. Use the pin icon on each thumbnail in the library.</p>
+      <p>
+        Pin 2 or more images from the Media Bucket to analyze them together.
+      </p>
+      <button type="button" class="action-btn" onclick={chooseMedia}
+        >Add media</button
+      >
+      <p class="hint">
+        Min 2, max {MAX_PINS} images. Use the pin icon on each thumbnail in the library.
+      </p>
     </section>
-
   {:else if viewState === 'selection'}
     <header class="batch-header">
       <h2>{pinCount} image{pinCount !== 1 ? 's' : ''} pinned</h2>
@@ -282,7 +345,12 @@
         >
           {inFlight ? 'Analyzing...' : 'Analyze'}
         </button>
-        <button type="button" class="clear-btn" onclick={handleClearPins} disabled={inFlight}>
+        <button
+          type="button"
+          class="clear-btn"
+          onclick={handleClearPins}
+          disabled={inFlight}
+        >
           Clear pins
         </button>
       </div>
@@ -313,7 +381,11 @@
       {/if}
     </div>
 
-    <ParameterControls paramsStore={batchParams} onScrubStart={handleScrubStart} onScrubEnd={handleScrubEnd} />
+    <ParameterControls
+      paramsStore={batchParams}
+      onScrubStart={handleScrubStart}
+      onScrubEnd={handleScrubEnd}
+    />
 
     {#if error && batchStatus === 'error'}
       <div class="error-banner" role="alert">
@@ -324,15 +396,20 @@
     {#if showSpinner}
       <div class="spinner-overlay">
         <div class="spinner"></div>
-        <span class="spinner-label">{batchStatus === 'compositing' ? 'Compositing grid...' : 'Analyzing...'}</span>
+        <span class="spinner-label"
+          >{batchStatus === 'compositing'
+            ? 'Compositing grid...'
+            : 'Analyzing...'}</span
+        >
       </div>
     {/if}
-
   {:else}
     <header class="batch-header">
       <h2>{pinCount} image{pinCount !== 1 ? 's' : ''} analyzed</h2>
       <div class="batch-actions">
-        <button type="button" class="clear-btn" onclick={handleClearPins}>Clear pins</button>
+        <button type="button" class="clear-btn" onclick={handleClearPins}
+          >Clear pins</button
+        >
       </div>
     </header>
 
@@ -344,96 +421,195 @@
     {/if}
 
     {#if bodyReady}
-    <section class="results-layout two-columns">
-      <div class="results-column">
-        <article class="analysis-card">
-          {#if compositeUrl}
-            <div
-              class="chart zoomable"
-              role="button"
-              tabindex="0"
-              onclick={() => openImageZoom(compositeUrl, 'Batch composite', openZoomOverlay)}
-              onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openImageZoom(compositeUrl, 'Batch composite', openZoomOverlay); }}}
-            >
-              <img src={compositeUrl} alt="Batch composite grid" />
-            </div>
-          {/if}
-        </article>
+      <section class="results-layout two-columns">
+        <div class="results-column">
+          <article class="analysis-card">
+            {#if compositeUrl}
+              <div
+                class="chart zoomable"
+                role="button"
+                tabindex="0"
+                onclick={() =>
+                  openImageZoom(
+                    compositeUrl,
+                    'Batch composite',
+                    openZoomOverlay
+                  )}
+                onkeydown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openImageZoom(
+                      compositeUrl,
+                      'Batch composite',
+                      openZoomOverlay
+                    );
+                  }
+                }}
+              >
+                <img src={compositeUrl} alt="Batch composite grid" />
+              </div>
+            {/if}
+          </article>
 
-        <article class="analysis-card">
-          <header class="card-header">
-            <h3>Cluster Histogram</h3>
-            <div class="toggle-group">
-              <button type="button" class:active={chartParams.histogramSort === 'frequency'} onclick={() => $batchParams.histogramSort = 'frequency'}>Frequency</button>
-              <button type="button" class:active={chartParams.histogramSort === 'hue'} onclick={() => $batchParams.histogramSort = 'hue'}>Hue</button>
-              <button type="button" class:active={chartParams.histogramSort === 'lightness'} onclick={() => $batchParams.histogramSort = 'lightness'}>Lightness</button>
-            </div>
-          </header>
-          {#if histogram}
-            <div
-              class="chart zoomable"
-              role="button"
-              tabindex="0"
-              onclick={() => openSvgZoom(histogram?.svg, histogram?.width, histogram?.height, openZoomOverlay)}
-              onkeydown={(e) => handleZoomKeydown(e, histogram?.svg, histogram?.width, histogram?.height, openZoomOverlay)}
-              oncontextmenu={(e) => openChartMenu(e, histogram, 'histogram')}
-            >
-              {@html histogram.svg}
-            </div>
-          {/if}
-        </article>
-      </div>
+          <article class="analysis-card">
+            <header class="card-header">
+              <h3>Cluster Histogram</h3>
+              <div class="toggle-group">
+                <button
+                  type="button"
+                  class:active={chartParams.histogramSort === 'frequency'}
+                  onclick={() => ($batchParams.histogramSort = 'frequency')}
+                  >Frequency</button
+                >
+                <button
+                  type="button"
+                  class:active={chartParams.histogramSort === 'hue'}
+                  onclick={() => ($batchParams.histogramSort = 'hue')}
+                  >Hue</button
+                >
+                <button
+                  type="button"
+                  class:active={chartParams.histogramSort === 'lightness'}
+                  onclick={() => ($batchParams.histogramSort = 'lightness')}
+                  >Lightness</button
+                >
+              </div>
+            </header>
+            {#if histogram}
+              <div
+                class="chart zoomable"
+                role="button"
+                tabindex="0"
+                onclick={() =>
+                  openSvgZoom(
+                    histogram?.svg,
+                    histogram?.width,
+                    histogram?.height,
+                    openZoomOverlay
+                  )}
+                onkeydown={(e) =>
+                  handleZoomKeydown(
+                    e,
+                    histogram?.svg,
+                    histogram?.width,
+                    histogram?.height,
+                    openZoomOverlay
+                  )}
+                oncontextmenu={(e) => openChartMenu(e, histogram, 'histogram')}
+              >
+                {@html histogram.svg}
+              </div>
+            {/if}
+          </article>
+        </div>
 
-      <div class="results-column">
-        <article class="analysis-card">
-          <header class="card-header">
-            <h3>Polar Chart</h3>
-            <div class="toggle-group">
-              <button type="button" class:active={chartParams.polarMode === 'oklch'} onclick={() => $batchParams.polarMode = 'oklch'}>OKLCH</button>
-              <button type="button" class:active={chartParams.polarMode === 'okhsv'} onclick={() => $batchParams.polarMode = 'okhsv'}>OKHSV</button>
-              <button type="button" class:active={chartParams.polarMode === 'hsv'} onclick={() => $batchParams.polarMode = 'hsv'}>HSV</button>
-            </div>
-          </header>
-          {#if polarChart}
-            <div
-              class="chart zoomable"
-              role="button"
-              tabindex="0"
-              onclick={() => openSvgZoom(polarChart?.svg, polarChart?.width, polarChart?.height, openZoomOverlay)}
-              onkeydown={(e) => handleZoomKeydown(e, polarChart?.svg, polarChart?.width, polarChart?.height, openZoomOverlay)}
-              oncontextmenu={(e) => openChartMenu(e, polarChart, 'polar')}
-            >
-              {@html polarChart.svg}
-            </div>
-          {/if}
-        </article>
+        <div class="results-column">
+          <article class="analysis-card">
+            <header class="card-header">
+              <h3>Polar Chart</h3>
+              <div class="toggle-group">
+                <button
+                  type="button"
+                  class:active={chartParams.polarMode === 'oklch'}
+                  onclick={() => ($batchParams.polarMode = 'oklch')}
+                  >OKLCH</button
+                >
+                <button
+                  type="button"
+                  class:active={chartParams.polarMode === 'okhsv'}
+                  onclick={() => ($batchParams.polarMode = 'okhsv')}
+                  >OKHSV</button
+                >
+                <button
+                  type="button"
+                  class:active={chartParams.polarMode === 'hsv'}
+                  onclick={() => ($batchParams.polarMode = 'hsv')}>HSV</button
+                >
+              </div>
+            </header>
+            {#if polarChart}
+              <div
+                class="chart zoomable"
+                role="button"
+                tabindex="0"
+                onclick={() =>
+                  openSvgZoom(
+                    polarChart?.svg,
+                    polarChart?.width,
+                    polarChart?.height,
+                    openZoomOverlay
+                  )}
+                onkeydown={(e) =>
+                  handleZoomKeydown(
+                    e,
+                    polarChart?.svg,
+                    polarChart?.width,
+                    polarChart?.height,
+                    openZoomOverlay
+                  )}
+                oncontextmenu={(e) => openChartMenu(e, polarChart, 'polar')}
+              >
+                {@html polarChart.svg}
+              </div>
+            {/if}
+          </article>
 
-        <article class="analysis-card">
-          <header class="card-header">
-            <h3>Hue x Lightness</h3>
-            <div class="toggle-group">
-              <button type="button" class:active={chartParams.hueLightnessSizeMode === 'chroma'} onclick={() => $batchParams.hueLightnessSizeMode = 'chroma'}>Chroma</button>
-              <button type="button" class:active={chartParams.hueLightnessSizeMode === 'frequency'} onclick={() => $batchParams.hueLightnessSizeMode = 'frequency'}>Frequency</button>
-            </div>
-          </header>
-          {#if hueLightnessChart}
-            <div
-              class="chart zoomable"
-              role="button"
-              tabindex="0"
-              onclick={() => openSvgZoom(hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height, openZoomOverlay)}
-              onkeydown={(e) => handleZoomKeydown(e, hueLightnessChart?.svg, hueLightnessChart?.width, hueLightnessChart?.height, openZoomOverlay)}
-              oncontextmenu={(e) => openChartMenu(e, hueLightnessChart, 'hue-lightness')}
-            >
-              {@html hueLightnessChart.svg}
-            </div>
-          {/if}
-        </article>
-      </div>
-    </section>
+          <article class="analysis-card">
+            <header class="card-header">
+              <h3>Hue x Lightness</h3>
+              <div class="toggle-group">
+                <button
+                  type="button"
+                  class:active={chartParams.hueLightnessSizeMode === 'chroma'}
+                  onclick={() => ($batchParams.hueLightnessSizeMode = 'chroma')}
+                  >Chroma</button
+                >
+                <button
+                  type="button"
+                  class:active={chartParams.hueLightnessSizeMode ===
+                    'frequency'}
+                  onclick={() =>
+                    ($batchParams.hueLightnessSizeMode = 'frequency')}
+                  >Frequency</button
+                >
+              </div>
+            </header>
+            {#if hueLightnessChart}
+              <div
+                class="chart zoomable"
+                role="button"
+                tabindex="0"
+                onclick={() =>
+                  openSvgZoom(
+                    hueLightnessChart?.svg,
+                    hueLightnessChart?.width,
+                    hueLightnessChart?.height,
+                    openZoomOverlay
+                  )}
+                onkeydown={(e) =>
+                  handleZoomKeydown(
+                    e,
+                    hueLightnessChart?.svg,
+                    hueLightnessChart?.width,
+                    hueLightnessChart?.height,
+                    openZoomOverlay
+                  )}
+                oncontextmenu={(e) =>
+                  openChartMenu(e, hueLightnessChart, 'hue-lightness')}
+              >
+                {@html hueLightnessChart.svg}
+              </div>
+            {/if}
+          </article>
+        </div>
+      </section>
     {/if}
 
-    <ParameterControls paramsStore={batchParams} onScrubStart={handleScrubStart} onScrubEnd={handleScrubEnd} />
+    <ParameterControls
+      paramsStore={batchParams}
+      onScrubStart={handleScrubStart}
+      onScrubEnd={handleScrubEnd}
+    />
   {/if}
 
   {#if expandedPin}
@@ -445,7 +621,12 @@
   {/if}
 
   {#if chartMenu}
-    <ContextMenu x={chartMenu.x} y={chartMenu.y} items={chartMenu.items} onClose={() => (chartMenu = null)} />
+    <ContextMenu
+      x={chartMenu.x}
+      y={chartMenu.y}
+      items={chartMenu.items}
+      onClose={() => (chartMenu = null)}
+    />
   {/if}
 </div>
 
@@ -632,7 +813,9 @@
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .spinner-label {
@@ -670,7 +853,7 @@
     background: var(--panel, #fff);
     border-radius: 12px;
     padding: 16px;
-    box-shadow: var(--shadow, 0 1px 1px rgba(0,0,0,.06));
+    box-shadow: var(--shadow, 0 1px 1px rgba(0, 0, 0, 0.06));
   }
 
   .card-header {

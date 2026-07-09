@@ -5,7 +5,7 @@
     AnalysisParams,
     SelectedImage,
     AnalysisResult,
-    AnalysisState
+    AnalysisState,
   } from '../stores/ui';
   import {
     selectedFile,
@@ -45,12 +45,17 @@
   import { createAnalysisRunner } from './home/analysis-runner.svelte';
   import { createFileIngestion } from './home/file-ingestion.svelte';
   import { clearActivePath } from '../services/active-image';
-  import { subscribePendingVideoSwitch, subscribeMediaLoadRequested } from '../services/view-subscriptions';
+  import {
+    subscribePendingVideoSwitch,
+    subscribeMediaLoadRequested,
+  } from '../services/view-subscriptions';
   import VideoPanel from './home/VideoPanel.svelte';
   import AnalysisCards from './home/AnalysisCards.svelte';
   import ParameterControls from './home/ParameterControls.svelte';
   import DevBanner from './home/DevBanner.svelte';
-  import ContextMenu, { type ContextMenuItem } from '../components/ContextMenu.svelte';
+  import ContextMenu, {
+    type ContextMenuItem,
+  } from '../components/ContextMenu.svelte';
   import { saveChart, type ChartOutput } from '../exports/chart-save';
   import { exportScale } from '../stores/ui';
   import { inferMimeType } from '../bridges/fs';
@@ -68,18 +73,34 @@
   let currentParams = $state<AnalysisParams>(get(params));
 
   // Right-click chart export (IMP-153)
-  let chartMenu = $state<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+  let chartMenu = $state<{
+    x: number;
+    y: number;
+    items: ContextMenuItem[];
+  } | null>(null);
 
-  function openChartMenu(event: MouseEvent, chart: ChartOutput, suffix: string) {
+  function openChartMenu(
+    event: MouseEvent,
+    chart: ChartOutput,
+    suffix: string
+  ) {
     event.preventDefault();
     const base = (file?.name ?? 'export').replace(/\.[^.]+$/, '');
     chartMenu = {
       x: event.clientX,
       y: event.clientY,
       items: [
-        { label: 'Export as PNG', onSelect: () => void saveChart('png', chart, base, suffix, get(exportScale)) },
-        { label: 'Export as SVG', onSelect: () => void saveChart('svg', chart, base, suffix, get(exportScale)) }
-      ]
+        {
+          label: 'Export as PNG',
+          onSelect: () =>
+            void saveChart('png', chart, base, suffix, get(exportScale)),
+        },
+        {
+          label: 'Export as SVG',
+          onSelect: () =>
+            void saveChart('svg', chart, base, suffix, get(exportScale)),
+        },
+      ],
     };
   }
   let status = $state<AnalysisState>(get(analysisState));
@@ -99,15 +120,18 @@
 
   function ensureDevBannerDetails(): DevBannerDetails {
     const base = devBannerData ?? {
-      detection: tauriDetectionInfo()
+      detection: tauriDetectionInfo(),
     };
     return {
       ...base,
-      detection: tauriDetectionInfo()
+      detection: tauriDetectionInfo(),
     };
   }
 
-  function recordDevEvent(update: Partial<DevBannerDetails>, type: 'file' | 'analysis') {
+  function recordDevEvent(
+    update: Partial<DevBannerDetails>,
+    type: 'file' | 'analysis'
+  ) {
     if (!devEnabled) return;
     const details = { ...ensureDevBannerDetails(), ...update };
     devBannerData = details;
@@ -120,7 +144,7 @@
       console.info('[dev] tauri detection', {
         detection: details.detection,
         fsBridge: details.fsBridge ?? 'pending',
-        computeBridge: details.computeVariant ?? 'pending'
+        computeBridge: details.computeVariant ?? 'pending',
       });
     }
 
@@ -140,7 +164,7 @@
     setAnalysisPending,
     setAnalysisSuccess,
     setAnalysisError,
-    recordDevEvent
+    recordDevEvent,
   });
 
   // Seed dedup key so remount doesn't re-trigger cached analysis
@@ -160,7 +184,9 @@
     cancelPending: runner.cancelPending,
     scheduleAnalysisWith: (f, p, s) => runner.scheduleAnalysisWith(f, p, s),
     recordDevEvent,
-    setBannerMessage: (msg) => { bannerMessage = msg; },
+    setBannerMessage: (msg) => {
+      bannerMessage = msg;
+    },
     getParams: () => currentParams,
     getStatus: () => status,
     clearVideoSelection: () => video.clearVideoSelection(),
@@ -170,7 +196,7 @@
       video.loadVideoSelection(sel);
     },
     openLibraryDrawer: () => libraryDrawerOpen.set(true),
-    updateEntryPreview
+    updateEntryPreview,
   });
 
   // --- Video controller ---
@@ -182,7 +208,9 @@
     setVideoState,
     clearFile,
     getQuality: () => currentParams.quality ?? 2,
-    setBannerMessage: (msg) => { bannerMessage = msg; },
+    setBannerMessage: (msg) => {
+      bannerMessage = msg;
+    },
     scheduleAnalysisWith: (f, p) => runner.scheduleAnalysisWith(f, p, status),
     getCurrentParams: () => currentParams,
     clearLastRequestKey: () => runner.clearLastRequestKey(),
@@ -191,13 +219,16 @@
     getCachedVideoState,
     cacheVideoState,
     findExistingFrameId: (videoPath: string) => {
-      const entry = get(images).find(item => item.videoPath === videoPath);
+      const entry = get(images).find((item) => item.videoPath === videoPath);
       return entry?.id ?? null;
     },
     seedAnalysisKey: (imageId: string, paramSnapshot: any) => {
-      runner.seedLastRequestKey({ id: imageId } as SelectedImage, paramSnapshot);
+      runner.seedLastRequestKey(
+        { id: imageId } as SelectedImage,
+        paramSnapshot
+      );
     },
-    hasAnalysisForImage: (id: string) => !!get(analysisById)[id]
+    hasAnalysisForImage: (id: string) => !!get(analysisById)[id],
   });
 
   // --- Derived chart state ---
@@ -210,7 +241,7 @@
       showAxisLabels: currentParams.showAxisLabels,
       showStroke: currentParams.showClusterOutline,
       mode: currentParams.polarMode,
-      size: 420
+      size: 420,
     });
   });
 
@@ -222,7 +253,7 @@
       showStroke: currentParams.showClusterOutline,
       sizeMode: currentParams.hueLightnessSizeMode,
       width: 420,
-      height: 240
+      height: 240,
     });
   });
 
@@ -232,13 +263,14 @@
       width: 520,
       height: 180,
       maxBars: 120,
-      sortBy: currentParams.histogramSort
+      sortBy: currentParams.histogramSort,
     });
   });
 
   const histogramSortLabel = $derived.by(() => {
     if (currentParams.histogramSort === 'hue') return 'Top clusters by hue';
-    if (currentParams.histogramSort === 'lightness') return 'Top clusters by lightness';
+    if (currentParams.histogramSort === 'lightness')
+      return 'Top clusters by lightness';
     return 'Top clusters by frequency';
   });
 
@@ -270,7 +302,11 @@
   }
 
   function handleImageZoom() {
-    zoomImage(file?.previewUrl, file?.name ?? 'Selected image', openZoomOverlay);
+    zoomImage(
+      file?.previewUrl,
+      file?.name ?? 'Selected image',
+      openZoomOverlay
+    );
   }
 
   // --- FFmpeg check ---
@@ -293,7 +329,9 @@
     void logEvent('home:view:mount');
     void checkFfmpegVersion();
     let unlistenDragDrop: (() => void) | null = null;
-    ingestion.setupDragDrop().then((fn) => { unlistenDragDrop = fn ?? null; });
+    ingestion.setupDragDrop().then((fn) => {
+      unlistenDragDrop = fn ?? null;
+    });
     const unsubs = [
       selectedFile.subscribe((value) => {
         file = value;
@@ -301,50 +339,87 @@
           displayResult = null;
         }
       }),
-      params.subscribe((value) => { currentParams = { ...value }; }),
-      analysisState.subscribe((value) => { status = value; }),
+      params.subscribe((value) => {
+        currentParams = { ...value };
+      }),
+      analysisState.subscribe((value) => {
+        status = value;
+      }),
       analysisResult.subscribe((value) => {
         result = value;
         if (value !== null) {
           displayResult = value;
         }
       }),
-      analysisError.subscribe((value) => { analysisErr = value; }),
+      analysisError.subscribe((value) => {
+        analysisErr = value;
+      }),
       videoState.subscribe((state) => {
-        devlog('home:videoState', 'Video state changed', { hasState: state !== null, path: state?.path ?? null });
+        devlog('home:videoState', 'Video state changed', {
+          hasState: state !== null,
+          path: state?.path ?? null,
+        });
         video.handleVideoStateChange(state);
       }),
-      (() => { let first = true; return videoStripMode.subscribe(() => { if (first) { first = false; return; } video.regenerateStrip(); }); })(),
+      (() => {
+        let first = true;
+        return videoStripMode.subscribe(() => {
+          if (first) {
+            first = false;
+            return;
+          }
+          video.regenerateStrip();
+        });
+      })(),
       subscribePendingVideoSwitch(({ entry, videoPath, id, cid }) => {
         devlog('home:videoSwitch', 'Pending video switch', {
-          id, cid, entryFound: true, path: entry.path ?? null
+          id,
+          cid,
+          entryFound: true,
+          path: entry.path ?? null,
         });
         if (video.videoSelection?.path === videoPath) {
-          devlog('home:videoSwitch:skip', 'Already active — skipping', { cid, videoPath });
+          devlog('home:videoSwitch:skip', 'Already active — skipping', {
+            cid,
+            videoPath,
+          });
           return;
         }
         clearActivePath();
         runner.cancelPending();
-        devlog('home:videoSwitch:load', 'Loading video selection', { cid, existingId: entry.id, videoPath });
-        video.loadVideoSelection({
-          name: entry.name,
-          path: videoPath,
-          size: entry.size,
-          blob: new Blob([], { type: inferMimeType(entry.name) }),
-          mimeType: inferMimeType(entry.name)
-        }, entry.id, cid);
+        devlog('home:videoSwitch:load', 'Loading video selection', {
+          cid,
+          existingId: entry.id,
+          videoPath,
+        });
+        video.loadVideoSelection(
+          {
+            name: entry.name,
+            path: videoPath,
+            size: entry.size,
+            blob: new Blob([], { type: inferMimeType(entry.name) }),
+            mimeType: inferMimeType(entry.name),
+          },
+          entry.id,
+          cid
+        );
       }),
-      subscribeMediaLoadRequested(() => ingestion.chooseMedia())
+      subscribeMediaLoadRequested(() => ingestion.chooseMedia()),
     ];
     let dragDepth = 0;
     let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
     const showOverlay = () => {
-      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+      }
       ingestion.draggingWindow = true;
     };
     const hideOverlay = () => {
-      if (hideTimer) { clearTimeout(hideTimer); }
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+      }
       hideTimer = setTimeout(() => {
         if (dragDepth <= 0) {
           ingestion.draggingWindow = false;
@@ -366,7 +441,10 @@
     };
     const onDrop = () => {
       dragDepth = 0;
-      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+      }
       ingestion.draggingWindow = false;
       ingestion.dragging = false;
     };
@@ -414,7 +492,7 @@
     devlog('home:analysis:effect', 'Analysis effect triggered', {
       imageId: activeFile.id,
       status,
-      clusters: paramSnapshot.clusters
+      clusters: paramSnapshot.clusters,
     });
     runner.scheduleAnalysisWith(activeFile, paramSnapshot, status);
   });
@@ -426,10 +504,22 @@
   {/if}
 
   {#if file || video.videoSelection}
-    <section class="analysis-layout" class:two-columns={currentParams.showPolarChart || currentParams.showHueLightness}>
+    <section
+      class="analysis-layout"
+      class:two-columns={currentParams.showPolarChart ||
+        currentParams.showHueLightness}
+    >
       <div class="analysis-column">
         {#if video.videoSelection}
-          <VideoPanel {video} onZoom={() => zoomImage(video.videoDisplayUrl, video.videoSelection?.name ?? 'Video frame', openZoomOverlay)} />
+          <VideoPanel
+            {video}
+            onZoom={() =>
+              zoomImage(
+                video.videoDisplayUrl,
+                video.videoSelection?.name ?? 'Video frame',
+                openZoomOverlay
+              )}
+          />
         {:else}
           <div
             bind:this={ingestion.dropRef}
@@ -456,9 +546,14 @@
               }}
             >
               {#if file?.previewUrl}
-                <img src={file.previewUrl} alt={file?.name ?? 'Selected image'} />
+                <img
+                  src={file.previewUrl}
+                  alt={file?.name ?? 'Selected image'}
+                />
               {:else}
-                <div class="preview-placeholder">Image preview unavailable.</div>
+                <div class="preview-placeholder">
+                  Image preview unavailable.
+                </div>
               {/if}
             </div>
           </div>
@@ -481,7 +576,9 @@
             result={chartResult}
             histogram={null}
             polarChart={currentParams.showPolarChart ? polarChart : null}
-            hueLightnessChart={currentParams.showHueLightness ? hueLightnessChart : null}
+            hueLightnessChart={currentParams.showHueLightness
+              ? hueLightnessChart
+              : null}
             histogramSortLabel=""
             showPolarFrame={currentParams.showPolarChart}
             showHueLightnessFrame={currentParams.showHueLightness}
@@ -507,7 +604,8 @@
       <div class="inner">
         <p class="title">Drop anywhere</p>
         <p>or</p>
-        <button class="upload" onclick={ingestion.chooseMedia}>Add media</button>
+        <button class="upload" onclick={ingestion.chooseMedia}>Add media</button
+        >
         <p class="formats">PNG, JPEG, WebP, BMP, GIF, TIFF, MP4</p>
       </div>
     </div>
@@ -520,7 +618,9 @@
         <div style="display:grid;place-items:center;gap:8px;min-width:280px">
           <div class="spinner" aria-hidden="true" style="display:none"></div>
           <div style="font-size:20px;font-weight:500">Drop Anywhere</div>
-          <div style="font-size:12px;opacity:.8">PNG · JPEG · WebP · BMP · GIF · TIFF · MP4</div>
+          <div style="font-size:12px;opacity:.8">
+            PNG · JPEG · WebP · BMP · GIF · TIFF · MP4
+          </div>
         </div>
       </div>
     </div>
@@ -528,7 +628,11 @@
 
   <!-- Loading overlay -->
   {#if status === 'pending' && runner.spinnerVisible}
-    <div class="overlay-root overlay-root--content visible" role="dialog" aria-label="Analyzing…">
+    <div
+      class="overlay-root overlay-root--content visible"
+      role="dialog"
+      aria-label="Analyzing…"
+    >
       <div class="overlay-panel">
         <div style="display:grid;place-items:center;gap:12px">
           <div class="spinner" aria-label="loading"></div>
@@ -540,7 +644,11 @@
 
   <!-- Drag/drop notice overlay -->
   {#if bannerMessage}
-    <div class="overlay-root overlay-root--content visible" role="dialog" aria-label="Notice">
+    <div
+      class="overlay-root overlay-root--content visible"
+      role="dialog"
+      aria-label="Notice"
+    >
       <div class="overlay-panel">
         <p style="margin:0">{bannerMessage}</p>
         <div class="overlay-actions" style="margin-top:16px">
@@ -552,9 +660,15 @@
 
   <!-- Analysis error overlay -->
   {#if status === 'error'}
-    <div class="overlay-root visible" role="dialog" aria-label="Analysis failed">
+    <div
+      class="overlay-root visible"
+      role="dialog"
+      aria-label="Analysis failed"
+    >
       <div class="overlay-panel">
-        <p style="margin:0 0 12px 0">{analysisErr ?? 'Unknown issue while analyzing the image.'}</p>
+        <p style="margin:0 0 12px 0">
+          {analysisErr ?? 'Unknown issue while analyzing the image.'}
+        </p>
         <div class="overlay-actions" style="margin-top:16px">
           <button class="retry" onclick={retryAnalysis}>Retry</button>
           <button class="close-btn" onclick={clearAnalysisError}>Close</button>
@@ -564,12 +678,20 @@
   {/if}
 
   {#if file}
-    <ParameterControls onScrubStart={handleScrubStart} onScrubEnd={handleScrubEnd} />
+    <ParameterControls
+      onScrubStart={handleScrubStart}
+      onScrubEnd={handleScrubEnd}
+    />
   {/if}
 </section>
 
 {#if chartMenu}
-  <ContextMenu x={chartMenu.x} y={chartMenu.y} items={chartMenu.items} onClose={() => (chartMenu = null)} />
+  <ContextMenu
+    x={chartMenu.x}
+    y={chartMenu.y}
+    items={chartMenu.items}
+    onClose={() => (chartMenu = null)}
+  />
 {/if}
 
 <style>
@@ -586,7 +708,9 @@
     padding: 56px;
     text-align: center;
     background: rgba(130, 76, 50, 0.06);
-    transition: background 0.2s ease, border-color 0.2s ease;
+    transition:
+      background 0.2s ease,
+      border-color 0.2s ease;
   }
 
   .dropzone--image {

@@ -10,8 +10,7 @@ export const pinnedImageIds = writable<Set<string>>(new Set());
 // Automatically excludes entries removed from the bucket.
 export const pinnedImages = derived(
   [images, pinnedImageIds],
-  ([$images, $pinned]) =>
-    $images.filter((img) => $pinned.has(img.id))
+  ([$images, $pinned]) => $images.filter((img) => $pinned.has(img.id))
 );
 
 export function togglePin(id: string) {
@@ -30,7 +29,12 @@ export function clearPins() {
 }
 
 // --- Multi-analysis lifecycle ---
-export type MultiAnalysisState = 'idle' | 'compositing' | 'analyzing' | 'ready' | 'error';
+export type MultiAnalysisState =
+  | 'idle'
+  | 'compositing'
+  | 'analyzing'
+  | 'ready'
+  | 'error';
 
 export const multiAnalysisState = writable<MultiAnalysisState>('idle');
 export const multiAnalysisResult = writable<AnalysisResult | null>(null);
