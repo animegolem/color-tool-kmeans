@@ -6,12 +6,26 @@
 
 | Status | EPICs | IMPs |
 |--------|-------|------|
-| In Progress | 0 | 0 |
+| In Progress | 1 | 5 |
 | Planned | 3 | 8 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
 | Completed | 17 | 115 |
-| **Total** | **22** | **128** |
+| **Total** | **23** | **133** |
+
+## In Progress
+
+### [[AI-EPIC-028-audit-remediation|EPIC-028: Audit remediation]]
+> An external control-flow audit (Sol, 2026-07-09 — `RAG/AI-LOG/2026-07-09-LOG-AI-control-flow-and-defect-audit.md`) validated 21 defects in the ship...
+
+**IMPs:**
+- [[AI-IMP-162-video-identity-and-values-races|IMP-162]] Video identity and values races — in-progress
+- [[AI-IMP-163-cancellation-and-media-promotion|IMP-163]] Cancellation and media promotion — in-progress
+- [[AI-IMP-164-resource-and-export-integrity|IMP-164]] Resource and export integrity — in-progress
+- [[AI-IMP-165-repo-gates-repair|IMP-165]] Repo gates repair — in-progress
+- [[AI-IMP-166-p4-sweep|IMP-166]] P4 sweep — in-progress
+
+---
 
 ## Planned
 

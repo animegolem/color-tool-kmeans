@@ -1,0 +1,77 @@
+---
+node_id: AI-IMP-163
+tags:
+  - IMP-LIST
+  - Implementation
+  - defects
+  - stores
+kanban_status: in-progress
+depends_on:
+parent_epic: [[AI-EPIC-028-audit-remediation]]
+confidence_score: 0.8
+date_created: 2026-07-09
+date_completed:
+---
+
+# AI-IMP-163-cancellation-and-media-promotion
+
+## Summary of Issue #1
+
+Audit findings AUD-003 and AUD-006 (`RAG/AI-LOG/2026-07-09-LOG-AI-control-flow-and-defect-audit.md` — read the full finding text first): (1) canceling Colors/Values analysis only invalidates local tokens, leaving global/per-key state permanently `pending` — Exports then refuses to auto-analyze and a remounted Values view skips the entry; (2) `removeFile()` blindly activates the first remaining entry, so a raw video can be promoted into the still-image pipeline.
+
+**Done state:** both findings fixed; their three expected-failure repros in `audit-control-flow-races.spec.ts` converted to passing regression tests; full gates green.
+
+### Out of Scope
+
+- AUD-001/002/004/005/007/008/009/010 (IMP-162 owns `setFile`/`appendFile`, scrubber, probes, Rust cache — do not touch those paths).
+- Restructuring runner factories; fix the state lifecycle only.
+
+### Design/Approach
+
+- **AUD-003**: cancellation must reset the corresponding pending state — Colors: clear global `analysisState` pending (back to idle) when `cancel()` invalidates an in-flight request; Values: clear the per-key pending entry in `valueAnalysisByKey`/state map. Take care to only clear state the canceled request owns (compare tokens/keys) so a legitimately newer in-flight request isn't clobbered.
+- **AUD-006**: `removeFile()`'s successor selection must skip raw-video entries when choosing a new *active image* (or route through the proper video-selection flow). A raw video may remain in the bucket; it must not become `selectedFile` for the still pipeline.
+
+Convert the three repros in place (keep AUD-ID references in test names).
+
+### Files to Touch
+
+- `tauri-app/src/lib/views/home/analysis-runner.svelte.ts` (AUD-003 Colors)
+- `tauri-app/src/lib/views/values/value-analysis-runner.svelte.ts` (AUD-003 Values)
+- `tauri-app/src/lib/stores/analysis.ts` / `value-analysis.ts` (reset helpers if needed)
+- `tauri-app/src/lib/stores/image.ts` — `removeFile`/`switchToFile` ONLY (AUD-006)
+- `tauri-app/src/lib/views/__tests__/audit-control-flow-races.spec.ts` (repro → regression, 3 tests)
+
+**Do NOT touch:** `setFile`/`appendFile` in `image.ts`, `video-scrubber.svelte.ts`, `file-ingestion-values.svelte.ts`, `video-controller.svelte.ts`, `value_analysis.rs` (IMP-162); exports runners beyond reading (AUD-003's Exports symptom resolves via the store fix); CI/hooks (IMP-165); `src-tauri/src/bin/*`.
+
+### Implementation Checklist
+
+<CRITICAL_RULE>
+Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
+</CRITICAL_RULE>
+
+- [ ] AUD-003 Colors: cancel clears owned pending global state; token-guarded so newer requests survive; repro converted.
+- [ ] AUD-003 Values: cancel clears owned per-key pending state; repro converted.
+- [ ] Verify the Exports symptom: with pending cleared, `colors-export-runner` auto-analyze proceeds (assert via existing/new test).
+- [ ] AUD-006: `removeFile()` never activates a raw video as the still image; repro converted.
+- [ ] Full gates: `npm run test -- --run`, `npm run check`, `npm run lint`, `cargo fmt/clippy/test` (Rust untouched but gates run anyway).
+
+### Acceptance Criteria
+
+**Scenario:** Navigating away mid-analysis.
+**GIVEN** a Colors or Values analysis request is in flight.
+**WHEN** the view unmounts and cancellation runs.
+**THEN** global/per-key state is not left `pending`; returning to the view (or opening Exports) triggers analysis normally.
+
+**Scenario:** Removing the active image with a raw video in the bucket.
+**GIVEN** the active image is removed and the first remaining entry is a raw `.mp4`.
+**WHEN** `removeFile()` selects a successor.
+**THEN** the raw video is not set as `selectedFile`; a valid image is chosen or none.
+
+### Issues Encountered
+
+<!--
+The comments under the 'Issues Encountered' heading are the only comments you MUST not remove
+This section is filled out post work as you fill out the checklists.
+You SHOULD document any issues encountered and resolved during the sprint.
+You MUST document any failed implementations, blockers or missing tests.
+-->
