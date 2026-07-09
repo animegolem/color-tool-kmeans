@@ -7,10 +7,10 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 1 | 0 |
-| Planned | 3 | 10 |
+| Planned | 3 | 9 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
-| Completed | 16 | 113 |
+| Completed | 16 | 114 |
 | **Total** | **22** | **128** |
 
 ## In Progress
@@ -20,7 +20,7 @@
 
 **IMPs:**
 - [[AI-IMP-159-warm-start-frame-sequence-benchmark|IMP-159]] Warm start frame sequence benchmark — completed
-- [[AI-IMP-160-rawvideo-pipe-and-conversion-fast-path|IMP-160]] Rawvideo pipe and conversion fast path — planned
+- [[AI-IMP-160-rawvideo-pipe-and-conversion-fast-path|IMP-160]] Rawvideo pipe and conversion fast path — completed
 - [[AI-IMP-161-live-loop-prototype-and-findings|IMP-161]] Live loop prototype and findings — planned
 
 ---
@@ -93,6 +93,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/exports/value-analysis.ts (429 LOC)
 - tauri-app/src-tauri/src/commands.rs (395 LOC)
 - tauri-app/src/App.svelte (380 LOC)
+- tauri-app/src-tauri/src/bin/live_pipe_probe.rs (379 LOC)
 - tauri-app/src/app.css (374 LOC)
 - tauri-app/src-tauri/src/ffmpeg.rs (369 LOC)
 - tauri-app/src/lib/views/exports/colors-export-runner.svelte.ts (368 LOC)
@@ -105,7 +106,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>16 EPICs, 82 IMPs completed</summary>
+<summary>16 EPICs, 83 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed
