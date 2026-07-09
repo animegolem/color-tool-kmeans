@@ -7,10 +7,10 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 1 | 0 |
-| Planned | 3 | 11 |
+| Planned | 3 | 10 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
-| Completed | 16 | 112 |
+| Completed | 16 | 113 |
 | **Total** | **22** | **128** |
 
 ## In Progress
@@ -19,7 +19,7 @@
 > We want to play a video clip with full color analysis updating live at the clip's native frame rate (24 fps for our animation-centric audience). To...
 
 **IMPs:**
-- [[AI-IMP-159-warm-start-frame-sequence-benchmark|IMP-159]] Warm start frame sequence benchmark — planned
+- [[AI-IMP-159-warm-start-frame-sequence-benchmark|IMP-159]] Warm start frame sequence benchmark — completed
 - [[AI-IMP-160-rawvideo-pipe-and-conversion-fast-path|IMP-160]] Rawvideo pipe and conversion fast path — planned
 - [[AI-IMP-161-live-loop-prototype-and-findings|IMP-161]] Live loop prototype and findings — planned
 
@@ -105,7 +105,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>16 EPICs, 81 IMPs completed</summary>
+<summary>16 EPICs, 82 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed
