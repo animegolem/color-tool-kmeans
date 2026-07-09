@@ -58,15 +58,35 @@ export const analysisState = writable<AnalysisState>('idle');
 export const analysisById = writable<Record<string, AnalysisResult>>({});
 export const analysisError = writable<string | null>(null);
 
-export function setAnalysisPending() {
+let nextAnalysisRequestToken = 0;
+let pendingAnalysisRequestToken: number | null = null;
+
+export function setAnalysisPending(): number {
+  const requestToken = ++nextAnalysisRequestToken;
+  pendingAnalysisRequestToken = requestToken;
   analysisState.set('pending');
+  analysisError.set(null);
+  return requestToken;
+}
+
+export function resetAnalysisPending(requestToken: number) {
+  if (pendingAnalysisRequestToken !== requestToken) return;
+  pendingAnalysisRequestToken = null;
+  analysisState.update((state) => (state === 'pending' ? 'idle' : state));
   analysisError.set(null);
 }
 
 export function setAnalysisSuccess(
   result: AnalysisResult,
-  imageId: string | null
+  imageId: string | null,
+  requestToken?: number
 ) {
+  if (
+    requestToken !== undefined &&
+    pendingAnalysisRequestToken !== requestToken
+  )
+    return;
+  pendingAnalysisRequestToken = null;
   if (imageId) {
     analysisById.update((cache) => ({ ...cache, [imageId]: result }));
   }
@@ -74,17 +94,25 @@ export function setAnalysisSuccess(
   analysisError.set(null);
 }
 
-export function setAnalysisError(message: string) {
+export function setAnalysisError(message: string, requestToken?: number) {
+  if (
+    requestToken !== undefined &&
+    pendingAnalysisRequestToken !== requestToken
+  )
+    return;
+  pendingAnalysisRequestToken = null;
   analysisError.set(message);
   analysisState.set('error');
 }
 
 export function resetAnalysis() {
+  pendingAnalysisRequestToken = null;
   analysisState.set('idle');
   analysisError.set(null);
 }
 
 export function clearAnalysisError() {
+  pendingAnalysisRequestToken = null;
   analysisError.set(null);
   analysisState.set('idle');
 }

@@ -283,8 +283,11 @@ export function removeFile(id: string) {
   valueAnalysisErrorByKey.update(remover);
   if (get(activeImageId) === id) {
     const remaining = get(images);
-    if (remaining.length > 0) {
-      switchToFile(remaining[0].id);
+    const successor = remaining.find(
+      (item) => !item.videoPath || item.frameTimestamp != null
+    );
+    if (successor) {
+      switchToFile(successor.id);
     } else {
       clearActiveSelection();
     }

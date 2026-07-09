@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   extractVideoFrame: vi.fn(),
   extractVideoStrip: vi.fn(),
   probeVideo: vi.fn(),
+  analyzeImage: vi.fn(),
   requestValueAnalysis: vi.fn(),
 }));
 
@@ -38,6 +39,10 @@ vi.mock('../../bridges/value-analysis', () => ({
   requestValueAnalysis: mocks.requestValueAnalysis,
 }));
 
+vi.mock('../../compute/bridge', () => ({
+  analyzeImage: mocks.analyzeImage,
+}));
+
 vi.mock('@tauri-apps/api/core', () => ({
   convertFileSrc: (path: string) => `asset://${path}`,
 }));
@@ -47,6 +52,7 @@ import {
   subscribeToVideoStripMode,
 } from '../home/video-controller.svelte';
 import { createAnalysisRunner } from '../home/analysis-runner.svelte';
+import { createColorsExportRunner } from '../exports/colors-export-runner.svelte';
 import { createValuesFileIngestion } from '../values/file-ingestion-values.svelte';
 import { createValueAnalysisRunner } from '../values/value-analysis-runner.svelte';
 import { createVideoScrubber } from '../values/video-scrubber.svelte';
@@ -56,10 +62,13 @@ import {
   analysisState,
   cacheVideoState,
   images,
+  params,
   removeFile,
   resetAnalysis,
   selectedFile,
+  setAnalysisError,
   setAnalysisPending,
+  setAnalysisSuccess,
   setFile,
   valueAnalysisByKey,
   valueAnalysisErrorByKey,
@@ -73,10 +82,44 @@ import {
   valueAnalysisKey,
 } from '../../stores/value-analysis';
 import type {
+  AnalysisResult,
+  ExportChecks,
   ImageEntry,
   SelectedImage,
   ValueAnalysisResult,
 } from '../../stores/ui';
+
+const stateRuneDescriptor = Object.getOwnPropertyDescriptor(
+  globalThis,
+  '$state'
+);
+const derivedRuneDescriptor = Object.getOwnPropertyDescriptor(
+  globalThis,
+  '$derived'
+);
+
+function installRuneShims() {
+  const derived = Object.assign(<T>(value: T) => value, {
+    by: <T>(fn: () => T) => fn(),
+  });
+  Object.defineProperty(globalThis, '$state', {
+    configurable: true,
+    value: <T>(value: T) => value,
+  });
+  Object.defineProperty(globalThis, '$derived', {
+    configurable: true,
+    value: derived,
+  });
+}
+
+function restoreRuneDescriptors() {
+  if (stateRuneDescriptor) {
+    Object.defineProperty(globalThis, '$state', stateRuneDescriptor);
+  }
+  if (derivedRuneDescriptor) {
+    Object.defineProperty(globalThis, '$derived', derivedRuneDescriptor);
+  }
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -170,6 +213,31 @@ function videoSelection() {
   };
 }
 
+function colorResult(): AnalysisResult {
+  return {
+    clusters: [],
+    iterations: 1,
+    durationMs: 1,
+    totalSamples: 1,
+    variant: 'audit',
+  };
+}
+
+function colorsRunner() {
+  installRuneShims();
+  return createAnalysisRunner({
+    setAnalysisPending,
+    setAnalysisSuccess,
+    setAnalysisError,
+    recordDevEvent: vi.fn(),
+  });
+}
+
+function valuesRunner() {
+  installRuneShims();
+  return createValueAnalysisRunner();
+}
+
 describe('audit reproductions for async control-flow invariants', () => {
   beforeEach(() => {
     Object.assign(globalThis, {
@@ -193,6 +261,7 @@ describe('audit reproductions for async control-flow invariants', () => {
     valueAnalysisStateByKey.set({});
     valueAnalysisErrorByKey.set({});
     resetAnalysis();
+    restoreRuneDescriptors();
     vi.restoreAllMocks();
     vi.useRealTimers();
   });
@@ -341,47 +410,132 @@ describe('audit reproductions for async control-flow invariants', () => {
     unsubscribe();
   });
 
-  it.fails(
-    'clears a canceled Values request out of the pending state',
-    async () => {
-      const request = deferred<ValueAnalysisResult>();
-      mocks.requestValueAnalysis.mockReturnValueOnce(request.promise);
-      const runner = createValueAnalysisRunner();
-      const file = {
-        ...imageEntry(),
-        dataset: emptyDataset,
-      } satisfies SelectedImage;
-      const pending = runner.ensureAnalysis(file, 3, false);
-      expect(
-        get(valueAnalysisStateByKey)[valueAnalysisKey(file.id, 3, false)]
-      ).toBe('pending');
+  it('AUD-003 clears a canceled Values request out of the pending state', async () => {
+    const request = deferred<ValueAnalysisResult>();
+    mocks.requestValueAnalysis.mockReturnValueOnce(request.promise);
+    const runner = valuesRunner();
+    const file = {
+      ...imageEntry(),
+      dataset: emptyDataset,
+    } satisfies SelectedImage;
+    const pending = runner.ensureAnalysis(file, 3, false);
+    expect(
+      get(valueAnalysisStateByKey)[valueAnalysisKey(file.id, 3, false)]
+    ).toBe('pending');
 
-      runner.cancelPending();
-      request.resolve(valueResult());
-      await pending;
+    runner.cancelPending();
+    request.resolve(valueResult());
+    await pending;
 
-      expect(
-        get(valueAnalysisStateByKey)[valueAnalysisKey(file.id, 3, false)]
-      ).not.toBe('pending');
-    }
-  );
+    expect(
+      get(valueAnalysisStateByKey)[valueAnalysisKey(file.id, 3, false)]
+    ).toBeUndefined();
+  });
 
-  it.fails(
-    'clears a canceled Colors request out of the global pending state',
-    () => {
-      const runner = createAnalysisRunner({
-        setAnalysisPending,
-        setAnalysisSuccess: vi.fn(),
-        setAnalysisError: vi.fn(),
-        recordDevEvent: vi.fn(),
-      });
-      setAnalysisPending();
+  it('AUD-003 preserves a newer Values request when an older runner cancels', async () => {
+    const requestA = deferred<ValueAnalysisResult>();
+    const requestB = deferred<ValueAnalysisResult>();
+    mocks.requestValueAnalysis
+      .mockReturnValueOnce(requestA.promise)
+      .mockReturnValueOnce(requestB.promise);
+    const runnerA = valuesRunner();
+    const runnerB = valuesRunner();
+    const file = {
+      ...imageEntry(),
+      dataset: emptyDataset,
+    } satisfies SelectedImage;
+    const pendingA = runnerA.ensureAnalysis(file, 3, false);
+    const pendingB = runnerB.ensureAnalysis(file, 3, false);
 
-      runner.cancelPending();
+    runnerA.cancelPending();
 
-      expect(get(analysisState)).not.toBe('pending');
-    }
-  );
+    expect(
+      get(valueAnalysisStateByKey)[valueAnalysisKey(file.id, 3, false)]
+    ).toBe('pending');
+    requestA.resolve(valueResult());
+    requestB.resolve(valueResult());
+    await Promise.all([pendingA, pendingB]);
+    expect(
+      get(valueAnalysisStateByKey)[valueAnalysisKey(file.id, 3, false)]
+    ).toBe('ready');
+  });
+
+  it('AUD-003 clears a canceled Colors request out of the global pending state', async () => {
+    const request = deferred<AnalysisResult>();
+    mocks.analyzeImage.mockReturnValueOnce(request.promise);
+    const runner = colorsRunner();
+    const file = {
+      ...imageEntry(),
+      dataset: emptyDataset,
+    } satisfies SelectedImage;
+    runner.scheduleAnalysisWith(file, get(params), 'idle');
+    vi.advanceTimersByTime(400);
+    expect(get(analysisState)).toBe('pending');
+
+    runner.cancelPending();
+
+    expect(get(analysisState)).toBe('idle');
+    request.resolve(colorResult());
+    await vi.runAllTimersAsync();
+    expect(get(analysisState)).toBe('idle');
+  });
+
+  it('AUD-003 preserves a newer Colors request when an older runner cancels', async () => {
+    const requestA = deferred<AnalysisResult>();
+    const requestB = deferred<AnalysisResult>();
+    mocks.analyzeImage
+      .mockReturnValueOnce(requestA.promise)
+      .mockReturnValueOnce(requestB.promise);
+    const runnerA = colorsRunner();
+    const runnerB = colorsRunner();
+    const file = {
+      ...imageEntry(),
+      dataset: emptyDataset,
+    } satisfies SelectedImage;
+    runnerA.scheduleAnalysisWith(file, get(params), 'idle');
+    runnerB.scheduleAnalysisWith(file, get(params), 'idle');
+    vi.advanceTimersByTime(400);
+
+    runnerA.cancelPending();
+
+    expect(get(analysisState)).toBe('pending');
+    requestA.resolve(colorResult());
+    requestB.resolve(colorResult());
+    await vi.runAllTimersAsync();
+    expect(get(analysisState)).toBe('ready');
+  });
+
+  it('AUD-003 lets Colors Exports auto-analyze after Home cancellation', async () => {
+    const request = deferred<AnalysisResult>();
+    mocks.analyzeImage.mockReturnValueOnce(request.promise);
+    const runner = colorsRunner();
+    const file = {
+      ...imageEntry(),
+      dataset: emptyDataset,
+    } satisfies SelectedImage;
+    runner.scheduleAnalysisWith(file, get(params), 'idle');
+    vi.advanceTimersByTime(400);
+    runner.cancelPending();
+    mocks.analyzeImage.mockResolvedValueOnce(colorResult());
+    const exportRunner = createColorsExportRunner({
+      getFile: () => file,
+      getResult: () => null,
+      getParams: () => get(params),
+      getExportScale: () => 2,
+      getExportChecks: () => ({}) as ExportChecks,
+      getGraphExportFormat: () => 'png',
+      getVideoStrip: () => null,
+      getVideoFrameLabel: () => 'timestamp',
+      getVideoFps: () => null,
+    });
+
+    await exportRunner.ensureColorAnalysis();
+
+    expect(mocks.analyzeImage).toHaveBeenCalledTimes(2);
+    expect(get(analysisState)).toBe('ready');
+    request.resolve(colorResult());
+    await vi.runAllTimersAsync();
+  });
 
   it('AUD-004: invalidates cached Values analysis when a logical video entry receives a new frame', () => {
     const first = imageEntry({
@@ -435,26 +589,42 @@ describe('audit reproductions for async control-flow invariants', () => {
     expect(imageStore.getResourceCounts().datasets).toBe(1);
   });
 
-  it.fails(
-    'does not promote a raw video into the image pipeline after removing the active image',
-    () => {
-      const active = imageEntry({
-        id: 'active-image',
-        path: '/tmp/active.png',
-      });
-      const rawVideo = imageEntry({
-        id: 'raw-video',
-        name: 'clip.mp4',
-        path: '/tmp/clip.mp4',
-        videoPath: '/tmp/clip.mp4',
-        previewUrl: null,
-      });
-      setFile(active, emptyDataset);
-      appendFile(rawVideo, emptyDataset);
+  it('AUD-006 does not promote a raw video after removing the active image', () => {
+    const active = imageEntry({ id: 'active-image', path: '/tmp/active.png' });
+    const rawVideo = imageEntry({
+      id: 'raw-video',
+      name: 'clip.mp4',
+      path: '/tmp/clip.mp4',
+      videoPath: '/tmp/clip.mp4',
+      previewUrl: null,
+    });
+    setFile(active, emptyDataset);
+    appendFile(rawVideo, emptyDataset);
 
-      removeFile(active.id);
+    removeFile(active.id);
 
-      expect(get(selectedFile)).toBeNull();
-    }
-  );
+    expect(get(selectedFile)).toBeNull();
+  });
+
+  it('AUD-006 skips a raw video and activates the next valid image', () => {
+    const active = imageEntry({ id: 'active-image', path: '/tmp/active.png' });
+    const rawVideo = imageEntry({
+      id: 'raw-video',
+      name: 'clip.mp4',
+      path: '/tmp/clip.mp4',
+      videoPath: '/tmp/clip.mp4',
+      previewUrl: null,
+    });
+    const fallback = imageEntry({
+      id: 'fallback-image',
+      path: '/tmp/fallback.png',
+    });
+    setFile(active, emptyDataset);
+    appendFile(rawVideo, emptyDataset);
+    appendFile(fallback, emptyDataset);
+
+    removeFile(active.id);
+
+    expect(get(selectedFile)?.id).toBe(fallback.id);
+  });
 });

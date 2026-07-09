@@ -5,12 +5,12 @@ tags:
   - Implementation
   - defects
   - stores
-kanban_status: in-progress
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-028-audit-remediation]]
 confidence_score: 0.8
 date_created: 2026-07-09
-date_completed:
+date_completed: 2026-07-09
 ---
 
 # AI-IMP-163-cancellation-and-media-promotion
@@ -50,12 +50,12 @@ Convert the three repros in place (keep AUD-ID references in test names).
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] AUD-003 Colors: cancel clears owned pending global state; token-guarded so newer requests survive; repro converted AND strengthened to use a runner-owned request.
-- [ ] AUD-003 Values: cancel clears owned per-key pending state; repro converted AND strengthened likewise.
-- [ ] AUD-003 ownership: newer-request-survives-cancellation regression test added (cancel A while B in flight; B's pending state intact).
-- [ ] Verify the Exports symptom: with pending cleared, `colors-export-runner` auto-analyze proceeds (assert via existing/new test).
-- [ ] AUD-006: `removeFile()` never activates a raw video as the still image; repro converted.
-- [ ] Full gates: `npm run test -- --run`, `npm run check`, `npm run lint`, `cargo fmt/clippy/test` (Rust untouched but gates run anyway).
+- [x] AUD-003 Colors: cancel clears owned pending global state; token-guarded so newer requests survive; repro converted AND strengthened to use a runner-owned request.
+- [x] AUD-003 Values: cancel clears owned per-key pending state; repro converted AND strengthened likewise.
+- [x] AUD-003 ownership: newer-request-survives-cancellation regression test added (cancel A while B in flight; B's pending state intact).
+- [x] Verify the Exports symptom: with pending cleared, `colors-export-runner` auto-analyze proceeds (assert via existing/new test).
+- [x] AUD-006: `removeFile()` never activates a raw video as the still image; repro converted.
+- [x] Full gates: `npm run test -- --run`, `npm run check`, `npm run lint`, `cargo fmt/clippy/test` (Rust untouched but gates run anyway).
 
 ### Acceptance Criteria
 
@@ -77,3 +77,9 @@ This section is filled out post work as you fill out the checklists.
 You SHOULD document any issues encountered and resolved during the sprint.
 You MUST document any failed implementations, blockers or missing tests.
 -->
+
+- The positive runner regressions initially exposed `rune_outside_svelte`: this repository's Node-only Vitest config does not transform `.svelte.ts` runes, while the former `it.fails` wrappers had treated that setup exception as an expected failure. Scoped `$state`/`$derived` shims in the authorized audit test now let the runner factories execute without changing test configuration.
+- Running Cargo clippy and tests concurrently caused expected build-directory lock contention. Both were rerun sequentially and passed; no Rust source changed.
+- `npm run check` passed with the two pre-existing AUD-020 accessibility warnings in `VideoPanel.svelte` and `ValuesView.svelte`.
+- The strengthened in-place audit coverage brings `audit-control-flow-races.spec.ts` above the 350-line CI threshold. Per the repository policy, the eventual commit will need `[loc-bypass]`; CI/hooks were intentionally not changed.
+- The checked-out branch reports `imp-163-cancellation`, rather than the longer branch name stated in the work order. No branch operation was attempted.

@@ -14,6 +14,7 @@ import {
   setValueAnalysisPending,
   setValueAnalysisSuccess,
   setValueAnalysisError,
+  resetValueAnalysisPending,
 } from '../../stores/ui';
 import { requestValueAnalysis } from '../../bridges/value-analysis';
 import { inferMimeType } from '../../bridges/fs';
@@ -29,6 +30,13 @@ export function createValueAnalysisRunner() {
   let levels = $state(3);
   let lastMaskKey = '';
   let currentToken = 0;
+  let pendingRequest: {
+    token: number;
+    imageId: string;
+    levels: number;
+    notanMode: boolean;
+    storeToken: number;
+  } | null = null;
   let analysisScrollLock: { top: number; token: number | null } | null = null;
 
   const renderAnalysis = $derived.by(() => analysis ?? displayAnalysis);
@@ -58,8 +66,20 @@ export function createValueAnalysisRunner() {
     });
   }
 
+  function clearOwnedPending() {
+    if (!pendingRequest) return;
+    resetValueAnalysisPending(
+      pendingRequest.imageId,
+      pendingRequest.levels,
+      pendingRequest.notanMode,
+      pendingRequest.storeToken
+    );
+    pendingRequest = null;
+  }
+
   function cancelPending() {
     currentToken += 1;
+    clearOwnedPending();
     analysisScrollLock = null;
   }
 
@@ -77,6 +97,7 @@ export function createValueAnalysisRunner() {
       );
       return;
     }
+    clearOwnedPending();
     currentToken += 1;
     const token = currentToken;
     if (analysisScrollLock) {
@@ -86,11 +107,18 @@ export function createValueAnalysisRunner() {
     void logEvent(
       `values:analysis:start levels=${requestedLevels} twoTone=${requestedNotanMode}`
     );
-    setValueAnalysisPending(
+    const storeToken = setValueAnalysisPending(
       currentFile.id,
       requestedLevels,
       requestedNotanMode
     );
+    pendingRequest = {
+      token,
+      imageId: currentFile.id,
+      levels: requestedLevels,
+      notanMode: requestedNotanMode,
+      storeToken,
+    };
     try {
       const result = await requestValueAnalysis(
         currentFile.path,
@@ -105,7 +133,8 @@ export function createValueAnalysisRunner() {
         currentFile.id,
         requestedLevels,
         requestedNotanMode,
-        result
+        result,
+        storeToken
       );
       restoreAnalysisScroll(token);
     } catch (err) {
@@ -117,8 +146,13 @@ export function createValueAnalysisRunner() {
         currentFile.id,
         requestedLevels,
         requestedNotanMode,
-        message
+        message,
+        storeToken
       );
+    } finally {
+      if (pendingRequest?.token === token) {
+        pendingRequest = null;
+      }
     }
   }
 
