@@ -35,7 +35,7 @@ Per finding, the minimal-correct mechanism (adapt if the code suggests better; r
 - **AUD-001**: bump/invalidate `decodeToken` (or capture path/name at request time) in `syncFromVideoState` so a completed extraction is attributed to the video it was requested for.
 - **AUD-002**: add a request-generation or selected-path guard to the Values probe path so an older probe cannot overwrite newer `videoState`.
 - **AUD-004**: `setFile()` replacing an existing entry must invalidate `valueAnalysisByKey` (and any error/state keyed on the entry).
-- **AUD-005** (Rust): store source mtime at higher precision (nanos where the platform provides it) and/or include file length in the freshness key in `value_analysis.rs`.
+- **AUD-005** (Rust): the freshness key must be strong enough that same-length content replaced within a coarse-mtime interval is detected. Acceptable: nanosecond mtime where the platform provides it, a content fingerprint (hash of file bytes or a sampled prefix), or a generation-unique source path. File length alone (or length + whole-second mtime) is NOT an acceptable fix. (Work-order review 2026-07-09.)
 - **AUD-007**: make the frame output path unique per request (e.g. include a generation/timestamp in the filename) OR serialize decodes per frameId so a stale ffmpeg write can never land under an accepted path; clean up superseded files.
 - **AUD-008**: cached-video activation restores `stripPath`/`stripId` alongside duration/fps/time/poster.
 - **AUD-009**: strip-mode subscription must react to changes made while Home is unmounted (drop the skip-first-value trick or seed it with the current value), and `regenerateStrip()`'s pending-flag lifecycle must let the replacement request run (clear or transfer `videoStripPending` correctly).
@@ -85,7 +85,7 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 **WHEN** the entry's frame is replaced at t=2 (including within the same wall-clock second).
 **THEN** Values recomputes; no stale analysis or stale disk-cache hit is served, and no concurrent decode overwrites the accepted frame file.
 
-**AND** all converted regression tests pass; zero expected-failure encodings remain in the touched files.
+**AND** all converted regression tests pass; zero expected-failure encodings remain **for this ticket's findings (AUD-001/002/004/005/007/008/009/010)**. The shared spec file also contains IMP-163's repros (AUD-003/006) — leave those untouched; they are converted by IMP-163 in parallel. (Work-order review 2026-07-09.)
 
 ### Issues Encountered
 

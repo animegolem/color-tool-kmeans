@@ -29,6 +29,7 @@ Audit findings AUD-003 and AUD-006 (`RAG/AI-LOG/2026-07-09-LOG-AI-control-flow-a
 ### Design/Approach
 
 - **AUD-003**: cancellation must reset the corresponding pending state — Colors: clear global `analysisState` pending (back to idle) when `cancel()` invalidates an in-flight request; Values: clear the per-key pending entry in `valueAnalysisByKey`/state map. Take care to only clear state the canceled request owns (compare tokens/keys) so a legitimately newer in-flight request isn't clobbered.
+  **Repro adequacy (work-order review 2026-07-09):** the existing AUD-003 repros set global pending state manually without a runner-owned request, so a blanket reset would pass them while clobbering newer requests. When converting them, STRENGTHEN them: start a real runner-owned analysis request, cancel it, assert pending clears; AND add an ownership test — start request A, start newer request B, cancel A, assert B's pending state survives.
 - **AUD-006**: `removeFile()`'s successor selection must skip raw-video entries when choosing a new *active image* (or route through the proper video-selection flow). A raw video may remain in the bucket; it must not become `selectedFile` for the still pipeline.
 
 Convert the three repros in place (keep AUD-ID references in test names).
@@ -49,8 +50,9 @@ Convert the three repros in place (keep AUD-ID references in test names).
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] AUD-003 Colors: cancel clears owned pending global state; token-guarded so newer requests survive; repro converted.
-- [ ] AUD-003 Values: cancel clears owned per-key pending state; repro converted.
+- [ ] AUD-003 Colors: cancel clears owned pending global state; token-guarded so newer requests survive; repro converted AND strengthened to use a runner-owned request.
+- [ ] AUD-003 Values: cancel clears owned per-key pending state; repro converted AND strengthened likewise.
+- [ ] AUD-003 ownership: newer-request-survives-cancellation regression test added (cancel A while B in flight; B's pending state intact).
 - [ ] Verify the Exports symptom: with pending cleared, `colors-export-runner` auto-analyze proceeds (assert via existing/new test).
 - [ ] AUD-006: `removeFile()` never activates a raw video as the still image; repro converted.
 - [ ] Full gates: `npm run test -- --run`, `npm run check`, `npm run lint`, `cargo fmt/clippy/test` (Rust untouched but gates run anyway).
