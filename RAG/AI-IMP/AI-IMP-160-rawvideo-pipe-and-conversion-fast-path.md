@@ -6,12 +6,12 @@ tags:
   - performance
   - video
   - spike
-kanban_status: planned
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-025-live-analysis-performance-spike]]
 confidence_score: 0.7
 date_created: 2026-07-09
-date_completed:
+date_completed: 2026-07-09
 ---
 
 # AI-IMP-160-rawvideo-pipe-and-conversion-fast-path
@@ -55,12 +55,12 @@ Correctness check for the LUT: max component error vs the `powf` path over all 1
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] `pipe` subcommand: persistent ffmpeg child, rawvideo rgb24 at fps=24 scale=WxH flags=area, `read_exact` frame loop with reusable buffer, stderr drained, child killed on exit/drop.
-- [ ] `pipe` reports: frame count, wall time, sustained fps, mean/p95/max per-frame read latency; errors are surfaced with actionable messages (bad path, ffmpeg missing, short read at EOF handled cleanly).
-- [ ] `convert` subcommand: three arms (current sequential / LUT sequential / LUT + rayon), deterministic input, 100 reps after warmup, ms/frame reported per arm.
-- [ ] Unit test: LUT sRGB→linear matches `color::srgb8_to_linear` within 1e-3 for all 256 channel values.
-- [ ] Generate a `testsrc2` clip in the scratch dir and run `pipe` against it in release; run `convert` in release; paste both output blocks into **Issues Encountered / Results**.
-- [ ] `cargo fmt --all -- --check`, `cargo clippy --workspace -- -D warnings`, and `cargo test --bin live_pipe_probe` (or workspace test run) pass.
+- [x] `pipe` subcommand: persistent ffmpeg child, rawvideo rgb24 at fps=24 scale=WxH flags=area, `read_exact` frame loop with reusable buffer, stderr drained, child killed on exit/drop.
+- [x] `pipe` reports: frame count, wall time, sustained fps, mean/p95/max per-frame read latency; errors are surfaced with actionable messages (bad path, ffmpeg missing, short read at EOF handled cleanly).
+- [x] `convert` subcommand: three arms (current sequential / LUT sequential / LUT + rayon), deterministic input, 100 reps after warmup, ms/frame reported per arm.
+- [x] Unit test: LUT sRGB→linear matches `color::srgb8_to_linear` within 1e-3 for all 256 channel values.
+- [x] Generate a `testsrc2` clip in the scratch dir and run `pipe` against it in release; run `convert` in release; paste both output blocks into **Issues Encountered / Results**.
+- [x] `cargo fmt --all -- --check`, `cargo clippy --workspace -- -D warnings`, and `cargo test --bin live_pipe_probe` (or workspace test run) pass. *(Completed by lead outside the Codex sandbox — see lead review note below.)*
 
 ### Acceptance Criteria
 
@@ -81,3 +81,43 @@ This section is filled out post work as you fill out the checklists.
 You SHOULD document any issues encountered and resolved during the sprint.
 You MUST document any failed implementations, blockers or missing tests.
 -->
+
+### Results
+
+Release `pipe` run against the generated 10 s, 1920×1080, 24 fps `testsrc2` clip (ffmpeg 8.1.2):
+
+```text
+Rawvideo pipe probe
+  clip: /var/folders/2z/dqrvv7553gd31klj_931ph2h0000gn/T/imp160-testclip.mp4
+  frame: 320x180 rgb24
+  frames: 240
+  wall time: 0.228 s
+  sustained fps: 1052.37
+  read latency mean: 0.938 ms
+  read latency p95: 1.778 ms
+  read latency max: 69.322 ms
+```
+
+Release `convert` run:
+
+```text
+OKLab conversion probe
+  frame: 57600 pixels; 100 reps after 10 warmup
+  current sequential rgb8_to_oklab: 2.858 ms/frame
+  LUT sequential: 0.917 ms/frame
+  LUT + rayon par_chunks: 0.381 ms/frame
+```
+
+### Issues Encountered
+
+- The standalone clone does not include the Tauri-configured vendored ffmpeg/ffprobe sidecars. Cargo validation used a transient `TAURI_CONFIG='{"bundle":{"externalBin":[]}}'` override; the release pipe run used `/opt/homebrew/bin/ffmpeg` explicitly. No repository configuration was changed.
+- The clone has no checked-in `Cargo.lock`, and the sandbox cannot reach `crates.io`. `cargo test --workspace` stops before test compilation while trying to download existing dev-dependency archives (first terminal error: `quick-error 1.2.3`; the offline attempt also identified `proptest` as unavailable). The LUT test itself was compiled as a Rust test harness through Cargo and passed (1 passed, 0 failed). `cargo fmt --all -- --check` and `cargo clippy --workspace -- -D warnings` pass. The combined gate checklist item remains open because the literal workspace test command could not complete.
+- The successful pipe run waits on and reaps its ffmpeg child. Independent zombie verification could not be performed because this sandbox rejects both `pgrep` (`Cannot get process list`) and `ps` (`operation not permitted`).
+- Negative-path release checks returned exit 1 with actionable diagnostics for both a missing clip and a missing ffmpeg executable. No implementation deviations or shipping-code changes were made.
+
+### Lead review (2026-07-09)
+
+- Closed the sandbox-blocked gates outside the sandbox: vendored ffmpeg/ffprobe sidecars copied into the clone (gitignored), then `cargo fmt --all -- --check` ✓, `cargo clippy --workspace -- -D warnings` ✓, `cargo test --workspace` ✓ (39 passed, 0 failed, including both LUT tests). Zombie check ✓ (`pgrep ffmpeg` empty after release pipe run).
+- Review addition: `lut_pipeline_matches_shipping_rgb8_to_oklab` test — the bin duplicates the OKLab matrix from `color.rs` (per the don't-touch rule), so the full LUT pipeline is now pinned to the shipping conversion (17³ RGB sweep, 1e-3 tolerance) to fail loudly on drift.
+- Lead reproduction of release runs (under mild CPU contention from a concurrent bench): pipe 884.47 fps sustained, read mean 1.118 ms / p95 2.017 ms; convert 2.814 / 0.918 / 0.303 ms per frame (current / LUT / LUT+rayon). Consistent with Codex's quieter-machine numbers above.
+- Conclusion for EPIC-025 FR-2/FR-3: ingestion + conversion together cost ~1.3 ms of the 41.7 ms frame budget; neither is a bottleneck. Commit made by lead because the Codex sandbox cannot write `.git` even in a standalone clone.
