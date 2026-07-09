@@ -6,8 +6,8 @@ tags:
   - defects
   - reliability
 date_created: 2026-07-09
-date_completed:
-kanban_status: in-progress
+date_completed: 2026-07-09
+kanban_status: completed
 AI_IMP_spawned:
   - AI-IMP-162
   - AI-IMP-163
@@ -51,17 +51,17 @@ All five delegated to GPT Sol (xhigh) instances in isolated clones per the deleg
 
 ### Functional Requirements
 
-- [ ] FR-1: Values frame extraction, probe ordering, and analysis caching are race-free across video switches (IMP-162).
-- [ ] FR-2: Frame and analysis identity is invalidated on entry replacement, same-second file replacement, and concurrent decode (IMP-162).
-- [ ] FR-3: Store dedup never strands datasets/object URLs (IMP-162).
-- [ ] FR-4: Cancellation clears pending analysis state in Colors and Values; Exports auto-analyze recovers (IMP-163).
-- [ ] FR-5: Removing the active image never activates a raw video as a still (IMP-163).
-- [ ] FR-6: Session-time pruning/removal lifecycle for value-analysis, clipboard, and snapshot artifacts (IMP-164).
-- [ ] FR-7: Source exports carry honest extensions or are converted (IMP-164).
-- [ ] FR-8: Drag/drop listener registration is cancel-safe (IMP-164).
-- [ ] FR-9: Barcode generation samples the full duration regardless of clip fps (IMP-164).
-- [ ] FR-10: Prettier config loads; pre-commit runs its checks; CI runs full suites (IMP-165).
-- [ ] FR-11: P4 corrections: timestamp carry, frameTimestamp 0, Settings copy or Batch wiring, RAG index consistency (IMP-166).
+- [x] FR-1: Values frame extraction, probe ordering, and analysis caching are race-free across video switches (IMP-162).
+- [x] FR-2: Frame and analysis identity is invalidated on entry replacement, same-second file replacement, and concurrent decode (IMP-162).
+- [x] FR-3: Store dedup never strands datasets/object URLs (IMP-162).
+- [x] FR-4: Cancellation clears pending analysis state in Colors and Values; Exports auto-analyze recovers (IMP-163).
+- [x] FR-5: Removing the active image never activates a raw video as a still (IMP-163).
+- [x] FR-6: Session-time pruning/removal lifecycle for value-analysis, clipboard, and snapshot artifacts (IMP-164).
+- [x] FR-7: Source exports carry honest extensions or are converted (IMP-164).
+- [x] FR-8: Drag/drop listener registration is cancel-safe (IMP-164).
+- [x] FR-9: Barcode generation samples the full duration regardless of clip fps (IMP-164).
+- [x] FR-10: Prettier config loads; pre-commit runs its checks; CI runs full suites (IMP-165).
+- [x] FR-11: P4 corrections: timestamp carry, frameTimestamp 0, Settings copy or Batch wiring, RAG index consistency (IMP-166).
 
 ### Non-Functional Requirements
 
@@ -71,4 +71,4 @@ All five delegated to GPT Sol (xhigh) instances in isolated clones per the deleg
 
 ## Implementation Breakdown
 
-Cut 2026-07-09. All five tickets delegated to GPT Sol xhigh instances in parallel isolated clones; merge order: IMP-165 first, then 162/163/164/166 as they land (lead resolves any `image.ts` hunk overlap between 162 and 163).
+Cut 2026-07-09; all five completed same day. All five tickets delegated to GPT Sol xhigh instances in parallel isolated clones; merge order: IMP-165 first, then 162/163/164/166 as they land (lead resolves any `image.ts` hunk overlap between 162 and 163).

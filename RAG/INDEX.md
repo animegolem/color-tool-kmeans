@@ -6,26 +6,12 @@
 
 | Status | EPICs | IMPs |
 |--------|-------|------|
-| In Progress | 1 | 0 |
+| In Progress | 0 | 0 |
 | Planned | 3 | 8 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
-| Completed | 17 | 120 |
+| Completed | 18 | 120 |
 | **Total** | **23** | **133** |
-
-## In Progress
-
-### [[AI-EPIC-028-audit-remediation|EPIC-028: Audit remediation]]
-> An external control-flow audit (Sol, 2026-07-09 — `RAG/AI-LOG/2026-07-09-LOG-AI-control-flow-and-defect-audit.md`) validated 21 defects in the ship...
-
-**IMPs:**
-- [[AI-IMP-162-video-identity-and-values-races|IMP-162]] Video identity and values races — completed
-- [[AI-IMP-163-cancellation-and-media-promotion|IMP-163]] Cancellation and media promotion — completed
-- [[AI-IMP-164-resource-and-export-integrity|IMP-164]] Resource and export integrity — completed
-- [[AI-IMP-165-repo-gates-repair|IMP-165]] Repo gates repair — completed
-- [[AI-IMP-166-p4-sweep|IMP-166]] P4 sweep — completed
-
----
 
 ## Planned
 
@@ -106,7 +92,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>17 EPICs, 89 IMPs completed</summary>
+<summary>18 EPICs, 89 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed
@@ -193,5 +179,11 @@ Generated from tracked files; binary assets excluded.
   - [[AI-IMP-159-warm-start-frame-sequence-benchmark|IMP-159]] Warm start frame sequence benchmark — completed
   - [[AI-IMP-160-rawvideo-pipe-and-conversion-fast-path|IMP-160]] Rawvideo pipe and conversion fast path — completed
   - [[AI-IMP-161-live-loop-prototype-and-findings|IMP-161]] Live loop prototype and findings — completed
+- [[AI-EPIC-028-audit-remediation|EPIC-028]] Audit remediation — 2026-07-09
+  - [[AI-IMP-162-video-identity-and-values-races|IMP-162]] Video identity and values races — completed
+  - [[AI-IMP-163-cancellation-and-media-promotion|IMP-163]] Cancellation and media promotion — completed
+  - [[AI-IMP-164-resource-and-export-integrity|IMP-164]] Resource and export integrity — completed
+  - [[AI-IMP-165-repo-gates-repair|IMP-165]] Repo gates repair — completed
+  - [[AI-IMP-166-p4-sweep|IMP-166]] P4 sweep — completed
 
 </details>
