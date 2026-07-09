@@ -88,6 +88,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/exports/polar-chart.ts (358 LOC)
 - tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (350 LOC)
 - tauri-app/src-tauri/src/bin/live_loop_probe.rs (347 LOC)
+- tauri-app/src/lib/views/__tests__/audit-control-flow-races.spec.ts (325 LOC)
 - tauri-app/src/lib/views/batch/batch-runner.svelte.ts (303 LOC)
 - tauri-app/src/lib/components/MediaBucket.svelte (302 LOC)
 
