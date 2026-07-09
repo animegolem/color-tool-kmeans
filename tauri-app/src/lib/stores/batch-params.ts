@@ -15,5 +15,5 @@ export const batchParams = writable<AnalysisParams>({
   histogramSort: 'frequency',
   showHistogram: true,
   showPolarChart: true,
-  showHueLightness: true
+  showHueLightness: true,
 });

@@ -25,6 +25,11 @@ export async function saveChart(
     return bridge.saveBlob(blob, `${baseName}-${suffix}.svg`);
   }
   const clampedScale = Math.max(1, Math.min(4, scale));
-  const blob = await svgToPngBlob(chart.svg, chart.width, chart.height, clampedScale);
+  const blob = await svgToPngBlob(
+    chart.svg,
+    chart.width,
+    chart.height,
+    clampedScale
+  );
   return bridge.saveBlob(blob, `${baseName}-${suffix}.png`);
 }

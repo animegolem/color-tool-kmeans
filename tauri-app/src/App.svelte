@@ -2,7 +2,19 @@
   import { onMount } from 'svelte';
   import type { View, ImageEntry } from './lib/stores/ui';
   import { get } from 'svelte/store';
-  import { currentView, setView, libraryDrawerOpen, navCollapsed, narrowMode, compactSidebars, setVideoState, requestMediaLoad, setFile, appendFile, updateEntryPreview } from './lib/stores/ui';
+  import {
+    currentView,
+    setView,
+    libraryDrawerOpen,
+    navCollapsed,
+    narrowMode,
+    compactSidebars,
+    setVideoState,
+    requestMediaLoad,
+    setFile,
+    appendFile,
+    updateEntryPreview,
+  } from './lib/stores/ui';
   import { isTauriEnv, tauriInvoke } from './lib/bridges/tauri';
   import { getFsBridge } from './lib/bridges/fs';
   import { ingestFileAsEntry } from './lib/services/media-ingestion';
@@ -29,7 +41,7 @@
     { key: 'values', label: 'Values' },
     { key: 'batch', label: 'Batch' },
     { key: 'exports', label: 'Exports' },
-    { key: 'settings', label: 'Settings' }
+    { key: 'settings', label: 'Settings' },
   ] as const;
 
   const activeViewLabel = $derived.by(() => {
@@ -42,7 +54,7 @@
     values: 'Value analysis derived from OKLab lightness.',
     batch: 'Batch analysis across multiple pinned images.',
     exports: 'Export analysis results as SVG, PNG, or CSV.',
-    settings: 'Application preferences and defaults.'
+    settings: 'Application preferences and defaults.',
   };
 
   const activeViewDesc = $derived(viewDescriptions[$currentView] ?? '');
@@ -93,7 +105,11 @@
   }
 
   function handleMediaAdd() {
-    if ($currentView === 'home' || $currentView === 'values' || $currentView === 'batch') {
+    if (
+      $currentView === 'home' ||
+      $currentView === 'values' ||
+      $currentView === 'batch'
+    ) {
       requestMediaLoad();
     } else {
       void globalChooseMedia();
@@ -132,7 +148,8 @@
       libraryDrawerOpen.set(false);
     };
     const handleEscSidebar = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || !(get(narrowMode) || get(compactSidebars))) return;
+      if (e.key !== 'Escape' || !(get(narrowMode) || get(compactSidebars)))
+        return;
       if (!get(navCollapsed) || get(libraryDrawerOpen)) {
         e.preventDefault();
         closeSidebars();
@@ -163,7 +180,8 @@
       if (!(target instanceof HTMLElement)) return false;
       if (target.isContentEditable) return true;
       const tag = target.tagName.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+      if (tag === 'input' || tag === 'textarea' || tag === 'select')
+        return true;
       return !!target.closest('[contenteditable="true"]');
     };
 
@@ -173,7 +191,14 @@
       if (event.altKey) return;
       if (isEditableTarget(event.target)) return;
       const key = event.key;
-      if (key !== '+' && key !== '=' && key !== '-' && key !== '_' && key !== '0') return;
+      if (
+        key !== '+' &&
+        key !== '=' &&
+        key !== '-' &&
+        key !== '_' &&
+        key !== '0'
+      )
+        return;
       event.preventDefault();
       if (key === '0') {
         void applyZoom(1);
@@ -208,14 +233,15 @@
       const data = Array.from(new Uint8Array(buffer));
       await tauriInvoke('save_file', { req: { path, data } });
       const previewUrl = convertFileSrc(path);
-      const entryId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+      const entryId =
+        globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
       const entry: ImageEntry = {
         id: entryId,
         name: `paste-${new Date().toISOString().slice(11, 19).replace(/:/g, '')}.png`,
         path,
         size: blob.size,
         source: { kind: 'path', path },
-        previewUrl
+        previewUrl,
       };
       const emptyDataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
       setVideoState(null);
@@ -298,7 +324,10 @@
 >
   <nav class="nav" class:collapsed={$navCollapsed}>
     {#each navItems as item}
-      <button class:active={$currentView === item.key} onclick={() => handleNavClick(item.key)}>
+      <button
+        class:active={$currentView === item.key}
+        onclick={() => handleNavClick(item.key)}
+      >
         {item.label}
       </button>
     {/each}
@@ -359,12 +388,20 @@
     {/if}
   </section>
 
-  <aside class="library-rail" class:library-rail--hidden={!$libraryDrawerOpen} aria-label="Library rail">
+  <aside
+    class="library-rail"
+    class:library-rail--hidden={!$libraryDrawerOpen}
+    aria-label="Library rail"
+  >
     <div id="library-drawer" class="library-drawer" aria-label="Library drawer">
       <div class="library-drawer__content">
         <header class="library-drawer__header">
           <h3>Media Bucket</h3>
-          <button class="library-section__add" onclick={handleMediaAdd} aria-label="Add media">+</button>
+          <button
+            class="library-section__add"
+            onclick={handleMediaAdd}
+            aria-label="Add media">+</button
+          >
         </header>
         <MediaBucket />
       </div>
@@ -372,8 +409,14 @@
   </aside>
 
   {#if effectiveNarrow && (!$navCollapsed || $libraryDrawerOpen)}
-    <div class="sidebar-backdrop" role="presentation"
-      onclick={() => { navCollapsed.set(true); libraryDrawerOpen.set(false); }}></div>
+    <div
+      class="sidebar-backdrop"
+      role="presentation"
+      onclick={() => {
+        navCollapsed.set(true);
+        libraryDrawerOpen.set(false);
+      }}
+    ></div>
   {/if}
 
   <ZoomOverlay />

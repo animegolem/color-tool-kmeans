@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { generateHueLightnessSvg } from '../hue-lightness';
 import type { AnalysisCluster } from '../../stores/analysis';
 
-function makeCluster(share: number, oklch: [number, number, number]): AnalysisCluster {
+function makeCluster(
+  share: number,
+  oklch: [number, number, number]
+): AnalysisCluster {
   return {
     count: Math.round(share * 100_000),
     share,
@@ -10,12 +13,14 @@ function makeCluster(share: number, oklch: [number, number, number]): AnalysisCl
     oklab: [oklch[0], 0, 0],
     oklch,
     rgb: { r: 128, g: 128, b: 128 },
-    hsv: [oklch[2], oklch[1] * 100, oklch[0] * 100]
+    hsv: [oklch[2], oklch[1] * 100, oklch[0] * 100],
   };
 }
 
 function circleRadii(svg: string): number[] {
-  return [...svg.matchAll(/<circle[^>]*\br="([\d.]+)"/g)].map((m) => Number(m[1]));
+  return [...svg.matchAll(/<circle[^>]*\br="([\d.]+)"/g)].map((m) =>
+    Number(m[1])
+  );
 }
 
 describe('generateHueLightnessSvg frequency sizing', () => {
@@ -23,11 +28,11 @@ describe('generateHueLightnessSvg frequency sizing', () => {
     const clusters = [
       makeCluster(0.5, [0.7, 0.1, 30]),
       makeCluster(0.05, [0.5, 0.1, 120]),
-      makeCluster(0.005, [0.3, 0.1, 240])
+      makeCluster(0.005, [0.3, 0.1, 240]),
     ];
     const { svg } = generateHueLightnessSvg(clusters, {
       symbolScale: 1,
-      sizeMode: 'frequency'
+      sizeMode: 'frequency',
     });
     const [large, mid, small] = circleRadii(svg);
     expect(large).toBeGreaterThan(mid);
@@ -43,11 +48,11 @@ describe('generateHueLightnessSvg frequency sizing', () => {
       makeCluster(0.1, [0.7, 0.1, 30]),
       ...Array.from({ length: 299 }, (_, i) =>
         makeCluster(0.9 / 299, [0.5, 0.05, (i * 360) / 299])
-      )
+      ),
     ];
     const { svg } = generateHueLightnessSvg(clusters, {
       symbolScale: 1,
-      sizeMode: 'frequency'
+      sizeMode: 'frequency',
     });
     const radii = circleRadii(svg);
     const distinct = new Set(radii);
@@ -59,11 +64,11 @@ describe('generateHueLightnessSvg frequency sizing', () => {
   it('keeps chroma mode normalization unchanged', () => {
     const clusters = [
       makeCluster(0.5, [0.7, 0.2, 30]),
-      makeCluster(0.5, [0.5, 0.05, 120])
+      makeCluster(0.5, [0.5, 0.05, 120]),
     ];
     const { svg } = generateHueLightnessSvg(clusters, {
       symbolScale: 1,
-      sizeMode: 'chroma'
+      sizeMode: 'chroma',
     });
     const [highChroma, lowChroma] = circleRadii(svg);
     expect(highChroma).toBeGreaterThan(lowChroma);

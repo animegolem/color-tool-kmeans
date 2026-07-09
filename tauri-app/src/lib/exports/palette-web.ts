@@ -1,7 +1,10 @@
 import type { AnalysisCluster } from '../stores/ui';
 
 function rgbToHex(rgb: { r: number; g: number; b: number }): string {
-  const h = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+  const h = (v: number) =>
+    Math.max(0, Math.min(255, Math.round(v)))
+      .toString(16)
+      .padStart(2, '0');
   return `#${h(rgb.r)}${h(rgb.g)}${h(rgb.b)}`.toUpperCase();
 }
 
@@ -32,9 +35,9 @@ export function generatePaletteJson(clusters: AnalysisCluster[]): string {
     oklch: [
       Math.round(c.oklch[0] * 1000) / 1000,
       Math.round(c.oklch[1] * 1000) / 1000,
-      Math.round(c.oklch[2] * 10) / 10
+      Math.round(c.oklch[2] * 10) / 10,
     ],
-    share: Math.round(c.share * 10000) / 10000
+    share: Math.round(c.share * 10000) / 10000,
   }));
 
   const output: PaletteJson = { palette, count: clusters.length };

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { composeValueStudy, type ValueStudyInput } from '../value-study-compositor';
+import {
+  composeValueStudy,
+  type ValueStudyInput,
+} from '../value-study-compositor';
 import { svgDocument, svgRect } from '../svg';
 
 const STABILITY_RUNS = 10;
@@ -14,7 +17,7 @@ function makeSvg(width: number, height: number, fill = '#cccccc'): string {
   return svgDocument({
     width,
     height,
-    content: svgRect({ x: 0, y: 0, width, height, fill })
+    content: svgRect({ x: 0, y: 0, width, height, fill }),
   });
 }
 
@@ -22,7 +25,7 @@ function makeInput(overrides?: Partial<ValueStudyInput>): ValueStudyInput {
   return {
     col1Svg: makeSvg(925, 1200),
     col2Svg: makeSvg(500, 600),
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -82,8 +85,9 @@ describe('composeValueStudy', () => {
 
   it('is deterministic over multiple runs', () => {
     const input = makeInput();
-    const results = Array.from({ length: STABILITY_RUNS }, () =>
-      composeValueStudy(input).svg
+    const results = Array.from(
+      { length: STABILITY_RUNS },
+      () => composeValueStudy(input).svg
     );
     expect(new Set(results).size).toBe(1);
   });

@@ -1,5 +1,15 @@
 <script lang="ts">
-  import { params, clusterMax, excludeTopMax, showSimplifiedTones, exportDir, videoStripMode, videoFrameLabel, graphExportFormat, compactSidebars } from '../stores/ui';
+  import {
+    params,
+    clusterMax,
+    excludeTopMax,
+    showSimplifiedTones,
+    exportDir,
+    videoStripMode,
+    videoFrameLabel,
+    graphExportFormat,
+    compactSidebars,
+  } from '../stores/ui';
   import { hydrateFromPrefs } from '../stores/ui';
   import { resetPrefs, DEFAULTS } from '../stores/prefs';
   import { open } from '@tauri-apps/plugin-dialog';
@@ -18,7 +28,11 @@
 
   async function handleBrowseDir() {
     try {
-      const selected = await open({ directory: true, multiple: false, title: 'Choose export directory' });
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: 'Choose export directory',
+      });
       if (selected && typeof selected === 'string') {
         $exportDir = selected;
       }
@@ -59,16 +73,44 @@
     <div class="field">
       <label>
         <span>Max clusters: <strong>{$clusterMax}</strong></span>
-        <input type="range" min="10" max="5000" step="10" bind:value={$clusterMax} />
-        <input class="number-input" type="number" min="10" max="5000" step="10" bind:value={$clusterMax} />
+        <input
+          type="range"
+          min="10"
+          max="5000"
+          step="10"
+          bind:value={$clusterMax}
+        />
+        <input
+          class="number-input"
+          type="number"
+          min="10"
+          max="5000"
+          step="10"
+          bind:value={$clusterMax}
+        />
       </label>
-      <p class="hint">Higher values (1000+) may slow processing on some hardware.</p>
+      <p class="hint">
+        Higher values (1000+) may slow processing on some hardware.
+      </p>
     </div>
     <div class="field">
       <label>
         <span>Max excludable clusters: <strong>{$excludeTopMax}</strong></span>
-        <input type="range" min="10" max="500" step="10" bind:value={$excludeTopMax} />
-        <input class="number-input" type="number" min="10" max="500" step="10" bind:value={$excludeTopMax} />
+        <input
+          type="range"
+          min="10"
+          max="500"
+          step="10"
+          bind:value={$excludeTopMax}
+        />
+        <input
+          class="number-input"
+          type="number"
+          min="10"
+          max="500"
+          step="10"
+          bind:value={$excludeTopMax}
+        />
       </label>
     </div>
     <div class="field">
@@ -102,22 +144,42 @@
     <div class="field">
       <span class="field-label">Strip Style</span>
       <label class="choice">
-        <input type="radio" name="videoStripMode" value="filmstrip" bind:group={$videoStripMode} />
+        <input
+          type="radio"
+          name="videoStripMode"
+          value="filmstrip"
+          bind:group={$videoStripMode}
+        />
         Filmstrip (scene thumbnails)
       </label>
       <label class="choice">
-        <input type="radio" name="videoStripMode" value="barcode" bind:group={$videoStripMode} />
+        <input
+          type="radio"
+          name="videoStripMode"
+          value="barcode"
+          bind:group={$videoStripMode}
+        />
         Barcode (per-frame color)
       </label>
     </div>
     <div class="field">
       <span class="field-label">Export Frame Label</span>
       <label class="choice">
-        <input type="radio" name="videoFrameLabel" value="timestamp" bind:group={$videoFrameLabel} />
+        <input
+          type="radio"
+          name="videoFrameLabel"
+          value="timestamp"
+          bind:group={$videoFrameLabel}
+        />
         Timestamp (e.g. -00m03s25)
       </label>
       <label class="choice">
-        <input type="radio" name="videoFrameLabel" value="frame" bind:group={$videoFrameLabel} />
+        <input
+          type="radio"
+          name="videoFrameLabel"
+          value="frame"
+          bind:group={$videoFrameLabel}
+        />
         Frame number (e.g. -f97)
       </label>
     </div>
@@ -128,25 +190,44 @@
     <div class="field">
       <span class="field-label">Graph export format</span>
       <label class="choice">
-        <input type="radio" name="graphExportFormat" value="svg" bind:group={$graphExportFormat} />
+        <input
+          type="radio"
+          name="graphExportFormat"
+          value="svg"
+          bind:group={$graphExportFormat}
+        />
         SVG (raw vector)
       </label>
       <label class="choice">
-        <input type="radio" name="graphExportFormat" value="png" bind:group={$graphExportFormat} />
+        <input
+          type="radio"
+          name="graphExportFormat"
+          value="png"
+          bind:group={$graphExportFormat}
+        />
         PNG (rasterized at scale)
       </label>
     </div>
     <label>
       <span>Save directory</span>
       <div class="dir-row">
-        <span class="dir-path" title={$exportDir ?? 'Not set'}>{truncatePath($exportDir, 40)}</span>
-        <button type="button" class="browse-btn" onclick={handleBrowseDir}>Browse</button>
+        <span class="dir-path" title={$exportDir ?? 'Not set'}
+          >{truncatePath($exportDir, 40)}</span
+        >
+        <button type="button" class="browse-btn" onclick={handleBrowseDir}
+          >Browse</button
+        >
       </div>
     </label>
   </div>
 
   <div class="group reset-group">
-    <button type="button" class="reset-btn" onclick={handleReset} disabled={isResetting}>
+    <button
+      type="button"
+      class="reset-btn"
+      onclick={handleReset}
+      disabled={isResetting}
+    >
       Reset to defaults
     </button>
   </div>

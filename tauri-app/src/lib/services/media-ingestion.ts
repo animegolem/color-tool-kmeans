@@ -21,7 +21,8 @@ export function ingestFileAsEntry(
 ): IngestResult {
   const nativeMode = isTauriEnv() && !!sel.path;
   const isVideo = isVideoFile(sel);
-  const entryId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+  const entryId =
+    globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 
   const previewUrl = isVideo
     ? null
@@ -31,9 +32,10 @@ export function ingestFileAsEntry(
         ? URL.createObjectURL(sel.blob)
         : null;
 
-  const source: ImageEntry['source'] = nativeMode && sel.path
-    ? { kind: 'path', path: sel.path }
-    : { kind: 'blob' };
+  const source: ImageEntry['source'] =
+    nativeMode && sel.path
+      ? { kind: 'path', path: sel.path }
+      : { kind: 'blob' };
 
   const entry: ImageEntry = {
     id: entryId,
@@ -42,7 +44,7 @@ export function ingestFileAsEntry(
     ...(isVideo && sel.path ? { videoPath: sel.path } : {}),
     size: sel.size,
     source,
-    previewUrl
+    previewUrl,
   };
 
   const dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
@@ -51,9 +53,16 @@ export function ingestFileAsEntry(
   if (isVideo && sel.path && updatePreview) {
     const videoPath = sel.path;
     const frameId = `thumb-${entryId}`;
-    extractVideoFrame({ path: videoPath, frameId, timestamp: 0, maxDimension: 200 })
+    extractVideoFrame({
+      path: videoPath,
+      frameId,
+      timestamp: 0,
+      maxDimension: 200,
+    })
       .then((res) => updatePreview(entryId, convertFileSrc(res.path)))
-      .catch((err) => console.warn('[media-ingestion] Video thumbnail extraction failed', err));
+      .catch((err) =>
+        console.warn('[media-ingestion] Video thumbnail extraction failed', err)
+      );
   }
 
   return { entry, dataset };

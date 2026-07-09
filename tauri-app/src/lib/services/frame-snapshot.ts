@@ -29,16 +29,25 @@ function formatTimestamp(seconds: number): string {
  * the bucket treats it as an independent still — clickable, analyzable, and
  * pinnable — rather than re-routing back into the source video.
  */
-export async function snapshotCurrentFrame(req: SnapshotRequest): Promise<void> {
+export async function snapshotCurrentFrame(
+  req: SnapshotRequest
+): Promise<void> {
   if (!req.framePath) return;
-  const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
-  const dest = await join(await appLocalDataDir(), 'snapshots', `snapshot-${id}.png`);
+  const id =
+    globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+  const dest = await join(
+    await appLocalDataDir(),
+    'snapshots',
+    `snapshot-${id}.png`
+  );
 
   try {
     await tauriInvoke('copy_file', { req: { source: req.framePath, dest } });
   } catch (err) {
     console.error('[frame-snapshot] copy failed', err);
-    void logEvent(`snapshot:error message=${err instanceof Error ? err.message : String(err)}`);
+    void logEvent(
+      `snapshot:error message=${err instanceof Error ? err.message : String(err)}`
+    );
     return;
   }
 
@@ -49,7 +58,7 @@ export async function snapshotCurrentFrame(req: SnapshotRequest): Promise<void> 
     path: dest,
     size: 0,
     source: { kind: 'path', path: dest },
-    previewUrl: convertFileSrc(dest)
+    previewUrl: convertFileSrc(dest),
   };
   const dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
   appendFile(entry, dataset);

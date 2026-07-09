@@ -9,7 +9,11 @@ import { generateHueLightnessSvg } from '../hue-lightness';
 const STABILITY_RUNS = 10;
 const XMLNS_PATTERN = /xmlns(?::xlink)?="https?:\/\/[^"]+"/g;
 
-function assertValidSvg(svg: string, expectedWidth: number, expectedHeight: number) {
+function assertValidSvg(
+  svg: string,
+  expectedWidth: number,
+  expectedHeight: number
+) {
   expect(svg).toMatch(/^<\?xml version="1\.0"/);
   expect(svg).toContain('<svg');
   expect(svg).toContain('</svg>');
@@ -64,8 +68,9 @@ describe('generatePaletteSvg determinism', () => {
   });
 
   it('is stable over N runs', () => {
-    const results = Array.from({ length: STABILITY_RUNS }, () =>
-      generatePaletteSvg(FIXED_CLUSTERS).svg
+    const results = Array.from(
+      { length: STABILITY_RUNS },
+      () => generatePaletteSvg(FIXED_CLUSTERS).svg
     );
     expect(new Set(results).size).toBe(1);
   });
@@ -100,14 +105,18 @@ describe('generateCircleGraphSvg determinism', () => {
       });
 
       it('is stable over N runs', () => {
-        const results = Array.from({ length: STABILITY_RUNS }, () =>
-          generateCircleGraphSvg(FIXED_CLUSTERS, opts).svg
+        const results = Array.from(
+          { length: STABILITY_RUNS },
+          () => generateCircleGraphSvg(FIXED_CLUSTERS, opts).svg
         );
         expect(new Set(results).size).toBe(1);
       });
 
       it('produces valid SVG structure', () => {
-        const { svg, width, height } = generateCircleGraphSvg(FIXED_CLUSTERS, opts);
+        const { svg, width, height } = generateCircleGraphSvg(
+          FIXED_CLUSTERS,
+          opts
+        );
         assertValidSvg(svg, width, height);
         expect(svg).toContain(`data-color-model="${mode}"`);
       });
@@ -148,14 +157,18 @@ describe('generateHistogramSvg determinism', () => {
       });
 
       it('is stable over N runs', () => {
-        const results = Array.from({ length: STABILITY_RUNS }, () =>
-          generateHistogramSvg(FIXED_CLUSTERS, opts).svg
+        const results = Array.from(
+          { length: STABILITY_RUNS },
+          () => generateHistogramSvg(FIXED_CLUSTERS, opts).svg
         );
         expect(new Set(results).size).toBe(1);
       });
 
       it('produces valid SVG structure', () => {
-        const { svg, width, height } = generateHistogramSvg(FIXED_CLUSTERS, opts);
+        const { svg, width, height } = generateHistogramSvg(
+          FIXED_CLUSTERS,
+          opts
+        );
         assertValidSvg(svg, width, height);
         expect(svg).toContain('data-view="histogram"');
       });
@@ -192,14 +205,18 @@ describe('generateHueLightnessSvg determinism', () => {
       });
 
       it('is stable over N runs', () => {
-        const results = Array.from({ length: STABILITY_RUNS }, () =>
-          generateHueLightnessSvg(FIXED_CLUSTERS, opts).svg
+        const results = Array.from(
+          { length: STABILITY_RUNS },
+          () => generateHueLightnessSvg(FIXED_CLUSTERS, opts).svg
         );
         expect(new Set(results).size).toBe(1);
       });
 
       it('produces valid SVG structure', () => {
-        const { svg, width, height } = generateHueLightnessSvg(FIXED_CLUSTERS, opts);
+        const { svg, width, height } = generateHueLightnessSvg(
+          FIXED_CLUSTERS,
+          opts
+        );
         assertValidSvg(svg, width, height);
         expect(svg).toContain('data-view="hue-lightness"');
       });

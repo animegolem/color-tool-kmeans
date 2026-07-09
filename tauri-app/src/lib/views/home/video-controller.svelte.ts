@@ -2,7 +2,11 @@ import { assetUrl } from '../../utils/asset-url';
 import type { ImageEntry, VideoState, VideoCacheEntry } from '../../stores/ui';
 import type { FileSelection } from '../../bridges/fs';
 import { inferMimeType } from '../../bridges/fs';
-import { extractVideoFrame, extractVideoStrip, probeVideo } from '../../bridges/video';
+import {
+  extractVideoFrame,
+  extractVideoStrip,
+  probeVideo,
+} from '../../bridges/video';
 import { logEvent } from '../../bridges/log';
 import { devlog } from '../../utils/devlog';
 import { formatTime } from '../../utils/time';
@@ -10,14 +14,25 @@ import { setActivePath } from '../../services/active-image';
 
 export interface VideoControllerDeps {
   isNativeModeActive: () => boolean;
-  buildPreviewUrl: (selection: FileSelection, nativeMode: boolean) => string | null;
+  buildPreviewUrl: (
+    selection: FileSelection,
+    nativeMode: boolean
+  ) => string | null;
   maxDimensionForQuality: (quality: number) => number;
-  setFile: (entry: ImageEntry, dataset: { width: number; height: number; pixels: Uint8Array }) => void;
+  setFile: (
+    entry: ImageEntry,
+    dataset: { width: number; height: number; pixels: Uint8Array }
+  ) => void;
   setVideoState: (state: VideoState | null) => void;
   clearFile: () => void;
   getQuality: () => number;
   setBannerMessage: (msg: string) => void;
-  scheduleAnalysisWith: (file: ImageEntry & { dataset: { width: number; height: number; pixels: Uint8Array } }, params: any) => void;
+  scheduleAnalysisWith: (
+    file: ImageEntry & {
+      dataset: { width: number; height: number; pixels: Uint8Array };
+    },
+    params: any
+  ) => void;
   getCurrentParams: () => any;
   clearLastRequestKey: () => void;
   captureAnalysisScroll: () => void;
@@ -58,12 +73,16 @@ export function createVideoController(deps: VideoControllerDeps) {
   function videoResourceSnapshot() {
     return {
       hasSrcUrl: videoSrcUrl !== null,
-      srcUrlKind: videoSrcUrl ? (videoSrcUrl.startsWith('blob:') ? 'blob' : 'asset') : null,
+      srcUrlKind: videoSrcUrl
+        ? videoSrcUrl.startsWith('blob:')
+          ? 'blob'
+          : 'asset'
+        : null,
       hasPosterUrl: videoPosterUrl !== null,
       hasStripUrl: videoStripUrl !== null,
       decodeToken: videoDecodeToken,
       probePending: videoProbePending,
-      stripPending: videoStripPending
+      stripPending: videoStripPending,
     };
   }
 
@@ -76,7 +95,7 @@ export function createVideoController(deps: VideoControllerDeps) {
       stripPath: videoStripPath,
       stripId: videoStripId,
       posterPath: videoPosterPath,
-      frameId: videoFrameId
+      frameId: videoFrameId,
     };
   }
 
@@ -93,7 +112,11 @@ export function createVideoController(deps: VideoControllerDeps) {
     const prevSrcUrl = videoSrcUrl;
     devlog('video:reset', 'Reset video state', {
       prevFrameId,
-      prevSrcUrl: prevSrcUrl ? (prevSrcUrl.startsWith('blob:') ? 'blob' : 'asset') : null
+      prevSrcUrl: prevSrcUrl
+        ? prevSrcUrl.startsWith('blob:')
+          ? 'blob'
+          : 'asset'
+        : null,
     });
     videoSelection = null;
     if (videoSrcUrl && videoSrcUrl.startsWith('blob:')) {
@@ -138,7 +161,7 @@ export function createVideoController(deps: VideoControllerDeps) {
     devlog('video:pushState', 'Push video state', {
       duration: videoDuration,
       hasPoster: videoPosterPath !== null,
-      hasStrip: videoStripPath !== null
+      hasStrip: videoStripPath !== null,
     });
     deps.setVideoState({
       path: videoSelection.path,
@@ -147,7 +170,7 @@ export function createVideoController(deps: VideoControllerDeps) {
       fps: videoFps,
       currentTime: videoCurrentTime,
       stripPath: videoStripPath,
-      posterPath: videoPosterPath
+      posterPath: videoPosterPath,
     });
   }
 
@@ -158,7 +181,7 @@ export function createVideoController(deps: VideoControllerDeps) {
       path: state.path,
       size: 0,
       blob: new Blob([], { type: mime }),
-      mimeType: mime
+      mimeType: mime,
     };
   }
 
@@ -167,12 +190,20 @@ export function createVideoController(deps: VideoControllerDeps) {
   const BARCODE_HEIGHT = 120;
 
   function scheduleVideoStripGeneration() {
-    if (!videoSelection?.path || videoStripPending || videoDuration <= 0 || videoStripPath) return;
+    if (
+      !videoSelection?.path ||
+      videoStripPending ||
+      videoDuration <= 0 ||
+      videoStripPath
+    )
+      return;
     if (!deps.isNativeModeActive()) return;
 
     const mode = deps.getVideoStripMode();
     const stripId =
-      videoStripId ?? (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+      videoStripId ??
+      globalThis.crypto?.randomUUID?.() ??
+      `${Date.now()}-${Math.random()}`;
     videoStripId = stripId;
     videoStripPending = true;
 
@@ -185,10 +216,13 @@ export function createVideoController(deps: VideoControllerDeps) {
       const totalFrames = Math.round(videoDuration * fps);
       if (totalFrames > BARCODE_REJECT_FRAMES) {
         videoStripPending = false;
-        void logEvent(`video:strip:skip mode=barcode frames=${totalFrames} (exceeds limit)`);
+        void logEvent(
+          `video:strip:skip mode=barcode frames=${totalFrames} (exceeds limit)`
+        );
         return;
       }
-      thumbCount = totalFrames > BARCODE_MAX_FRAMES ? BARCODE_MAX_FRAMES : totalFrames;
+      thumbCount =
+        totalFrames > BARCODE_MAX_FRAMES ? BARCODE_MAX_FRAMES : totalFrames;
       thumbWidth = 1;
       thumbHeight = BARCODE_HEIGHT;
     } else {
@@ -199,7 +233,8 @@ export function createVideoController(deps: VideoControllerDeps) {
 
     void logEvent(`video:strip:start mode=${mode} count=${thumbCount}`);
     const requestPath = videoSelection.path;
-    const isStale = () => videoStripId !== stripId || videoSelection?.path !== requestPath;
+    const isStale = () =>
+      videoStripId !== stripId || videoSelection?.path !== requestPath;
     extractVideoStrip({
       path: requestPath,
       stripId,
@@ -207,7 +242,7 @@ export function createVideoController(deps: VideoControllerDeps) {
       thumbCount,
       thumbWidth,
       thumbHeight,
-      stripMode: mode
+      stripMode: mode,
     })
       .then((response) => {
         if (isStale()) {
@@ -233,7 +268,8 @@ export function createVideoController(deps: VideoControllerDeps) {
     if (!videoSelection?.path || videoDuration <= 0) return;
     videoStripPath = null;
     videoStripUrl = null;
-    videoStripId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    videoStripId =
+      globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     scheduleVideoStripGeneration();
   }
 
@@ -249,36 +285,49 @@ export function createVideoController(deps: VideoControllerDeps) {
     const requestTime = videoCurrentTime;
     const wasNull = videoFrameId === null;
     const frameId =
-      videoFrameId ?? (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+      videoFrameId ??
+      globalThis.crypto?.randomUUID?.() ??
+      `${Date.now()}-${Math.random()}`;
     videoFrameId = frameId;
     const quality = deps.getQuality();
     const maxDimension = deps.maxDimensionForQuality(quality);
     const token = ++videoDecodeToken;
     const decodeCid = _currentLoadCid;
     devlog('video:frameDecode:schedule', 'Schedule frame decode', {
-      frameId, wasNull, cid: decodeCid, token
+      frameId,
+      wasNull,
+      cid: decodeCid,
+      token,
     });
     frameDecoding = true;
     videoDecodeTimer = setTimeout(async () => {
       if (!videoSelection?.path || token !== videoDecodeToken) {
         devlog('video:frameDecode:stale', 'Stale token — skipping', {
-          expectedToken: token, currentToken: videoDecodeToken
+          expectedToken: token,
+          currentToken: videoDecodeToken,
         });
         if (token === videoDecodeToken) frameDecoding = false;
         return;
       }
-      devlog('video:frameDecode:exec', 'Execute frame decode', { frameId, token, cid: decodeCid });
+      devlog('video:frameDecode:exec', 'Execute frame decode', {
+        frameId,
+        token,
+        cid: decodeCid,
+      });
       try {
-        void logEvent(`video:frame:start t=${requestTime.toFixed(2)} max=${maxDimension}`);
+        void logEvent(
+          `video:frame:start t=${requestTime.toFixed(2)} max=${maxDimension}`
+        );
         const response = await extractVideoFrame({
           path: videoSelection.path,
           frameId,
           timestamp: requestTime,
-          maxDimension
+          maxDimension,
         });
         if (token !== videoDecodeToken) {
           devlog('video:frameDecode:stale', 'Stale after extract', {
-            expectedToken: token, currentToken: videoDecodeToken
+            expectedToken: token,
+            currentToken: videoDecodeToken,
           });
           return;
         }
@@ -297,7 +346,7 @@ export function createVideoController(deps: VideoControllerDeps) {
           frameTimestamp: requestTime,
           size: 0,
           source: { kind: 'path', path: framePath },
-          previewUrl
+          previewUrl,
         };
         const wasRestoring = _restoringFromSessionCache;
         _restoringFromSessionCache = false;
@@ -308,20 +357,30 @@ export function createVideoController(deps: VideoControllerDeps) {
           deps.seedAnalysisKey(frameId, deps.getCurrentParams());
         } else {
           deps.clearLastRequestKey();
-          deps.scheduleAnalysisWith({ ...entry, dataset }, deps.getCurrentParams());
+          deps.scheduleAnalysisWith(
+            { ...entry, dataset },
+            deps.getCurrentParams()
+          );
         }
         pushVideoState();
         saveToCache(); // capture posterPath so cache restores show hasPoster=true
         devlog('video:frameDecode:done', 'Frame decode done', {
-          frameId, framePath, cid: decodeCid, ...videoResourceSnapshot()
+          frameId,
+          framePath,
+          cid: decodeCid,
+          ...videoResourceSnapshot(),
         });
-        void logEvent(`video:frame:done t_req=${requestTime.toFixed(4)} t_ffmpeg=${response.timestampUsed}`);
+        void logEvent(
+          `video:frame:done t_req=${requestTime.toFixed(4)} t_ffmpeg=${response.timestampUsed}`
+        );
       } catch (error) {
         if (token !== videoDecodeToken) return;
         console.error('[home] Video frame decode failed', error);
         const message = error instanceof Error ? error.message : String(error);
         void logEvent(`video:frame:error message=${message}`);
-        deps.setBannerMessage('Failed to decode video frame. Please try another file.');
+        deps.setBannerMessage(
+          'Failed to decode video frame. Please try another file.'
+        );
       } finally {
         if (token === videoDecodeToken) frameDecoding = false;
       }
@@ -364,13 +423,18 @@ export function createVideoController(deps: VideoControllerDeps) {
     }
   }
 
-  function loadVideoSelection(selection: FileSelection, existingId?: string, cid?: string) {
+  function loadVideoSelection(
+    selection: FileSelection,
+    existingId?: string,
+    cid?: string
+  ) {
     const loadCid = cid ?? devlog.cid();
-    const nativeMode =
-      deps.isNativeModeActive() && !!selection.path;
+    const nativeMode = deps.isNativeModeActive() && !!selection.path;
     devlog('video:load', 'Starting video load', {
-      path: selection.path ?? null, existingId: existingId ?? null, cid: loadCid,
-      ...videoResourceSnapshot()
+      path: selection.path ?? null,
+      existingId: existingId ?? null,
+      cid: loadCid,
+      ...videoResourceSnapshot(),
     });
     if (!nativeMode || !selection.path) {
       deps.setBannerMessage('Video analysis requires the desktop app.');
@@ -378,11 +442,15 @@ export function createVideoController(deps: VideoControllerDeps) {
     }
 
     // Check session cache before probing
-    const cached = selection.path ? deps.getCachedVideoState(selection.path) : null;
+    const cached = selection.path
+      ? deps.getCachedVideoState(selection.path)
+      : null;
     if (cached) {
       devlog('video:load:cacheHit', 'Restoring from session cache', {
-        path: selection.path, cid: loadCid,
-        duration: cached.duration, hasStrip: cached.stripPath !== null
+        path: selection.path,
+        cid: loadCid,
+        duration: cached.duration,
+        hasStrip: cached.stripPath !== null,
       });
       saveToCache(); // snapshot outgoing video before reset
       resetVideoState();
@@ -394,8 +462,10 @@ export function createVideoController(deps: VideoControllerDeps) {
       _pendingSeekTime = cached.currentTime > 0 ? cached.currentTime : null;
       videoFps = cached.fps;
       videoFrameId = existingId ?? cached.frameId;
-      videoStripId = cached.stripId ??
-        (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+      videoStripId =
+        cached.stripId ??
+        globalThis.crypto?.randomUUID?.() ??
+        `${Date.now()}-${Math.random()}`;
       if (cached.stripPath) {
         videoStripPath = cached.stripPath;
         videoStripUrl = assetUrl(cached.stripPath);
@@ -420,12 +490,17 @@ export function createVideoController(deps: VideoControllerDeps) {
     videoCurrentTime = 0;
     videoFps = null;
     const reusedFrameId = !!existingId;
-    videoFrameId = existingId ??
-      (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+    videoFrameId =
+      existingId ??
+      globalThis.crypto?.randomUUID?.() ??
+      `${Date.now()}-${Math.random()}`;
     videoStripId =
       globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     devlog('video:load:ids', 'Assigned IDs', {
-      frameId: videoFrameId, stripId: videoStripId, reusedFrameId, cid: loadCid
+      frameId: videoFrameId,
+      stripId: videoStripId,
+      reusedFrameId,
+      cid: loadCid,
     });
     pushVideoState();
     void probeVideoDuration(selection.path);
@@ -441,8 +516,10 @@ export function createVideoController(deps: VideoControllerDeps) {
     videoFps = state.fps ?? null;
     videoCurrentTime = state.currentTime ?? 0;
     _pendingSeekTime = videoCurrentTime > 0 ? videoCurrentTime : null;
-    videoFrameId = deps.findExistingFrameId(state.path) ??
-      (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+    videoFrameId =
+      deps.findExistingFrameId(state.path) ??
+      globalThis.crypto?.randomUUID?.() ??
+      `${Date.now()}-${Math.random()}`;
     videoStripId =
       globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     if (state.stripPath) {
@@ -503,7 +580,8 @@ export function createVideoController(deps: VideoControllerDeps) {
         videoDuration = seekEnd;
       }
     }
-    const seekTarget = _pendingSeekTime ?? (videoCurrentTime > 0 ? videoCurrentTime : null);
+    const seekTarget =
+      _pendingSeekTime ?? (videoCurrentTime > 0 ? videoCurrentTime : null);
     if (seekTarget !== null && seekTarget > 0) {
       videoElement.currentTime = seekTarget;
       videoCurrentTime = seekTarget;
@@ -517,7 +595,7 @@ export function createVideoController(deps: VideoControllerDeps) {
       width: videoElement.videoWidth,
       height: videoElement.videoHeight,
       willStartStrip: !videoStripPath && videoDuration > 0,
-      willStartFrame: !videoPosterPath
+      willStartFrame: !videoPosterPath,
     });
     void logEvent(`video:metadata duration=${videoDuration.toFixed(2)}`);
     if (!videoStripPath && videoDuration > 0) {
@@ -537,7 +615,8 @@ export function createVideoController(deps: VideoControllerDeps) {
 
   function handleVideoLoadedData() {
     if (!videoElement) return;
-    const seekTarget = _pendingSeekTime ?? (videoCurrentTime > 0 ? videoCurrentTime : null);
+    const seekTarget =
+      _pendingSeekTime ?? (videoCurrentTime > 0 ? videoCurrentTime : null);
     if (
       seekTarget !== null &&
       Math.abs(videoElement.currentTime - seekTarget) > 0.01
@@ -546,8 +625,12 @@ export function createVideoController(deps: VideoControllerDeps) {
       videoCurrentTime = seekTarget;
     }
     _pendingSeekTime = null;
-    const support = videoElement.canPlayType('video/mp4; codecs="avc1.64001f, mp4a.40.2"');
-    devlog('video:loadedData', 'Video loaded data', { readyState: videoElement.readyState });
+    const support = videoElement.canPlayType(
+      'video/mp4; codecs="avc1.64001f, mp4a.40.2"'
+    );
+    devlog('video:loadedData', 'Video loaded data', {
+      readyState: videoElement.readyState,
+    });
     void logEvent(
       `video:loadeddata ready=${videoElement.readyState} support=${support || 'unknown'}`
     );
@@ -568,7 +651,10 @@ export function createVideoController(deps: VideoControllerDeps) {
     deps.captureAnalysisScroll();
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
-    const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
+    const ratio = Math.min(
+      Math.max((event.clientX - rect.left) / rect.width, 0),
+      1
+    );
     const nextTime = ratio * videoDuration;
     videoCurrentTime = nextTime;
     if (videoElement) {
@@ -602,7 +688,7 @@ export function createVideoController(deps: VideoControllerDeps) {
     devlog('video:stateChange', 'Video state change', {
       hasState: state !== null,
       isRestoring: restoringVideoState,
-      currentPath: videoSelection?.path ?? null
+      currentPath: videoSelection?.path ?? null,
     });
     if (!state) {
       if (videoSelection) {
@@ -625,7 +711,10 @@ export function createVideoController(deps: VideoControllerDeps) {
   function loadSrcEffect() {
     const el = videoElement;
     const src = videoSrcUrl;
-    devlog('video:srcEffect', 'Src effect (debounced)', { hasElement: el !== null, hasSrc: src !== null });
+    devlog('video:srcEffect', 'Src effect (debounced)', {
+      hasElement: el !== null,
+      hasSrc: src !== null,
+    });
     if (_loadSrcTimer) {
       clearTimeout(_loadSrcTimer);
       _loadSrcTimer = null;
@@ -637,7 +726,9 @@ export function createVideoController(deps: VideoControllerDeps) {
         const currentEl = videoElement;
         const currentSrc = videoSrcUrl;
         if (currentEl && currentSrc) {
-          devlog('video:srcEffect:load', 'Calling el.load()', { src: currentSrc.startsWith('blob:') ? 'blob' : 'asset' });
+          devlog('video:srcEffect:load', 'Calling el.load()', {
+            src: currentSrc.startsWith('blob:') ? 'blob' : 'asset',
+          });
           currentEl.load();
         }
       }, 100);
@@ -645,20 +736,48 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   return {
-    get videoSelection() { return videoSelection; },
-    get videoSrcUrl() { return videoSrcUrl; },
-    get videoDuration() { return videoDuration; },
-    get videoCurrentTime() { return videoCurrentTime; },
-    set videoCurrentTime(v: number) { videoCurrentTime = v; },
-    get videoAspectRatio() { return videoAspectRatio; },
-    get videoFps() { return videoFps ?? 0; },
-    get videoProbePending() { return videoProbePending; },
-    get videoStripUrl() { return videoStripUrl; },
-    get videoStripPending() { return videoStripPending; },
-    get videoDisplayUrl() { return videoPosterUrl ?? null; },
-    get videoPosterPath() { return videoPosterPath; },
-    get videoScrubbing() { return videoScrubbing; },
-    get frameDecoding() { return frameDecoding; },
+    get videoSelection() {
+      return videoSelection;
+    },
+    get videoSrcUrl() {
+      return videoSrcUrl;
+    },
+    get videoDuration() {
+      return videoDuration;
+    },
+    get videoCurrentTime() {
+      return videoCurrentTime;
+    },
+    set videoCurrentTime(v: number) {
+      videoCurrentTime = v;
+    },
+    get videoAspectRatio() {
+      return videoAspectRatio;
+    },
+    get videoFps() {
+      return videoFps ?? 0;
+    },
+    get videoProbePending() {
+      return videoProbePending;
+    },
+    get videoStripUrl() {
+      return videoStripUrl;
+    },
+    get videoStripPending() {
+      return videoStripPending;
+    },
+    get videoDisplayUrl() {
+      return videoPosterUrl ?? null;
+    },
+    get videoPosterPath() {
+      return videoPosterPath;
+    },
+    get videoScrubbing() {
+      return videoScrubbing;
+    },
+    get frameDecoding() {
+      return frameDecoding;
+    },
     loadVideoSelection,
     clearVideoSelection,
     regenerateStrip,
@@ -673,6 +792,6 @@ export function createVideoController(deps: VideoControllerDeps) {
     handleStripSeek,
     handleVideoStateChange,
     setVideoElementRef,
-    loadSrcEffect
+    loadSrcEffect,
   };
 }

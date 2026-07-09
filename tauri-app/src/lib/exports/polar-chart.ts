@@ -40,23 +40,42 @@ export function generateCircleGraphSvg(
   const effectiveRadius = Math.max(0, radius - padding);
   const mode: PolarMode = options.mode ?? 'oklch';
 
-  const gamut = mode === 'oklch' || mode === 'okhsv' ? buildOklchGamutOutline(18) : null;
-  const maxChroma = mode === 'oklch' ? Math.max(1e-6, ...(gamut ?? []).map((p) => p.c)) : 1;
+  const gamut =
+    mode === 'oklch' || mode === 'okhsv' ? buildOklchGamutOutline(18) : null;
+  const maxChroma =
+    mode === 'oklch' ? Math.max(1e-6, ...(gamut ?? []).map((p) => p.c)) : 1;
   const hueChromaLut =
     mode === 'oklch' || mode === 'okhsv'
       ? buildHueChromaLut(gamut ?? [], 360, Math.max(1e-6, maxChroma))
       : null;
 
-  const maxSymbolRadius = Math.max(3.5, effectiveRadius * 0.3 * (options.symbolScale || 1));
+  const maxSymbolRadius = Math.max(
+    3.5,
+    effectiveRadius * 0.3 * (options.symbolScale || 1)
+  );
   const layout = clusters.map((cluster) =>
-    buildLayoutEntry(cluster, effectiveRadius, maxSymbolRadius, center, mode, maxChroma, hueChromaLut)
+    buildLayoutEntry(
+      cluster,
+      effectiveRadius,
+      maxSymbolRadius,
+      center,
+      mode,
+      maxChroma,
+      hueChromaLut
+    )
   );
 
   const svgParts: string[] = [];
   const axisGroup: string[] = [];
   const overlayGroup: string[] = [];
   if (mode === 'oklch' && gamut) {
-    const outlinePath = buildOutlinePath(gamut, effectiveRadius, center, maxChroma, mode);
+    const outlinePath = buildOutlinePath(
+      gamut,
+      effectiveRadius,
+      center,
+      maxChroma,
+      mode
+    );
     axisGroup.push(
       `<path d="${outlinePath}" fill="none" stroke="rgba(16,17,17,0.85)" stroke-width="1" />`
     );
@@ -68,7 +87,7 @@ export function generateCircleGraphSvg(
         r: effectiveRadius,
         fill: 'none',
         stroke: 'rgba(16,17,17,0.85)',
-        'stroke-width': 1
+        'stroke-width': 1,
       })
     );
   }
@@ -79,7 +98,7 @@ export function generateCircleGraphSvg(
       x2: center + effectiveRadius,
       y2: center,
       stroke: 'rgba(16,17,17,0.85)',
-      'stroke-width': 1
+      'stroke-width': 1,
     }),
     svgLine({
       x1: center,
@@ -87,7 +106,7 @@ export function generateCircleGraphSvg(
       x2: center,
       y2: center + effectiveRadius,
       stroke: 'rgba(16,17,17,0.85)',
-      'stroke-width': 1
+      'stroke-width': 1,
     })
   );
 
@@ -109,7 +128,7 @@ export function generateCircleGraphSvg(
           'font-size': labelFontSize,
           fill: 'rgba(16,17,17,0.6)',
           'text-anchor': 'middle',
-          transform: `rotate(90 ${center + satLabelOffset} ${satLabelY})`
+          transform: `rotate(90 ${center + satLabelOffset} ${satLabelY})`,
         },
         secondary
       )
@@ -127,7 +146,7 @@ export function generateCircleGraphSvg(
           'font-size': labelFontSize,
           fill: 'rgba(16,17,17,0.6)',
           'text-anchor': 'middle',
-          transform: `rotate(-45 ${hueX} ${hueY})`
+          transform: `rotate(-45 ${hueX} ${hueY})`,
         },
         hueText
       )
@@ -136,7 +155,8 @@ export function generateCircleGraphSvg(
 
   for (const entry of layout) {
     const fill = `rgb(${entry.rgb.r},${entry.rgb.g},${entry.rgb.b})`;
-    const stroke = options.showStroke === false ? 'none' : contrastStroke(entry.rgb);
+    const stroke =
+      options.showStroke === false ? 'none' : contrastStroke(entry.rgb);
     svgParts.push(
       svgCircle({
         cx: entry.x.toFixed(2),
@@ -144,7 +164,7 @@ export function generateCircleGraphSvg(
         r: entry.symbolRadius.toFixed(2),
         fill,
         stroke,
-        'stroke-width': options.showStroke === false ? 0 : 1
+        'stroke-width': options.showStroke === false ? 0 : 1,
       })
     );
   }
@@ -156,11 +176,12 @@ export function generateCircleGraphSvg(
       content: svgParts.join(''),
       attrs: {
         'data-color-model': mode,
-        'data-chroma-normalization': mode === 'oklch' ? 'gamut' : mode === 'okhsv' ? 'gamut-hue' : 'unit'
-      }
+        'data-chroma-normalization':
+          mode === 'oklch' ? 'gamut' : mode === 'okhsv' ? 'gamut-hue' : 'unit',
+      },
     }),
     width: size,
-    height: size
+    height: size,
   };
 }
 
@@ -199,8 +220,11 @@ function buildLayoutEntry(
   return {
     x: center + r * Math.cos(angle),
     y: center + r * Math.sin(angle),
-    symbolRadius: Math.max(3.5, Math.sqrt(Math.max(cluster.share, 0)) * maxSymbolRadius),
-    rgb: cluster.rgb
+    symbolRadius: Math.max(
+      3.5,
+      Math.sqrt(Math.max(cluster.share, 0)) * maxSymbolRadius
+    ),
+    rgb: cluster.rgb,
   };
 }
 
@@ -218,13 +242,14 @@ function getPolarValue(
   const hue = oklch[2] ?? 0;
   const chroma = oklch[1] ?? 0;
   if (mode === 'okhsv') {
-    const maxHueChroma = hueChromaLut ? hueChromaLut[wrapHueIndex(hue)] : maxChroma;
+    const maxHueChroma = hueChromaLut
+      ? hueChromaLut[wrapHueIndex(hue)]
+      : maxChroma;
     const radiusRatio = maxHueChroma > 0 ? chroma / maxHueChroma : 0;
     return { hue, radiusRatio };
   }
   return { hue, radiusRatio: maxChroma > 0 ? chroma / maxChroma : 0 };
 }
-
 
 function wrapHueIndex(hue: number): number {
   const normalized = ((hue % 360) + 360) % 360;
@@ -249,14 +274,34 @@ function buildOutlinePath(
   return `M ${coords[0]} L ${coords.slice(1).join(' ')} Z`;
 }
 
-export function buildOklchGamutOutline(steps: number): Array<{ h: number; c: number }> {
+export function buildOklchGamutOutline(
+  steps: number
+): Array<{ h: number; c: number }> {
   const edges: Array<[[number, number, number], [number, number, number]]> = [
-    [[1, 0, 0], [1, 1, 0]],
-    [[1, 1, 0], [0, 1, 0]],
-    [[0, 1, 0], [0, 1, 1]],
-    [[0, 1, 1], [0, 0, 1]],
-    [[0, 0, 1], [1, 0, 1]],
-    [[1, 0, 1], [1, 0, 0]]
+    [
+      [1, 0, 0],
+      [1, 1, 0],
+    ],
+    [
+      [1, 1, 0],
+      [0, 1, 0],
+    ],
+    [
+      [0, 1, 0],
+      [0, 1, 1],
+    ],
+    [
+      [0, 1, 1],
+      [0, 0, 1],
+    ],
+    [
+      [0, 0, 1],
+      [1, 0, 1],
+    ],
+    [
+      [1, 0, 1],
+      [1, 0, 0],
+    ],
   ];
   const points: Array<{ h: number; c: number }> = [];
   for (const [start, end] of edges) {
@@ -265,9 +310,11 @@ export function buildOklchGamutOutline(steps: number): Array<{ h: number; c: num
       const rgb = [
         start[0] + (end[0] - start[0]) * t,
         start[1] + (end[1] - start[1]) * t,
-        start[2] + (end[2] - start[2]) * t
+        start[2] + (end[2] - start[2]) * t,
       ];
-      const lab = linearSrgbToOklab(rgb.map(srgbToLinear) as [number, number, number]);
+      const lab = linearSrgbToOklab(
+        rgb.map(srgbToLinear) as [number, number, number]
+      );
       const lch = oklabToOklch(lab);
       points.push({ h: lch[2], c: lch[1] });
     }
@@ -275,7 +322,11 @@ export function buildOklchGamutOutline(steps: number): Array<{ h: number; c: num
   return points;
 }
 
-function buildHueChromaLut(points: Array<{ h: number; c: number }>, bins: number, fallback: number) {
+function buildHueChromaLut(
+  points: Array<{ h: number; c: number }>,
+  bins: number,
+  fallback: number
+) {
   const lut = new Array(bins).fill(0);
   for (const point of points) {
     const idx = wrapHueIndex(point.h) % bins;
@@ -306,7 +357,9 @@ export function srgbToLinear(value: number): number {
   return Math.pow((value + 0.055) / 1.055, 2.4);
 }
 
-export function linearSrgbToOklab(rgb: [number, number, number]): [number, number, number] {
+export function linearSrgbToOklab(
+  rgb: [number, number, number]
+): [number, number, number] {
   const [r, g, b] = rgb;
   const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
   const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
@@ -317,11 +370,13 @@ export function linearSrgbToOklab(rgb: [number, number, number]): [number, numbe
   return [
     0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_,
     1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_,
-    0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_
+    0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_,
   ];
 }
 
-export function oklabToOklch(lab: [number, number, number]): [number, number, number] {
+export function oklabToOklch(
+  lab: [number, number, number]
+): [number, number, number] {
   const [l, a, b] = lab;
   const c = Math.sqrt(a * a + b * b);
   let h = Math.atan2(b, a) * (180 / Math.PI);
@@ -329,7 +384,11 @@ export function oklabToOklch(lab: [number, number, number]): [number, number, nu
   return [l, c, h];
 }
 
-export function rgbToHsv(rgb: { r: number; g: number; b: number }): [number, number, number] {
+export function rgbToHsv(rgb: {
+  r: number;
+  g: number;
+  b: number;
+}): [number, number, number] {
   const r = rgb.r / 255;
   const g = rgb.g / 255;
   const b = rgb.b / 255;

@@ -1,19 +1,37 @@
-import type { AnalysisParams, ImageEntry, SelectedImage } from '../../stores/ui';
+import type {
+  AnalysisParams,
+  ImageEntry,
+  SelectedImage,
+} from '../../stores/ui';
 import type { FileSelection } from '../../bridges/fs';
 import { getFsBridge, isVideoFile } from '../../bridges/fs';
 import { isTauriEnv } from '../../bridges/tauri';
 import { loadImageDataset } from '../../compute/image-loader';
 import { logEvent } from '../../bridges/log';
-import { ingestFileAsEntry, maxDimensionForQuality, buildPreviewUrl } from '../../services/media-ingestion';
+import {
+  ingestFileAsEntry,
+  maxDimensionForQuality,
+  buildPreviewUrl,
+} from '../../services/media-ingestion';
 import { setActivePath } from '../../services/active-image';
 import { setupTauriDragDrop } from '../../services/drag-drop';
 
 export interface FileIngestionDeps {
-  setFile: (entry: ImageEntry, dataset: { width: number; height: number; pixels: Uint8Array }) => void;
-  appendFile: (entry: ImageEntry, dataset: { width: number; height: number; pixels: Uint8Array }) => void;
+  setFile: (
+    entry: ImageEntry,
+    dataset: { width: number; height: number; pixels: Uint8Array }
+  ) => void;
+  appendFile: (
+    entry: ImageEntry,
+    dataset: { width: number; height: number; pixels: Uint8Array }
+  ) => void;
   setAnalysisError: (message: string) => void;
   cancelPending: () => void;
-  scheduleAnalysisWith: (file: SelectedImage, params: AnalysisParams, status: string) => void;
+  scheduleAnalysisWith: (
+    file: SelectedImage,
+    params: AnalysisParams,
+    status: string
+  ) => void;
   recordDevEvent: (update: { fsBridge?: string }, type: 'file') => void;
   setBannerMessage: (msg: string | null) => void;
   getParams: () => AnalysisParams;
@@ -71,7 +89,10 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     }
   }
 
-  async function ingestSelection(fileSelection: FileSelection, activate = true) {
+  async function ingestSelection(
+    fileSelection: FileSelection,
+    activate = true
+  ) {
     loadToken += 1;
     const token = loadToken;
     deps.cancelPending();
@@ -85,7 +106,10 @@ export function createFileIngestion(deps: FileIngestionDeps) {
       }
       if (token !== loadToken) return;
 
-      const { entry } = ingestFileAsEntry(fileSelection, deps.updateEntryPreview);
+      const { entry } = ingestFileAsEntry(
+        fileSelection,
+        deps.updateEntryPreview
+      );
 
       if (activate && nativeMode && fileSelection.path) {
         setActivePath(fileSelection.path);
@@ -161,18 +185,30 @@ export function createFileIngestion(deps: FileIngestionDeps) {
       path:
         (fileHandle as unknown as { path?: string }).path ?? fileHandle.name,
       lastModified: fileHandle.lastModified,
-      mimeType: fileHandle.type || undefined
+      mimeType: fileHandle.type || undefined,
     };
     void ingestSelection(selection);
   }
 
   return {
-    get dragging() { return dragging; },
-    set dragging(v: boolean) { dragging = v; },
-    get draggingWindow() { return draggingWindow; },
-    set draggingWindow(v: boolean) { draggingWindow = v; },
-    get dropRef() { return dropRef; },
-    set dropRef(v: HTMLElement | null) { dropRef = v; },
+    get dragging() {
+      return dragging;
+    },
+    set dragging(v: boolean) {
+      dragging = v;
+    },
+    get draggingWindow() {
+      return draggingWindow;
+    },
+    set draggingWindow(v: boolean) {
+      draggingWindow = v;
+    },
+    get dropRef() {
+      return dropRef;
+    },
+    set dropRef(v: HTMLElement | null) {
+      dropRef = v;
+    },
     chooseMedia,
     ingestSelection,
     setupDragDrop,
@@ -182,6 +218,6 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     handleDrop,
     buildPreviewUrl,
     maxDimensionForQuality,
-    ingestFileAsEntry
+    ingestFileAsEntry,
   };
 }

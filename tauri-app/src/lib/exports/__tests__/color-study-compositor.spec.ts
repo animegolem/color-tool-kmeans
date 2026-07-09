@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { FIXED_CLUSTERS } from './fixtures';
 import { svgToTile, imageToTile } from '../compositor';
 import type { CompositorTile } from '../compositor';
-import { composeColorStudy, type ColorStudyInput } from '../color-study-compositor';
+import {
+  composeColorStudy,
+  type ColorStudyInput,
+} from '../color-study-compositor';
 import { generateCircleGraphSvg } from '../polar-chart';
 import { generateHistogramSvg } from '../histogram';
 import { generateHueLightnessSvg } from '../hue-lightness';
@@ -18,19 +21,29 @@ function assertNoExternalUrls(svg: string) {
 
 function makePolar(): CompositorTile {
   const { svg } = generateCircleGraphSvg(FIXED_CLUSTERS, {
-    symbolScale: 1, showAxisLabels: true, showStroke: true, mode: 'oklch'
+    symbolScale: 1,
+    showAxisLabels: true,
+    showStroke: true,
+    mode: 'oklch',
   });
   return svgToTile(svg, 'polar-chart');
 }
 
-function makeHistogram(sort: 'frequency' | 'hue' | 'lightness' = 'frequency'): CompositorTile {
+function makeHistogram(
+  sort: 'frequency' | 'hue' | 'lightness' = 'frequency'
+): CompositorTile {
   const { svg } = generateHistogramSvg(FIXED_CLUSTERS, { sortBy: sort });
-  return svgToTile(svg, sort === 'frequency' ? 'histogram' : `histogram-${sort}`);
+  return svgToTile(
+    svg,
+    sort === 'frequency' ? 'histogram' : `histogram-${sort}`
+  );
 }
 
 function makeHueLightness(): CompositorTile {
   const { svg } = generateHueLightnessSvg(FIXED_CLUSTERS, {
-    symbolScale: 1, showAxisLabels: true, showStroke: true
+    symbolScale: 1,
+    showAxisLabels: true,
+    showStroke: true,
   });
   return svgToTile(svg, 'hue-lightness');
 }
@@ -45,7 +58,12 @@ function makeSourceImage(): CompositorTile {
 }
 
 function makeVideoBarcode(): CompositorTile {
-  return imageToTile('data:image/png;base64,barcode', 1200, 80, 'video-barcode');
+  return imageToTile(
+    'data:image/png;base64,barcode',
+    1200,
+    80,
+    'video-barcode'
+  );
 }
 
 function fullInput(): ColorStudyInput {
@@ -54,7 +72,7 @@ function fullInput(): ColorStudyInput {
     polarChart: makePolar(),
     histogram: makeHistogram(),
     hueLightness: makeHueLightness(),
-    paletteStrip: makePalette()
+    paletteStrip: makePalette(),
   };
 }
 
@@ -97,7 +115,7 @@ describe('composeColorStudy', () => {
     it('renders col1 + col2 without palette', () => {
       const result = composeColorStudy({
         sourceImage: makeSourceImage(),
-        polarChart: makePolar()
+        polarChart: makePolar(),
       });
       expect(result.svg).toContain('<image');
       const nestedSvgCount = (result.svg.match(/<svg /g) ?? []).length;
@@ -108,7 +126,7 @@ describe('composeColorStudy', () => {
     it('renders col1 + col3 without col2', () => {
       const result = composeColorStudy({
         sourceImage: makeSourceImage(),
-        paletteStrip: makePalette()
+        paletteStrip: makePalette(),
       });
       expect(result.svg).toContain('<image');
       expect(result.width).toBe(1300);
@@ -117,7 +135,7 @@ describe('composeColorStudy', () => {
     it('renders col2 + col3 without col1', () => {
       const result = composeColorStudy({
         polarChart: makePolar(),
-        paletteStrip: makePalette()
+        paletteStrip: makePalette(),
       });
       const nestedSvgCount = (result.svg.match(/<svg /g) ?? []).length;
       // Root + polar + palette = 3
@@ -150,7 +168,7 @@ describe('composeColorStudy', () => {
       const input: ColorStudyInput = {
         sourceImage: makeSourceImage(),
         histogram: makeHistogram(),
-        polarChart: makePolar()
+        polarChart: makePolar(),
       };
       const result = composeColorStudy(input);
       // The polar chart y position should be offset (centered)
@@ -181,7 +199,7 @@ describe('composeColorStudy', () => {
         sourceImage: makeSourceImage(),
         histogram: makeHistogram('frequency'),
         secondaryHistograms: [makeHistogram('hue'), makeHistogram('lightness')],
-        polarChart: makePolar()
+        polarChart: makePolar(),
       };
       const result = composeColorStudy(input);
       // Should have 3 histogram tiles (primary + 2 secondary)
@@ -195,7 +213,7 @@ describe('composeColorStudy', () => {
         sourceImage: makeSourceImage(),
         histogram: makeHistogram('frequency'),
         secondaryHistograms: [makeHistogram('hue'), makeHistogram('lightness')],
-        polarChart: makePolar()
+        polarChart: makePolar(),
       };
       const result = composeColorStudy(input);
       // Source image should be at ~65% of column width
@@ -213,7 +231,7 @@ describe('composeColorStudy', () => {
     it('secondary histograms are side-by-side', () => {
       const input: ColorStudyInput = {
         histogram: makeHistogram('frequency'),
-        secondaryHistograms: [makeHistogram('hue'), makeHistogram('lightness')]
+        secondaryHistograms: [makeHistogram('hue'), makeHistogram('lightness')],
       };
       const result = composeColorStudy(input);
       // Both secondary histograms should be present
@@ -227,7 +245,7 @@ describe('composeColorStudy', () => {
       const input: ColorStudyInput = {
         sourceImage: makeSourceImage(),
         videoBarcode: makeVideoBarcode(),
-        polarChart: makePolar()
+        polarChart: makePolar(),
       };
       const result = composeColorStudy(input);
       expect(result.svg).toContain('data:image/png;base64,barcode');
@@ -255,8 +273,9 @@ describe('composeColorStudy', () => {
   describe('determinism', () => {
     it('produces identical output over multiple runs', () => {
       const input = fullInput();
-      const results = Array.from({ length: STABILITY_RUNS }, () =>
-        composeColorStudy(input).svg
+      const results = Array.from(
+        { length: STABILITY_RUNS },
+        () => composeColorStudy(input).svg
       );
       expect(new Set(results).size).toBe(1);
     });
@@ -267,10 +286,11 @@ describe('composeColorStudy', () => {
         histogram: makeHistogram('frequency'),
         secondaryHistograms: [makeHistogram('hue'), makeHistogram('lightness')],
         polarChart: makePolar(),
-        paletteStrip: makePalette()
+        paletteStrip: makePalette(),
       };
-      const results = Array.from({ length: STABILITY_RUNS }, () =>
-        composeColorStudy(input).svg
+      const results = Array.from(
+        { length: STABILITY_RUNS },
+        () => composeColorStudy(input).svg
       );
       expect(new Set(results).size).toBe(1);
     });
@@ -290,7 +310,7 @@ describe('composeColorStudy', () => {
         secondaryHistograms: [makeHistogram('hue'), makeHistogram('lightness')],
         polarChart: makePolar(),
         hueLightness: makeHueLightness(),
-        paletteStrip: makePalette()
+        paletteStrip: makePalette(),
       };
       const result = composeColorStudy(input);
       assertNoExternalUrls(result.svg);

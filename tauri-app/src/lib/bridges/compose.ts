@@ -13,6 +13,6 @@ export async function composeGrid(
   maxCellDim?: number
 ): Promise<ComposeGridResult> {
   return tauriInvoke('compose_grid', {
-    req: { paths, maxCellDim: maxCellDim ?? null }
+    req: { paths, maxCellDim: maxCellDim ?? null },
   });
 }

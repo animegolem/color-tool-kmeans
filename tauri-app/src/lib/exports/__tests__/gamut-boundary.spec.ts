@@ -3,7 +3,7 @@ import {
   buildOklchGamutOutline,
   linearSrgbToOklab,
   oklabToOklch,
-  srgbToLinear
+  srgbToLinear,
 } from '../polar-chart';
 
 const SAMPLE_COUNT = 1000;
@@ -19,7 +19,7 @@ describe('oklch gamut boundary', () => {
       const rgb: [number, number, number] = [
         Math.floor(rng() * 256),
         Math.floor(rng() * 256),
-        Math.floor(rng() * 256)
+        Math.floor(rng() * 256),
       ];
       const lch = rgbToOklch(rgb);
       const maxChroma = maxChromaLut[wrapHueIndex(lch[2])];
@@ -29,12 +29,19 @@ describe('oklch gamut boundary', () => {
 });
 
 function rgbToOklch(rgb: [number, number, number]): [number, number, number] {
-  const linear = rgb.map((value) => srgbToLinear(value / 255)) as [number, number, number];
+  const linear = rgb.map((value) => srgbToLinear(value / 255)) as [
+    number,
+    number,
+    number,
+  ];
   const lab = linearSrgbToOklab(linear);
   return oklabToOklch(lab);
 }
 
-function buildHueChromaLut(points: Array<{ h: number; c: number }>, bins: number): number[] {
+function buildHueChromaLut(
+  points: Array<{ h: number; c: number }>,
+  bins: number
+): number[] {
   const lut = new Array(bins).fill(0);
   for (const point of points) {
     const idx = wrapHueIndex(point.h) % bins;

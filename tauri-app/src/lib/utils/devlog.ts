@@ -29,7 +29,11 @@ function flat(tag: string, msg: string, data?: LogData): string {
   return parts.join(' ');
 }
 
-function fmt(tag: string, msg: string, data?: LogData): [string, string, LogData | string] {
+function fmt(
+  tag: string,
+  msg: string,
+  data?: LogData
+): [string, string, LogData | string] {
   const prefix = `%c[devlog +${elapsed()}] ${tag} | ${msg}`;
   const style = 'color:#7c6f64;font-weight:bold';
   return data ? [prefix, style, data] : [prefix, style, ''];

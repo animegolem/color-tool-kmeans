@@ -9,10 +9,14 @@
     videoFrameLabel,
     exportScale,
     exportChecks,
-    graphExportFormat
+    graphExportFormat,
   } from '../stores/ui';
   import { convertFileSrc } from '@tauri-apps/api/core';
-  import { multiAnalysisResult, multiCompositePath, pinnedImageIds } from '../stores/multi-analysis';
+  import {
+    multiAnalysisResult,
+    multiCompositePath,
+    pinnedImageIds,
+  } from '../stores/multi-analysis';
   import { batchParams } from '../stores/batch-params';
   import { logEvent } from '../bridges/log';
   import { createColorsExportRunner } from './exports/colors-export-runner.svelte';
@@ -25,21 +29,33 @@
 
   const videoStrip = $derived.by(() => {
     const vs = $videoState;
-    return vs?.stripPath ? { path: vs.stripPath, url: convertFileSrc(vs.stripPath) } : null;
+    return vs?.stripPath
+      ? { path: vs.stripPath, url: convertFileSrc(vs.stripPath) }
+      : null;
   });
 
   const colorsAnyChecked = $derived(
-    $exportChecks.colorsSourceImage || $exportChecks.colorsPolarChart || $exportChecks.colorsHistogram ||
-    $exportChecks.colorsHueLightness || $exportChecks.colorsPaletteStrip || $exportChecks.colorsVideoBarcode
+    $exportChecks.colorsSourceImage ||
+      $exportChecks.colorsPolarChart ||
+      $exportChecks.colorsHistogram ||
+      $exportChecks.colorsHueLightness ||
+      $exportChecks.colorsPaletteStrip ||
+      $exportChecks.colorsVideoBarcode
   );
   const valuesAnyChecked = $derived(
-    $exportChecks.valuesNeutral || $exportChecks.valuesRangeFinder || $exportChecks.valuesHistogram || $exportChecks.valuesSimplified
+    $exportChecks.valuesNeutral ||
+      $exportChecks.valuesRangeFinder ||
+      $exportChecks.valuesHistogram ||
+      $exportChecks.valuesSimplified
   );
 
   const batchResult = $derived($multiAnalysisResult);
   const batchAnyChecked = $derived(
-    $exportChecks.batchCompositeGrid || $exportChecks.batchPolarChart || $exportChecks.batchHistogram ||
-    $exportChecks.batchHueLightness || $exportChecks.batchPaletteStrip
+    $exportChecks.batchCompositeGrid ||
+      $exportChecks.batchPolarChart ||
+      $exportChecks.batchHistogram ||
+      $exportChecks.batchHueLightness ||
+      $exportChecks.batchPaletteStrip
   );
 
   // --- Runners ---
@@ -52,7 +68,7 @@
     getGraphExportFormat: () => $graphExportFormat,
     getVideoStrip: () => videoStrip,
     getVideoFrameLabel: () => $videoFrameLabel,
-    getVideoFps: () => $videoState?.fps ?? null
+    getVideoFps: () => $videoState?.fps ?? null,
   });
 
   const valuesRunner = createValuesExportRunner({
@@ -64,12 +80,12 @@
       valuesRangeFinder: $exportChecks.valuesRangeFinder,
       valuesHistogram: $exportChecks.valuesHistogram,
       valuesSimplified: $exportChecks.valuesSimplified,
-      valuesAllStudies: $exportChecks.valuesAllStudies
+      valuesAllStudies: $exportChecks.valuesAllStudies,
     }),
     getGraphExportFormat: () => $graphExportFormat,
     performSave: colorsRunner.performSave,
     baseName: colorsRunner.baseName,
-    setStatus: colorsRunner.setStatus
+    setStatus: colorsRunner.setStatus,
   });
 
   const batchRunner = createBatchExportRunner({
@@ -81,7 +97,7 @@
     getGraphExportFormat: () => $graphExportFormat,
     getPinCount: () => $pinnedImageIds.size,
     performSave: colorsRunner.performSave,
-    setStatus: colorsRunner.setStatus
+    setStatus: colorsRunner.setStatus,
   });
 
   $effect(() => {
@@ -111,16 +127,36 @@
       <h2>Colors</h2>
       <div class="builder-items">
         <label class="builder-item">
-          <input type="checkbox" bind:checked={$exportChecks.colorsSourceImage} />
+          <input
+            type="checkbox"
+            bind:checked={$exportChecks.colorsSourceImage}
+          />
           <span>Source Image</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving || !file.previewUrl} onclick={colorsRunner.saveSourceImagePng}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving || !file.previewUrl}
+            onclick={colorsRunner.saveSourceImagePng}>↓</button
+          >
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={$exportChecks.colorsPolarChart} />
+          <input
+            type="checkbox"
+            bind:checked={$exportChecks.colorsPolarChart}
+          />
           <span>Polar Chart</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={() => colorsRunner.saveIndividualChart(colorsRunner.polarGenerator, 'polar')}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving}
+            onclick={() =>
+              colorsRunner.saveIndividualChart(
+                colorsRunner.polarGenerator,
+                'polar'
+              )}>↓</button
+          >
         </label>
         <label class="builder-item">
           <input type="checkbox" bind:checked={$exportChecks.colorsHistogram} />
@@ -128,49 +164,111 @@
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <span class="sub-toggle" onclick={(e) => e.stopPropagation()}>
-            <label class="sub-toggle-inner" title="Include frequency, hue, and lightness sort modes">
-              <input type="checkbox" bind:checked={$exportChecks.colorsHistogramAll} disabled={!$exportChecks.colorsHistogram} />
+            <label
+              class="sub-toggle-inner"
+              title="Include frequency, hue, and lightness sort modes"
+            >
+              <input
+                type="checkbox"
+                bind:checked={$exportChecks.colorsHistogramAll}
+                disabled={!$exportChecks.colorsHistogram}
+              />
               <span class="sub-toggle-label">All sorts</span>
             </label>
           </span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={() => colorsRunner.saveIndividualChart(colorsRunner.histogramGenerator, 'histogram')}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving}
+            onclick={() =>
+              colorsRunner.saveIndividualChart(
+                colorsRunner.histogramGenerator,
+                'histogram'
+              )}>↓</button
+          >
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={$exportChecks.colorsHueLightness} />
+          <input
+            type="checkbox"
+            bind:checked={$exportChecks.colorsHueLightness}
+          />
           <span>Hue × Lightness</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={() => colorsRunner.saveIndividualChart(colorsRunner.hueLightnessGenerator, 'hue-lightness')}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving}
+            onclick={() =>
+              colorsRunner.saveIndividualChart(
+                colorsRunner.hueLightnessGenerator,
+                'hue-lightness'
+              )}>↓</button
+          >
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={$exportChecks.colorsPaletteStrip} />
+          <input
+            type="checkbox"
+            bind:checked={$exportChecks.colorsPaletteStrip}
+          />
           <span>Palette Strip (top 20)</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={() => colorsRunner.saveIndividualChart(colorsRunner.paletteGenerator, 'palette')}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving}
+            onclick={() =>
+              colorsRunner.saveIndividualChart(
+                colorsRunner.paletteGenerator,
+                'palette'
+              )}>↓</button
+          >
         </label>
         <label class="builder-item" class:disabled={!videoStrip}>
-          <input type="checkbox" bind:checked={$exportChecks.colorsVideoBarcode} disabled={!videoStrip} />
+          <input
+            type="checkbox"
+            bind:checked={$exportChecks.colorsVideoBarcode}
+            disabled={!videoStrip}
+          />
           <span>Video Barcode</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving || !videoStrip} onclick={colorsRunner.saveVideoBarcodeImage}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving || !videoStrip}
+            onclick={colorsRunner.saveVideoBarcodeImage}>↓</button
+          >
         </label>
         <div class="data-row">
           <span>Palette CSV</span>
           <span class="spacer"></span>
-          <button disabled={colorsRunner.isSaving} onclick={colorsRunner.savePaletteCsv}>Save CSV</button>
+          <button
+            disabled={colorsRunner.isSaving}
+            onclick={colorsRunner.savePaletteCsv}>Save CSV</button
+          >
         </div>
         <div class="data-row">
           <span>Palette .ase</span>
           <span class="spacer"></span>
-          <button disabled={colorsRunner.isSaving} onclick={colorsRunner.savePaletteAse}>Save .ase</button>
+          <button
+            disabled={colorsRunner.isSaving}
+            onclick={colorsRunner.savePaletteAse}>Save .ase</button
+          >
         </div>
         <div class="data-row">
           <span>Palette JSON</span>
           <span class="spacer"></span>
-          <button disabled={colorsRunner.isSaving} onclick={colorsRunner.savePaletteJson}>Save JSON</button>
+          <button
+            disabled={colorsRunner.isSaving}
+            onclick={colorsRunner.savePaletteJson}>Save JSON</button
+          >
         </div>
       </div>
-      <button class="composite-btn" disabled={colorsRunner.isSaving || !colorsAnyChecked} onclick={colorsRunner.exportColorsComposite}>
+      <button
+        class="composite-btn"
+        disabled={colorsRunner.isSaving || !colorsAnyChecked}
+        onclick={colorsRunner.exportColorsComposite}
+      >
         Export Colors Composite
       </button>
     </div>
@@ -184,42 +282,86 @@
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <span class="sub-toggle" onclick={(e) => e.stopPropagation()}>
-            <label class="sub-toggle-inner" title="Include original image alongside neutral">
-              <input type="checkbox" bind:checked={$exportChecks.valuesIncludeOriginal} disabled={!$exportChecks.valuesNeutral} />
+            <label
+              class="sub-toggle-inner"
+              title="Include original image alongside neutral"
+            >
+              <input
+                type="checkbox"
+                bind:checked={$exportChecks.valuesIncludeOriginal}
+                disabled={!$exportChecks.valuesNeutral}
+              />
               <span class="sub-toggle-label">Include original</span>
             </label>
           </span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={valuesRunner.saveNeutralImage}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving}
+            onclick={valuesRunner.saveNeutralImage}>↓</button
+          >
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={$exportChecks.valuesRangeFinder} />
+          <input
+            type="checkbox"
+            bind:checked={$exportChecks.valuesRangeFinder}
+          />
           <span>Range Finder</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={valuesRunner.saveRangeFinderPng}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving}
+            onclick={valuesRunner.saveRangeFinderPng}>↓</button
+          >
         </label>
         <label class="builder-item">
           <input type="checkbox" bind:checked={$exportChecks.valuesHistogram} />
           <span>Values Histogram</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={valuesRunner.saveValuesHistogramPng}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving}
+            onclick={valuesRunner.saveValuesHistogramPng}>↓</button
+          >
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={$exportChecks.valuesSimplified} />
+          <input
+            type="checkbox"
+            bind:checked={$exportChecks.valuesSimplified}
+          />
           <span>Simplified Values</span>
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <span class="sub-toggle" onclick={(e) => e.stopPropagation()}>
-            <label class="sub-toggle-inner" title="Include all 4 notan study levels (2-5)">
-              <input type="checkbox" bind:checked={$exportChecks.valuesAllStudies} disabled={!$exportChecks.valuesSimplified} />
+            <label
+              class="sub-toggle-inner"
+              title="Include all 4 notan study levels (2-5)"
+            >
+              <input
+                type="checkbox"
+                bind:checked={$exportChecks.valuesAllStudies}
+                disabled={!$exportChecks.valuesSimplified}
+              />
               <span class="sub-toggle-label">All studies</span>
             </label>
           </span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={valuesRunner.saveNotanStudyPng}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving}
+            onclick={valuesRunner.saveNotanStudyPng}>↓</button
+          >
         </label>
       </div>
-      <button class="composite-btn" disabled={colorsRunner.isSaving || !valuesAnyChecked} onclick={valuesRunner.exportValuesComposite}>
+      <button
+        class="composite-btn"
+        disabled={colorsRunner.isSaving || !valuesAnyChecked}
+        onclick={valuesRunner.exportValuesComposite}
+      >
         Export Values Composite
       </button>
     </div>
@@ -230,16 +372,34 @@
       <h2>Batch</h2>
       <div class="builder-items">
         <label class="builder-item" class:disabled={!$multiCompositePath}>
-          <input type="checkbox" bind:checked={$exportChecks.batchCompositeGrid} disabled={!$multiCompositePath} />
+          <input
+            type="checkbox"
+            bind:checked={$exportChecks.batchCompositeGrid}
+            disabled={!$multiCompositePath}
+          />
           <span>Composite Grid</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving || !$multiCompositePath} onclick={batchRunner.saveCompositeGridImage}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving || !$multiCompositePath}
+            onclick={batchRunner.saveCompositeGridImage}>↓</button
+          >
         </label>
         <label class="builder-item">
           <input type="checkbox" bind:checked={$exportChecks.batchPolarChart} />
           <span>Polar Chart</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={() => batchRunner.saveIndividualChart(batchRunner.polarGenerator, 'polar')}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving}
+            onclick={() =>
+              batchRunner.saveIndividualChart(
+                batchRunner.polarGenerator,
+                'polar'
+              )}>↓</button
+          >
         </label>
         <label class="builder-item">
           <input type="checkbox" bind:checked={$exportChecks.batchHistogram} />
@@ -247,43 +407,96 @@
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <span class="sub-toggle" onclick={(e) => e.stopPropagation()}>
-            <label class="sub-toggle-inner" title="Include frequency, hue, and lightness sort modes">
-              <input type="checkbox" bind:checked={$exportChecks.batchHistogramAll} disabled={!$exportChecks.batchHistogram} />
+            <label
+              class="sub-toggle-inner"
+              title="Include frequency, hue, and lightness sort modes"
+            >
+              <input
+                type="checkbox"
+                bind:checked={$exportChecks.batchHistogramAll}
+                disabled={!$exportChecks.batchHistogram}
+              />
               <span class="sub-toggle-label">All sorts</span>
             </label>
           </span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={() => batchRunner.saveIndividualChart(batchRunner.histogramGenerator, 'histogram')}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving}
+            onclick={() =>
+              batchRunner.saveIndividualChart(
+                batchRunner.histogramGenerator,
+                'histogram'
+              )}>↓</button
+          >
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={$exportChecks.batchHueLightness} />
+          <input
+            type="checkbox"
+            bind:checked={$exportChecks.batchHueLightness}
+          />
           <span>Hue × Lightness</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={() => batchRunner.saveIndividualChart(batchRunner.hueLightnessGenerator, 'hue-lightness')}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving}
+            onclick={() =>
+              batchRunner.saveIndividualChart(
+                batchRunner.hueLightnessGenerator,
+                'hue-lightness'
+              )}>↓</button
+          >
         </label>
         <label class="builder-item">
-          <input type="checkbox" bind:checked={$exportChecks.batchPaletteStrip} />
+          <input
+            type="checkbox"
+            bind:checked={$exportChecks.batchPaletteStrip}
+          />
           <span>Palette Strip (top 20)</span>
           <span class="spacer"></span>
-          <button class="item-download" title="Save PNG" disabled={colorsRunner.isSaving} onclick={() => batchRunner.saveIndividualChart(batchRunner.paletteGenerator, 'palette')}>↓</button>
+          <button
+            class="item-download"
+            title="Save PNG"
+            disabled={colorsRunner.isSaving}
+            onclick={() =>
+              batchRunner.saveIndividualChart(
+                batchRunner.paletteGenerator,
+                'palette'
+              )}>↓</button
+          >
         </label>
         <div class="data-row">
           <span>Palette CSV</span>
           <span class="spacer"></span>
-          <button disabled={colorsRunner.isSaving} onclick={batchRunner.savePaletteCsv}>Save CSV</button>
+          <button
+            disabled={colorsRunner.isSaving}
+            onclick={batchRunner.savePaletteCsv}>Save CSV</button
+          >
         </div>
         <div class="data-row">
           <span>Palette .ase</span>
           <span class="spacer"></span>
-          <button disabled={colorsRunner.isSaving} onclick={batchRunner.savePaletteAse}>Save .ase</button>
+          <button
+            disabled={colorsRunner.isSaving}
+            onclick={batchRunner.savePaletteAse}>Save .ase</button
+          >
         </div>
         <div class="data-row">
           <span>Palette JSON</span>
           <span class="spacer"></span>
-          <button disabled={colorsRunner.isSaving} onclick={batchRunner.savePaletteJson}>Save JSON</button>
+          <button
+            disabled={colorsRunner.isSaving}
+            onclick={batchRunner.savePaletteJson}>Save JSON</button
+          >
         </div>
       </div>
-      <button class="composite-btn" disabled={colorsRunner.isSaving || !batchAnyChecked} onclick={batchRunner.exportBatchComposite}>
+      <button
+        class="composite-btn"
+        disabled={colorsRunner.isSaving || !batchAnyChecked}
+        onclick={batchRunner.exportBatchComposite}
+      >
         Export Batch Composite
       </button>
     </div>
@@ -295,7 +508,13 @@
         <label>
           <span>PNG Scale</span>
           <span class="scale-value">{$exportScale}×</span>
-          <input type="range" min="1" max="4" step="1" bind:value={$exportScale} />
+          <input
+            type="range"
+            min="1"
+            max="4"
+            step="1"
+            bind:value={$exportScale}
+          />
         </label>
       </div>
     </div>
@@ -304,7 +523,8 @@
       {#if file && $analysisState === 'pending'}
         Analyzing…
       {:else}
-        Select an image and complete analysis, or run a batch analysis, to unlock exports.
+        Select an image and complete analysis, or run a batch analysis, to
+        unlock exports.
       {/if}
     </div>
   {/if}
@@ -312,7 +532,12 @@
   {#if colorsRunner.isSaving}
     <div class="status status-saving">Saving…</div>
   {:else if colorsRunner.message}
-    <div class:status-error={colorsRunner.messageVariant === 'error'} class="status">{colorsRunner.message}</div>
+    <div
+      class:status-error={colorsRunner.messageVariant === 'error'}
+      class="status"
+    >
+      {colorsRunner.message}
+    </div>
   {/if}
 </section>
 
@@ -434,7 +659,6 @@
     font-size: 14px;
   }
 
-
   .data-row button {
     border-radius: 6px;
     padding: 6px 14px;
@@ -508,7 +732,12 @@
   }
 
   @keyframes pulse-opacity {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
   }
 </style>

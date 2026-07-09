@@ -21,15 +21,25 @@ export interface AnalyzeOptions extends AnalysisParams {
 
 export interface ComputeBridge {
   readonly id: 'tauri-native';
-  analyze(dataset: ImageDataset, params: AnalyzeOptions): Promise<AnalysisResult>;
+  analyze(
+    dataset: ImageDataset,
+    params: AnalyzeOptions
+  ): Promise<AnalysisResult>;
 }
 
-type TauriComputeErrorCode = 'missing-path' | 'invoke-failed' | 'invalid-response';
+type TauriComputeErrorCode =
+  | 'missing-path'
+  | 'invoke-failed'
+  | 'invalid-response';
 
 export class TauriComputeError extends Error {
   readonly code: TauriComputeErrorCode;
 
-  constructor(code: TauriComputeErrorCode, message: string, options?: { cause?: unknown }) {
+  constructor(
+    code: TauriComputeErrorCode,
+    message: string,
+    options?: { cause?: unknown }
+  ) {
     super(message);
     this.name = 'TauriComputeError';
     this.code = code;
@@ -41,7 +51,9 @@ export class TauriComputeError extends Error {
 
 const finiteNumberSchema = z
   .number()
-  .refine((value) => Number.isFinite(value), { message: 'must be a finite number' });
+  .refine((value) => Number.isFinite(value), {
+    message: 'must be a finite number',
+  });
 
 const tauriClusterSchema = z
   .object({
@@ -57,13 +69,19 @@ const tauriClusterSchema = z
       .object({
         r: finiteNumberSchema,
         g: finiteNumberSchema,
-        b: finiteNumberSchema
+        b: finiteNumberSchema,
       })
       .refine(
-        (value) => value.r >= 0 && value.r <= 255 && value.g >= 0 && value.g <= 255 && value.b >= 0 && value.b <= 255,
+        (value) =>
+          value.r >= 0 &&
+          value.r <= 255 &&
+          value.g >= 0 &&
+          value.g <= 255 &&
+          value.b >= 0 &&
+          value.b <= 255,
         { message: 'rgb components must be within 0-255' }
       ),
-    hsv: z.any()
+    hsv: z.any(),
   })
   .transform((data, ctx) => {
     const sourceCentroid = data.centroidSpace ?? data.centroid_space;
@@ -73,17 +91,33 @@ const tauriClusterSchema = z
     const oklab = coerceTriple(oklabSource);
     const oklch = coerceTriple(oklchSource);
     if (!centroid) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['centroidSpace'], message: 'centroidSpace must contain three finite numbers' });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['centroidSpace'],
+        message: 'centroidSpace must contain three finite numbers',
+      });
     }
     if (!oklab) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['oklab'], message: 'oklab must contain three finite numbers' });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['oklab'],
+        message: 'oklab must contain three finite numbers',
+      });
     }
     if (!oklch) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['oklch'], message: 'oklch must contain three finite numbers' });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['oklch'],
+        message: 'oklch must contain three finite numbers',
+      });
     }
     const hsvTriple = coerceTriple(data.hsv);
     if (!hsvTriple) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['hsv'], message: 'hsv must contain three finite numbers' });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['hsv'],
+        message: 'hsv must contain three finite numbers',
+      });
     }
     if (ctx.issues.length > 0) {
       return z.NEVER;
@@ -95,19 +129,25 @@ const tauriClusterSchema = z
       oklab: oklab as [number, number, number],
       oklch: oklch as [number, number, number],
       rgb: data.rgb,
-      hsv: hsvTriple as [number, number, number]
+      hsv: hsvTriple as [number, number, number],
     };
   });
 
 const tauriComputeResponseSchema = z
   .object({
     clusters: z.array(tauriClusterSchema).min(1, {
-      message: 'clusters missing or empty'
+      message: 'clusters missing or empty',
     }),
-    iterations: finiteNumberSchema.min(0, { message: 'iterations must be >= 0' }),
-    durationMs: finiteNumberSchema.min(0, { message: 'durationMs must be >= 0' }),
-    totalSamples: finiteNumberSchema.min(0, { message: 'totalSamples must be >= 0' }),
-    variant: z.string().min(1, { message: 'variant must be provided' })
+    iterations: finiteNumberSchema.min(0, {
+      message: 'iterations must be >= 0',
+    }),
+    durationMs: finiteNumberSchema.min(0, {
+      message: 'durationMs must be >= 0',
+    }),
+    totalSamples: finiteNumberSchema.min(0, {
+      message: 'totalSamples must be >= 0',
+    }),
+    variant: z.string().min(1, { message: 'variant must be provided' }),
   })
   .readonly();
 
@@ -149,10 +189,10 @@ function normalizeTauriCluster(raw: unknown): Record<string, unknown> {
       ? {
           r: Number(rgb.r),
           g: Number(rgb.g),
-          b: Number(rgb.b)
+          b: Number(rgb.b),
         }
       : undefined,
-    hsv: cluster.hsv
+    hsv: cluster.hsv,
   };
 }
 
@@ -165,9 +205,13 @@ export function normalizeTauriResponse(raw: unknown): Record<string, unknown> {
   return {
     clusters: clustersValue.map((entry) => normalizeTauriCluster(entry)),
     iterations: Number(payload.iterations),
-    durationMs: Number((payload as any).durationMs ?? (payload as any).duration_ms),
-    totalSamples: Number((payload as any).totalSamples ?? (payload as any).total_samples),
-    variant: payload.variant
+    durationMs: Number(
+      (payload as any).durationMs ?? (payload as any).duration_ms
+    ),
+    totalSamples: Number(
+      (payload as any).totalSamples ?? (payload as any).total_samples
+    ),
+    variant: payload.variant,
   };
 }
 
@@ -180,9 +224,13 @@ export function parseTauriResponse(raw: unknown): ParsedTauriResponse {
       const issue = error.issues[0];
       const path = issue?.path?.length ? issue.path.join('.') : 'response';
       const detail = issue?.message ?? 'unknown validation error';
-      throw new TauriComputeError('invalid-response', `Invalid analyze_image response: ${path} ${detail}`, {
-        cause: error
-      });
+      throw new TauriComputeError(
+        'invalid-response',
+        `Invalid analyze_image response: ${path} ${detail}`,
+        {
+          cause: error,
+        }
+      );
     }
     throw error;
   }
@@ -204,17 +252,24 @@ function createTauriComputeBridge(): ComputeBridge | null {
         tol: params.tol ?? DEFAULT_TOLERANCE,
         maxIter: params.maxIter ?? DEFAULT_MAX_ITER,
         seed: params.seed ?? DEFAULT_SEED,
-        maxSamples: params.maxSamples ?? DEFAULT_MAX_SAMPLES
+        maxSamples: params.maxSamples ?? DEFAULT_MAX_SAMPLES,
       };
       if (!req.path) {
-        throw new TauriComputeError('missing-path', 'No image path available for native analysis');
+        throw new TauriComputeError(
+          'missing-path',
+          'No image path available for native analysis'
+        );
       }
       let rawResponse: unknown;
       try {
         rawResponse = await tauriInvoke('analyze_image', { req });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        throw new TauriComputeError('invoke-failed', `Tauri analyze_image invoke failed: ${message}`, { cause: err });
+        throw new TauriComputeError(
+          'invoke-failed',
+          `Tauri analyze_image invoke failed: ${message}`,
+          { cause: err }
+        );
       }
 
       const parsed = parseTauriResponse(rawResponse);
@@ -225,7 +280,7 @@ function createTauriComputeBridge(): ComputeBridge | null {
         oklab: cluster.oklab,
         oklch: cluster.oklch,
         rgb: cluster.rgb,
-        hsv: cluster.hsv
+        hsv: cluster.hsv,
       })) as AnalysisResult['clusters'];
 
       return {
@@ -233,9 +288,9 @@ function createTauriComputeBridge(): ComputeBridge | null {
         iterations: parsed.iterations,
         durationMs: parsed.durationMs,
         totalSamples: parsed.totalSamples,
-        variant: String(parsed.variant ?? 'tauri-native')
+        variant: String(parsed.variant ?? 'tauri-native'),
       } satisfies AnalysisResult;
-    }
+    },
   } satisfies ComputeBridge;
 }
 
@@ -251,7 +306,9 @@ function selectComputeBridge(): ComputeBridge {
     logSelection('compute', tauriBridge.id);
     return tauriBridge;
   }
-  throw new Error('Tauri environment not detected. Native compute requires Tauri runtime.');
+  throw new Error(
+    'Tauri environment not detected. Native compute requires Tauri runtime.'
+  );
 }
 
 let cachedComputeBridge: ComputeBridge | null = null;

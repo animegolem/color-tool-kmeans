@@ -20,17 +20,14 @@ export async function svgToPngBlob(
       }
       ctx.scale(scale, scale);
       ctx.drawImage(img, 0, 0);
-      canvas.toBlob(
-        (blob) => {
-          URL.revokeObjectURL(url);
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error('Failed to convert canvas to PNG blob'));
-          }
-        },
-        'image/png'
-      );
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(url);
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('Failed to convert canvas to PNG blob'));
+        }
+      }, 'image/png');
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);

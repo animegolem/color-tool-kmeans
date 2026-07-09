@@ -1,10 +1,15 @@
 import { get } from 'svelte/store';
-import type { SelectedImage, AnalysisResult, AnalysisParams, ExportChecks } from '../../stores/ui';
+import type {
+  SelectedImage,
+  AnalysisResult,
+  AnalysisParams,
+  ExportChecks,
+} from '../../stores/ui';
 import {
   analysisState,
   setAnalysisPending,
   setAnalysisSuccess,
-  setAnalysisError
+  setAnalysisError,
 } from '../../stores/ui';
 import { analyzeImage } from '../../compute/bridge';
 import { generateCircleGraphSvg } from '../../exports/polar-chart';
@@ -15,7 +20,10 @@ import { generateAseBlob } from '../../exports/palette-ase';
 import { generatePaletteJson } from '../../exports/palette-web';
 import { toDataUrl } from '../../exports/value-analysis';
 import { svgToTile, imageToTile } from '../../exports/compositor';
-import { composeColorStudy, type ColorStudyInput } from '../../exports/color-study-compositor';
+import {
+  composeColorStudy,
+  type ColorStudyInput,
+} from '../../exports/color-study-compositor';
 import { getFsBridge, saveFromPath } from '../../bridges/fs';
 import { svgToPngBlob } from '../../exports/png';
 import { saveChart } from '../../exports/chart-save';
@@ -61,7 +69,9 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     message = value;
     messageVariant = variant;
     if (value && variant === 'info') {
-      dismissTimer = setTimeout(() => { message = null; }, 3000);
+      dismissTimer = setTimeout(() => {
+        message = null;
+      }, 3000);
     }
   }
 
@@ -80,10 +90,13 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     setAnalysisPending();
     try {
       const paramSnapshot = deps.getParams();
-      const response = await analyzeImage(
-        file.dataset,
-        { ...paramSnapshot, tol: 1e-3, maxIter: 40, seed: 1, maxSamples: 300_000 }
-      );
+      const response = await analyzeImage(file.dataset, {
+        ...paramSnapshot,
+        tol: 1e-3,
+        maxIter: 40,
+        seed: 1,
+        maxSamples: 300_000,
+      });
       setAnalysisSuccess(response, file.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Analysis failed';
@@ -119,10 +132,13 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
 
   // --- Helpers ---
 
-  function loadImageDimensions(src: string): Promise<{ width: number; height: number }> {
+  function loadImageDimensions(
+    src: string
+  ): Promise<{ width: number; height: number }> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onload = () =>
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
       img.onerror = () => reject(new Error('Failed to load image dimensions.'));
       img.src = src;
     });
@@ -138,7 +154,7 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
       showAxisLabels: paramSnapshot.showAxisLabels,
       showStroke: paramSnapshot.showClusterOutline,
       mode: paramSnapshot.polarMode,
-      fontSize: 20
+      fontSize: 20,
     });
   }
 
@@ -147,7 +163,7 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     const paramSnapshot = deps.getParams();
     return generateHistogramSvg(result.clusters, {
       sortBy: paramSnapshot.histogramSort,
-      fontSize: 16
+      fontSize: 16,
     });
   }
 
@@ -159,7 +175,7 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
       showAxisLabels: paramSnapshot.showAxisLabels,
       showStroke: paramSnapshot.showClusterOutline,
       sizeMode: paramSnapshot.hueLightnessSizeMode,
-      fontSize: 18
+      fontSize: 18,
     });
   }
 
@@ -181,7 +197,12 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     if (checks.colorsSourceImage && file.previewUrl) {
       const dataUrl = await toDataUrl(file.previewUrl);
       const img = await loadImageDimensions(dataUrl);
-      input.sourceImage = imageToTile(dataUrl, img.width, img.height, 'source-image');
+      input.sourceImage = imageToTile(
+        dataUrl,
+        img.width,
+        img.height,
+        'source-image'
+      );
     }
 
     if (checks.colorsPolarChart) {
@@ -190,24 +211,38 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
         showAxisLabels: paramSnapshot.showAxisLabels,
         showStroke: paramSnapshot.showClusterOutline,
         mode: paramSnapshot.polarMode,
-        fontSize: 20
+        fontSize: 20,
       });
       input.polarChart = svgToTile(svg, 'polar-chart');
     }
 
     if (checks.colorsHistogram) {
       const primarySort = paramSnapshot.histogramSort;
-      const { svg } = generateHistogramSvg(result.clusters, { sortBy: primarySort, hPadding: 0, fontSize: 16 });
+      const { svg } = generateHistogramSvg(result.clusters, {
+        sortBy: primarySort,
+        hPadding: 0,
+        fontSize: 16,
+      });
       input.histogram = svgToTile(svg, 'histogram');
 
       if (checks.colorsHistogramAll) {
-        const allModes: Array<'frequency' | 'hue' | 'lightness'> = ['frequency', 'hue', 'lightness'];
+        const allModes: Array<'frequency' | 'hue' | 'lightness'> = [
+          'frequency',
+          'hue',
+          'lightness',
+        ];
         input.secondaryHistograms = allModes
-          .filter(m => m !== primarySort)
-          .map(mode => svgToTile(
-            generateHistogramSvg(result!.clusters, { sortBy: mode, hPadding: 0, fontSize: 22 }).svg,
-            `histogram-${mode}`
-          ));
+          .filter((m) => m !== primarySort)
+          .map((mode) =>
+            svgToTile(
+              generateHistogramSvg(result!.clusters, {
+                sortBy: mode,
+                hPadding: 0,
+                fontSize: 22,
+              }).svg,
+              `histogram-${mode}`
+            )
+          );
       }
     }
 
@@ -217,7 +252,7 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
         showAxisLabels: paramSnapshot.showAxisLabels,
         showStroke: paramSnapshot.showClusterOutline,
         sizeMode: paramSnapshot.hueLightnessSizeMode,
-        fontSize: 18
+        fontSize: 18,
       });
       input.hueLightness = svgToTile(svg, 'hue-lightness');
     }
@@ -231,7 +266,12 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     if (checks.colorsVideoBarcode && videoStrip) {
       const dataUrl = await toDataUrl(videoStrip.url);
       const img = await loadImageDimensions(dataUrl);
-      input.videoBarcode = imageToTile(dataUrl, img.width, img.height, 'video-barcode');
+      input.videoBarcode = imageToTile(
+        dataUrl,
+        img.width,
+        img.height,
+        'video-barcode'
+      );
     }
 
     return input;
@@ -243,7 +283,7 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     if (!deps.getResult()) return;
     await performSave(async () => {
       const input = await buildColorStudyInput();
-      const hasContent = Object.values(input).some(v => v !== undefined);
+      const hasContent = Object.values(input).some((v) => v !== undefined);
       if (!hasContent) {
         setStatus('No items selected for export.', 'info');
         return;
@@ -252,7 +292,10 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
       const scale = Math.max(1, Math.min(4, deps.getExportScale()));
       const blob = await svgToPngBlob(svg, width, height, scale);
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-colors.png`);
+      const { canceled } = await bridge.saveBlob(
+        blob,
+        `${baseName()}-colors.png`
+      );
       if (canceled) {
         setStatus('Export canceled.', 'info');
       } else {
@@ -269,7 +312,13 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
   ) {
     await performSave(async () => {
       const format = deps.getGraphExportFormat() === 'svg' ? 'svg' : 'png';
-      const { canceled } = await saveChart(format, generator(), baseName(), suffix, deps.getExportScale());
+      const { canceled } = await saveChart(
+        format,
+        generator(),
+        baseName(),
+        suffix,
+        deps.getExportScale()
+      );
       if (canceled) setStatus('Export canceled.', 'info');
       else setStatus(`${suffix} ${format.toUpperCase()} saved.`, 'info');
     });
@@ -281,7 +330,10 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     const videoStrip = deps.getVideoStrip();
     if (!videoStrip) return;
     await performSave(async () => {
-      const { canceled } = await saveFromPath(videoStrip.path, `${baseName()}-video-barcode.png`);
+      const { canceled } = await saveFromPath(
+        videoStrip.path,
+        `${baseName()}-video-barcode.png`
+      );
       if (canceled) setStatus('Export canceled.', 'info');
       else setStatus('Video barcode PNG saved.', 'info');
     });
@@ -291,9 +343,14 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     const file = deps.getFile();
     if (!file?.path) return;
     await performSave(async () => {
-      const ext = file!.name?.match(/\.(jpe?g|png|webp|bmp)$/i)?.[1]?.toLowerCase() ?? 'png';
+      const ext =
+        file!.name?.match(/\.(jpe?g|png|webp|bmp)$/i)?.[1]?.toLowerCase() ??
+        'png';
       const normalizedExt = ext === 'jpeg' ? 'jpg' : ext;
-      const { canceled } = await saveFromPath(file!.path!, `${baseName()}-source.${normalizedExt}`);
+      const { canceled } = await saveFromPath(
+        file!.path!,
+        `${baseName()}-source.${normalizedExt}`
+      );
       if (canceled) setStatus('Export canceled.', 'info');
       else setStatus('Source image saved.', 'info');
     });
@@ -305,7 +362,10 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     await performSave(async () => {
       const csv = generatePaletteCsv(result!.clusters);
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveTextFile(csv, `${baseName()}-palette.csv`);
+      const { canceled } = await bridge.saveTextFile(
+        csv,
+        `${baseName()}-palette.csv`
+      );
       if (canceled) {
         setStatus('Export canceled.', 'info');
       } else {
@@ -320,7 +380,10 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     await performSave(async () => {
       const blob = generateAseBlob(result!.clusters);
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveBlob(blob, `${baseName()}-palette.ase`);
+      const { canceled } = await bridge.saveBlob(
+        blob,
+        `${baseName()}-palette.ase`
+      );
       if (canceled) {
         setStatus('Export canceled.', 'info');
       } else {
@@ -335,7 +398,10 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     await performSave(async () => {
       const json = generatePaletteJson(result!.clusters);
       const bridge = await getFsBridge();
-      const { canceled } = await bridge.saveTextFile(json, `${baseName()}-palette.json`);
+      const { canceled } = await bridge.saveTextFile(
+        json,
+        `${baseName()}-palette.json`
+      );
       if (canceled) {
         setStatus('Export canceled.', 'info');
       } else {
@@ -345,9 +411,15 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
   }
 
   return {
-    get isSaving() { return isSaving; },
-    get message() { return message; },
-    get messageVariant() { return messageVariant; },
+    get isSaving() {
+      return isSaving;
+    },
+    get message() {
+      return message;
+    },
+    get messageVariant() {
+      return messageVariant;
+    },
     ensureColorAnalysis,
     performSave,
     baseName,
@@ -363,6 +435,6 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     saveSourceImagePng,
     savePaletteCsv,
     savePaletteAse,
-    savePaletteJson
+    savePaletteJson,
   };
 }

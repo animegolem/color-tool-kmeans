@@ -1,6 +1,18 @@
 <script lang="ts">
-  import { images, activeImageId, currentView, switchToFile, switchToVideo, removeFile, clearFile } from '../stores/ui';
-  import { pinnedImageIds, togglePin, clearPins } from '../stores/multi-analysis';
+  import {
+    images,
+    activeImageId,
+    currentView,
+    switchToFile,
+    switchToVideo,
+    removeFile,
+    clearFile,
+  } from '../stores/ui';
+  import {
+    pinnedImageIds,
+    togglePin,
+    clearPins,
+  } from '../stores/multi-analysis';
   import type { ImageEntry } from '../stores/image';
 
   const imageIcon = `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.33333 35H31.6667C33.5076 35 35 33.5076 35 31.6667V8.33333C35 6.49238 33.5076 5 31.6667 5H8.33333C6.49238 5 5 6.49238 5 8.33333V31.6667C5 33.5076 6.49238 35 8.33333 35ZM8.33333 35L26.6667 16.6667L35 25M16.6667 14.1667C16.6667 15.5474 15.5474 16.6667 14.1667 16.6667C12.786 16.6667 11.6667 15.5474 11.6667 14.1667C11.6667 12.786 12.786 11.6667 14.1667 11.6667C15.5474 11.6667 16.6667 12.786 16.6667 14.1667Z" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -68,8 +80,11 @@
         class="media-bucket__item"
         class:active={item.id === $activeImageId}
         class:pinned={$pinnedImageIds.has(item.id)}
-        class:dimmed={$currentView === 'settings' || (($currentView === 'exports' || $currentView === 'batch') && !!item.videoPath)}
-        class:inert={($currentView === 'exports' || $currentView === 'batch') && !!item.videoPath}
+        class:dimmed={$currentView === 'settings' ||
+          (($currentView === 'exports' || $currentView === 'batch') &&
+            !!item.videoPath)}
+        class:inert={($currentView === 'exports' || $currentView === 'batch') &&
+          !!item.videoPath}
         onclick={() => handleClick(item.id)}
         onkeydown={(e) => handleKeydown(e, item.id)}
         role="button"
@@ -93,20 +108,25 @@
           class:pinned={$pinnedImageIds.has(item.id)}
           onclick={(e) => handlePin(e, item.id)}
           disabled={isRawVideo(item)}
-          aria-label={$pinnedImageIds.has(item.id) ? `Unpin ${item.name}` : `Pin ${item.name}`}
-        >{$pinnedImageIds.has(item.id) ? '\u{1F4CC}' : '\u25CB'}</button>
+          aria-label={$pinnedImageIds.has(item.id)
+            ? `Unpin ${item.name}`
+            : `Pin ${item.name}`}
+          >{$pinnedImageIds.has(item.id) ? '\u{1F4CC}' : '\u25CB'}</button
+        >
         <button
           class="media-bucket__remove"
           onclick={(e) => handleRemove(e, item.id)}
-          aria-label="Remove {item.name}"
-        >&times;</button>
+          aria-label="Remove {item.name}">&times;</button
+        >
       </div>
     {/each}
   </div>
   {#if pinnedCount > 0}
     <div class="media-bucket__pin-footer">
       <span>{pinnedCount} pinned</span>
-      <button class="media-bucket__clear-pins" onclick={clearPins}>Clear pins</button>
+      <button class="media-bucket__clear-pins" onclick={clearPins}
+        >Clear pins</button
+      >
     </div>
   {/if}
   {#if $images.length > 1}
@@ -269,7 +289,9 @@
     color: var(--accent);
     font-size: 12px;
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
   }
 
   .media-bucket__clear-all:hover {

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { linearSrgbToOklab, oklabToOklch, rgbToHsv, srgbToLinear } from '../polar-chart';
+import {
+  linearSrgbToOklab,
+  oklabToOklch,
+  rgbToHsv,
+  srgbToLinear,
+} from '../polar-chart';
 
 const OKLAB_TOL = 2e-3;
 const OKLCH_TOL = 2e-3;
@@ -18,7 +23,10 @@ type FixtureSample = {
 
 describe('color goldens (TS)', () => {
   it('matches reference fixture values', () => {
-    const fixturePath = new URL('../../../../src-tauri/tests/fixtures/color_golden.json', import.meta.url);
+    const fixturePath = new URL(
+      '../../../../src-tauri/tests/fixtures/color_golden.json',
+      import.meta.url
+    );
     const contents = readFileSync(fileURLToPath(fixturePath), 'utf-8');
     const data = JSON.parse(contents) as { samples: FixtureSample[] };
     for (const sample of data.samples) {
@@ -44,15 +52,31 @@ describe('color goldens (TS)', () => {
 });
 
 function rgbToOklab(rgb: [number, number, number]): [number, number, number] {
-  const linear = rgb.map((value) => srgbToLinear(value / 255)) as [number, number, number];
+  const linear = rgb.map((value) => srgbToLinear(value / 255)) as [
+    number,
+    number,
+    number,
+  ];
   return linearSrgbToOklab(linear);
 }
 
-function assertCloseVec(actual: [number, number, number], expected: [number, number, number], tol: number, label: string) {
-  actual.forEach((value, idx) => assertClose(value, expected[idx], tol, `${label}[${idx}]`));
+function assertCloseVec(
+  actual: [number, number, number],
+  expected: [number, number, number],
+  tol: number,
+  label: string
+) {
+  actual.forEach((value, idx) =>
+    assertClose(value, expected[idx], tol, `${label}[${idx}]`)
+  );
 }
 
-function assertClose(actual: number, expected: number, tol: number, label: string) {
+function assertClose(
+  actual: number,
+  expected: number,
+  tol: number,
+  label: string
+) {
   const diff = Math.abs(actual - expected);
   expect(
     diff <= tol,
@@ -60,7 +84,12 @@ function assertClose(actual: number, expected: number, tol: number, label: strin
   ).toBe(true);
 }
 
-function assertHueClose(actual: number, expected: number, tol: number, label: string) {
+function assertHueClose(
+  actual: number,
+  expected: number,
+  tol: number,
+  label: string
+) {
   let diff = Math.abs(actual - expected);
   if (diff > 180) diff = 360 - diff;
   expect(

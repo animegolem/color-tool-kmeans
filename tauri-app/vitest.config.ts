@@ -5,12 +5,12 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.spec.ts'],
     coverage: {
-      enabled: false
-    }
+      enabled: false,
+    },
   },
   resolve: {
     alias: {
-      '@': '/src'
-    }
-  }
+      '@': '/src',
+    },
+  },
 });

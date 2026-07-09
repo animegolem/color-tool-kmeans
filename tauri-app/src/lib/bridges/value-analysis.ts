@@ -2,12 +2,19 @@ import { z } from 'zod';
 import type { ValueAnalysisResult } from '../stores/ui';
 import { isTauriEnv, tauriInvoke } from './tauri';
 
-type ValueAnalysisErrorCode = 'not-tauri' | 'invoke-failed' | 'invalid-response';
+type ValueAnalysisErrorCode =
+  | 'not-tauri'
+  | 'invoke-failed'
+  | 'invalid-response';
 
 export class ValueAnalysisError extends Error {
   readonly code: ValueAnalysisErrorCode;
 
-  constructor(code: ValueAnalysisErrorCode, message: string, options?: { cause?: unknown }) {
+  constructor(
+    code: ValueAnalysisErrorCode,
+    message: string,
+    options?: { cause?: unknown }
+  ) {
     super(message);
     this.name = 'ValueAnalysisError';
     this.code = code;
@@ -19,16 +26,26 @@ export class ValueAnalysisError extends Error {
 
 const finiteNumberSchema = z
   .number()
-  .refine((value) => Number.isFinite(value), { message: 'must be a finite number' });
+  .refine((value) => Number.isFinite(value), {
+    message: 'must be a finite number',
+  });
 
 const valueAnalysisResponseSchema = z
   .object({
     neutral: z.string().min(1),
-    neutralWidth: finiteNumberSchema.min(1, { message: 'neutralWidth must be >= 1' }),
-    neutralHeight: finiteNumberSchema.min(1, { message: 'neutralHeight must be >= 1' }),
+    neutralWidth: finiteNumberSchema.min(1, {
+      message: 'neutralWidth must be >= 1',
+    }),
+    neutralHeight: finiteNumberSchema.min(1, {
+      message: 'neutralHeight must be >= 1',
+    }),
     preview: z.string().min(1),
-    previewWidth: finiteNumberSchema.min(1, { message: 'previewWidth must be >= 1' }),
-    previewHeight: finiteNumberSchema.min(1, { message: 'previewHeight must be >= 1' }),
+    previewWidth: finiteNumberSchema.min(1, {
+      message: 'previewWidth must be >= 1',
+    }),
+    previewHeight: finiteNumberSchema.min(1, {
+      message: 'previewHeight must be >= 1',
+    }),
     bucketMap: z.string().min(1),
     bucketMapData: z.array(finiteNumberSchema),
     p10: finiteNumberSchema,
@@ -41,7 +58,7 @@ const valueAnalysisResponseSchema = z
     counts: z.array(z.number().int().nonnegative()),
     histogramBins: z.array(z.number().int().nonnegative()),
     levels: z.number().int().min(2).max(5),
-    notanMode: z.boolean()
+    notanMode: z.boolean(),
   })
   .readonly();
 
@@ -54,11 +71,19 @@ function normalizeValueAnalysisResponse(raw: unknown): Record<string, unknown> {
   const payload = raw as Record<string, unknown>;
   return {
     neutral: typeof payload.neutral === 'string' ? payload.neutral : '',
-    neutralWidth: Number(payload.neutralWidth ?? (payload as any).neutral_width),
-    neutralHeight: Number(payload.neutralHeight ?? (payload as any).neutral_height),
+    neutralWidth: Number(
+      payload.neutralWidth ?? (payload as any).neutral_width
+    ),
+    neutralHeight: Number(
+      payload.neutralHeight ?? (payload as any).neutral_height
+    ),
     preview: typeof payload.preview === 'string' ? payload.preview : '',
-    previewWidth: Number(payload.previewWidth ?? (payload as any).preview_width),
-    previewHeight: Number(payload.previewHeight ?? (payload as any).preview_height),
+    previewWidth: Number(
+      payload.previewWidth ?? (payload as any).preview_width
+    ),
+    previewHeight: Number(
+      payload.previewHeight ?? (payload as any).preview_height
+    ),
     bucketMap:
       typeof payload.bucketMap === 'string'
         ? payload.bucketMap
@@ -74,8 +99,12 @@ function normalizeValueAnalysisResponse(raw: unknown): Record<string, unknown> {
     p90: Number(payload.p90),
     p01: Number(payload.p01),
     p99: Number(payload.p99),
-    centroids: Array.isArray(payload.centroids) ? payload.centroids.map(Number) : [],
-    boundaries: Array.isArray(payload.boundaries) ? payload.boundaries.map(Number) : [],
+    centroids: Array.isArray(payload.centroids)
+      ? payload.centroids.map(Number)
+      : [],
+    boundaries: Array.isArray(payload.boundaries)
+      ? payload.boundaries.map(Number)
+      : [],
     bucketValues: Array.isArray(payload.bucketValues)
       ? payload.bucketValues.map(Number)
       : Array.isArray((payload as any).bucket_values)
@@ -88,7 +117,7 @@ function normalizeValueAnalysisResponse(raw: unknown): Record<string, unknown> {
         ? (payload as any).histogram_bins.map(Number)
         : [],
     levels: Number(payload.levels ?? (payload as any).levels),
-    notanMode: Boolean(payload.notanMode ?? (payload as any).notan_mode)
+    notanMode: Boolean(payload.notanMode ?? (payload as any).notan_mode),
   };
 }
 
@@ -118,21 +147,31 @@ export async function requestValueAnalysis(
   notanMode: boolean
 ): Promise<ValueAnalysisResult> {
   if (!isTauriEnv()) {
-    throw new ValueAnalysisError('not-tauri', 'Value analysis requires the Tauri runtime.');
+    throw new ValueAnalysisError(
+      'not-tauri',
+      'Value analysis requires the Tauri runtime.'
+    );
   }
   if (!path) {
-    throw new ValueAnalysisError('invoke-failed', 'Missing image path for value analysis.');
+    throw new ValueAnalysisError(
+      'invoke-failed',
+      'Missing image path for value analysis.'
+    );
   }
   let rawResponse: unknown;
   try {
     rawResponse = await tauriInvoke('value_analysis', {
-      req: { path, imageId, levels, notanMode }
+      req: { path, imageId, levels, notanMode },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    throw new ValueAnalysisError('invoke-failed', `Tauri value_analysis invoke failed: ${message}`, {
-      cause: err
-    });
+    throw new ValueAnalysisError(
+      'invoke-failed',
+      `Tauri value_analysis invoke failed: ${message}`,
+      {
+        cause: err,
+      }
+    );
   }
   const parsed = parseValueAnalysisResponse(rawResponse);
   return {
@@ -154,6 +193,6 @@ export async function requestValueAnalysis(
     counts: parsed.counts,
     histogramBins: parsed.histogramBins,
     levels: parsed.levels,
-    notanMode: parsed.notanMode
+    notanMode: parsed.notanMode,
   };
 }

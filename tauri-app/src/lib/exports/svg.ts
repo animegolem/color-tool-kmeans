@@ -5,13 +5,20 @@ export interface SvgDocumentOptions {
   attrs?: Record<string, string | number | boolean>;
 }
 
-export function svgDocument({ width, height, content, attrs = {} }: SvgDocumentOptions): string {
+export function svgDocument({
+  width,
+  height,
+  content,
+  attrs = {},
+}: SvgDocumentOptions): string {
   const attrString = Object.entries(attrs)
     .map(([key, value]) => `${key}="${escapeAttr(String(value))}"`)
     .join(' ');
   const extra = attrString ? ` ${attrString}` : '';
-  return `<?xml version="1.0" encoding="UTF-8"?>` +
-    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"${extra}>${content}</svg>`;
+  return (
+    `<?xml version="1.0" encoding="UTF-8"?>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"${extra}>${content}</svg>`
+  );
 }
 
 export function svgCircle(attrs: Record<string, string | number>): string {
@@ -26,11 +33,17 @@ export function svgRect(attrs: Record<string, string | number>): string {
   return `<rect ${serializeAttrs(attrs)} />`;
 }
 
-export function svgText(attrs: Record<string, string | number>, text: string): string {
+export function svgText(
+  attrs: Record<string, string | number>,
+  text: string
+): string {
   return `<text ${serializeAttrs(attrs)}>${escapeText(text)}</text>`;
 }
 
-export function svgGroup(children: string[], attrs: Record<string, string | number> = {}): string {
+export function svgGroup(
+  children: string[],
+  attrs: Record<string, string | number> = {}
+): string {
   return `<g ${serializeAttrs(attrs)}>${children.join('')}</g>`;
 }
 
@@ -45,5 +58,8 @@ export function escapeAttr(input: string): string {
 }
 
 export function escapeText(input: string): string {
-  return input.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }

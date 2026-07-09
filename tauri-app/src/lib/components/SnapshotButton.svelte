@@ -43,7 +43,9 @@
     padding: 0;
     cursor: pointer;
     opacity: 0.55;
-    transition: opacity 0.15s ease, background 0.15s ease;
+    transition:
+      opacity 0.15s ease,
+      background 0.15s ease;
   }
 
   .snapshot-btn:hover:not(:disabled) {
