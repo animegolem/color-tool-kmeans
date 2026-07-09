@@ -6,11 +6,11 @@
 
 | Status | EPICs | IMPs |
 |--------|-------|------|
-| In Progress | 1 | 5 |
+| In Progress | 1 | 4 |
 | Planned | 3 | 8 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
-| Completed | 17 | 115 |
+| Completed | 17 | 116 |
 | **Total** | **23** | **133** |
 
 ## In Progress
@@ -23,7 +23,7 @@
 - [[AI-IMP-163-cancellation-and-media-promotion|IMP-163]] Cancellation and media promotion — in-progress
 - [[AI-IMP-164-resource-and-export-integrity|IMP-164]] Resource and export integrity — in-progress
 - [[AI-IMP-165-repo-gates-repair|IMP-165]] Repo gates repair — in-progress
-- [[AI-IMP-166-p4-sweep|IMP-166]] P4 sweep — in-progress
+- [[AI-IMP-166-p4-sweep|IMP-166]] P4 sweep — completed
 
 ---
 
@@ -55,16 +55,6 @@
 
 ---
 
-## Anomalies
-
-### Status Mismatches
-- [[AI-IMP-099-folder-browser|IMP-099]] — open but parent epic AI-EPIC-020 is completed
-- [[AI-IMP-112-session-management-toggle|IMP-112]] — open but parent epic AI-EPIC-020 is completed
-- [[AI-IMP-124-unify-video-frame-extraction|IMP-124]] — open but parent epic AI-EPIC-023 is completed
-- [[AI-IMP-154-os-zoom-content-scaling|IMP-154]] — open but parent epic AI-EPIC-024 is completed
-
----
-
 ## Cancelled / Deferred
 
 - [[AI-EPIC-012-color-picker|EPIC-012]] Color picker — deferred — "Users want to quickly sample colors from anywhere in the app (source image, clusters, charts) and get color codes for use in illustration programs...."
@@ -90,15 +80,15 @@ Generated from tracked files; binary assets excluded.
 
 - tauri-app/src-tauri/src/value_analysis.rs (594 LOC)
 - tauri-app/src-tauri/src/kmeans.rs (581 LOC)
-- RAG/scripts/generate-index.sh (575 LOC)
+- RAG/scripts/generate-index.sh (576 LOC)
 - tauri-app/src/lib/views/ExportsView.svelte (514 LOC)
 - tauri-app/src/lib/exports/value-analysis.ts (429 LOC)
 - tauri-app/src-tauri/src/commands.rs (395 LOC)
 - tauri-app/src/App.svelte (380 LOC)
 - tauri-app/src-tauri/src/bin/live_pipe_probe.rs (379 LOC)
 - tauri-app/src/app.css (374 LOC)
+- tauri-app/src/lib/views/exports/colors-export-runner.svelte.ts (372 LOC)
 - tauri-app/src-tauri/src/ffmpeg.rs (369 LOC)
-- tauri-app/src/lib/views/exports/colors-export-runner.svelte.ts (368 LOC)
 - tauri-app/src/lib/exports/polar-chart.ts (358 LOC)
 - tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (350 LOC)
 - tauri-app/src-tauri/src/bin/live_loop_probe.rs (347 LOC)
@@ -110,7 +100,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>17 EPICs, 84 IMPs completed</summary>
+<summary>17 EPICs, 85 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed

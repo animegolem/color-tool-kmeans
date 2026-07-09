@@ -32,6 +32,14 @@ export interface ColorsExportDeps {
   getVideoFps: () => number | null;
 }
 
+export function formatTimestamp(timestamp: number): string {
+  const totalCentis = Math.round(timestamp * 100);
+  const mins = Math.floor(totalCentis / 6000);
+  const secs = Math.floor(totalCentis / 100) % 60;
+  const centis = totalCentis % 100;
+  return `${String(mins).padStart(2, '0')}m${String(secs).padStart(2, '0')}s${String(centis).padStart(2, '0')}`;
+}
+
 export function createColorsExportRunner(deps: ColorsExportDeps) {
   let analysisRunning = $state(false);
   let isSaving = $state(false);
@@ -107,11 +115,7 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
         const frameNum = Math.round(file.frameTimestamp * fps);
         base += `-f${frameNum}`;
       } else {
-        const totalSec = Math.floor(file.frameTimestamp);
-        const mins = Math.floor(totalSec / 60);
-        const secs = totalSec % 60;
-        const centis = Math.round((file.frameTimestamp - totalSec) * 100);
-        base += `-${String(mins).padStart(2, '0')}m${String(secs).padStart(2, '0')}s${String(centis).padStart(2, '0')}`;
+        base += `-${formatTimestamp(file.frameTimestamp)}`;
       }
     }
     return base;

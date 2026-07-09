@@ -73,7 +73,7 @@
     </div>
     <div class="field">
       <span class="field-label">Display Charts</span>
-      <p class="hint">Applies to Colors and Batch views.</p>
+      <p class="hint">Applies to the Colors view.</p>
       <label class="choice">
         <input type="checkbox" bind:checked={$params.showHistogram} />
         Cluster Histogram

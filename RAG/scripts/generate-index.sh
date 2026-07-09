@@ -275,7 +275,8 @@ else
 
         # Check for status mismatches
         if [[ "$epic_status" == "completed" || "$epic_status" == "complete" ]] && \
-           [[ "$status" != "completed" && "$status" != "complete" ]]; then
+           [[ "$status" != "completed" && "$status" != "complete" && \
+              "$status" != "deferred" && "$status" != "cancelled" ]]; then
           printf '%s\t%s\t%s\topen but parent epic %s is completed\n' "$filename" "$imp_num" "$status" "$parent_epic" >> "$STATUS_MISMATCHES"
         fi
       fi

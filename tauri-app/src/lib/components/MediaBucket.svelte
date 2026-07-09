@@ -48,7 +48,7 @@
   }
 
   function isRawVideo(item: ImageEntry): boolean {
-    return !!item.videoPath && !item.frameTimestamp;
+    return !!item.videoPath && item.frameTimestamp == null;
   }
 
   function handleKeydown(event: KeyboardEvent, id: string) {
