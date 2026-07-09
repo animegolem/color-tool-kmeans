@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime};
 
 use image::imageops::FilterType;
 use image::{DynamicImage, GrayImage, ImageReader, Luma, Rgb, RgbImage};
@@ -27,6 +28,11 @@ const META_FILE: &str = "meta.json";
 const NEUTRAL_FILE: &str = "neutral.png";
 const PREVIEW_FILE: &str = "preview.png";
 const BUCKET_MAP_FILE: &str = "bucket-map.png";
+
+// Value renders can be regenerated from their source media. Keep a generous
+// working set while bounding both abandoned entries and aggregate disk use.
+const VALUE_CACHE_MAX_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);
+const VALUE_CACHE_MAX_BYTES: u64 = 512 * 1024 * 1024;
 
 #[derive(Debug, Error)]
 pub enum ValueAnalysisError {
@@ -102,9 +108,10 @@ pub fn generate_value_analysis(
     notan_mode: bool,
     cache_root: impl AsRef<Path>,
 ) -> Result<ValueAnalysisResult> {
+    let cache_root = cache_root.as_ref();
     let levels = levels.clamp(LEVEL_MIN, LEVEL_MAX);
     let notan_mode = notan_mode && levels == 2;
-    let cache_dir = cache_root.as_ref().join("value-analysis");
+    let cache_dir = cache_root.join("value-analysis");
     fs::create_dir_all(&cache_dir)?;
     let cache_dir = cache_dir.join(sanitize_id(image_id));
     fs::create_dir_all(&cache_dir)?;
@@ -264,7 +271,7 @@ pub fn generate_value_analysis(
         },
     );
 
-    Ok(ValueAnalysisResult {
+    let result = ValueAnalysisResult {
         neutral: neutral_path,
         preview: preview_path,
         bucket_map: bucket_map_path,
@@ -283,7 +290,92 @@ pub fn generate_value_analysis(
         counts,
         histogram_bins,
         notan_mode,
-    })
+    };
+    prune_value_analysis_cache(cache_root);
+    Ok(result)
+}
+
+pub fn remove_value_analysis_artifacts(
+    cache_root: impl AsRef<Path>,
+    image_id: &str,
+) -> std::io::Result<bool> {
+    let path = cache_root
+        .as_ref()
+        .join("value-analysis")
+        .join(sanitize_id(image_id));
+    if !path.exists() {
+        return Ok(false);
+    }
+    fs::remove_dir_all(path)?;
+    Ok(true)
+}
+
+pub fn prune_value_analysis_cache(cache_root: impl AsRef<Path>) {
+    prune_value_analysis_cache_with_policy(
+        cache_root.as_ref(),
+        VALUE_CACHE_MAX_BYTES,
+        VALUE_CACHE_MAX_AGE,
+    );
+}
+
+fn prune_value_analysis_cache_with_policy(cache_root: &Path, max_bytes: u64, max_age: Duration) {
+    let root = cache_root.join("value-analysis");
+    let Ok(entries) = fs::read_dir(&root) else {
+        return;
+    };
+    let now = SystemTime::now();
+    let mut artifacts: Vec<(PathBuf, SystemTime, u64)> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let (size, modified) = artifact_stats(&entry.path()).ok()?;
+            Some((entry.path(), modified, size))
+        })
+        .collect();
+
+    artifacts.retain(|(path, modified, _)| {
+        let expired = now
+            .duration_since(*modified)
+            .map(|age| age > max_age)
+            .unwrap_or(false);
+        if expired {
+            let _ = remove_artifact_path(path);
+        }
+        !expired
+    });
+
+    artifacts.sort_by_key(|(_, modified, _)| *modified);
+    let mut total_bytes: u64 = artifacts.iter().map(|(_, _, size)| size).sum();
+    for (path, _, size) in artifacts {
+        if total_bytes <= max_bytes {
+            break;
+        }
+        if remove_artifact_path(&path).is_ok() {
+            total_bytes = total_bytes.saturating_sub(size);
+        }
+    }
+}
+
+fn artifact_stats(path: &Path) -> std::io::Result<(u64, SystemTime)> {
+    let metadata = fs::metadata(path)?;
+    let mut size = metadata.len();
+    let mut modified = metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+    if metadata.is_dir() {
+        size = 0;
+        for entry in fs::read_dir(path)?.flatten() {
+            let (entry_size, entry_modified) = artifact_stats(&entry.path())?;
+            size = size.saturating_add(entry_size);
+            modified = modified.max(entry_modified);
+        }
+    }
+    Ok((size, modified))
+}
+
+fn remove_artifact_path(path: &Path) -> std::io::Result<()> {
+    if path.is_dir() {
+        fs::remove_dir_all(path)
+    } else {
+        fs::remove_file(path)
+    }
 }
 
 fn load_rgb_with_downscale(path: &Path, max_dim: u32, filter: FilterType) -> Result<RgbImage> {
@@ -573,6 +665,7 @@ fn sanitize_id(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     #[test]
     fn percentile_at_bounds() {
@@ -590,5 +683,43 @@ mod tests {
         assert!(seeds[0][0] >= 0.0 && seeds[0][0] <= 1.0);
         assert!(seeds[1][0] >= 0.0 && seeds[1][0] <= 1.0);
         assert!(seeds[2][0] >= 0.0 && seeds[2][0] <= 1.0);
+    }
+
+    #[test]
+    fn aud_011_value_cache_prune_enforces_the_size_cap() {
+        let temp = TempDir::new().expect("temp dir");
+        let root = temp.path().join("value-analysis");
+        let first = root.join("image-1").join("k3-kmeans");
+        let second = root.join("image-2").join("k3-kmeans");
+        fs::create_dir_all(&first).expect("first cache entry");
+        fs::create_dir_all(&second).expect("second cache entry");
+        fs::write(first.join(NEUTRAL_FILE), [0_u8; 8]).expect("first artifact");
+        fs::write(second.join(NEUTRAL_FILE), [0_u8; 8]).expect("second artifact");
+
+        prune_value_analysis_cache_with_policy(temp.path(), 8, VALUE_CACHE_MAX_AGE);
+
+        let retained = fs::read_dir(root)
+            .expect("retained value entries")
+            .flatten()
+            .count();
+        assert!(retained <= 1);
+    }
+
+    #[test]
+    fn aud_011_entry_removal_deletes_owned_value_artifacts() {
+        let temp = TempDir::new().expect("temp dir");
+        let entry = temp
+            .path()
+            .join("value-analysis")
+            .join("image-1")
+            .join("k3-kmeans");
+        fs::create_dir_all(&entry).expect("cache entry");
+        fs::write(entry.join(NEUTRAL_FILE), [0_u8]).expect("artifact");
+
+        let removed =
+            remove_value_analysis_artifacts(temp.path(), "image-1").expect("artifact removal");
+
+        assert!(removed);
+        assert!(!temp.path().join("value-analysis").join("image-1").exists());
     }
 }

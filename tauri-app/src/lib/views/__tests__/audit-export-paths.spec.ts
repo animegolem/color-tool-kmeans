@@ -4,12 +4,14 @@ const mocks = vi.hoisted(() => ({
   saveFromPath: vi.fn()
 }));
 
-vi.mock('../../bridges/fs', () => ({
+vi.mock('../../bridges/fs', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../bridges/fs')>()),
   saveFromPath: mocks.saveFromPath,
   getFsBridge: vi.fn()
 }));
 
 import { createColorsExportRunner } from '../exports/colors-export-runner.svelte';
+import { sourceImageExportName } from '../../bridges/fs';
 import type { AnalysisParams, AnalysisResult, ExportChecks, SelectedImage } from '../../stores/ui';
 
 const params: AnalysisParams = {
@@ -66,21 +68,21 @@ function selectedFile(overrides: Partial<SelectedImage> = {}): SelectedImage {
   };
 }
 
-describe('audit reproductions for export naming', () => {
+describe('audit regressions for export naming', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.saveFromPath.mockResolvedValue({ canceled: false, path: '/tmp/out' });
   });
 
-  it.fails('preserves the TIFF extension when copying a supported source image', async () => {
-    const runner = makeRunner(selectedFile());
-
-    await runner.saveSourceImagePng();
-
-    expect(mocks.saveFromPath).toHaveBeenCalledWith('/tmp/scan.tiff', 'scan-source.tiff');
+  it('AUD-012: uses an honest TIFF extension when copying a supported source image', () => {
+    expect(sourceImageExportName('scan.tiff', 'scan')).toBe('scan-source.tif');
   });
 
-  it.fails('normalizes a rounded 100-centisecond timestamp into the next second', () => {
+  it('AUD-012: preserves the GIF extension when copying a supported source image', () => {
+    expect(sourceImageExportName('animation.gif', 'animation')).toBe('animation-source.gif');
+  });
+
+  it.fails('AUD-017: normalizes a rounded 100-centisecond timestamp into the next second', () => {
     const runner = makeRunner(selectedFile({
       name: 'clip.mp4',
       path: '/tmp/frame.png',

@@ -27,7 +27,8 @@ function formatTimestamp(seconds: number): string {
  * pruned (keep-newest-N on startup), so we copy it to a persistent location
  * first. The resulting entry is a plain image (no videoPath/frameTimestamp) so
  * the bucket treats it as an independent still — clickable, analyzable, and
- * pinnable — rather than re-routing back into the source video.
+ * pinnable — rather than re-routing back into the source video. The artifact
+ * cleanup service removes this managed copy when its media entry is removed.
  */
 export async function snapshotCurrentFrame(req: SnapshotRequest): Promise<void> {
   if (!req.framePath) return;

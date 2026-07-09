@@ -6,10 +6,45 @@ mod commands_types;
 mod merge;
 
 use std::time::Duration;
-use tauri::Manager;
+use tauri::{AppHandle, Manager};
+use tauri_app::value_analysis::{prune_value_analysis_cache, remove_value_analysis_artifacts};
 
-use cache::{build_log_path, prune_event_logs, prune_video_cache, EventLog};
+use cache::{build_log_path, prune_event_logs, prune_runtime_cache, EventLog};
 use commands::*;
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RemoveMediaArtifactsRequest {
+    image_id: String,
+    artifact_path: Option<String>,
+}
+
+fn prune_media_artifacts(cache_dir: &std::path::Path, local_data_dir: &std::path::Path) {
+    prune_runtime_cache(cache_dir, local_data_dir);
+    prune_value_analysis_cache(cache_dir);
+}
+
+#[tauri::command]
+fn remove_media_artifacts(req: RemoveMediaArtifactsRequest, app: AppHandle) -> Result<(), String> {
+    if req.image_id.trim().is_empty() {
+        return Err("Missing image id".into());
+    }
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|_| String::from("Failed to resolve cache directory"))?;
+    let local_data_dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|_| String::from("Failed to resolve local data directory"))?;
+    remove_value_analysis_artifacts(&cache_dir, &req.image_id)
+        .map_err(|error| format!("Failed to remove value artifacts: {error}"))?;
+    if let Some(path) = req.artifact_path.filter(|path| !path.is_empty()) {
+        cache::remove_managed_artifact(&cache_dir, &local_data_dir, std::path::Path::new(&path))
+            .map_err(|error| format!("Failed to remove media artifact: {error}"))?;
+    }
+    Ok(())
+}
 
 fn main() {
     tauri::Builder::default()
@@ -18,11 +53,15 @@ fn main() {
                 .path()
                 .app_cache_dir()
                 .map_err(|_| String::from("Failed to resolve cache directory"))?;
+            let local_data_dir = app
+                .path()
+                .app_local_data_dir()
+                .map_err(|_| String::from("Failed to resolve local data directory"))?;
             let log_path = build_log_path(&cache_dir);
             let logger = EventLog { path: log_path };
             logger.append("[system] app setup");
             prune_event_logs(&cache_dir, 5, &logger.path);
-            prune_video_cache(&cache_dir, 80, 10);
+            prune_media_artifacts(&cache_dir, &local_data_dir);
             app.manage(logger);
             let heartbeat_path = app.state::<EventLog>().path.clone();
             std::thread::spawn(move || {
@@ -33,6 +72,10 @@ fn main() {
                     std::thread::sleep(Duration::from_secs(10));
                     heartbeat.append("[system] heartbeat");
                 }
+            });
+            std::thread::spawn(move || loop {
+                std::thread::sleep(cache::RUNTIME_PRUNE_INTERVAL);
+                prune_media_artifacts(&cache_dir, &local_data_dir);
             });
             Ok(())
         })
@@ -55,7 +98,8 @@ fn main() {
             probe_video,
             extract_video_strip,
             ffmpeg_version,
-            compose_grid
+            compose_grid,
+            remove_media_artifacts
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

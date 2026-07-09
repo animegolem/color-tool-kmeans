@@ -6,12 +6,12 @@ tags:
   - defects
   - exports
   - resources
-kanban_status: in-progress
+kanban_status: completed
 depends_on:
 parent_epic: [[AI-EPIC-028-audit-remediation]]
 confidence_score: 0.75
 date_created: 2026-07-09
-date_completed:
+date_completed: 2026-07-09
 ---
 
 # AI-IMP-164-resource-and-export-integrity
@@ -29,14 +29,16 @@ Audit findings AUD-011, 012, 013, 014 (`RAG/AI-LOG/2026-07-09-LOG-AI-control-flo
 
 ### Design/Approach
 
-- **AUD-011**: add a session-time retention pass — reuse the startup pruning (`cache.rs` / `main.rs`) mechanics: invoke pruning after each value-analysis/frame-extraction write (cheap size/age check), and delete per-entry artifacts when their owning media entry is removed. Keep policy conservative (age/size cap), document constants.
+- **AUD-011**: add a session-time retention pass — reuse the startup pruning (`cache.rs` / `main.rs`) mechanics: invoke pruning after each value-analysis/frame-extraction write (cheap size/age check), and delete per-entry artifacts when their owning media entry is removed. Keep policy conservative (age/size cap), document constants. **Removal hook (work-order review 2026-07-09):** entry-removal cleanup lives in a NEW `lib/services/artifact-cleanup.ts` service covering all three artifact classes (value-analysis cache dirs, clipboard images, frame snapshots). You are authorized to add ONE-LINE hook calls to that service from `removeFile()` and `clearFile()` in `stores/image.ts` — hook calls only, no other logic changes there (IMP-162/163 own that file's logic; the lead resolves merge overlap).
 - **AUD-012**: source export must either (a) name the file with its true extension for recognized-but-unconverted formats (tiff→`.tif`, gif→`.gif`), or (b) convert to PNG before save. Prefer (a) — honest and cheap; the Rust `image` crate already decodes both if (b) is chosen later.
 - **AUD-013**: registration helpers must handle unmount-before-resolve: after `await`, check a `disposed` flag and immediately unlisten if set (pattern per view: Home, Values, batch-drop).
-- **AUD-014** (Rust `ffmpeg.rs`): use the probed fps (available from `ffprobe_details`) instead of the assumed 30 fps when deciding the fps filter, or always emit an `fps=` filter derived from `count/duration`. Tail coverage must hold for 60 fps clips.
+- **AUD-014** (Rust `ffmpeg.rs`): use the real probed fps (from `ffprobe_details`) when deciding the fps filter; fall back to `count/duration` ONLY when the probe reports no usable fps. Tail coverage must hold for 60 fps clips. (Aligned with the checklist per work-order review 2026-07-09.)
 
 ### Files to Touch
 
 - `tauri-app/src-tauri/src/main.rs` / `cache.rs` (AUD-011 session prune hook)
+- `tauri-app/src/lib/services/artifact-cleanup.ts` (NEW — AUD-011 entry-removal cleanup, all three artifact classes)
+- `tauri-app/src/lib/stores/image.ts` — ONE-LINE hook calls from `removeFile()`/`clearFile()` into artifact-cleanup only (see Design)
 - `tauri-app/src-tauri/src/value_analysis.rs` — artifact removal helper only if needed for AUD-011 (do NOT touch cache-freshness logic — IMP-162 owns it)
 - `tauri-app/src/lib/services/frame-snapshot.ts` (AUD-011 lifecycle)
 - `tauri-app/src/lib/views/exports/colors-export-runner.svelte.ts` (AUD-012 naming)
@@ -45,7 +47,7 @@ Audit findings AUD-011, 012, 013, 014 (`RAG/AI-LOG/2026-07-09-LOG-AI-control-flo
 - `tauri-app/src-tauri/src/ffmpeg.rs` (AUD-014)
 - `tauri-app/src/lib/views/__tests__/audit-export-paths.spec.ts` (repro → regression) + new tests
 
-**Do NOT touch:** `image.ts`, `video-scrubber.svelte.ts`, `file-ingestion-values.svelte.ts`, `video-controller.svelte.ts`, analysis runners (IMP-162/163); CI/hooks (IMP-165); `src-tauri/src/bin/*`. In `value_analysis.rs`, only add artifact-removal helpers; the mtime/freshness code belongs to IMP-162.
+**Do NOT touch:** `image.ts` beyond the two one-line cleanup hook calls authorized above; `video-scrubber.svelte.ts`, `file-ingestion-values.svelte.ts`, `video-controller.svelte.ts`, analysis runners (IMP-162/163); CI/hooks (IMP-165); `src-tauri/src/bin/*`. In `value_analysis.rs`, only add artifact-removal helpers; the mtime/freshness code belongs to IMP-162.
 
 ### Implementation Checklist
 
@@ -53,11 +55,11 @@ Audit findings AUD-011, 012, 013, 014 (`RAG/AI-LOG/2026-07-09-LOG-AI-control-flo
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] AUD-011: session-time prune + entry-removal cleanup implemented; Rust test or documented invariant for the prune path.
-- [ ] AUD-012: TIFF/GIF exports carry honest extensions (or are converted); repro converted to regression test.
-- [ ] AUD-013: all three registration sites are unmount-safe; regression test for the resolve-after-cleanup path.
-- [ ] AUD-014: fps filter decision uses real fps; 60 fps arithmetic covered by a unit test on the filter-construction logic.
-- [ ] Full gates: `npm run test -- --run`, `npm run check`, `npm run lint`, `cargo fmt/clippy/test`.
+- [x] AUD-011: session-time prune + `artifact-cleanup.ts` entry-removal service covering value-analysis dirs, clipboard images, and frame snapshots; hook calls wired from `removeFile()`/`clearFile()`; Rust test or documented invariant for the prune path.
+- [x] AUD-012: TIFF/GIF exports carry honest extensions (or are converted); repro converted to regression test.
+- [x] AUD-013: all three registration sites are unmount-safe; regression test for the resolve-after-cleanup path.
+- [x] AUD-014: fps filter decision uses real fps; 60 fps arithmetic covered by a unit test on the filter-construction logic.
+- [x] Full gates: `npm run test -- --run`, `npm run check`, `npm run lint`, `cargo fmt/clippy/test`.
 
 ### Acceptance Criteria
 
@@ -80,3 +82,9 @@ This section is filled out post work as you fill out the checklists.
 You SHOULD document any issues encountered and resolved during the sprint.
 You MUST document any failed implementations, blockers or missing tests.
 -->
+
+- The work order was revised during implementation to require a dedicated cleanup service, two narrowly authorized store hooks, `.tif` normalization, and real-fps filter decisions. The implementation was adjusted to the revised boundaries; no production files outside that list were changed.
+- The original AUD-012 `it.fails` repro was passing because constructing the Svelte rune controller threw `rune_outside_svelte`, not because the asserted filename failed. The production naming path now uses a pure helper, and the in-place test is a positive deterministic regression.
+- `frame-snapshot.ts` needed only a lifecycle-invariant clarification: its existing managed snapshot path is passed through the media entry to the centralized cleanup service.
+- The Cargo registry was warm, but the local Rust target cache was initially absent, so the first targeted Rust test incurred a one-time offline compile. No dependencies were installed and no network access was used.
+- `npm run check` remains green with the two pre-existing AUD-020 accessibility warnings in `VideoPanel.svelte` and `ValuesView.svelte`; they are outside this ticket.

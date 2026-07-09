@@ -16,7 +16,7 @@ import { generatePaletteJson } from '../../exports/palette-web';
 import { toDataUrl } from '../../exports/value-analysis';
 import { svgToTile, imageToTile } from '../../exports/compositor';
 import { composeColorStudy, type ColorStudyInput } from '../../exports/color-study-compositor';
-import { getFsBridge, saveFromPath } from '../../bridges/fs';
+import { getFsBridge, saveFromPath, sourceImageExportName } from '../../bridges/fs';
 import { svgToPngBlob } from '../../exports/png';
 import { saveChart } from '../../exports/chart-save';
 
@@ -291,9 +291,8 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     const file = deps.getFile();
     if (!file?.path) return;
     await performSave(async () => {
-      const ext = file!.name?.match(/\.(jpe?g|png|webp|bmp)$/i)?.[1]?.toLowerCase() ?? 'png';
-      const normalizedExt = ext === 'jpeg' ? 'jpg' : ext;
-      const { canceled } = await saveFromPath(file!.path!, `${baseName()}-source.${normalizedExt}`);
+      const defaultName = sourceImageExportName(file!.name ?? '', baseName());
+      const { canceled } = await saveFromPath(file!.path!, defaultName);
       if (canceled) setStatus('Export canceled.', 'info');
       else setStatus('Source image saved.', 'info');
     });

@@ -22,6 +22,7 @@
   import VideoScrubber from './values/VideoScrubber.svelte';
   import SnapshotButton from '../components/SnapshotButton.svelte';
   import { snapshotCurrentFrame } from '../services/frame-snapshot';
+  import { mountAsyncListener } from './batch/batch-drop.svelte';
 
   let videoEl = $state<HTMLVideoElement | null>(null);
 
@@ -150,9 +151,7 @@
     if (runner.file?.videoPath && !runner.hasCurrentAnalysis) {
       void runner.ensureAnalysis(runner.file, runner.levels, runner.effectiveNotanMode);
     }
-    let unlistenDragDrop: (() => void) | null = null;
-    ingestion.setupDragDrop()
-      .then((fn) => { unlistenDragDrop = fn; });
+    const cleanupDragDrop = mountAsyncListener(() => ingestion.setupDragDrop());
     const unsubs = [
       videoState.subscribe((vs) => {
         scrubber.syncFromVideoState(vs);
@@ -168,7 +167,7 @@
     return () => {
       cleanupRunner();
       unsubs.forEach((unsub) => unsub());
-      if (unlistenDragDrop) unlistenDragDrop();
+      cleanupDragDrop();
       scrubber.destroy();
     };
   });

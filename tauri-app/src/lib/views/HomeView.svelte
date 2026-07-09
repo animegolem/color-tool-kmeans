@@ -44,6 +44,7 @@
   import { createVideoController } from './home/video-controller.svelte';
   import { createAnalysisRunner } from './home/analysis-runner.svelte';
   import { createFileIngestion } from './home/file-ingestion.svelte';
+  import { mountAsyncListener } from './batch/batch-drop.svelte';
   import { clearActivePath } from '../services/active-image';
   import { subscribePendingVideoSwitch, subscribeMediaLoadRequested } from '../services/view-subscriptions';
   import VideoPanel from './home/VideoPanel.svelte';
@@ -292,8 +293,7 @@
     devlog('home:mount', 'HomeView mounted');
     void logEvent('home:view:mount');
     void checkFfmpegVersion();
-    let unlistenDragDrop: (() => void) | null = null;
-    ingestion.setupDragDrop().then((fn) => { unlistenDragDrop = fn ?? null; });
+    const cleanupDragDrop = mountAsyncListener(() => ingestion.setupDragDrop());
     const unsubs = [
       selectedFile.subscribe((value) => {
         file = value;
@@ -383,7 +383,7 @@
       window.removeEventListener('drop', onDrop);
       window.removeEventListener('pointerup', handleScrubEnd);
       window.removeEventListener('pointercancel', handleScrubEnd);
-      if (unlistenDragDrop) unlistenDragDrop();
+      cleanupDragDrop();
       devlog('home:unmount', 'HomeView unmounting');
       devlog.resources('home:unmount');
       void logEvent('home:view:unmount');
