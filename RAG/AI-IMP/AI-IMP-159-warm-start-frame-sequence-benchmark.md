@@ -142,3 +142,38 @@ cut       300 warm      32.80    40.00    182.98   379.93    664.92
 ```
 
 **Reading the results (FR-1 evidence for EPIC-025):** warm start reduces mean iterations/frame in every scenario × k cell (e.g. `held`/k=300: 39.84 → 32.53; `cut`/k=64: 21.06 → 13.26), and roughly halves mean ms/frame at k=64/128 in the `held` and `motion` scenarios. However the reduction is much smaller than the ≤4-iteration hypothesis for `held`, and warm-arm ms at k=300 does not reliably beat cold (see `motion`/k=300 above, where warm p95/max ms exceed cold's in both runs) — likely because warm iterations (≈32) are still high enough that per-iteration cost dominates and the `warm_start` bookkeeping doesn't pay for itself at that k. None of the three scenarios gets close to the 41.7 ms/frame budget at k=300 (mean ms/frame 148–261 warm, 243–723 cold); k=64 warm comes closest (mean ≈12–16 ms/frame) but p95/max still exceed budget on `cut` frames. This is directional evidence, not a go/no-go by itself — IMP-161 should weigh it alongside IMP-160's ingestion/conversion numbers.
+
+### Lead review (2026-07-09)
+
+The agent's diagnosis of the hypothesis miss was accepted as a **spec bug in this ticket**, not an implementation bug: the literal recurrence `frame[t] = frame[t-1] + gaussian` is a non-stationary random walk (≈10× blob smear by frame 119), whereas a held cel is a fixed drawing re-photographed with fresh grain. Lead revised the generator (commit on this branch): frames are now `base + fresh grain` — base placed once with `PLACEMENT_SIGMA 0.02` (shading spread), per-frame `GRAIN_SIGMA 0.005` that never accumulates; movement re-places the resampled fraction of base points around drifted centers; cuts regenerate the base. The tables above (original model) are retained for the record; revised-model results below supersede them for EPIC-025 evidence.
+
+Revised-model table (quiet machine; iteration columns byte-identical across three runs of the revised model):
+
+```
+scenario    k arm     mean_it   p95_it   mean_ms   p95_ms    max_ms
+held       64 cold      32.93    40.00     60.40    83.49    122.28
+held       64 warm      10.90    17.00     14.38    26.76     65.83
+held      128 cold      39.48    40.00    109.45   147.48    257.46
+held      128 warm      19.00    28.00     37.15    56.13    109.21
+held      300 cold      39.98    40.00    265.16   367.91    477.13
+held      300 warm      26.02    34.00    132.91   206.09    434.84
+motion     64 cold      22.88    38.00     46.58    77.53    117.12
+motion     64 warm      10.97    27.00     12.40    26.05     62.77
+motion    128 cold      39.04    40.00    146.28   285.91    376.35
+motion    128 warm      22.79    39.00     69.70   127.96    187.57
+motion    300 cold      40.00    40.00    307.54   435.72    626.34
+motion    300 warm      32.59    40.00    227.11   415.29    844.38
+cut        64 cold      27.15    40.00     55.84    95.41    143.70
+cut        64 warm      17.13    32.00     24.16    50.92    102.33
+cut       128 cold      39.22    40.00    149.46   223.31    401.52
+cut       128 warm      26.48    40.00     96.36   225.54    357.14
+cut       300 cold      39.99    40.00    365.10   649.46    997.51
+cut       300 warm      34.48    40.00    222.88   339.03    494.82
+```
+
+**Interpretation (supersedes the reading above for EPIC-025):**
+
+1. **Warm start reliably ~halves or better the iteration count** (held k=64: 32.9 → 10.9; k=128: 39.5 → 19.0; k=300: 40.0 → 26.0) — but convergence-to-tol still never approaches the ≤4 hypothesis, and cold arms pin the 40-iteration cap.
+2. **Why: the production tolerance can be statistically unreachable on streaming data.** With fresh grain each frame, a sub-cluster's centroid moves by ~σ_grain/√n ≈ 1.7e-4 per component from sampling noise alone; the combined-shift criterion (`tol 1e-3` across all k centroids) demands per-centroid movement below roughly 1e-4 at k=64+. Lloyd tracks the noise floor instead of converging. The synthetic setup (k ≥ 64 over only 40 true blobs) makes this maximally degenerate; real frames should be gentler, but the mechanism is real.
+3. **Consequence — live mode should use warm start + a fixed iteration budget, not convergence-to-tol.** Per-iteration cost from this table: ≈1.3 ms (k=64), ≈2.0 ms (k=128), ≈5.1 ms (k=300). A 4-iteration budget costs ≈5 / 8 / 20 ms per frame — all inside the 41.7 ms budget, even k=300. The open question moves from speed to quality: how close is capped-iteration inertia to converged inertia on real footage? **IMP-161 should add an inertia-ratio measurement (warm@2/@4 iters vs converged) on real clips** — that ratio, not iteration counts, is the go/no-go signal.
+4. Timing columns in the agent's original runs were contaminated by a concurrent Codex build/benchmark on the same machine (max_ms outliers of 632–1444 ms); the revised-model table above is from a quiet machine. Iteration columns were unaffected throughout (deterministic, byte-identical across runs).

@@ -16,7 +16,11 @@ const NUM_FRAMES: usize = 120;
 const POINTS_PER_FRAME: usize = 57_600; // 320x180 analysis resolution
 const MIXTURE_CLUSTERS: usize = 40; // matches kmeans_baseline's BASE_CLUSTERS
 const CUT_INTERVAL: usize = 48;
-const HELD_JITTER_SIGMA: f32 = 0.005;
+// Within-region color spread when a point is (re)placed around its blob center
+// (shading variation inside a cel region).
+const PLACEMENT_SIGMA: f32 = 0.02;
+// Per-frame film grain, applied FRESH to the base each frame — never cumulative.
+const GRAIN_SIGMA: f32 = 0.005;
 const MIXTURE_DRIFT_SIGMA: f32 = 0.01;
 const MOTION_RESAMPLE_FRACTION: f64 = 0.20;
 const K_VALUES: [usize; 3] = [64, 128, 300];
@@ -146,14 +150,21 @@ fn print_row(scenario: &str, k: usize, arm: &str, s: &ArmSummary) {
 
 /// Builds a deterministic 120-frame sequence for one scenario.
 ///
-/// `resample_fraction` of points are, each frame, redrawn from a mixture of
-/// `MIXTURE_CLUSTERS` centers (simulating character movement over a held
-/// background); the remainder carry over from the previous frame with
-/// Gaussian jitter (film grain on a held cel). If `drift` is set the mixture
-/// centers themselves take a small random walk each frame. If `cut_interval`
-/// is set, every Nth frame is a hard scene change: a fresh random mixture is
-/// drawn and every point is regenerated from scratch (no carry-over), to
-/// measure warm-start recovery cost after a cut.
+/// A `base` frame models the drawn cel: each point placed around its blob
+/// center with `PLACEMENT_SIGMA` (shading spread). Every output frame is the
+/// base plus FRESH `GRAIN_SIGMA` noise — grain never accumulates across
+/// frames (a held cel is the same drawing re-photographed, not a random
+/// walk). If `resample_fraction`/`drift` are set, the mixture centers take a
+/// small random walk each frame and that fraction of base points is
+/// re-placed around the drifted centers (character movement over a held
+/// background). If `cut_interval` is set, every Nth frame is a hard scene
+/// change: fresh mixture, fresh base, to measure warm-start recovery cost.
+///
+/// NOTE (lead review, 2026-07-09): the ticket's original literal recurrence
+/// `frame[t] = frame[t-1] + gaussian` was a non-stationary random walk that
+/// smeared the blobs ~10x by frame 119 and capped iteration counts at
+/// max_iters; replaced with this base+fresh-grain model. See ticket
+/// Issues Encountered.
 fn build_frames(
     seed: u64,
     resample_fraction: f64,
@@ -164,44 +175,51 @@ fn build_frames(
     let mut mixture = random_mixture(&mut rng, MIXTURE_CLUSTERS);
     let resample_count = (POINTS_PER_FRAME as f64 * resample_fraction).round() as usize;
 
-    let mut frame = initial_frame(&mixture, &mut rng);
+    let mut base = place_base(&mixture, &mut rng);
     let mut frames = Vec::with_capacity(NUM_FRAMES);
-    frames.push(frame.clone());
+    frames.push(grain_frame(&base, &mut rng));
 
     for t in 1..NUM_FRAMES {
         let is_cut = cut_interval.is_some_and(|ci| t % ci == 0);
         if is_cut {
             mixture = random_mixture(&mut rng, MIXTURE_CLUSTERS);
-            frame = initial_frame(&mixture, &mut rng);
-        } else {
-            for p in frame.iter_mut() {
-                jitter_point(p, HELD_JITTER_SIGMA, &mut rng);
-            }
-            if drift {
-                drift_mixture(&mut mixture, &mut rng);
-                for (i, p) in frame.iter_mut().enumerate().take(resample_count) {
-                    let cluster = i % mixture.len();
-                    let mut np = mixture[cluster];
-                    jitter_point(&mut np, HELD_JITTER_SIGMA, &mut rng);
-                    *p = np;
-                }
+            base = place_base(&mixture, &mut rng);
+        } else if drift {
+            drift_mixture(&mut mixture, &mut rng);
+            for (i, p) in base.iter_mut().enumerate().take(resample_count) {
+                let cluster = i % mixture.len();
+                let mut np = mixture[cluster];
+                jitter_point(&mut np, PLACEMENT_SIGMA, &mut rng);
+                *p = np;
             }
         }
-        frames.push(frame.clone());
+        frames.push(grain_frame(&base, &mut rng));
     }
 
     frames
 }
 
-fn initial_frame(mixture: &[[f32; 3]], rng: &mut SmallRng) -> Vec<[f32; 3]> {
-    let mut frame = Vec::with_capacity(POINTS_PER_FRAME);
+/// Places every point around its blob center with the shading spread.
+fn place_base(mixture: &[[f32; 3]], rng: &mut SmallRng) -> Vec<[f32; 3]> {
+    let mut base = Vec::with_capacity(POINTS_PER_FRAME);
     for i in 0..POINTS_PER_FRAME {
         let cluster = i % mixture.len();
         let mut p = mixture[cluster];
-        jitter_point(&mut p, HELD_JITTER_SIGMA, rng);
-        frame.push(p);
+        jitter_point(&mut p, PLACEMENT_SIGMA, rng);
+        base.push(p);
     }
-    frame
+    base
+}
+
+/// One output frame: the base drawing plus fresh, non-cumulative grain.
+fn grain_frame(base: &[[f32; 3]], rng: &mut SmallRng) -> Vec<[f32; 3]> {
+    base.iter()
+        .map(|p| {
+            let mut g = *p;
+            jitter_point(&mut g, GRAIN_SIGMA, rng);
+            g
+        })
+        .collect()
 }
 
 fn random_mixture(rng: &mut SmallRng, count: usize) -> Vec<[f32; 3]> {
