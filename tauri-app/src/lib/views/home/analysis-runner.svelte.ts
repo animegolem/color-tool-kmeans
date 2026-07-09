@@ -1,11 +1,16 @@
 import type { AnalysisParams, SelectedImage, AnalysisResult } from '../../stores/ui';
+import { resetAnalysisPending } from '../../stores/ui';
 import { TauriComputeError } from '../../bridges/compute';
 import { analyzeImage } from '../../compute/bridge';
 
 export interface AnalysisRunnerDeps {
-  setAnalysisPending: () => void;
-  setAnalysisSuccess: (result: AnalysisResult, imageId: string | null) => void;
-  setAnalysisError: (message: string) => void;
+  setAnalysisPending: () => number;
+  setAnalysisSuccess: (
+    result: AnalysisResult,
+    imageId: string | null,
+    requestToken?: number
+  ) => void;
+  setAnalysisError: (message: string, requestToken?: number) => void;
   recordDevEvent: (update: { computeVariant?: string }, type: 'analysis') => void;
 }
 
@@ -16,6 +21,7 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let spinnerTimer: ReturnType<typeof setTimeout> | null = null;
   let currentToken = 0;
+  let pendingRequest: { token: number; storeToken: number } | null = null;
   let lastRequestKey: string | null = null;
   let spinnerVisible = $state(false);
   let analysisScrollLock: { top: number; token: number | null } | null = null;
@@ -41,6 +47,10 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
 
   function cancelPending() {
     currentToken += 1;
+    if (pendingRequest) {
+      resetAnalysisPending(pendingRequest.storeToken);
+      pendingRequest = null;
+    }
     analysisScrollLock = null;
     if (debounceTimer) {
       clearTimeout(debounceTimer);
@@ -111,7 +121,8 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
     if (analysisScrollLock) {
       analysisScrollLock.token = token;
     }
-    deps.setAnalysisPending();
+    const storeToken = deps.setAnalysisPending();
+    pendingRequest = { token, storeToken };
     spinnerVisible = false;
     if (spinnerTimer) {
       clearTimeout(spinnerTimer);
@@ -134,7 +145,7 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
         return;
       }
       deps.recordDevEvent({ computeVariant: response.variant }, 'analysis');
-      deps.setAnalysisSuccess(response, image.id);
+      deps.setAnalysisSuccess(response, image.id, storeToken);
       restoreAnalysisScroll(token);
     } catch (err) {
       if (token !== currentToken) {
@@ -143,10 +154,13 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
       deps.recordDevEvent({ computeVariant: 'error' }, 'analysis');
       console.error('[home] analysis failed', err);
       const message = mapErrorToMessage(err);
-      deps.setAnalysisError(message);
+      deps.setAnalysisError(message, storeToken);
       restoreAnalysisScroll(token);
     } finally {
       if (token === currentToken) {
+        if (pendingRequest?.token === token) {
+          pendingRequest = null;
+        }
         if (spinnerTimer) {
           clearTimeout(spinnerTimer);
           spinnerTimer = null;

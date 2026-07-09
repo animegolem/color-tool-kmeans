@@ -9,7 +9,8 @@ import {
   valueAnalysisError,
   setValueAnalysisPending,
   setValueAnalysisSuccess,
-  setValueAnalysisError
+  setValueAnalysisError,
+  resetValueAnalysisPending
 } from '../../stores/ui';
 import { requestValueAnalysis } from '../../bridges/value-analysis';
 import { inferMimeType } from '../../bridges/fs';
@@ -25,6 +26,13 @@ export function createValueAnalysisRunner() {
   let levels = $state(3);
   let lastMaskKey = '';
   let currentToken = 0;
+  let pendingRequest: {
+    token: number;
+    imageId: string;
+    levels: number;
+    notanMode: boolean;
+    storeToken: number;
+  } | null = null;
   let analysisScrollLock: { top: number; token: number | null } | null = null;
 
   const renderAnalysis = $derived.by(() => analysis ?? displayAnalysis);
@@ -54,8 +62,20 @@ export function createValueAnalysisRunner() {
     });
   }
 
+  function clearOwnedPending() {
+    if (!pendingRequest) return;
+    resetValueAnalysisPending(
+      pendingRequest.imageId,
+      pendingRequest.levels,
+      pendingRequest.notanMode,
+      pendingRequest.storeToken
+    );
+    pendingRequest = null;
+  }
+
   function cancelPending() {
     currentToken += 1;
+    clearOwnedPending();
     analysisScrollLock = null;
   }
 
@@ -73,6 +93,7 @@ export function createValueAnalysisRunner() {
       );
       return;
     }
+    clearOwnedPending();
     currentToken += 1;
     const token = currentToken;
     if (analysisScrollLock) {
@@ -80,7 +101,18 @@ export function createValueAnalysisRunner() {
     }
     const startedAt = performance.now();
     void logEvent(`values:analysis:start levels=${requestedLevels} twoTone=${requestedNotanMode}`);
-    setValueAnalysisPending(currentFile.id, requestedLevels, requestedNotanMode);
+    const storeToken = setValueAnalysisPending(
+      currentFile.id,
+      requestedLevels,
+      requestedNotanMode
+    );
+    pendingRequest = {
+      token,
+      imageId: currentFile.id,
+      levels: requestedLevels,
+      notanMode: requestedNotanMode,
+      storeToken
+    };
     try {
       const result = await requestValueAnalysis(
         currentFile.path,
@@ -91,14 +123,30 @@ export function createValueAnalysisRunner() {
       if (token !== currentToken) return;
       const duration = Math.round(performance.now() - startedAt);
       void logEvent(`values:analysis:success ms=${duration}`);
-      setValueAnalysisSuccess(currentFile.id, requestedLevels, requestedNotanMode, result);
+      setValueAnalysisSuccess(
+        currentFile.id,
+        requestedLevels,
+        requestedNotanMode,
+        result,
+        storeToken
+      );
       restoreAnalysisScroll(token);
     } catch (err) {
       if (token !== currentToken) return;
       const message = err instanceof Error ? err.message : 'Unknown error';
       const duration = Math.round(performance.now() - startedAt);
       void logEvent(`values:analysis:error ms=${duration} message=${message}`);
-      setValueAnalysisError(currentFile.id, requestedLevels, requestedNotanMode, message);
+      setValueAnalysisError(
+        currentFile.id,
+        requestedLevels,
+        requestedNotanMode,
+        message,
+        storeToken
+      );
+    } finally {
+      if (pendingRequest?.token === token) {
+        pendingRequest = null;
+      }
     }
   }
 
