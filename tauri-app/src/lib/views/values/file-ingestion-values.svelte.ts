@@ -7,8 +7,14 @@ import { ingestFileAsEntry } from '../../services/media-ingestion';
 import { setActivePath } from '../../services/active-image';
 import { setupTauriDragDrop } from '../../services/drag-drop';
 import {
-  videoState, setVideoState, images, setFile, appendFile,
-  libraryDrawerOpen, getCachedVideoState, updateEntryPreview
+  videoState,
+  setVideoState,
+  images,
+  setFile,
+  appendFile,
+  libraryDrawerOpen,
+  getCachedVideoState,
+  updateEntryPreview,
 } from '../../stores/ui';
 
 export interface ValuesFileIngestionDeps {
@@ -16,30 +22,40 @@ export interface ValuesFileIngestionDeps {
 }
 
 export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
-  let pendingVideoPath: string | null = null;
+  let videoRequestGeneration = 0;
+  let pendingVideoRequest: { path: string; generation: number } | null = null;
 
-  async function probeAndSetVideoState(videoPath: string, name: string) {
+  async function probeAndSetVideoState(
+    videoPath: string,
+    name: string,
+    generation: number
+  ) {
     const cached = getCachedVideoState(videoPath);
     if (cached) {
-      setVideoState({
+      if (generation !== videoRequestGeneration) return;
+      const restoredState = {
         path: videoPath,
         name,
         duration: cached.duration,
         fps: cached.fps ?? null,
         currentTime: cached.currentTime ?? 0,
-        posterPath: cached.posterPath ?? null
-      });
+        stripPath: cached.stripPath ?? null,
+        stripId: cached.stripId ?? null,
+        posterPath: cached.posterPath ?? null,
+      };
+      setVideoState(restoredState);
       return;
     }
     try {
       const probe = await probeVideo(videoPath);
+      if (generation !== videoRequestGeneration) return;
       setVideoState({
         path: videoPath,
         name,
         duration: probe.duration,
         fps: probe.fps ?? null,
         currentTime: 0,
-        posterPath: null
+        posterPath: null,
       });
     } catch (err) {
       console.error('[values] Video probe failed', err);
@@ -49,21 +65,26 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
   function handleVideoFile(videoPath: string, name: string) {
     const vs = get(videoState);
     if (vs?.path === videoPath) return;
-    if (pendingVideoPath === videoPath) return;
-    pendingVideoPath = videoPath;
+    if (pendingVideoRequest?.path === videoPath) return;
+    const generation = ++videoRequestGeneration;
+    pendingVideoRequest = { path: videoPath, generation };
     deps.cancelPending();
-    void probeAndSetVideoState(videoPath, name).finally(() => {
-      if (pendingVideoPath === videoPath) pendingVideoPath = null;
+    void probeAndSetVideoState(videoPath, name, generation).finally(() => {
+      if (pendingVideoRequest?.generation === generation)
+        pendingVideoRequest = null;
     });
   }
 
   function handleImageFile(sel: FileSelection) {
+    videoRequestGeneration += 1;
+    pendingVideoRequest = null;
     setVideoState(null);
     const nativeMode = isTauriEnv() && !!sel.path;
 
-    const existing = nativeMode && sel.path
-      ? get(images).find((item) => item.path === sel.path && !item.videoPath)
-      : null;
+    const existing =
+      nativeMode && sel.path
+        ? get(images).find((item) => item.path === sel.path && !item.videoPath)
+        : null;
 
     const { entry, dataset } = ingestFileAsEntry(sel);
 
@@ -127,6 +148,6 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
     handleVideoFile,
     handleImageFile,
     processBatch,
-    setupDragDrop
+    setupDragDrop,
   };
 }

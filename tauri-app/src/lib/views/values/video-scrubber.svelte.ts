@@ -16,7 +16,11 @@ export interface VideoScrubberDeps {
   ) => void;
   updateVideoState: (currentTime: number, posterPath: string) => void;
   captureScroll?: () => void;
-  cacheVideoState?: (videoPath: string, currentTime: number, posterPath: string) => void;
+  cacheVideoState?: (
+    videoPath: string,
+    currentTime: number,
+    posterPath: string
+  ) => void;
 }
 
 export function createVideoScrubber(deps: VideoScrubberDeps) {
@@ -37,6 +41,16 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
   const mimeType = $derived(videoName ? inferMimeType(videoName) : null);
 
   function syncFromVideoState(vs: VideoState | null) {
+    const nextPath = vs?.path ?? null;
+    if (nextPath !== videoPath) {
+      decodeToken += 1;
+      extracting = false;
+      frameId = null;
+      if (decodeTimer) {
+        clearTimeout(decodeTimer);
+        decodeTimer = null;
+      }
+    }
     if (!vs) {
       videoPath = null;
       videoName = null;
@@ -59,30 +73,44 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
   function scheduleFrameExtract() {
     if (!videoPath) return;
     if (decodeTimer) clearTimeout(decodeTimer);
+    const requestPath = videoPath;
+    const requestName = videoName ?? requestPath;
     const requestTime = currentTime;
-    const fid = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    const fid =
+      globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     frameId = fid;
     const maxDimension = deps.getMaxDimension();
     const token = ++decodeToken;
 
     decodeTimer = setTimeout(async () => {
-      if (!videoPath || token !== decodeToken) return;
+      decodeTimer = null;
+      if (token !== decodeToken) return;
       extracting = true;
       try {
-        void logEvent(`values:video:frame:start t=${requestTime.toFixed(2)} max=${maxDimension}`);
+        void logEvent(
+          `values:video:frame:start t=${requestTime.toFixed(2)} max=${maxDimension}`
+        );
         const response = await extractVideoFrame({
-          path: videoPath,
+          path: requestPath,
           frameId: fid,
           timestamp: requestTime,
-          maxDimension
+          maxDimension,
         });
         if (token !== decodeToken) return;
         const framePath = response.path;
         if (!framePath) return;
-        void logEvent(`values:video:frame:done t_req=${requestTime.toFixed(4)} t_ffmpeg=${response.timestampUsed}`);
-        deps.onFrameExtracted(framePath, fid, requestTime, videoPath, videoName ?? videoPath);
+        void logEvent(
+          `values:video:frame:done t_req=${requestTime.toFixed(4)} t_ffmpeg=${response.timestampUsed}`
+        );
+        deps.onFrameExtracted(
+          framePath,
+          fid,
+          requestTime,
+          requestPath,
+          requestName
+        );
         deps.updateVideoState(requestTime, framePath);
-        deps.cacheVideoState?.(videoPath, requestTime, framePath);
+        deps.cacheVideoState?.(requestPath, requestTime, framePath);
       } catch (error) {
         if (token !== decodeToken) return;
         const message = error instanceof Error ? error.message : String(error);
@@ -134,15 +162,33 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
   }
 
   return {
-    get isVideo() { return isVideo; },
-    get currentTime() { return currentTime; },
-    set currentTime(v: number) { currentTime = v; },
-    get duration() { return duration; },
-    get fps() { return fps; },
-    get scrubbing() { return scrubbing; },
-    get extracting() { return extracting; },
-    get videoSrcUrl() { return videoSrcUrl; },
-    get mimeType() { return mimeType; },
+    get isVideo() {
+      return isVideo;
+    },
+    get currentTime() {
+      return currentTime;
+    },
+    set currentTime(v: number) {
+      currentTime = v;
+    },
+    get duration() {
+      return duration;
+    },
+    get fps() {
+      return fps;
+    },
+    get scrubbing() {
+      return scrubbing;
+    },
+    get extracting() {
+      return extracting;
+    },
+    get videoSrcUrl() {
+      return videoSrcUrl;
+    },
+    get mimeType() {
+      return mimeType;
+    },
     setVideoElementRef,
     syncFromVideoState,
     scheduleFrameExtract,
@@ -151,6 +197,6 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
     handleScrubInput,
     stepFrames,
     formatTime,
-    destroy
+    destroy,
   };
 }

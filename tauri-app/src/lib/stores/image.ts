@@ -1,11 +1,25 @@
 import { writable, derived, get } from 'svelte/store';
 import type { ImageDataset } from '../compute/image-loader';
 import { devlog, registerResourceCounter } from '../utils/devlog';
-import { setActivePath, clearActivePath, getActivePath } from '../services/active-image';
-import { analysisState, analysisById, analysisError, resetAnalysis } from './analysis';
 import {
-  valueAnalysisByKey, valueAnalysisStateByKey, valueAnalysisErrorByKey,
-  valueAnalysisKey, valueAnalysisLevels, valueAnalysisNotanMode
+  setActivePath,
+  clearActivePath,
+  getActivePath,
+} from '../services/active-image';
+import {
+  analysisState,
+  analysisById,
+  analysisError,
+  resetAnalysis,
+} from './analysis';
+import {
+  valueAnalysisByKey,
+  valueAnalysisStateByKey,
+  valueAnalysisErrorByKey,
+  valueAnalysisKey,
+  valueAnalysisLevels,
+  valueAnalysisNotanMode,
+  invalidateValueAnalysisForImage,
 } from './value-analysis';
 import { setVideoState, videoStateCache } from './video';
 
@@ -36,44 +50,76 @@ export function getResourceCounts() {
   return {
     images: get(images).length,
     datasets: imageDatasets.size,
-    objectUrls: objectUrls.size
+    objectUrls: objectUrls.size,
   };
 }
 registerResourceCounter(getResourceCounts);
 
-export const selectedFile = derived([images, activeImageId], ([$images, $activeId]) => {
-  if (!$activeId) return null;
-  const entry = $images.find((item) => item.id === $activeId);
-  if (!entry) return null;
-  const dataset = imageDatasets.get(entry.id);
-  if (!dataset) return null;
-  return { ...entry, dataset };
-});
+export const selectedFile = derived(
+  [images, activeImageId],
+  ([$images, $activeId]) => {
+    if (!$activeId) return null;
+    const entry = $images.find((item) => item.id === $activeId);
+    if (!entry) return null;
+    const dataset = imageDatasets.get(entry.id);
+    if (!dataset) return null;
+    return { ...entry, dataset };
+  }
+);
 
-export const analysisResult = derived([analysisById, activeImageId], ([$analysisById, $activeId]) => {
-  if (!$activeId) return null;
-  return $analysisById[$activeId] ?? null;
-});
+export const analysisResult = derived(
+  [analysisById, activeImageId],
+  ([$analysisById, $activeId]) => {
+    if (!$activeId) return null;
+    return $analysisById[$activeId] ?? null;
+  }
+);
 
 export const valueAnalysisResult = derived(
-  [valueAnalysisByKey, activeImageId, valueAnalysisLevels, valueAnalysisNotanMode],
+  [
+    valueAnalysisByKey,
+    activeImageId,
+    valueAnalysisLevels,
+    valueAnalysisNotanMode,
+  ],
   ([$valueAnalysisByKey, $activeId, $levels, $notanMode]) => {
     if (!$activeId) return null;
-    return $valueAnalysisByKey[valueAnalysisKey($activeId, $levels, $notanMode)] ?? null;
+    return (
+      $valueAnalysisByKey[valueAnalysisKey($activeId, $levels, $notanMode)] ??
+      null
+    );
   }
 );
 export const valueAnalysisState = derived(
-  [valueAnalysisStateByKey, activeImageId, valueAnalysisLevels, valueAnalysisNotanMode],
+  [
+    valueAnalysisStateByKey,
+    activeImageId,
+    valueAnalysisLevels,
+    valueAnalysisNotanMode,
+  ],
   ([$valueAnalysisStateByKey, $activeId, $levels, $notanMode]) => {
     if (!$activeId) return 'idle';
-    return $valueAnalysisStateByKey[valueAnalysisKey($activeId, $levels, $notanMode)] ?? 'idle';
+    return (
+      $valueAnalysisStateByKey[
+        valueAnalysisKey($activeId, $levels, $notanMode)
+      ] ?? 'idle'
+    );
   }
 );
 export const valueAnalysisError = derived(
-  [valueAnalysisErrorByKey, activeImageId, valueAnalysisLevels, valueAnalysisNotanMode],
+  [
+    valueAnalysisErrorByKey,
+    activeImageId,
+    valueAnalysisLevels,
+    valueAnalysisNotanMode,
+  ],
   ([$valueAnalysisErrorByKey, $activeId, $levels, $notanMode]) => {
     if (!$activeId) return null;
-    return $valueAnalysisErrorByKey[valueAnalysisKey($activeId, $levels, $notanMode)] ?? null;
+    return (
+      $valueAnalysisErrorByKey[
+        valueAnalysisKey($activeId, $levels, $notanMode)
+      ] ?? null
+    );
   }
 );
 
@@ -84,13 +130,19 @@ function revokeObjectUrl(url: string) {
 }
 
 function trackPreviewUrl(entry: ImageEntry) {
-  if (entry.source.kind !== 'blob') return;
-  if (!entry.previewUrl) return;
+  const nextUrl = entry.source.kind === 'blob' ? entry.previewUrl : null;
   const existing = objectUrls.get(entry.id);
-  if (existing && existing !== entry.previewUrl) {
+  if (existing && existing !== nextUrl) {
     revokeObjectUrl(existing);
+    objectUrls.delete(entry.id);
   }
-  objectUrls.set(entry.id, entry.previewUrl);
+  if (nextUrl) objectUrls.set(entry.id, nextUrl);
+}
+
+function releaseRejectedPreviewUrl(entry: ImageEntry) {
+  if (entry.source.kind !== 'blob' || !entry.previewUrl) return;
+  const isTracked = [...objectUrls.values()].includes(entry.previewUrl);
+  if (!isTracked) revokeObjectUrl(entry.previewUrl);
 }
 
 function releaseImage(entry: ImageEntry) {
@@ -103,31 +155,34 @@ function releaseImage(entry: ImageEntry) {
 }
 
 export function setFile(entry: ImageEntry, dataset: ImageDataset) {
+  const current = get(images);
+  const existingById = current.find((item) => item.id === entry.id);
+  const existingByPath = entry.path
+    ? current.find((item) => item.path === entry.path)
+    : undefined;
+  const existing = existingByPath ?? existingById;
+  if (existingByPath) entry.id = existingByPath.id;
+
   imageDatasets.set(entry.id, dataset);
   trackPreviewUrl(entry);
-  let matched = false;
+  const matched = existing !== undefined;
   images.update((list) => {
     const index = list.findIndex((item) => item.id === entry.id);
     if (index !== -1) {
-      matched = true;
       const next = list.slice();
       next[index] = entry;
       return next;
     }
-    if (entry.path) {
-      const pathIndex = list.findIndex((item) => item.path === entry.path);
-      if (pathIndex !== -1) {
-        matched = true;
-        entry.id = list[pathIndex].id;
-        const next = list.slice();
-        next[pathIndex] = entry;
-        return next;
-      }
-    }
     return [...list, entry];
   });
+  if (matched) invalidateValueAnalysisForImage(entry.id);
   activeImageId.set(entry.id);
-  devlog('store:setFile', 'Set file', { id: entry.id, name: entry.name, matched, imagesAfter: get(images).length });
+  devlog('store:setFile', 'Set file', {
+    id: entry.id,
+    name: entry.name,
+    matched,
+    imagesAfter: get(images).length,
+  });
   devlog.resources('store:setFile');
   const cached = get(analysisById)[entry.id] ?? null;
   if (cached) {
@@ -140,11 +195,27 @@ export function setFile(entry: ImageEntry, dataset: ImageDataset) {
 
 export function updateEntryPreview(id: string, previewUrl: string) {
   images.update((list) =>
-    list.map((item) => item.id === id ? { ...item, previewUrl } : item)
+    list.map((item) => (item.id === id ? { ...item, previewUrl } : item))
   );
 }
 
 export function appendFile(entry: ImageEntry, dataset: ImageDataset) {
+  const current = get(images);
+  const duplicatePath = entry.path
+    ? current.find((item) => item.path === entry.path && item.id !== entry.id)
+    : undefined;
+  if (duplicatePath) {
+    releaseRejectedPreviewUrl(entry);
+    devlog('store:appendFile', 'Append file', {
+      id: entry.id,
+      name: entry.name,
+      matched: true,
+      imagesAfter: current.length,
+    });
+    devlog.resources('store:appendFile');
+    return;
+  }
+
   imageDatasets.set(entry.id, dataset);
   trackPreviewUrl(entry);
   let matched = false;
@@ -156,13 +227,14 @@ export function appendFile(entry: ImageEntry, dataset: ImageDataset) {
       next[index] = entry;
       return next;
     }
-    if (entry.path && list.some((item) => item.path === entry.path)) {
-      matched = true;
-      return list;
-    }
     return [...list, entry];
   });
-  devlog('store:appendFile', 'Append file', { id: entry.id, name: entry.name, matched, imagesAfter: get(images).length });
+  devlog('store:appendFile', 'Append file', {
+    id: entry.id,
+    name: entry.name,
+    matched,
+    imagesAfter: get(images).length,
+  });
   devlog.resources('store:appendFile');
 }
 
@@ -194,7 +266,11 @@ export function removeFile(id: string) {
   const found = !!entry;
   if (entry) releaseImage(entry);
   images.update((items) => items.filter((item) => item.id !== id));
-  devlog('store:removeFile', 'Remove file', { id, found, remaining: get(images).length });
+  devlog('store:removeFile', 'Remove file', {
+    id,
+    found,
+    remaining: get(images).length,
+  });
   devlog.resources('store:removeFile');
   analysisById.update((cache) => {
     const next = { ...cache };
@@ -238,7 +314,10 @@ export function switchToFile(id: string) {
 
 export function clearActiveSelection() {
   const hadActiveId = get(activeImageId) !== null;
-  devlog('store:clearActive', 'Clear active selection', { hadActiveId, imagesCount: get(images).length });
+  devlog('store:clearActive', 'Clear active selection', {
+    hadActiveId,
+    imagesCount: get(images).length,
+  });
   activeImageId.set(null);
   resetAnalysis();
   setVideoState(null);

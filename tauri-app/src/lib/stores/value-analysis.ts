@@ -25,18 +25,51 @@ export interface ValueAnalysisResult {
 }
 
 export const valueAnalysisLevels = writable<number>(3);
-export const valueAnalysisNotanMode = derived(valueAnalysisLevels, ($l) => $l === 2);
+export const valueAnalysisNotanMode = derived(
+  valueAnalysisLevels,
+  ($l) => $l === 2
+);
 
-export function valueAnalysisKey(imageId: string, levels: number, notanMode: boolean) {
+export function valueAnalysisKey(
+  imageId: string,
+  levels: number,
+  notanMode: boolean
+) {
   const mode = notanMode && levels === 2 ? 'notan' : 'kmeans';
   return `${imageId}:${levels}:${mode}`;
 }
 
-export const valueAnalysisByKey = writable<Record<string, ValueAnalysisResult>>({});
-export const valueAnalysisStateByKey = writable<Record<string, ValueAnalysisState>>({});
-export const valueAnalysisErrorByKey = writable<Record<string, string | null>>({});
+export const valueAnalysisByKey = writable<Record<string, ValueAnalysisResult>>(
+  {}
+);
+export const valueAnalysisStateByKey = writable<
+  Record<string, ValueAnalysisState>
+>({});
+export const valueAnalysisErrorByKey = writable<Record<string, string | null>>(
+  {}
+);
 
-export function setValueAnalysisPending(imageId: string, levels: number, notanMode: boolean) {
+function removeKeysForImage<T>(cache: Record<string, T>, imageId: string) {
+  const next: Record<string, T> = {};
+  for (const [key, value] of Object.entries(cache)) {
+    if (!key.startsWith(`${imageId}:`)) next[key] = value;
+  }
+  return next;
+}
+
+export function invalidateValueAnalysisForImage(imageId: string) {
+  valueAnalysisByKey.update((cache) => removeKeysForImage(cache, imageId));
+  valueAnalysisStateByKey.update((state) => removeKeysForImage(state, imageId));
+  valueAnalysisErrorByKey.update((errors) =>
+    removeKeysForImage(errors, imageId)
+  );
+}
+
+export function setValueAnalysisPending(
+  imageId: string,
+  levels: number,
+  notanMode: boolean
+) {
   const key = valueAnalysisKey(imageId, levels, notanMode);
   valueAnalysisStateByKey.update((state) => ({ ...state, [key]: 'pending' }));
   valueAnalysisErrorByKey.update((errors) => ({ ...errors, [key]: null }));
