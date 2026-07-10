@@ -95,7 +95,4 @@ Cut 2026-07-09 with a lifecycle-coverage focus: **IMP-167 (completed at cut) pro
 - **AI-IMP-176** — zoom chrome + chart ground (FR-10/11). Unblocked.
 - **AI-IMP-177** — reflow/motion/Settings (FR-12). Colors reflow unblocked; Settings needs P1-3, compact finals need P3-9.
 
-Sequencing: 168 → 169 → 170 → {171, 173, 174, 176 in parallel} → 172 → 175/177 as artifacts land. Delegation assignments decided at activation per ticket (Sol/Sonnet candidates for 168/169; lead for 170/171).
-
-
-_To be filled when IMPs are cut. Sequenced after EPIC-025 (spike first); EPIC-026 and this epic can interleave — they touch disjoint layers (Rust loop vs Svelte templates) — but VideoPanel/chart surfaces overlap, so live-mode UI tickets in 026 should land against the redesigned shell or be explicitly rebased._
+Sequencing: 168 → 169 → 170 → {171, 173, 174, 176 in parallel} → 172 → 175/177 as artifacts land. Delegation assignments decided at activation per ticket (Sol/Sonnet candidates for 168/169; lead for 170/171). EPIC-026 interleaving note: live-mode UI tickets land against the redesigned shell (VideoPanel/chart surfaces overlap), and the L4 live-mode artifact from DESIGN-COVERAGE feeds both epics.
