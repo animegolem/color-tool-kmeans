@@ -44,7 +44,7 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 - [ ] Bundle extracted, committed, zips archived; `git grep "notebook"` finds the readme.
 - [ ] Fira Code vendored + declared; app builds; no network font requests.
 - [ ] Notebook tokens file added (dormant); documented mapping notes for IMP-170.
-- [ ] CLAUDE.md refreshed and accurate against the current tree.
+- [ ] CLAUDE.md refreshed and accurate against the current tree. *(General refresh done by lead 2026-07-09, `ef2518b` — this item reduces to: update the design-bundle pointer from the zip to `RAG/design-system/` after extraction, in both CLAUDE.md and AGENTS.md.)*
 - [ ] Gates: `npm run build`, `npm test -- --run`, `format:check`, `lint`, `check`.
 
 ### Acceptance Criteria
