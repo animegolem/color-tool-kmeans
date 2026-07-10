@@ -1,73 +1,65 @@
-# Repository Guidelines
+# Repository Guidelines (delegated agents)
 
-## Project Structure & Module Organization
-- `RAG/AI-EPIC/` — epics; source of truth for scope and success metrics.
-- `RAG/AI-IMP/` — implementation tickets; keep checklists and AC current.
-- `figma/` — exported frames/assets (if available). No secrets.
-- `tauri-app/` — desktop implementation (Svelte renderer + Tauri backend).
+Color analysis desktop app: Tauri 2 + Svelte 5 renderer (`tauri-app/src/`) + Rust core (`tauri-app/src-tauri/`). Offline-first — no runtime network, all assets vendored. Architecture detail lives in `CLAUDE.md`; read it before structural work. This file covers process, gates, and the traps delegated agents actually hit.
 
-## RAG Process
-- Epics are the core work order and must be broken into `RAG/AI-IMP/*` implementation tickets.
-- After completing an IMP: update its state to `Closed`, check off AC/checklists, and note any issues/findings or follow-up work.
-- After completing an Epic: update its state to `Closed`, reconcile the Implementation Breakdown, and record any deferred items with links to future work.
+## Ground rules
 
-## Build, Test, and Development Commands
-- App: `cd tauri-app && npm install`.
-- Fonts (one-time): `cd tauri-app && ./scripts/fetch-fira.sh`.
-- Dev: `cd tauri-app && npm run tauri dev` (native shell) or `npm run dev` (web-only).
-- Build: `cd tauri-app && npm run build`.
-- Packaging: `cd tauri-app && npm run tauri build` → platform artifacts. Node: 20.
+- **Your ticket is the normative spec.** `RAG/AI-IMP/AI-IMP-NNN-*.md` — follow Files-to-Touch and Do-NOT-touch lists strictly; sibling agents often work adjacent tickets in parallel and boundary violations get reverted in review. If a fix genuinely requires a fenced file, STOP and request authorization in your report rather than editing it.
+- **Do not attempt `git commit`** — sandboxes cannot write `.git` even in standalone clones. Leave all changes in the working tree; the lead reviews and commits.
+- Check ticket checklist items only after implemented AND validated. Fill **Issues Encountered** honestly — deviations, surprises, failed approaches. That section is where the next session learns what the diff can't say.
+- Ticket status values: `backlog | planned | in-progress | completed | cancelled | deferred` (not "Closed"). `RAG/INDEX.md` is generated — never hand-edit.
 
-## CI/DI & Git Hooks
-- Enable hooks once: `git config core.hooksPath .githooks`.
-- Pre‑commit runs format/lint if defined (per workspace) and a LOC warning (default 350 lines/file). It never edits code.
-- CI (GitHub Actions) runs tests and a strict LOC check. To intentionally exceed the limit, include `[loc-bypass]` in the commit message or set `LOC_BYPASS=1` in the workflow step.
+## Environment facts
 
-## Coding Style & Naming Conventions
-- Language: TypeScript/JavaScript, 2‑space indent, semicolons, single quotes.
-- Names: functions `camelCase`, classes `PascalCase`, constants `UPPER_SNAKE`, files `kebab-case.ts`.
-- Layout: keep code modular — `tauri-app/src/lib/` (UI), `tauri-app/src-tauri/` (Rust backend), `tauri-app/src/lib/exports/` (export logic).
-- Fonts: Fira Sans is the core UI font. Vendor locally under `tauri-app/src/assets/fonts`; never load from CDNs. Embed for SVG exports.
-- Lint/format: Prettier + ESLint; run before PRs (`npm run lint && npm run format`).
+- Node 20 is the CI runtime; local machines may run newer. **package-lock.json must stay npm-10 compatible** — regenerate only with `npx -y npm@10 install --package-lock-only`.
+- `node_modules` is usually pre-installed in delegation clones — do NOT run `npm install`/`npm ci`.
+- Cargo registry cache is warm; add `--offline` if the network is blocked.
+- ffmpeg/ffprobe sidecars in `src-tauri/bin/` are gitignored; fresh clones fail the Tauri build script until they're copied in (delegation clones come pre-provisioned; otherwise copy from the main checkout).
+- ffmpeg CLI: `/opt/homebrew/bin/ffmpeg` on the dev machine. Never commit media files; generate test clips under `$TMPDIR`.
 
-## Testing Guidelines
-- Unit tests: prefer Vitest. Name `*.spec.ts` next to source.
-- Focus: color conversions, k‑means stability, worker message contract, export determinism.
-- Manual smoke tests: image load, K up to 300, export PNG/SVG/CSV, drag‑drop, and overview composite on Linux/Windows.
+## Validation gates (all must pass)
 
-## Commit & Pull Request Guidelines
-- Conventional Commits (e.g., `feat: worker compute pipeline`, `fix: polar radius mapping`).
-- PRs must include: description, linked Epic/IMP IDs, screenshots/GIFs for UI, OS + steps in a brief test log, and notes on offline compliance.
-- Update relevant `RAG/AI-IMP/*` checklists and the epic’s Implementation Breakdown.
+From `tauri-app/`:
+```
+npm run test -- --run      # full vitest
+npm run check              # svelte-check (2 known AUD-020 a11y warnings are accepted)
+npm run lint
+npm run format:check
+```
+From `tauri-app/src-tauri/`:
+```
+cargo fmt --all -- --check
+cargo clippy --workspace -- -D warnings
+cargo test --workspace     # --offline ok
+```
+CI runs all of the above plus golden/snapshot gates and a Windows build. Strict LOC check in CI (warn 400/file locally) — `[loc-bypass]` in the commit message when a file must exceed it (the lead handles this at commit time; flag it in your report).
 
-## Security & Configuration Tips
-- Tauri: avoid remote content; prefer local assets and the configured CSP. Load local files via `file://` or the Tauri asset protocol as configured.
-- Preferences: local-only storage (Tauri Store when added); no telemetry.
-- Secrets: do not commit tokens. For Figma tooling, set `FIGMA_API_KEY` in your environment; exports go to `figma/`.
+## Code style
 
-## Agent-Specific Notes
-- Respect this document and any nested AGENTS.md. Keep changes minimal and focused. When adding assets or planning docs, place them in the directories above and keep the repo fully offline at runtime.
-- Use `RAG/INDEX.md` as the single entry point for current status (auto-generated via pre-commit).
+- 2-space indent, semicolons, single quotes; `camelCase` functions, `PascalCase` components/classes, `UPPER_SNAKE` constants, `kebab-case.ts` files.
+- **Svelte 5 runes only** (`$state`, `$derived`, `onclick`) — legacy `on:` syntax is hook-blocked.
+- Logic extraction pattern: `create*()` factories in `*.svelte.ts` returning reactive objects (see `views/home/`).
+- Prettier config is `prettier.config.mjs`; run `npx prettier --write` on files you touch.
 
-## Current Architecture Snapshot (IMP-101 Baseline)
-- App shell is now a 3-column/2-row grid in `tauri-app/src/App.svelte` + `tauri-app/src/app.css`:
-  - Columns: left nav, center channel, right library rail.
-  - Rows: fixed in-app header + scrollable view body.
-- Header controls are global and live in `App.svelte` (not per-view):
-  - Left toggle collapses nav (`navCollapsed` store).
-  - Center shows active view + selected media label + `Clear`.
-  - Right toggle opens/closes library rail (`libraryDrawerOpen` store).
-- `HomeView.svelte` was refactored into smaller modules under `tauri-app/src/lib/views/home/`:
-  - `VideoPanel.svelte`, `AnalysisCards.svelte`, `ParameterControls.svelte`, `DevBanner.svelte`
-  - Controller modules: `video-controller.svelte.ts`, `analysis-runner.svelte.ts`, `file-ingestion.svelte.ts`
-- Library UI is scaffold-only in current state (placeholder sections); ingestion behavior remains tracked by IMP-097/098/099/100.
-- Sidebar icon assets exist in both:
-  - planning refs: `RAG/assets/layout-sidebar-*.svg`
-  - runtime assets: `tauri-app/src/lib/assets/layout-sidebar-*.svg`
+## Testing notes
 
-## Implementation Guardrails (Layout Work)
-- Do not reintroduce the legacy floating toggle lane pattern from IMP-096.
-- Keep header/body/rail reflow coupled via shared grid sizing; avoid overlay behavior that causes card overlap.
-- When layout behavior changes, validate both:
-  - wide desktop mode (two-column analysis cards)
-  - narrow mode (cards stack without overlap/clipping).
+- Vitest specs sit next to source (`*.spec.ts`); audit regression suites live in `views/__tests__/` with AUD-IDs in test names — keep them.
+- **Rune trap:** importing a `.svelte.ts` runner factory into a node test throws `rune_outside_svelte` (vitest doesn't transform runes). Use the `installRuneShims`/`restoreRuneDescriptors` pattern from `audit-control-flow-races.spec.ts`, or test pure functions instead. Do not "fix" this by marking tests `it.fails` — that's how false-positive repros happen.
+- Store race invariants are token-based (see CLAUDE.md "Stores" invariants); if you touch analysis/image/video stores, run the audit suites specifically.
+- Export outputs must remain byte-deterministic (`exports/__tests__/` fixtures).
+
+## Commits & reports
+
+- Conventional Commits, referencing the ticket ID: `fix(video): ... [AI-IMP-158]`.
+- Your FINAL REPORT is raw data for the lead, not prose for a user: files changed, per-item fix summary, tests converted/added with counts, verbatim gate outcomes, deviations from the ticket, candid friction notes.
+
+## Security & configuration
+
+- No remote content; local files via the Tauri asset protocol; IPC bridge only.
+- No secrets in commits. Preferences are local-only (Tauri Store); no telemetry.
+
+## Current state snapshot (2026-07-09)
+
+- v1.0.2 shipped; 2026-07 audit remediation (EPIC-028) landed: video-switch races, cancellation ownership, resource pruning, honest export extensions, and working repo gates.
+- Active: **EPIC-026** (live playback — architecture fixed in `RAG/ADR/ADR-003`: persistent rawvideo pipe → LUT+rayon OKLab → warm-start k-means with a fixed 4-iteration budget, single-stage, events per frame) and **EPIC-027** (notebook UI redesign — design bundle in `RAG/`, lifecycle coverage in `RAG/DESIGN-COVERAGE.md`; the shell/views will be rebuilt, so check ticket state before investing in current layout code).
+- Bench binaries under `src-tauri/src/bin/` (`kmeans_baseline`, `kmeans_framesim`, `live_pipe_probe`, `live_loop_probe`) are spike instrumentation — don't modify unless your ticket says so.
