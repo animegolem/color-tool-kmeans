@@ -40,7 +40,10 @@ fn aud_005_same_second_source_replacement_is_not_cached() {
     align_away_from_second_boundary();
     let source_dir = TempDir::new().expect("source temp dir");
     let cache_dir = TempDir::new().expect("cache temp dir");
-    let source = source_dir.path().join("frame.png");
+    // BMP: fixed header + raw pixels, so equal dimensions guarantee equal
+    // file length regardless of content (PNG compression made this flaky —
+    // red/blue encoded to different sizes on Linux CI).
+    let source = source_dir.path().join("frame.bmp");
 
     RgbImage::from_pixel(8, 8, Rgb([255, 0, 0]))
         .save(&source)
