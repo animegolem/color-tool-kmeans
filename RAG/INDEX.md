@@ -6,12 +6,32 @@
 
 | Status | EPICs | IMPs |
 |--------|-------|------|
-| In Progress | 0 | 0 |
-| Planned | 3 | 8 |
+| In Progress | 1 | 0 |
+| Planned | 2 | 18 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
-| Completed | 18 | 120 |
-| **Total** | **23** | **133** |
+| Completed | 18 | 121 |
+| **Total** | **23** | **144** |
+
+## In Progress
+
+### [[AI-EPIC-027-notebook-ui-redesign|EPIC-027: Notebook ui redesign]]
+> The shipped UI was effectively the wireframe: a conventional sidebar/header shell built before the design direction existed. A complete design syst...
+
+**IMPs:**
+- [[AI-IMP-167-design-coverage-manifest|IMP-167]] Design coverage manifest — completed
+- [[AI-IMP-168-vendor-design-bundle|IMP-168]] Vendor design bundle — planned
+- [[AI-IMP-169-paper-primitives-library|IMP-169]] Paper primitives library — planned
+- [[AI-IMP-170-notebook-shell|IMP-170]] Notebook shell — planned
+- [[AI-IMP-171-colors-spread|IMP-171]] Colors spread — planned
+- [[AI-IMP-172-bucket-page|IMP-172]] Bucket page — planned
+- [[AI-IMP-173-values-spread|IMP-173]] Values spread — planned
+- [[AI-IMP-174-exports-sheet|IMP-174]] Exports sheet — planned
+- [[AI-IMP-175-batch-spread|IMP-175]] Batch spread — backlog
+- [[AI-IMP-176-zoom-and-chart-ground|IMP-176]] Zoom and chart ground — planned
+- [[AI-IMP-177-reflow-motion-settings|IMP-177]] Reflow motion settings — backlog
+
+---
 
 ## Planned
 
@@ -33,11 +53,6 @@
 
 ### [[AI-EPIC-026-live-video-playback-analysis|EPIC-026: Live video playback analysis]]
 > Video analysis today is frame-at-a-time: scrub to a frame, wait for extraction + analysis, look at the charts. The compelling use for our animation...
-
----
-
-### [[AI-EPIC-027-notebook-ui-redesign|EPIC-027: Notebook ui redesign]]
-> The shipped UI was effectively the wireframe: a conventional sidebar/header shell built before the design direction existed. A complete design syst...
 
 ---
 
@@ -92,7 +107,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>18 EPICs, 89 IMPs completed</summary>
+<summary>18 EPICs, 90 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed

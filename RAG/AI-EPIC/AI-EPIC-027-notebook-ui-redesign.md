@@ -8,8 +8,19 @@ tags:
   - design-system
 date_created: 2026-07-09
 date_completed:
-kanban_status: planned
+kanban_status: in-progress
 AI_IMP_spawned:
+  - AI-IMP-167
+  - AI-IMP-168
+  - AI-IMP-169
+  - AI-IMP-170
+  - AI-IMP-171
+  - AI-IMP-172
+  - AI-IMP-173
+  - AI-IMP-174
+  - AI-IMP-175
+  - AI-IMP-176
+  - AI-IMP-177
 ---
 
 # AI-EPIC-027-notebook-ui-redesign
@@ -69,5 +80,22 @@ Rebuild the Svelte template/style layer to the notebook idiom, keeping everythin
 - Wireframe-derived sizes are "strong defaults, not measured finals" — visual judgment calls recorded in tickets.
 
 ## Implementation Breakdown
+
+Cut 2026-07-09 with a lifecycle-coverage focus: **IMP-167 (completed at cut) produced `RAG/DESIGN-COVERAGE.md`** — 12 lifecycles mapped against the bundle with a priority-ordered artifact shopping list the owner is producing in Claude Design.
+
+- **AI-IMP-167** — design coverage manifest (lead, done).
+- **AI-IMP-168** — vendor bundle, Fira Code, dormant tokens, CLAUDE.md refresh (FR-1/2). Not design-blocked.
+- **AI-IMP-169** — 18 paper primitives + dev showcase (FR-3). Not design-blocked (pending-idiom slot reserved).
+- **AI-IMP-170** — desk/spread/edge-tabs shell (FR-4). Not design-blocked.
+- **AI-IMP-171** — Colors spread + Notes 1/2/3/5/7/8 (FR-5). Ready states unblocked; pending/ingestion/video states need P1-1, P2-5, P2-6.
+- **AI-IMP-172** — bucket page + turn-page nav (FR-6). Edge states need P3-8.
+- **AI-IMP-173** — Values spread (FR-7). Pending state needs P1-1.
+- **AI-IMP-174** — Exports sheet (FR-8). Feedback states need P3-7.
+- **AI-IMP-175** — Batch spread (FR-9). **Design-blocked on P2-4** (5d flagged approximate by the bundle).
+- **AI-IMP-176** — zoom chrome + chart ground (FR-10/11). Unblocked.
+- **AI-IMP-177** — reflow/motion/Settings (FR-12). Colors reflow unblocked; Settings needs P1-3, compact finals need P3-9.
+
+Sequencing: 168 → 169 → 170 → {171, 173, 174, 176 in parallel} → 172 → 175/177 as artifacts land. Delegation assignments decided at activation per ticket (Sol/Sonnet candidates for 168/169; lead for 170/171).
+
 
 _To be filled when IMPs are cut. Sequenced after EPIC-025 (spike first); EPIC-026 and this epic can interleave — they touch disjoint layers (Rust loop vs Svelte templates) — but VideoPanel/chart surfaces overlap, so live-mode UI tickets in 026 should land against the redesigned shell or be explicitly rebased._
