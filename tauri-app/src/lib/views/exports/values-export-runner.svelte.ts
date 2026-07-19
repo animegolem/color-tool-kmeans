@@ -18,6 +18,7 @@ import { getFsBridge, saveFromPath } from '../../bridges/fs';
 import { svgToPngBlob } from '../../exports/png';
 import { requestValueAnalysis } from '../../bridges/value-analysis';
 import { assetUrl } from '../../utils/asset-url';
+import { saveChart } from '../../exports/chart-save';
 
 export interface ValuesExportDeps {
   getFile(): SelectedImage | null;
@@ -281,27 +282,21 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
     const file = deps.getFile();
     if (!file) return;
     await deps.performSave(async () => {
-      const { svg, width, height } = await buildValuesSectionSvg('rangeFinder');
-      const format = deps.getGraphExportFormat();
-      const bridge = await getFsBridge();
-      if (format === 'svg') {
-        const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-        const { canceled } = await bridge.saveBlob(
-          blob,
-          `${deps.baseName()}-range-finder.svg`
+      const chart = await buildValuesSectionSvg('rangeFinder');
+      const format = deps.getGraphExportFormat() === 'svg' ? 'svg' : 'png';
+      const { canceled } = await saveChart(
+        format,
+        chart,
+        deps.baseName(),
+        'range-finder',
+        deps.getExportScale()
+      );
+      if (canceled) deps.setStatus('Export canceled.', 'info');
+      else
+        deps.setStatus(
+          `Range finder ${format === 'svg' ? 'SVG' : 'PNG'} saved.`,
+          'info'
         );
-        if (canceled) deps.setStatus('Export canceled.', 'info');
-        else deps.setStatus('Range finder SVG saved.', 'info');
-      } else {
-        const scale = Math.max(1, Math.min(4, deps.getExportScale()));
-        const blob = await svgToPngBlob(svg, width, height, scale);
-        const { canceled } = await bridge.saveBlob(
-          blob,
-          `${deps.baseName()}-range-finder.png`
-        );
-        if (canceled) deps.setStatus('Export canceled.', 'info');
-        else deps.setStatus('Range finder PNG saved.', 'info');
-      }
     });
   }
 
@@ -309,27 +304,21 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
     const file = deps.getFile();
     if (!file) return;
     await deps.performSave(async () => {
-      const { svg, width, height } = await buildValuesSectionSvg('histogram');
-      const format = deps.getGraphExportFormat();
-      const bridge = await getFsBridge();
-      if (format === 'svg') {
-        const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-        const { canceled } = await bridge.saveBlob(
-          blob,
-          `${deps.baseName()}-values-histogram.svg`
+      const chart = await buildValuesSectionSvg('histogram');
+      const format = deps.getGraphExportFormat() === 'svg' ? 'svg' : 'png';
+      const { canceled } = await saveChart(
+        format,
+        chart,
+        deps.baseName(),
+        'values-histogram',
+        deps.getExportScale()
+      );
+      if (canceled) deps.setStatus('Export canceled.', 'info');
+      else
+        deps.setStatus(
+          `Values histogram ${format === 'svg' ? 'SVG' : 'PNG'} saved.`,
+          'info'
         );
-        if (canceled) deps.setStatus('Export canceled.', 'info');
-        else deps.setStatus('Values histogram SVG saved.', 'info');
-      } else {
-        const scale = Math.max(1, Math.min(4, deps.getExportScale()));
-        const blob = await svgToPngBlob(svg, width, height, scale);
-        const { canceled } = await bridge.saveBlob(
-          blob,
-          `${deps.baseName()}-values-histogram.png`
-        );
-        if (canceled) deps.setStatus('Export canceled.', 'info');
-        else deps.setStatus('Values histogram PNG saved.', 'info');
-      }
     });
   }
 
