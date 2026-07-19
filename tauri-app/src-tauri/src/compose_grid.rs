@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use image::imageops::FilterType;
-use image::{ImageReader, RgbaImage};
+use image::{DynamicImage, ImageFormat, ImageReader, RgbaImage};
+use tempfile::Builder;
 
 const GAP: u32 = 8;
 
@@ -93,10 +94,21 @@ pub fn compose_grid(
             .map_err(|e| format!("Failed to create cache directory: {e}"))?;
     }
 
-    let output_path = cache_dir.join("batch-grid.png");
-    canvas
-        .save(&output_path)
+    let mut output = Builder::new()
+        .prefix("batch-grid-")
+        .suffix(".png")
+        .tempfile_in(cache_dir)
+        .map_err(|e| format!("Failed to create grid image: {e}"))?;
+    DynamicImage::ImageRgba8(canvas)
+        .write_to(output.as_file_mut(), ImageFormat::Png)
         .map_err(|e| format!("Failed to save grid image: {e}"))?;
+    output
+        .as_file()
+        .sync_all()
+        .map_err(|e| format!("Failed to sync grid image: {e}"))?;
+    let (_, output_path) = output
+        .keep()
+        .map_err(|e| format!("Failed to retain grid image: {}", e.error))?;
 
     Ok((output_path, total_width, total_height, cols, rows))
 }
@@ -277,6 +289,53 @@ mod tests {
             bytes1, bytes2,
             "Same inputs should produce identical output"
         );
+    }
+
+    #[test]
+    fn sweep_019_concurrent_compositions_have_immutable_unique_paths() {
+        let (_red_dir, red_paths) = make_test_images(2, 80, 60);
+        let blue_dir = TempDir::new().expect("blue source dir");
+        let blue_paths: Vec<String> = (0..2)
+            .map(|idx| {
+                let path = blue_dir.path().join(format!("blue_{idx}.png"));
+                RgbImage::from_pixel(80, 60, Rgb([0, 0, 255]))
+                    .save(&path)
+                    .expect("save blue image");
+                path.to_string_lossy().to_string()
+            })
+            .collect();
+        let cache = TempDir::new().expect("cache dir");
+        let cache_path = cache.path().to_path_buf();
+        let start = std::sync::Barrier::new(2);
+
+        let (red_result, blue_result) = std::thread::scope(|scope| {
+            let red_start = &start;
+            let red_cache = &cache_path;
+            let red = scope.spawn(move || {
+                red_start.wait();
+                compose_grid(&red_paths, 800, red_cache).expect("compose red grid")
+            });
+            let blue_start = &start;
+            let blue_cache = &cache_path;
+            let blue = scope.spawn(move || {
+                blue_start.wait();
+                compose_grid(&blue_paths, 800, blue_cache).expect("compose blue grid")
+            });
+            (
+                red.join().expect("red worker"),
+                blue.join().expect("blue worker"),
+            )
+        });
+
+        assert_ne!(red_result.0, blue_result.0);
+        let red_grid = image::open(&red_result.0)
+            .expect("open retained red grid")
+            .to_rgba8();
+        let blue_grid = image::open(&blue_result.0)
+            .expect("open retained blue grid")
+            .to_rgba8();
+        assert_eq!(red_grid.get_pixel(0, 0), &Rgba([255, 0, 0, 255]));
+        assert_eq!(blue_grid.get_pixel(0, 0), &Rgba([0, 0, 255, 255]));
     }
 
     #[test]
