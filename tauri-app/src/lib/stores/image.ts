@@ -234,9 +234,29 @@ export function setFile(
   }
 }
 
-export function updateEntryPreview(id: string, previewUrl: string) {
+export interface RawVideoPreviewExpectation {
+  videoPath: string;
+  contentRevision: number;
+}
+
+export function updateEntryPreview(
+  id: string,
+  previewUrl: string,
+  expectedRawVideo?: RawVideoPreviewExpectation
+) {
   images.update((list) =>
-    list.map((item) => (item.id === id ? { ...item, previewUrl } : item))
+    list.map((item) => {
+      if (item.id !== id) return item;
+      if (
+        expectedRawVideo &&
+        (item.videoPath !== expectedRawVideo.videoPath ||
+          item.frameTimestamp != null ||
+          (item.contentRevision ?? 0) !== expectedRawVideo.contentRevision)
+      ) {
+        return item;
+      }
+      return { ...item, previewUrl };
+    })
   );
 }
 

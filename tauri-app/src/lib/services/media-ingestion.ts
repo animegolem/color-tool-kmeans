@@ -1,5 +1,5 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
-import type { ImageEntry } from '../stores/ui';
+import type { ImageEntry, RawVideoPreviewExpectation } from '../stores/ui';
 import type { FileSelection } from '../bridges/fs';
 import { isVideoFile } from '../bridges/fs';
 import { isTauriEnv } from '../bridges/tauri';
@@ -17,7 +17,11 @@ export interface IngestResult {
  */
 export function ingestFileAsEntry(
   sel: FileSelection,
-  updatePreview?: (id: string, url: string) => void
+  updatePreview?: (
+    id: string,
+    url: string,
+    expectedRawVideo: RawVideoPreviewExpectation
+  ) => void
 ): IngestResult {
   const nativeMode = isTauriEnv() && !!sel.path;
   const isVideo = isVideoFile(sel);
@@ -53,13 +57,19 @@ export function ingestFileAsEntry(
   if (isVideo && sel.path && updatePreview) {
     const videoPath = sel.path;
     const frameId = `thumb-${entryId}`;
+    const expectedRawVideo = {
+      videoPath,
+      contentRevision: entry.contentRevision ?? 0,
+    };
     extractVideoFrame({
       path: videoPath,
       frameId,
       timestamp: 0,
       maxDimension: 200,
     })
-      .then((res) => updatePreview(entryId, convertFileSrc(res.path)))
+      .then((res) =>
+        updatePreview(entryId, convertFileSrc(res.path), expectedRawVideo)
+      )
       .catch((err) =>
         console.warn('[media-ingestion] Video thumbnail extraction failed', err)
       );
