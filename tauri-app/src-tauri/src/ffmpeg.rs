@@ -177,7 +177,13 @@ fn build_strip_filter(req: &StripExtractRequest, source_fps: Option<f32>) -> Str
             let needs_fps = req.duration_seconds > 0.0
                 && req.thumb_count > 0
                 && source_fps
-                    .map(|fps| (req.thumb_count as f32) < req.duration_seconds * fps * 0.95)
+                    .map(|fps| {
+                        let estimated_frames = req.duration_seconds * fps;
+                        let capacity = req.thumb_count as f32;
+                        let equality_epsilon =
+                            estimated_frames.abs().max(capacity).max(1.0) * f32::EPSILON * 4.0;
+                        estimated_frames - capacity > equality_epsilon
+                    })
                     .unwrap_or(true);
             if needs_fps {
                 let fps = (req.thumb_count as f32 / req.duration_seconds).max(0.1);
@@ -442,5 +448,19 @@ mod tests {
         let filter = build_strip_filter(&barcode_request(600.0, 30_000), Some(60.0));
 
         assert_eq!(filter, "fps=50.00000,scale=1:100:flags=area,tile=30000x1");
+    }
+
+    #[test]
+    fn sweep_007_samples_a_near_cap_52_fps_barcode_across_the_full_duration() {
+        let filter = build_strip_filter(&barcode_request(600.0, 30_000), Some(52.0));
+
+        assert_eq!(filter, "fps=50.00000,scale=1:100:flags=area,tile=30000x1");
+    }
+
+    #[test]
+    fn sweep_007_does_not_resample_an_exact_cap_barcode() {
+        let filter = build_strip_filter(&barcode_request(600.0, 30_000), Some(50.0));
+
+        assert_eq!(filter, "scale=1:100:flags=area,tile=30000x1");
     }
 }
