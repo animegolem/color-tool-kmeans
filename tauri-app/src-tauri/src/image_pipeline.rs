@@ -106,10 +106,7 @@ pub fn prepare_samples(params: &SampleParams) -> Result<SampleResult> {
     let rgba = to_rgba_with_downscale(img, params.max_dimension);
     let (width, height) = rgba.dimensions();
     let samples = sample_pixels(&rgba, params);
-    let samples_oklab = samples
-        .iter()
-        .map(|rgb| crate::color::rgb8_to_oklab(*rgb))
-        .collect::<Vec<_>>();
+    let samples_oklab = crate::color::rgb8_slice_to_oklab(&samples);
     let sampled_pixels = samples.len();
 
     Ok(SampleResult {

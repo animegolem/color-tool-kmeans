@@ -6,8 +6,14 @@
 //! - CIE 15:2018 (Colorimetry, 4th Edition) for LAB/LUV
 //! - IEC 61966-2-1:1999 for sRGB gamma and XYZ transforms
 
+use std::sync::LazyLock;
+
+use rayon::prelude::*;
+
 const EPSILON: f32 = 1e-6;
 const XYZ_WHITE: [f32; 3] = [0.95047, 1.0, 1.08883]; // D65
+static SRGB8_TO_LINEAR_LUT: LazyLock<[f32; 256]> =
+    LazyLock::new(|| std::array::from_fn(|value| srgb_to_linear(value as f32 / 255.0)));
 
 #[inline]
 fn clamp01(v: f32) -> f32 {
@@ -38,7 +44,7 @@ pub fn linear_to_srgb(c: f32) -> f32 {
 }
 
 pub fn srgb8_to_linear(rgb: [u8; 3]) -> [f32; 3] {
-    rgb.map(|c| srgb_to_linear((c as f32) / 255.0))
+    rgb.map(|c| SRGB8_TO_LINEAR_LUT[c as usize])
 }
 
 pub fn linear_to_srgb8(rgb: [f32; 3]) -> [u8; 3] {
@@ -124,6 +130,11 @@ fn is_in_gamut_rgb(rgb: [f32; 3]) -> bool {
 pub fn rgb8_to_oklab(rgb: [u8; 3]) -> [f32; 3] {
     let linear = srgb8_to_linear(rgb);
     linear_rgb_to_oklab(linear)
+}
+
+/// Convert a frame or sampled RGB dataset to OKLab in parallel.
+pub fn rgb8_slice_to_oklab(samples: &[[u8; 3]]) -> Vec<[f32; 3]> {
+    samples.par_iter().map(|&rgb| rgb8_to_oklab(rgb)).collect()
 }
 
 /// Convert OKLab (L in 0..1) to sRGB bytes with simple RGB clamping.
@@ -491,6 +502,29 @@ mod tests {
 
     fn srgb8_to_linear_ref(rgb: [u8; 3]) -> [f64; 3] {
         rgb.map(|c| srgb_to_linear_ref((c as f64) / 255.0))
+    }
+
+    #[test]
+    fn srgb8_lut_matches_formula_for_every_channel_value() {
+        for value in 0..=u8::MAX {
+            let expected = srgb_to_linear(value as f32 / 255.0);
+            let actual = srgb8_to_linear([value; 3]);
+            assert_eq!(actual, [expected; 3]);
+        }
+    }
+
+    #[test]
+    fn parallel_oklab_conversion_matches_scalar_order_and_values() {
+        let samples = (0..=u8::MAX)
+            .map(|value| [value, value.wrapping_mul(17), value.wrapping_mul(31)])
+            .collect::<Vec<_>>();
+        let expected = samples
+            .iter()
+            .copied()
+            .map(rgb8_to_oklab)
+            .collect::<Vec<_>>();
+
+        assert_eq!(rgb8_slice_to_oklab(&samples), expected);
     }
 
     fn linear_to_srgb8_ref(rgb: [f64; 3]) -> [u8; 3] {

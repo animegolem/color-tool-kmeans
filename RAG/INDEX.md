@@ -78,7 +78,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/views/HomeView.svelte (793 LOC)
 - tauri-app/src/lib/views/ExportsView.svelte (743 LOC)
 - tauri-app/src-tauri/src/value_analysis.rs (741 LOC)
-- tauri-app/src-tauri/src/color.rs (706 LOC)
+- tauri-app/src-tauri/src/color.rs (740 LOC)
 - tauri-app/src/lib/views/__tests__/audit-control-flow-races.spec.ts (630 LOC)
 
 ### > 300 LOC
