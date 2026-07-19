@@ -209,6 +209,12 @@
     void runner.analyze(paths, { ...chartParams });
   }
 
+  function handleRetryReanalysis() {
+    const paths = pinned.filter((img) => !!img.path).map((img) => img.path!);
+    if (paths.length < 2) return;
+    void runner.retryReanalysis(paths, { ...chartParams });
+  }
+
   function handleClearPins() {
     void logEvent('batch:pins:cleared');
     runner.reset();
@@ -375,17 +381,6 @@
         <p>{error}</p>
       </div>
     {/if}
-
-    {#if showSpinner}
-      <div class="spinner-overlay">
-        <div class="spinner"></div>
-        <span class="spinner-label"
-          >{batchStatus === 'compositing'
-            ? 'Compositing grid...'
-            : 'Analyzing...'}</span
-        >
-      </div>
-    {/if}
   {:else}
     <header class="batch-header">
       <h2>{pinCount} image{pinCount !== 1 ? 's' : ''} analyzed</h2>
@@ -395,6 +390,23 @@
         >
       </div>
     </header>
+
+    {#if error}
+      <div class="error-banner refresh-error" role="alert">
+        <div>
+          <p><strong>Could not update the analysis.</strong> {error}</p>
+          <p class="refresh-error__note">
+            Showing the last successful result. Change a parameter or retry.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="analyze-btn"
+          disabled={inFlight}
+          onclick={handleRetryReanalysis}>Retry</button
+        >
+      </div>
+    {/if}
 
     {#if result}
       <p class="metrics">
@@ -595,6 +607,17 @@
     />
   {/if}
 
+  {#if showSpinner}
+    <div class="spinner-overlay">
+      <div class="spinner"></div>
+      <span class="spinner-label"
+        >{batchStatus === 'compositing'
+          ? 'Compositing grid...'
+          : 'Analyzing...'}</span
+      >
+    </div>
+  {/if}
+
   {#if expandedPin}
     <PinExpandOverlay
       image={expandedPin}
@@ -776,6 +799,18 @@
     margin: 0;
     color: #b91c1c;
     font-size: 13px;
+  }
+
+  .refresh-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .refresh-error .refresh-error__note {
+    margin-top: 4px;
+    color: rgba(33, 33, 32, 0.7);
   }
 
   .spinner-overlay {

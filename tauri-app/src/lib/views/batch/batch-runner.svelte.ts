@@ -127,6 +127,15 @@ export function createBatchRunner() {
     }, ANALYZE_DEBOUNCE_MS);
   }
 
+  async function retryReanalysis(
+    paths: string[],
+    params: AnalysisParams
+  ): Promise<void> {
+    clearDebounce();
+    lastRequestKey = buildRequestKey(paths, params);
+    await reanalyze({ ...params });
+  }
+
   async function reanalyze(params: AnalysisParams): Promise<void> {
     const compositePath = get(multiCompositePath);
     if (!compositePath) return;
@@ -193,7 +202,7 @@ export function createBatchRunner() {
       console.error('[batch] reanalysis failed', err);
       void logEvent('batch:reanalysis:error');
       multiAnalysisError.set(mapErrorToMessage(err));
-      multiAnalysisState.set('error');
+      multiAnalysisState.set(get(multiAnalysisResult) ? 'ready' : 'error');
       restoreAnalysisScroll(token);
     } finally {
       if (token === currentToken) clearSpinner();
@@ -307,6 +316,7 @@ export function createBatchRunner() {
     },
     analyze,
     scheduleReanalysis,
+    retryReanalysis,
     seedRequestKey,
     captureAnalysisScroll,
     cancel,
