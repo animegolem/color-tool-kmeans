@@ -49,6 +49,14 @@ function restoreRuneShim() {
   }
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
 function selection(path: string): FileSelection {
   return {
     name: path.split('/').at(-1) ?? 'video.mp4',
@@ -138,5 +146,59 @@ describe('video controller cache restoration reset', () => {
 
     expect(scheduleAnalysisWith).toHaveBeenCalledTimes(1);
     expect(seedAnalysisKey).not.toHaveBeenCalled();
+  });
+
+  it('SWEEP-023: a disposed Home owner cannot publish its late frame', async () => {
+    const frame = deferred<{ path: string; timestampUsed: string }>();
+    mocks.extractVideoFrame.mockReturnValue(frame.promise);
+    let selectedPath: string | null = null;
+    const setFile = vi.fn((entry: { videoPath?: string }) => {
+      selectedPath = entry.videoPath ?? null;
+    });
+    const controller = createVideoController({
+      isNativeModeActive: () => true,
+      buildPreviewUrl: (file) => `asset://${file.path}`,
+      maxDimensionForQuality: () => 1200,
+      setFile,
+      setVideoState: (state) => {
+        selectedPath = state?.path ?? null;
+      },
+      clearFile: vi.fn(),
+      getQuality: () => 2,
+      setBannerMessage: vi.fn(),
+      scheduleAnalysisWith: vi.fn(),
+      getCurrentParams: () => ({}),
+      clearLastRequestKey: vi.fn(),
+      captureAnalysisScroll: vi.fn(),
+      getVideoStripMode: () => 'filmstrip',
+      getCachedVideoState: () => ({
+        duration: 10,
+        fps: 24,
+        currentTime: 2,
+        stripPath: null,
+        stripId: null,
+        posterPath: null,
+        frameId: 'old-owner-frame',
+      }),
+      cacheVideoState: vi.fn(),
+      findExistingFrameId: () => null,
+      seedAnalysisKey: vi.fn(),
+      hasAnalysisForImage: () => false,
+    });
+
+    controller.loadVideoSelection(selection('/tmp/old-owner.mp4'));
+    await vi.advanceTimersByTimeAsync(250);
+    expect(mocks.extractVideoFrame).toHaveBeenCalledTimes(1);
+
+    controller.dispose();
+    selectedPath = '/tmp/new-owner.mp4';
+    frame.resolve({
+      path: '/cache/old-owner-frame.png',
+      timestampUsed: '2.000',
+    });
+    await vi.runAllTimersAsync();
+
+    expect(selectedPath).toBe('/tmp/new-owner.mp4');
+    expect(setFile).not.toHaveBeenCalled();
   });
 });

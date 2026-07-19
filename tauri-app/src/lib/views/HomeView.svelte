@@ -450,6 +450,7 @@
     window.addEventListener('pointerup', handleScrubEnd);
     window.addEventListener('pointercancel', handleScrubEnd);
     return () => {
+      video.dispose();
       unsubs.forEach((unsub) => unsub());
       window.removeEventListener('dragenter', onDragEnter);
       window.removeEventListener('dragleave', onDragLeave);

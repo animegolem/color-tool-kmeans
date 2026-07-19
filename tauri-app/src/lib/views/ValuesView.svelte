@@ -203,10 +203,11 @@
       subscribeMediaLoadRequested(() => ingestion.handleUpload()),
     ];
     return () => {
+      ingestion.dispose();
+      scrubber.destroy();
       cleanupRunner();
       unsubs.forEach((unsub) => unsub());
       cleanupDragDrop();
-      scrubber.destroy();
     };
   });
 

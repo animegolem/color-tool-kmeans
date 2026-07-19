@@ -80,6 +80,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   let _currentLoadCid: string | null = null;
   let _loadSrcTimer: ReturnType<typeof setTimeout> | null = null;
   let _pendingSeekTime: number | null = null;
+  let disposed = false;
 
   function videoResourceSnapshot() {
     return {
@@ -111,6 +112,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function saveToCache() {
+    if (disposed) return;
     if (!videoSelection?.path) return;
     const entry = buildCacheEntry();
     if (entry) {
@@ -166,6 +168,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function pushVideoState() {
+    if (disposed) return;
     if (restoringVideoState) return;
     if (!videoSelection?.path) {
       deps.setVideoState(null);
@@ -203,6 +206,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   const BARCODE_HEIGHT = 120;
 
   function scheduleVideoStripGeneration() {
+    if (disposed) return;
     if (
       !videoSelection?.path ||
       videoStripPending ||
@@ -247,7 +251,9 @@ export function createVideoController(deps: VideoControllerDeps) {
     void logEvent(`video:strip:start mode=${mode} count=${thumbCount}`);
     const requestPath = videoSelection.path;
     const isStale = () =>
-      videoStripId !== stripId || videoSelection?.path !== requestPath;
+      disposed ||
+      videoStripId !== stripId ||
+      videoSelection?.path !== requestPath;
     extractVideoStrip({
       path: requestPath,
       stripId,
@@ -278,6 +284,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function regenerateStrip() {
+    if (disposed) return;
     if (!videoSelection?.path || videoDuration <= 0) return;
     videoStripPath = null;
     videoStripUrl = null;
@@ -296,7 +303,11 @@ export function createVideoController(deps: VideoControllerDeps) {
     token: number,
     decodeCid: string | null
   ) {
-    if (videoSelection?.path !== requestPath || token !== videoDecodeToken) {
+    if (
+      disposed ||
+      videoSelection?.path !== requestPath ||
+      token !== videoDecodeToken
+    ) {
       devlog('video:frameDecode:stale', 'Stale token — skipping', {
         expectedToken: token,
         currentToken: videoDecodeToken,
@@ -319,7 +330,7 @@ export function createVideoController(deps: VideoControllerDeps) {
         timestamp: requestTime,
         maxDimension,
       });
-      if (token !== videoDecodeToken) {
+      if (disposed || token !== videoDecodeToken) {
         devlog('video:frameDecode:stale', 'Stale after extract', {
           expectedToken: token,
           currentToken: videoDecodeToken,
@@ -373,7 +384,7 @@ export function createVideoController(deps: VideoControllerDeps) {
         `video:frame:done t_req=${requestTime.toFixed(4)} t_ffmpeg=${response.timestampUsed}`
       );
     } catch (error) {
-      if (token !== videoDecodeToken) return;
+      if (disposed || token !== videoDecodeToken) return;
       console.error('[home] Video frame decode failed', error);
       const message = error instanceof Error ? error.message : String(error);
       void logEvent(`video:frame:error message=${message}`);
@@ -381,11 +392,12 @@ export function createVideoController(deps: VideoControllerDeps) {
         'Failed to decode video frame. Please try another file.'
       );
     } finally {
-      if (token === videoDecodeToken) frameDecoding = false;
+      if (!disposed && token === videoDecodeToken) frameDecoding = false;
     }
   }
 
   function scheduleVideoFrameDecode() {
+    if (disposed) return;
     if (!videoSelection?.path) return;
     if (!deps.isNativeModeActive()) {
       deps.setBannerMessage('Video analysis requires the desktop app.');
@@ -445,10 +457,11 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   async function probeVideoDuration(path: string) {
+    if (disposed) return;
     videoProbePending = true;
     try {
       const response = await probeVideo(path);
-      if (videoSelection?.path !== path) {
+      if (disposed || videoSelection?.path !== path) {
         void logEvent(`video:probe:stale path=${path}`);
         return;
       }
@@ -476,7 +489,7 @@ export function createVideoController(deps: VideoControllerDeps) {
       const message = error instanceof Error ? error.message : String(error);
       void logEvent(`video:probe:error message=${message}`);
     } finally {
-      if (videoSelection?.path === path) videoProbePending = false;
+      if (!disposed && videoSelection?.path === path) videoProbePending = false;
     }
   }
 
@@ -485,6 +498,7 @@ export function createVideoController(deps: VideoControllerDeps) {
     existingId?: string,
     cid?: string
   ) {
+    if (disposed) return;
     const loadCid = cid ?? devlog.cid();
     const nativeMode = deps.isNativeModeActive() && !!selection.path;
     devlog('video:load', 'Starting video load', {
@@ -564,6 +578,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function restoreVideoSelection(state: VideoState) {
+    if (disposed) return;
     if (!state.path) return;
     restoringVideoState = true;
     resetVideoState();
@@ -741,6 +756,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function handleVideoStateChange(state: VideoState | null) {
+    if (disposed) return;
     if (restoringVideoState) return;
     devlog('video:stateChange', 'Video state change', {
       hasState: state !== null,
@@ -766,6 +782,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function loadSrcEffect() {
+    if (disposed) return;
     const el = videoElement;
     const src = videoSrcUrl;
     devlog('video:srcEffect', 'Src effect (debounced)', {
@@ -782,7 +799,7 @@ export function createVideoController(deps: VideoControllerDeps) {
         // Re-read latest state inside callback to act on final URL
         const currentEl = videoElement;
         const currentSrc = videoSrcUrl;
-        if (currentEl && currentSrc) {
+        if (!disposed && currentEl && currentSrc) {
           devlog('video:srcEffect:load', 'Calling el.load()', {
             src: currentSrc.startsWith('blob:') ? 'blob' : 'asset',
           });
@@ -790,6 +807,25 @@ export function createVideoController(deps: VideoControllerDeps) {
         }
       }, 100);
     }
+  }
+
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    videoDecodeToken += 1;
+    videoProbePending = false;
+    videoStripPending = false;
+    frameDecoding = false;
+    if (videoDecodeTimer) {
+      clearTimeout(videoDecodeTimer);
+      videoDecodeTimer = null;
+    }
+    if (_loadSrcTimer) {
+      clearTimeout(_loadSrcTimer);
+      _loadSrcTimer = null;
+    }
+    videoDecodeQueues.clear();
+    videoElement = null;
   }
 
   return {
@@ -850,5 +886,6 @@ export function createVideoController(deps: VideoControllerDeps) {
     handleVideoStateChange,
     setVideoElementRef,
     loadSrcEffect,
+    dispose,
   };
 }

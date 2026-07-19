@@ -24,6 +24,7 @@ export interface ValuesFileIngestionDeps {
 export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
   let videoRequestGeneration = 0;
   let pendingVideoRequest: { path: string; generation: number } | null = null;
+  let disposed = false;
 
   async function probeAndSetVideoState(
     videoPath: string,
@@ -32,7 +33,7 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
   ) {
     const cached = getCachedVideoState(videoPath);
     if (cached) {
-      if (generation !== videoRequestGeneration) return;
+      if (disposed || generation !== videoRequestGeneration) return;
       const restoredState = {
         path: videoPath,
         name,
@@ -48,7 +49,7 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
     }
     try {
       const probe = await probeVideo(videoPath);
-      if (generation !== videoRequestGeneration) return;
+      if (disposed || generation !== videoRequestGeneration) return;
       setVideoState({
         path: videoPath,
         name,
@@ -63,6 +64,7 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
   }
 
   function handleVideoFile(videoPath: string, name: string) {
+    if (disposed) return;
     const vs = get(videoState);
     if (vs?.path === videoPath) return;
     if (pendingVideoRequest?.path === videoPath) return;
@@ -76,6 +78,7 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
   }
 
   function handleImageFile(sel: FileSelection) {
+    if (disposed) return;
     videoRequestGeneration += 1;
     pendingVideoRequest = null;
     setVideoState(null);
@@ -100,10 +103,12 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
   }
 
   async function processBatch(selections: FileSelection[]) {
+    if (disposed) return;
     let videoProcessed = false;
     let firstActivated = false;
 
     for (const sel of selections) {
+      if (disposed) return;
       if (isVideoFile(sel)) {
         if (!videoProcessed && sel.path) {
           videoProcessed = true;
@@ -132,6 +137,7 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
     try {
       const bridge = await getFsBridge();
       const selections = await bridge.openMediaFiles('all');
+      if (disposed) return;
       if (!selections?.length) return;
       await processBatch(selections);
     } catch (e) {
@@ -140,7 +146,16 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
   }
 
   function setupDragDrop(): Promise<(() => void) | null> {
-    return setupTauriDragDrop((selections) => void processBatch(selections));
+    return setupTauriDragDrop((selections) => {
+      if (!disposed) void processBatch(selections);
+    });
+  }
+
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    videoRequestGeneration += 1;
+    pendingVideoRequest = null;
   }
 
   return {
@@ -149,5 +164,6 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
     handleImageFile,
     processBatch,
     setupDragDrop,
+    dispose,
   };
 }
