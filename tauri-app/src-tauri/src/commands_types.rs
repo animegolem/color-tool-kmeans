@@ -53,7 +53,7 @@ pub struct RgbValue {
     pub b: u8,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ClusterOut {
     pub count: usize,
@@ -65,7 +65,7 @@ pub struct ClusterOut {
     pub hsv: [f32; 3],
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AnalyzeResponse {
     pub clusters: Vec<ClusterOut>,
@@ -73,6 +73,45 @@ pub struct AnalyzeResponse {
     pub duration_ms: f64,
     pub total_samples: usize,
     pub variant: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LiveAnalysisStartRequest {
+    pub path: String,
+    #[serde(default)]
+    pub start_timestamp: f32,
+    #[serde(default, alias = "K", alias = "clusters")]
+    pub k: usize,
+    #[serde(default)]
+    pub ignore_top_n: usize,
+    #[serde(default)]
+    pub merge_threshold: f32,
+    #[serde(default)]
+    pub snap_to_real: bool,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LiveAnalysisStartResponse {
+    pub session_id: u64,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LiveAnalysisFrame {
+    pub session_id: u64,
+    pub timestamp: f32,
+    pub dropped_frames: u64,
+    pub effective_fps: f64,
+    pub analysis: AnalyzeResponse,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LiveAnalysisError {
+    pub session_id: u64,
+    pub message: String,
 }
 
 #[derive(Debug, Deserialize)]

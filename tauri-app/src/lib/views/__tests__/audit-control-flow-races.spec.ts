@@ -7,12 +7,19 @@ const mocks = vi.hoisted(() => ({
   probeVideo: vi.fn(),
   analyzeImage: vi.fn(),
   requestValueAnalysis: vi.fn(),
+  startLiveAnalysis: vi.fn(),
+  stopLiveAnalysis: vi.fn(),
 }));
 
 vi.mock('../../bridges/video', () => ({
   extractVideoFrame: mocks.extractVideoFrame,
   extractVideoStrip: mocks.extractVideoStrip,
   probeVideo: mocks.probeVideo,
+}));
+
+vi.mock('../../bridges/live-analysis', () => ({
+  startLiveAnalysis: mocks.startLiveAnalysis,
+  stopLiveAnalysis: mocks.stopLiveAnalysis,
 }));
 
 vi.mock('../../bridges/fs', () => ({
@@ -182,7 +189,12 @@ function auditVideoController(
     getQuality: () => 2,
     setBannerMessage: vi.fn(),
     scheduleAnalysisWith: vi.fn(),
-    getCurrentParams: () => ({}),
+    getCurrentParams: () => ({
+      clusters: 45,
+      ignoreTopN: 0,
+      mergeThreshold: 0,
+      snapToReal: true,
+    }),
     clearLastRequestKey: vi.fn(),
     captureAnalysisScroll: vi.fn(),
     getVideoStripMode: () => 'filmstrip',
@@ -199,6 +211,8 @@ function auditVideoController(
     findExistingFrameId: () => 'frame-1',
     seedAnalysisKey: vi.fn(),
     hasAnalysisForImage: () => false,
+    cancelPendingAnalysis: vi.fn(),
+    setLiveAnalysisResult: vi.fn(),
     ...overrides,
   });
 }
@@ -370,6 +384,43 @@ describe('audit reproductions for async control-flow invariants', () => {
       }),
       emptyDataset
     );
+  });
+
+  it('keeps live results session-owned and stops the worker on pause', async () => {
+    mocks.startLiveAnalysis.mockResolvedValue({ sessionId: 7 });
+    mocks.stopLiveAnalysis.mockResolvedValue(undefined);
+    const setLiveAnalysisResult = vi.fn();
+    const controller = auditVideoController({ setLiveAnalysisResult });
+    const video = {
+      currentTime: 1.25,
+      pause: vi.fn(),
+      play: vi.fn().mockResolvedValue(undefined),
+    } as unknown as HTMLVideoElement;
+    controller.setVideoElementRef(video);
+    controller.loadVideoSelection(videoSelection());
+
+    controller.toggleVideoPlayback();
+    await vi.waitFor(() => expect(controller.videoPlaying).toBe(true));
+    controller.handleLiveAnalysisFrame({
+      sessionId: 6,
+      timestamp: 1.25,
+      droppedFrames: 0,
+      effectiveFps: 24,
+      analysis: colorResult(),
+    });
+    controller.handleLiveAnalysisFrame({
+      sessionId: 7,
+      timestamp: 1.25,
+      droppedFrames: 1,
+      effectiveFps: 23.8,
+      analysis: colorResult(),
+    });
+
+    expect(setLiveAnalysisResult).toHaveBeenCalledTimes(1);
+    expect(controller.liveDroppedFrames).toBe(1);
+    controller.toggleVideoPlayback();
+    await vi.waitFor(() => expect(mocks.stopLiveAnalysis).toHaveBeenCalled());
+    expect(controller.videoPlaying).toBe(false);
   });
 
   it('AUD-009: starts a replacement strip request when the strip mode changes in flight', () => {

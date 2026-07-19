@@ -6,7 +6,7 @@ use tauri_app::color;
 use tauri_app::compose_grid;
 use tauri_app::ffmpeg;
 use tauri_app::image_pipeline::{prepare_samples, quality_preset, SampleParams};
-use tauri_app::kmeans::{run_kmeans, KMeansConfig};
+use tauri_app::kmeans::{run_kmeans, KMeansConfig, KMeansResult};
 use tauri_app::value_analysis::{generate_value_analysis, ValueAnalysisResult};
 
 use crate::cache::EventLog;
@@ -28,6 +28,76 @@ fn snap_centroids_to_nearest(raw_clusters: &mut [RawCluster], samples_oklab: &[[
             }
         }
         cluster.centroid = best;
+    }
+}
+
+pub(crate) struct AnalysisOutputOptions<'a> {
+    pub ignore_top_n: usize,
+    pub merge_threshold: f32,
+    pub snap_to_real: bool,
+    pub duration_ms: f64,
+    pub variant: &'a str,
+}
+
+pub(crate) fn build_analysis_response(
+    result: KMeansResult,
+    samples_oklab: &[[f32; 3]],
+    sampled_pixels: usize,
+    options: AnalysisOutputOptions<'_>,
+) -> AnalyzeResponse {
+    let iterations = result.iterations;
+    let mut raw_clusters: Vec<RawCluster> = result
+        .centroids
+        .iter()
+        .zip(result.counts.iter())
+        .filter_map(|(centroid, &count)| {
+            (count > 0).then_some(RawCluster {
+                centroid: *centroid,
+                count,
+            })
+        })
+        .collect();
+    if options.snap_to_real {
+        snap_centroids_to_nearest(&mut raw_clusters, samples_oklab);
+    }
+    let merge_threshold = options.merge_threshold.clamp(0.0, 0.2);
+    if merge_threshold > 0.0 {
+        raw_clusters = merge_clusters_by_threshold(raw_clusters, merge_threshold);
+    } else {
+        raw_clusters.sort_by_key(|c| std::cmp::Reverse(c.count));
+    }
+
+    let mut clusters: Vec<ClusterOut> = raw_clusters
+        .into_iter()
+        .map(|cluster| {
+            let rgb_u8 = color::oklab_to_srgb8_gamut_mapped(cluster.centroid);
+            ClusterOut {
+                count: cluster.count,
+                share: (cluster.count as f64) / (sampled_pixels as f64),
+                centroid_space: cluster.centroid,
+                oklab: cluster.centroid,
+                oklch: color::oklab_to_oklch(cluster.centroid),
+                rgb: RgbValue {
+                    r: rgb_u8[0],
+                    g: rgb_u8[1],
+                    b: rgb_u8[2],
+                },
+                hsv: color::rgb8_to_hsv(rgb_u8),
+            }
+        })
+        .collect();
+    clusters.sort_by_key(|c| std::cmp::Reverse(c.count));
+    let ignore_top_n = options.ignore_top_n.min(clusters.len().saturating_sub(1));
+    if ignore_top_n > 0 {
+        clusters = clusters.into_iter().skip(ignore_top_n).collect();
+    }
+
+    AnalyzeResponse {
+        clusters,
+        iterations,
+        duration_ms: options.duration_ms,
+        total_samples: sampled_pixels,
+        variant: options.variant.into(),
     }
 }
 
@@ -87,80 +157,23 @@ pub async fn analyze_image(
     let result = run_kmeans(&dataset, &cfg);
     let duration_ms = start.elapsed().as_secs_f64() * 1000.0;
 
-    // 4) Build clusters; apply merge threshold; convert centroid to RGB and HSV
-    let mut raw_clusters: Vec<RawCluster> = result
-        .centroids
-        .iter()
-        .zip(result.counts.iter())
-        .filter_map(|(centroid, &count)| {
-            if count == 0 {
-                return None;
-            }
-            Some(RawCluster {
-                centroid: *centroid,
-                count,
-            })
-        })
-        .collect();
-    if req.snap_to_real {
-        let oklab = samples.samples_oklab.as_ref().unwrap();
-        snap_centroids_to_nearest(&mut raw_clusters, oklab);
-    }
-    let merge_threshold = req.merge_threshold.clamp(0.0, 0.2);
-    if merge_threshold > 0.0 {
-        let before_count = raw_clusters.len();
-        raw_clusters = merge_clusters_by_threshold(raw_clusters, merge_threshold);
-        let after_count = raw_clusters.len();
-        println!(
-            "[analyze_image] merge_threshold={:.3} clusters={} -> {}",
-            merge_threshold, before_count, after_count
-        );
-    } else {
-        raw_clusters.sort_by_key(|c| std::cmp::Reverse(c.count));
-    }
-
-    let mut clusters: Vec<ClusterOut> = raw_clusters
-        .into_iter()
-        .map(|cluster| {
-            let rgb_u8 = color::oklab_to_srgb8_gamut_mapped(cluster.centroid);
-            let rgb = RgbValue {
-                r: rgb_u8[0],
-                g: rgb_u8[1],
-                b: rgb_u8[2],
-            };
-            let oklab = cluster.centroid;
-            let oklch = color::oklab_to_oklch(cluster.centroid);
-            let hsv = color::rgb8_to_hsv(rgb_u8);
-            ClusterOut {
-                count: cluster.count,
-                share: (cluster.count as f64) / (samples.sampled_pixels as f64),
-                centroid_space: cluster.centroid,
-                oklab,
-                oklch,
-                rgb,
-                hsv,
-            }
-        })
-        .collect();
-    clusters.sort_by_key(|c| std::cmp::Reverse(c.count));
-    let ignore_top_n = req.ignore_top_n.min(clusters.len().saturating_sub(1));
-    if ignore_top_n > 0 {
-        clusters = clusters.into_iter().skip(ignore_top_n).collect();
-    }
-
-    let variant = if merge_threshold > 0.0 {
+    let variant = if req.merge_threshold > 0.0 {
         "inhouse+merge"
     } else {
         "inhouse"
     };
-
-    Ok(AnalyzeResponse {
-        clusters,
-        iterations: result.iterations,
-        duration_ms,
-        total_samples: samples.sampled_pixels,
-        variant: variant.into(),
-    })
+    Ok(build_analysis_response(
+        result,
+        samples.samples_oklab.as_ref().unwrap(),
+        samples.sampled_pixels,
+        AnalysisOutputOptions {
+            ignore_top_n: req.ignore_top_n,
+            merge_threshold: req.merge_threshold,
+            snap_to_real: req.snap_to_real,
+            duration_ms,
+            variant,
+        },
+    ))
 }
 
 #[tauri::command]
