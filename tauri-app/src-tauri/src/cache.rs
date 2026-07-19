@@ -149,9 +149,8 @@ pub fn remove_managed_artifact(
         .file_name()
         .and_then(|value| value.to_str())
         .unwrap_or_default();
-    let is_clipboard = parent == Some(cache_dir.join("clipboard").as_path())
-        && name.starts_with("paste-")
-        && name.ends_with(".png");
+    let is_clipboard =
+        parent == Some(cache_dir.join("clipboard").as_path()) && name.starts_with("paste-");
     let is_video_frame =
         parent == Some(cache_dir) && name.starts_with("video-frame-") && name.ends_with(".png");
     let is_snapshot = parent == Some(local_data_dir.join("snapshots").as_path())
@@ -242,5 +241,22 @@ mod tests {
 
         assert!(!removed);
         assert!(external.exists());
+    }
+
+    #[test]
+    fn sweep_011_removes_non_png_clipboard_artifacts() {
+        let temp = TempDir::new().expect("temp dir");
+        let cache_dir = temp.path().join("cache");
+        let local_data_dir = temp.path().join("data");
+        let clipboard_dir = cache_dir.join("clipboard");
+        fs::create_dir_all(&clipboard_dir).expect("clipboard dir");
+        let artifact = clipboard_dir.join("paste-1.jpg");
+        fs::write(&artifact, [1_u8]).expect("clipboard artifact");
+
+        let removed = remove_managed_artifact(&cache_dir, &local_data_dir, &artifact)
+            .expect("removal result");
+
+        assert!(removed);
+        assert!(!artifact.exists());
     }
 }

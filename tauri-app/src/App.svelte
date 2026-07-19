@@ -19,6 +19,7 @@
   import { getFsBridge } from './lib/bridges/fs';
   import { ingestFileAsEntry } from './lib/services/media-ingestion';
   import { setActivePath } from './lib/services/active-image';
+  import { clipboardImageExtensionForMimeType } from './lib/services/clipboard-image';
   import HomeView from './lib/views/HomeView.svelte';
   import ValuesView from './lib/views/ValuesView.svelte';
   import BatchView from './lib/views/BatchView.svelte';
@@ -225,10 +226,17 @@
     };
 
     const pasteImageBlob = async (blob: File | Blob) => {
+      const extension = clipboardImageExtensionForMimeType(blob.type);
+      if (!extension) {
+        throw new Error(
+          `Unsupported clipboard image MIME type: ${blob.type || '(missing)'}`
+        );
+      }
       const { appCacheDir } = await import('@tauri-apps/api/path');
       const { convertFileSrc } = await import('@tauri-apps/api/core');
       const cacheDir = await appCacheDir();
-      const path = `${cacheDir}/clipboard/paste-${Date.now()}.png`;
+      const timestamp = Date.now();
+      const path = `${cacheDir}/clipboard/paste-${timestamp}.${extension}`;
       const buffer = await blob.arrayBuffer();
       const data = Array.from(new Uint8Array(buffer));
       await tauriInvoke('save_file', { req: { path, data } });
@@ -237,7 +245,7 @@
         globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
       const entry: ImageEntry = {
         id: entryId,
-        name: `paste-${new Date().toISOString().slice(11, 19).replace(/:/g, '')}.png`,
+        name: `paste-${new Date(timestamp).toISOString().slice(11, 19).replace(/:/g, '')}.${extension}`,
         path,
         size: blob.size,
         source: { kind: 'path', path },
