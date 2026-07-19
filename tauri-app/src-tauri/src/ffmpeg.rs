@@ -223,10 +223,7 @@ pub async fn extract_frame_png<R: Runtime>(
     }
     ensure_parent_dir(&req.output_path)?;
     let timestamp = format!("{:.3}", req.timestamp_seconds.max(0.0));
-    let max_dimension = req.max_dimension;
-    let scale = format!(
-        "scale={max_dimension}:{max_dimension}:force_original_aspect_ratio=decrease:flags=lanczos"
-    );
+    let scale = build_frame_scale_filter(req.max_dimension);
     let (command, path) = build_ffmpeg_command(app)?;
     let output = command
         .args([
@@ -241,6 +238,8 @@ pub async fn extract_frame_png<R: Runtime>(
             "1",
             "-vf",
             &scale,
+            "-compression_level",
+            "1",
             "-y",
             req.output_path.to_string_lossy().as_ref(),
         ])
@@ -261,6 +260,15 @@ pub async fn extract_frame_png<R: Runtime>(
 
     prune_sibling_pngs(&req.output_path, "video-frame-", 80);
     Ok(timestamp)
+}
+
+fn build_frame_scale_filter(max_dimension: u32) -> String {
+    // `force_original_aspect_ratio=decrease` constrains the output box but
+    // does not prevent upscaling. Cap each input axis explicitly so a 720p
+    // frame is not expanded into a multi-megapixel PNG before analysis.
+    format!(
+        "scale=min(iw\\,{max_dimension}):min(ih\\,{max_dimension}):force_original_aspect_ratio=decrease:flags=lanczos"
+    )
 }
 
 fn prune_sibling_pngs(output_path: &Path, prefix: &str, keep: usize) {
@@ -442,5 +450,13 @@ mod tests {
         let filter = build_strip_filter(&barcode_request(600.0, 30_000), Some(60.0));
 
         assert_eq!(filter, "fps=50.00000,scale=1:100:flags=area,tile=30000x1");
+    }
+
+    #[test]
+    fn frame_scale_filter_caps_both_axes_without_forcing_an_upscale() {
+        assert_eq!(
+            build_frame_scale_filter(2200),
+            "scale=min(iw\\,2200):min(ih\\,2200):force_original_aspect_ratio=decrease:flags=lanczos"
+        );
     }
 }
