@@ -14,6 +14,16 @@ use crate::cache::EventLog;
 use crate::commands_types::*;
 use crate::merge::{merge_clusters_by_threshold, RawCluster};
 
+async fn run_blocking<T, F>(operation: &'static str, task: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(task)
+        .await
+        .map_err(|error| format!("{operation} worker failed: {error}"))?
+}
+
 fn snap_centroids_to_nearest(raw_clusters: &mut [RawCluster], samples_oklab: &[[f32; 3]]) {
     for cluster in raw_clusters.iter_mut() {
         let mut best_dist = f32::MAX;
@@ -37,6 +47,10 @@ pub async fn analyze_image(
     req: AnalyzeRequest,
     _app: AppHandle,
 ) -> Result<AnalyzeResponse, String> {
+    run_blocking("Analyze image", move || analyze_image_sync(req)).await
+}
+
+fn analyze_image_sync(req: AnalyzeRequest) -> Result<AnalyzeResponse, String> {
     if req.path.is_empty() {
         return Err("No file selected".into());
     }
@@ -179,6 +193,16 @@ pub async fn value_analysis(
         .path()
         .app_cache_dir()
         .map_err(|_| String::from("Failed to resolve cache directory"))?;
+    run_blocking("Value analysis", move || {
+        value_analysis_sync(req, cache_dir)
+    })
+    .await
+}
+
+fn value_analysis_sync(
+    req: ValueAnalysisRequest,
+    cache_dir: PathBuf,
+) -> Result<ValueAnalysisResponse, String> {
     let levels = req.levels.clamp(2, 5);
     let notan_mode = req.notan_mode && levels == 2;
     let ValueAnalysisResult {
@@ -227,7 +251,11 @@ pub async fn value_analysis(
 
 #[tauri::command]
 pub async fn save_file(req: SaveFileRequest) -> Result<SaveFileResponse, String> {
-    let path = std::path::PathBuf::from(&req.path);
+    run_blocking("Save file", move || save_file_sync(req)).await
+}
+
+fn save_file_sync(req: SaveFileRequest) -> Result<SaveFileResponse, String> {
+    let path = PathBuf::from(&req.path);
     if let Some(parent) = path.parent() {
         if !parent.exists() {
             std::fs::create_dir_all(parent).map_err(|e| format!("Cannot create directory: {e}"))?;
@@ -241,6 +269,10 @@ pub async fn save_file(req: SaveFileRequest) -> Result<SaveFileResponse, String>
 
 #[tauri::command]
 pub async fn copy_file(req: CopyFileRequest) -> Result<CopyFileResponse, String> {
+    run_blocking("Copy file", move || copy_file_sync(req)).await
+}
+
+fn copy_file_sync(req: CopyFileRequest) -> Result<CopyFileResponse, String> {
     let source = PathBuf::from(&req.source);
     let dest = PathBuf::from(&req.dest);
     copy_file_atomically(&source, &dest).map_err(|e| format!("Failed to copy file: {e}"))?;
@@ -406,6 +438,13 @@ pub async fn compose_grid(
         .path()
         .app_cache_dir()
         .map_err(|_| String::from("Failed to resolve cache directory"))?;
+    run_blocking("Compose grid", move || compose_grid_sync(req, cache_dir)).await
+}
+
+fn compose_grid_sync(
+    req: ComposeGridRequest,
+    cache_dir: PathBuf,
+) -> Result<ComposeGridResponse, String> {
     let max_cell_dim = req.max_cell_dim.unwrap_or(800);
     let (path, width, height, cols, rows) =
         compose_grid::compose_grid(&req.paths, max_cell_dim, &cache_dir)
@@ -421,9 +460,34 @@ pub async fn compose_grid(
 
 #[cfg(test)]
 mod tests {
-    use super::copy_file_atomically;
+    use super::{copy_file_atomically, run_blocking};
     use std::fs;
     use tempfile::TempDir;
+
+    #[test]
+    fn sweep_029_runs_work_off_thread_and_preserves_typed_results() {
+        let caller = std::thread::current().id();
+        let worker = tauri::async_runtime::block_on(run_blocking("Test operation", move || {
+            Ok::<_, String>(std::thread::current().id())
+        }))
+        .expect("worker result");
+        assert_ne!(caller, worker);
+
+        let error = tauri::async_runtime::block_on(run_blocking("Test operation", || {
+            Err::<(), _>("domain failure".to_string())
+        }));
+        assert_eq!(error, Err("domain failure".to_string()));
+    }
+
+    #[test]
+    fn sweep_029_maps_worker_panics_without_panicking_the_command_future() {
+        let error = tauri::async_runtime::block_on(run_blocking::<(), _>("Analyze image", || {
+            panic!("worker panic")
+        }))
+        .expect_err("panic becomes command error");
+
+        assert!(error.starts_with("Analyze image worker failed:"));
+    }
 
     #[test]
     fn copy_file_same_path_preserves_source_bytes() {
