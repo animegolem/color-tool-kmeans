@@ -48,6 +48,23 @@ export interface SelectedImage extends ImageEntry {
 export const images = writable<ImageEntry[]>([]);
 export const activeImageId = writable<string | null>(null);
 
+export interface PendingVideoSwitch {
+  id: string;
+  cid: string;
+}
+
+export const pendingVideoSwitch = writable<PendingVideoSwitch | null>(null);
+
+let _videoSwitchTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function cancelPendingVideoSwitch() {
+  if (_videoSwitchTimer) {
+    clearTimeout(_videoSwitchTimer);
+    _videoSwitchTimer = null;
+  }
+  pendingVideoSwitch.set(null);
+}
+
 const imageDatasets = new Map<string, ImageDataset>();
 const objectUrls = new Map<string, string>();
 
@@ -168,6 +185,7 @@ export function setFile(
   dataset: ImageDataset,
   options: SetFileOptions = {}
 ) {
+  if (!entry.videoPath) cancelPendingVideoSwitch();
   const current = get(images);
   const existingById = current.find((item) => item.id === entry.id);
   const existingByPath = entry.path
@@ -298,6 +316,7 @@ export function switchToFile(id: string) {
   const entry = list.find((item) => item.id === id);
   devlog('store:switchToFile', 'Switch to file', { id, found: !!entry });
   if (!entry) return;
+  cancelPendingVideoSwitch();
 
   if (entry.path) {
     setActivePath(entry.path);
@@ -315,6 +334,7 @@ export function switchToFile(id: string) {
 }
 
 export function clearActiveSelection() {
+  cancelPendingVideoSwitch();
   const hadActiveId = get(activeImageId) !== null;
   devlog('store:clearActive', 'Clear active selection', {
     hadActiveId,
@@ -330,19 +350,10 @@ export function clearActiveSelection() {
   }
 }
 
-export interface PendingVideoSwitch {
-  id: string;
-  cid: string;
-}
-
-export const pendingVideoSwitch = writable<PendingVideoSwitch | null>(null);
-
-let _videoSwitchTimer: ReturnType<typeof setTimeout> | null = null;
-
 export function switchToVideo(id: string) {
   const cid = devlog.cid();
   devlog('store:switchToVideo', 'Switch to video (debounced)', { id, cid });
-  if (_videoSwitchTimer) clearTimeout(_videoSwitchTimer);
+  cancelPendingVideoSwitch();
   _videoSwitchTimer = setTimeout(() => {
     _videoSwitchTimer = null;
     pendingVideoSwitch.set({ id, cid });
@@ -356,6 +367,7 @@ export function requestMediaLoad() {
 }
 
 export function clearFile() {
+  cancelPendingVideoSwitch();
   const count = get(images).length;
   void cleanupAllMediaArtifacts(get(images));
   devlog('store:clearFile', 'Clear all files', { count });
