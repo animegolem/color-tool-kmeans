@@ -3,6 +3,9 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_shell::ShellExt;
 
+const FFMPEG_FAILURE: &str = "FFmpeg exited with an error";
+const FFPROBE_FAILURE: &str = "FFprobe exited with an error";
+
 #[derive(Debug, Clone)]
 pub struct FrameExtractRequest {
     pub input_path: PathBuf,
@@ -19,16 +22,7 @@ pub async fn ffmpeg_version<R: Runtime>(app: &AppHandle<R>) -> Result<String, St
         .await
         .map_err(|e| format!("FFmpeg failed at {}: {e}", path.display()))?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let message = stderr.trim();
-        let detail = if message.is_empty() {
-            "FFmpeg exited with an error".to_string()
-        } else {
-            message.to_string()
-        };
-        return Err(detail);
-    }
+    ensure_command_succeeded(output.status.success(), &output.stderr, FFMPEG_FAILURE)?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     Ok(stdout.lines().next().unwrap_or("").to_string())
@@ -57,16 +51,7 @@ pub async fn ffprobe_details<R: Runtime>(
         .await
         .map_err(|e| format!("FFprobe failed at {}: {e}", path.display()))?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let message = stderr.trim();
-        let detail = if message.is_empty() {
-            "FFprobe exited with an error".to_string()
-        } else {
-            message.to_string()
-        };
-        return Err(detail);
-    }
+    ensure_command_succeeded(output.status.success(), &output.stderr, FFPROBE_FAILURE)?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let mut duration: Option<f32> = None;
@@ -153,16 +138,7 @@ pub async fn extract_strip_png<R: Runtime>(
         .await
         .map_err(|e| format!("FFmpeg failed at {}: {e}", path.display()))?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let message = stderr.trim();
-        let detail = if message.is_empty() {
-            "FFmpeg exited with an error".to_string()
-        } else {
-            message.to_string()
-        };
-        return Err(detail);
-    }
+    ensure_command_succeeded(output.status.success(), &output.stderr, FFMPEG_FAILURE)?;
 
     Ok(())
 }
@@ -253,18 +229,26 @@ pub async fn extract_frame_png<R: Runtime>(
         .await
         .map_err(|e| format!("FFmpeg failed at {}: {e}", path.display()))?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let message = stderr.trim();
-        let detail = if message.is_empty() {
-            "FFmpeg exited with an error".to_string()
-        } else {
-            message.to_string()
-        };
-        return Err(detail);
-    }
+    ensure_command_succeeded(output.status.success(), &output.stderr, FFMPEG_FAILURE)?;
 
     Ok(timestamp)
+}
+
+fn ensure_command_succeeded(
+    status_success: bool,
+    stderr: &[u8],
+    empty_stderr_message: &str,
+) -> Result<(), String> {
+    if status_success {
+        return Ok(());
+    }
+    let stderr = String::from_utf8_lossy(stderr);
+    let message = stderr.trim();
+    if message.is_empty() {
+        Err(empty_stderr_message.to_string())
+    } else {
+        Err(message.to_string())
+    }
 }
 
 fn ensure_parent_dir(path: &Path) -> Result<(), String> {
@@ -422,5 +406,37 @@ mod tests {
         let filter = build_strip_filter(&barcode_request(600.0, 30_000), Some(50.0));
 
         assert_eq!(filter, "scale=1:100:flags=area,tile=30000x1");
+    }
+
+    #[test]
+    fn sweep_024_success_ignores_command_stderr() {
+        assert_eq!(
+            ensure_command_succeeded(true, b"non-fatal diagnostic", "fallback"),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn sweep_024_failure_prefers_trimmed_lossy_stderr() {
+        assert_eq!(
+            ensure_command_succeeded(false, b"  decode failed\n", "fallback"),
+            Err("decode failed".to_string())
+        );
+        assert_eq!(
+            ensure_command_succeeded(false, b"bad byte: \xff", "fallback"),
+            Err("bad byte: \u{fffd}".to_string())
+        );
+    }
+
+    #[test]
+    fn sweep_024_failure_preserves_each_callers_empty_stderr_message() {
+        assert_eq!(
+            ensure_command_succeeded(false, b" \n\t", FFMPEG_FAILURE),
+            Err(FFMPEG_FAILURE.to_string())
+        );
+        assert_eq!(
+            ensure_command_succeeded(false, b"", FFPROBE_FAILURE),
+            Err(FFPROBE_FAILURE.to_string())
+        );
     }
 }
