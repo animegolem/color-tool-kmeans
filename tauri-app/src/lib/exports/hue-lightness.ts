@@ -8,6 +8,7 @@ import {
   svgText,
 } from './svg';
 import { svgToPngBlob } from './png';
+import { clusterHue, clusterLightness, contrastStroke } from './color-format';
 
 export interface HueLightnessOptions {
   symbolScale: number;
@@ -84,8 +85,8 @@ export function generateHueLightnessSvg(
   const svgParts: string[] = [];
 
   for (const cluster of clusters) {
-    const hue = getHue(cluster);
-    const lightness = getLightness(cluster);
+    const hue = clusterHue(cluster);
+    const lightness = clusterLightness(cluster);
     const chroma = getChroma(cluster);
     const x = padding + (hue / 360) * plotWidth;
     const y = padding + (1 - lightness) * plotHeight;
@@ -176,28 +177,9 @@ export async function generateHueLightnessPng(
   return svgToPngBlob(svg, width, height, options.scale ?? 1);
 }
 
-function getHue(cluster: AnalysisCluster): number {
-  if (cluster.oklch && cluster.oklch.length >= 3) {
-    return cluster.oklch[2];
-  }
-  return cluster.hsv?.[0] ?? 0;
-}
-
 function getChroma(cluster: AnalysisCluster): number {
   if (cluster.oklch && cluster.oklch.length >= 3) {
     return cluster.oklch[1];
   }
   return cluster.hsv?.[1] ?? 0;
-}
-
-function getLightness(cluster: AnalysisCluster): number {
-  if (cluster.oklch && cluster.oklch.length >= 3) {
-    return cluster.oklch[0];
-  }
-  return (cluster.hsv?.[2] ?? 0) / 100;
-}
-
-function contrastStroke(rgb: { r: number; g: number; b: number }): string {
-  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
-  return luminance > 0.5 ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.85)';
 }

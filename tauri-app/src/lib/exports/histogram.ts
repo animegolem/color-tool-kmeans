@@ -1,6 +1,7 @@
 import type { AnalysisCluster } from '../stores/ui';
 import { svgDocument, svgRect, svgText } from './svg';
 import { svgToPngBlob } from './png';
+import { clusterHue, clusterLightness } from './color-format';
 
 export interface HistogramOptions {
   width?: number;
@@ -34,9 +35,9 @@ export function generateHistogramSvg(
   const plotHeight = Math.max(1, height - vPad - bottomPad);
   const sorted = [...clusters];
   if (sortBy === 'hue') {
-    sorted.sort((a, b) => getHue(a) - getHue(b));
+    sorted.sort((a, b) => clusterHue(a) - clusterHue(b));
   } else if (sortBy === 'lightness') {
-    sorted.sort((a, b) => getLightness(a) - getLightness(b));
+    sorted.sort((a, b) => clusterLightness(a) - clusterLightness(b));
   } else {
     sorted.sort((a, b) => b.count - a.count);
   }
@@ -106,20 +107,6 @@ export async function generateHistogramPng(
 ): Promise<Blob> {
   const { svg, width, height } = generateHistogramSvg(clusters, options);
   return svgToPngBlob(svg, width, height, options.scale ?? 1);
-}
-
-function getHue(cluster: AnalysisCluster): number {
-  if (cluster.oklch && cluster.oklch.length >= 3) {
-    return cluster.oklch[2];
-  }
-  return cluster.hsv?.[0] ?? 0;
-}
-
-function getLightness(cluster: AnalysisCluster): number {
-  if (cluster.oklch && cluster.oklch.length >= 3) {
-    return cluster.oklch[0];
-  }
-  return (cluster.hsv?.[2] ?? 0) / 100;
 }
 
 function formatSortLabel(sortBy: 'frequency' | 'hue' | 'lightness'): string {

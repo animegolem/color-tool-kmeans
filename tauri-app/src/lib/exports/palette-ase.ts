@@ -1,12 +1,5 @@
 import type { AnalysisCluster } from '../stores/ui';
-
-function rgbToHex(rgb: { r: number; g: number; b: number }): string {
-  const h = (v: number) =>
-    Math.max(0, Math.min(255, Math.round(v)))
-      .toString(16)
-      .padStart(2, '0');
-  return `#${h(rgb.r)}${h(rgb.g)}${h(rgb.b)}`.toUpperCase();
-}
+import { rgbToHex } from './color-format';
 
 const HEADER_SIZE = 12; // ASEF(4) + version(4) + blockCount(4)
 const COLOR_MODEL_SIZE = 4; // "RGB "

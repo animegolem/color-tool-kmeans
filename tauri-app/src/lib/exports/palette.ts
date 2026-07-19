@@ -1,25 +1,11 @@
 import type { AnalysisCluster } from '../stores/ui';
 import { svgDocument, svgGroup, svgRect, svgText } from './svg';
 import { svgToPngBlob } from './png';
+import { rgbToHex } from './color-format';
 
 const DEFAULT_ROW_HEIGHT = 32;
 const SWATCH_WIDTH = 56;
 const FONT_FAMILY = 'Fira Sans';
-
-function rgbToHex(rgb: { r: number; g: number; b: number }): string {
-  return `#${toHex(rgb.r)}${toHex(rgb.g)}${toHex(rgb.b)}`.toUpperCase();
-}
-
-function toHex(value: number): string {
-  return Math.max(0, Math.min(255, Math.round(value)))
-    .toString(16)
-    .padStart(2, '0');
-}
-
-function contrastStroke(rgb: { r: number; g: number; b: number }): string {
-  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
-  return luminance > 0.5 ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.85)';
-}
 
 export interface PaletteOptions {
   rowHeight?: number;
