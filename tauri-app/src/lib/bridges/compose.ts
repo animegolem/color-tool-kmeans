@@ -1,18 +1,17 @@
 import { tauriInvoke } from './tauri';
+import {
+  parseComposeGridResponse,
+  type ComposeGridResult,
+} from './ipc-contracts';
 
-export interface ComposeGridResult {
-  path: string;
-  width: number;
-  height: number;
-  gridCols: number;
-  gridRows: number;
-}
+export type { ComposeGridResult } from './ipc-contracts';
 
 export async function composeGrid(
   paths: string[],
   maxCellDim?: number
 ): Promise<ComposeGridResult> {
-  return tauriInvoke('compose_grid', {
+  const response = await tauriInvoke('compose_grid', {
     req: { paths, maxCellDim: maxCellDim ?? null },
   });
+  return parseComposeGridResponse(response);
 }
