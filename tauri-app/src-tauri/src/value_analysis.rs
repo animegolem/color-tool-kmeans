@@ -3,14 +3,14 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 use image::imageops::FilterType;
-use image::{DynamicImage, GrayImage, ImageReader, Luma, Rgb, RgbImage};
+use image::{DynamicImage, GrayImage, ImageBuffer, ImageReader, Luma, Rgba, RgbaImage};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::color;
 use crate::kmeans::{run_kmeans, KMeansConfig};
 
-const VALUE_ANALYSIS_CACHE_VERSION: u8 = 6;
+const VALUE_ANALYSIS_CACHE_VERSION: u8 = 7;
 const VALUE_ANALYSIS_MAX_DIMENSION: u32 = 1600;
 const VALUE_ANALYSIS_SQUINT_MAX_DIMENSION: u32 = 256;
 const VALUE_ANALYSIS_BLUR_SIGMA: f32 = 1.0;
@@ -28,6 +28,7 @@ const META_FILE: &str = "meta.json";
 const NEUTRAL_FILE: &str = "neutral.png";
 const PREVIEW_FILE: &str = "preview.png";
 const BUCKET_MAP_FILE: &str = "bucket-map.png";
+const TRANSPARENT_BUCKET_INDEX: u8 = u8::MAX;
 
 // Value renders can be regenerated from their source media. Keep a generous
 // working set while bounding both abandoned entries and aggregate disk use.
@@ -161,30 +162,31 @@ pub fn generate_value_analysis(
         }
     }
 
-    let neutral_rgb = load_rgb_with_downscale(
+    let neutral_rgba = load_rgba_with_downscale(
         path.as_ref(),
         VALUE_ANALYSIS_MAX_DIMENSION,
         FilterType::Lanczos3,
     )?;
-    let (neutral_width, neutral_height) = neutral_rgb.dimensions();
-    let neutral = render_neutral(&neutral_rgb);
-    neutral.save(&neutral_path)?;
+    let (neutral_width, neutral_height) = neutral_rgba.dimensions();
 
-    let squint_rgb = load_rgb_with_downscale(
+    let squint_rgba = load_rgba_with_downscale(
         path.as_ref(),
         VALUE_ANALYSIS_SQUINT_MAX_DIMENSION,
         FilterType::Triangle,
     )?;
-    let analysis_rgb = if VALUE_ANALYSIS_BLUR_SIGMA > 0.0 {
-        image::imageops::blur(&squint_rgb, VALUE_ANALYSIS_BLUR_SIGMA)
+    let visible_mask: Vec<bool> = squint_rgba.pixels().map(|pixel| pixel.0[3] != 0).collect();
+    let analysis_rgba = if VALUE_ANALYSIS_BLUR_SIGMA > 0.0 {
+        alpha_weighted_blur(&squint_rgba, VALUE_ANALYSIS_BLUR_SIGMA)
     } else {
-        squint_rgb.clone()
+        squint_rgba.clone()
     };
-    let (preview_width, preview_height) = analysis_rgb.dimensions();
-    let l_values = compute_l_values(&analysis_rgb);
+    let (preview_width, preview_height) = analysis_rgba.dimensions();
+    let l_values = compute_l_values(&analysis_rgba, &visible_mask);
     if l_values.is_empty() {
         return Err(ValueAnalysisError::EmptyImage);
     }
+    let neutral = render_neutral(&neutral_rgba);
+    neutral.save(&neutral_path)?;
 
     let histogram_bins = histogram_counts(&l_values, HISTOGRAM_BINS);
     let (p10, p90) = percentile_bounds(&l_values, PERCENTILE_LOW, PERCENTILE_HIGH);
@@ -239,11 +241,13 @@ pub fn generate_value_analysis(
         (centroids, boundaries, bucket_values, counts, bucket_indices)
     };
 
+    let bucket_indices = expand_bucket_indices(&bucket_indices, &visible_mask);
     let preview = render_preview_with_buckets(
         &bucket_indices,
         preview_width,
         preview_height,
         &bucket_values,
+        &squint_rgba,
     );
     preview.save(&preview_path)?;
     let bucket_map = render_bucket_map(&bucket_indices, preview_width, preview_height);
@@ -388,42 +392,84 @@ fn remove_artifact_path(path: &Path) -> std::io::Result<()> {
     }
 }
 
-fn load_rgb_with_downscale(path: &Path, max_dim: u32, filter: FilterType) -> Result<RgbImage> {
+fn load_rgba_with_downscale(path: &Path, max_dim: u32, filter: FilterType) -> Result<RgbaImage> {
     let img = ImageReader::open(path)?.with_guessed_format()?.decode()?;
-    Ok(to_rgb_with_downscale(img, max_dim, filter))
+    Ok(to_rgba_with_downscale(img, max_dim, filter))
 }
 
-fn to_rgb_with_downscale(img: DynamicImage, max_dim: u32, filter: FilterType) -> RgbImage {
-    let rgb = img.to_rgb8();
-    let (w, h) = rgb.dimensions();
+fn to_rgba_with_downscale(img: DynamicImage, max_dim: u32, filter: FilterType) -> RgbaImage {
+    let rgba = img.to_rgba8();
+    let (w, h) = rgba.dimensions();
     let current_max = w.max(h);
     if current_max > max_dim {
         let scale = max_dim as f32 / current_max as f32;
         let dst_w = ((w as f32) * scale).round().max(1.0) as u32;
         let dst_h = ((h as f32) * scale).round().max(1.0) as u32;
-        return image::imageops::resize(&rgb, dst_w, dst_h, filter);
+        let premultiplied = premultiply_alpha(&rgba);
+        let resized = image::imageops::resize(&premultiplied, dst_w, dst_h, filter);
+        return unpremultiply_alpha(resized);
     }
-    rgb
+    rgba
 }
 
-fn compute_l_values(rgb: &RgbImage) -> Vec<f32> {
-    rgb.pixels()
-        .map(|pixel| {
-            let [r, g, b] = pixel.0;
+fn alpha_weighted_blur(rgba: &RgbaImage, sigma: f32) -> RgbaImage {
+    let premultiplied = premultiply_alpha(rgba);
+    unpremultiply_alpha(image::imageops::blur(&premultiplied, sigma))
+}
+
+fn premultiply_alpha(rgba: &RgbaImage) -> ImageBuffer<Rgba<u16>, Vec<u16>> {
+    ImageBuffer::from_fn(rgba.width(), rgba.height(), |x, y| {
+        let pixel = rgba.get_pixel(x, y);
+        let [r, g, b, a] = pixel.0;
+        let premultiply = |channel: u8| channel as u16 * a as u16;
+        Rgba([premultiply(r), premultiply(g), premultiply(b), a as u16])
+    })
+}
+
+fn unpremultiply_alpha(rgba: ImageBuffer<Rgba<u16>, Vec<u16>>) -> RgbaImage {
+    ImageBuffer::from_fn(rgba.width(), rgba.height(), |x, y| {
+        let [r, g, b, a] = rgba.get_pixel(x, y).0;
+        if a == 0 {
+            return Rgba([0, 0, 0, 0]);
+        }
+        let unpremultiply =
+            |channel: u16| ((channel as u32 + a as u32 / 2) / a as u32).min(255) as u8;
+        Rgba([
+            unpremultiply(r),
+            unpremultiply(g),
+            unpremultiply(b),
+            a.min(255) as u8,
+        ])
+    })
+}
+
+fn compute_l_values(rgba: &RgbaImage, visible_mask: &[bool]) -> Vec<f32> {
+    debug_assert_eq!(rgba.pixels().len(), visible_mask.len());
+    rgba.pixels()
+        .zip(visible_mask)
+        .filter_map(|(pixel, visible)| {
+            if !visible {
+                return None;
+            }
+            let [r, g, b, _] = pixel.0;
             let lab = color::rgb8_to_oklab([r, g, b]);
-            lab[0].clamp(0.0, 1.0)
+            Some(lab[0].clamp(0.0, 1.0))
         })
         .collect()
 }
 
-fn render_neutral(rgb: &RgbImage) -> RgbImage {
-    let (w, h) = rgb.dimensions();
-    let mut neutral = RgbImage::new(w, h);
-    for (src, pixel) in rgb.pixels().zip(neutral.pixels_mut()) {
-        let [r, g, b] = src.0;
+fn render_neutral(rgba: &RgbaImage) -> RgbaImage {
+    let (w, h) = rgba.dimensions();
+    let mut neutral = RgbaImage::new(w, h);
+    for (src, pixel) in rgba.pixels().zip(neutral.pixels_mut()) {
+        let [r, g, b, a] = src.0;
+        if a == 0 {
+            *pixel = Rgba([0, 0, 0, 0]);
+            continue;
+        }
         let l = color::rgb8_to_oklab([r, g, b])[0].clamp(0.0, 1.0);
         let neutral_rgb = color::oklab_to_rgb8([l, 0.0, 0.0]);
-        *pixel = Rgb(neutral_rgb);
+        *pixel = Rgba([neutral_rgb[0], neutral_rgb[1], neutral_rgb[2], a]);
     }
     neutral
 }
@@ -433,19 +479,42 @@ fn render_preview_with_buckets(
     width: u32,
     height: u32,
     bucket_values: &[f32],
-) -> RgbImage {
-    let mut preview = RgbImage::new(width, height);
+    alpha_source: &RgbaImage,
+) -> RgbaImage {
+    debug_assert_eq!(alpha_source.dimensions(), (width, height));
+    let mut preview = RgbaImage::new(width, height);
     for (i, pixel) in preview.pixels_mut().enumerate() {
         let idx = bucket_indices[i] as usize;
+        if bucket_indices[i] == TRANSPARENT_BUCKET_INDEX {
+            *pixel = Rgba([0, 0, 0, 0]);
+            continue;
+        }
         let l = bucket_values
             .get(idx)
             .copied()
             .unwrap_or(0.5)
             .clamp(0.0, 1.0);
         let rgb = color::oklab_to_rgb8([l, 0.0, 0.0]);
-        *pixel = Rgb(rgb);
+        let alpha = alpha_source.as_raw()[i * 4 + 3];
+        *pixel = Rgba([rgb[0], rgb[1], rgb[2], alpha]);
     }
     preview
+}
+
+fn expand_bucket_indices(visible_indices: &[u8], visible_mask: &[bool]) -> Vec<u8> {
+    let mut indices = visible_indices.iter().copied();
+    let expanded: Vec<u8> = visible_mask
+        .iter()
+        .map(|visible| {
+            if *visible {
+                indices.next().unwrap_or(TRANSPARENT_BUCKET_INDEX)
+            } else {
+                TRANSPARENT_BUCKET_INDEX
+            }
+        })
+        .collect();
+    debug_assert!(indices.next().is_none());
+    expanded
 }
 
 fn render_bucket_map(bucket_indices: &[u8], width: u32, height: u32) -> GrayImage {
@@ -737,5 +806,66 @@ mod tests {
 
         assert!(removed);
         assert!(!temp.path().join("value-analysis").join("image-1").exists());
+    }
+
+    #[test]
+    fn sweep_014_excludes_transparent_pixels_and_preserves_render_dimensions() {
+        let temp = TempDir::new().expect("temp dir");
+        let source = temp.path().join("transparent-source.png");
+        let mut image = RgbaImage::from_pixel(3, 2, Rgba([0, 0, 0, 0]));
+        image.put_pixel(1, 0, Rgba([255, 255, 255, 255]));
+        image.save(&source).expect("save RGBA fixture");
+
+        let result = generate_value_analysis(&source, "rgba", 2, false, temp.path())
+            .expect("analyze visible pixel");
+
+        assert_eq!((result.neutral_width, result.neutral_height), (3, 2));
+        assert_eq!((result.preview_width, result.preview_height), (3, 2));
+        assert_eq!(result.counts.iter().sum::<usize>(), 1);
+        assert_eq!(result.histogram_bins.iter().sum::<u32>(), 1);
+        assert!(result.p10 > 0.99, "transparent black must not lower p10");
+        assert_eq!(result.bucket_map_data.len(), 6);
+        assert_eq!(
+            result
+                .bucket_map_data
+                .iter()
+                .filter(|&&idx| idx == TRANSPARENT_BUCKET_INDEX)
+                .count(),
+            5
+        );
+
+        let neutral = image::open(&result.neutral)
+            .expect("open neutral render")
+            .to_rgba8();
+        let preview = image::open(&result.preview)
+            .expect("open preview render")
+            .to_rgba8();
+        assert_eq!(neutral.dimensions(), (3, 2));
+        assert_eq!(preview.dimensions(), (3, 2));
+        assert_eq!(neutral.get_pixel(0, 0).0[3], 0);
+        assert_eq!(preview.get_pixel(0, 0).0[3], 0);
+        assert_eq!(neutral.get_pixel(1, 0).0[3], 255);
+        assert_eq!(preview.get_pixel(1, 0).0[3], 255);
+    }
+
+    #[test]
+    fn sweep_014_all_transparent_input_returns_empty_image() {
+        let temp = TempDir::new().expect("temp dir");
+        let source = temp.path().join("all-transparent.png");
+        RgbaImage::from_pixel(2, 2, Rgba([12, 34, 56, 0]))
+            .save(&source)
+            .expect("save RGBA fixture");
+
+        let result = generate_value_analysis(&source, "transparent", 3, false, temp.path());
+
+        assert!(matches!(result, Err(ValueAnalysisError::EmptyImage)));
+        let artifact_dir = temp
+            .path()
+            .join("value-analysis")
+            .join("transparent")
+            .join("k3-kmeans");
+        assert!(!artifact_dir.join(NEUTRAL_FILE).exists());
+        assert!(!artifact_dir.join(PREVIEW_FILE).exists());
+        assert!(!artifact_dir.join(BUCKET_MAP_FILE).exists());
     }
 }
