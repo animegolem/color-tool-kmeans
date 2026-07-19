@@ -36,7 +36,10 @@
   import { maxDimensionForQuality } from '../services/media-ingestion';
   import { setActivePath } from '../services/active-image';
   import { createValueAnalysisRunner } from './values/value-analysis-runner.svelte';
-  import { createVideoScrubber } from './values/video-scrubber.svelte';
+  import {
+    createVideoScrubber,
+    settledFrameSnapshotRequest,
+  } from './values/video-scrubber.svelte';
   import { createValuesFileIngestion } from './values/file-ingestion-values.svelte';
   import VideoScrubber from './values/VideoScrubber.svelte';
   import SnapshotButton from '../components/SnapshotButton.svelte';
@@ -115,6 +118,10 @@
     () => runner.status === 'pending' && runner.analysis === null
   );
 
+  const frameSnapshotRequest = $derived.by(() =>
+    settledFrameSnapshotRequest(runner.file, scrubber.extracting)
+  );
+
   const valuesHistogram = $derived.by(() => {
     const bins = renderAnalysis?.histogramBins ?? [];
     if (!bins.length) return null;
@@ -155,13 +162,8 @@
   }
 
   function captureFrame() {
-    const framePath = runner.file?.path;
-    if (!framePath) return;
-    void snapshotCurrentFrame({
-      framePath,
-      name: runner.file?.name ?? 'frame',
-      timestamp: scrubber.currentTime,
-    });
+    if (!frameSnapshotRequest) return;
+    void snapshotCurrentFrame(frameSnapshotRequest);
   }
 
   function bucketLabel(bucket: {
@@ -285,7 +287,7 @@
             >
               <SnapshotButton
                 onCapture={captureFrame}
-                disabled={scrubber.extracting || !runner.file.path}
+                disabled={!frameSnapshotRequest}
               />
               <video
                 bind:this={videoEl}
