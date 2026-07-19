@@ -3,6 +3,7 @@
 mod cache;
 mod commands;
 mod commands_types;
+mod live_analysis;
 mod merge;
 
 use std::time::Duration;
@@ -11,6 +12,7 @@ use tauri_app::value_analysis::{prune_value_analysis_cache, remove_value_analysi
 
 use cache::{build_log_path, prune_event_logs, prune_runtime_cache, EventLog};
 use commands::*;
+use live_analysis::{start_live_analysis, stop_live_analysis, LiveAnalysisState};
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -63,6 +65,7 @@ fn main() {
             prune_event_logs(&cache_dir, 5, &logger.path);
             prune_media_artifacts(&cache_dir, &local_data_dir);
             app.manage(logger);
+            app.manage(LiveAnalysisState::default());
             let heartbeat_path = app.state::<EventLog>().path.clone();
             std::thread::spawn(move || {
                 let heartbeat = EventLog {
@@ -84,6 +87,9 @@ fn main() {
                 let log = window.app_handle().state::<EventLog>();
                 log.append(&format!("[system] window focused={focused}"));
             }
+            if matches!(event, tauri::WindowEvent::Destroyed) {
+                window.app_handle().state::<LiveAnalysisState>().stop();
+            }
         })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -97,6 +103,8 @@ fn main() {
             extract_video_frame,
             probe_video,
             extract_video_strip,
+            start_live_analysis,
+            stop_live_analysis,
             ffmpeg_version,
             compose_grid,
             remove_media_artifacts

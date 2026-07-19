@@ -319,8 +319,12 @@ fn ensure_parent_dir(path: &Path) -> Result<(), String> {
 fn build_ffmpeg_command<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<(tauri_plugin_shell::process::Command, PathBuf), String> {
-    let path = resolve_binary_path("ffmpeg")?;
+    let path = ffmpeg_binary_path()?;
     Ok((app.shell().command(path.clone()), path))
+}
+
+pub fn ffmpeg_binary_path() -> Result<PathBuf, String> {
+    resolve_binary_path("ffmpeg")
 }
 
 fn build_ffprobe_command<R: Runtime>(
