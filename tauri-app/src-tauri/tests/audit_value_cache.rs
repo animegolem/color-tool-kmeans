@@ -80,3 +80,44 @@ fn aud_005_same_second_source_replacement_is_not_cached() {
         "same-second file replacement must invalidate the Values cache"
     );
 }
+
+#[test]
+fn sweep_021_concurrent_generations_keep_immutable_artifact_paths() {
+    let source_dir = TempDir::new().expect("source temp dir");
+    let cache_dir = TempDir::new().expect("cache temp dir");
+    let dark_source = source_dir.path().join("dark.png");
+    let light_source = source_dir.path().join("light.png");
+    RgbImage::from_pixel(8, 8, Rgb([0, 0, 0]))
+        .save(&dark_source)
+        .expect("save dark frame");
+    RgbImage::from_pixel(8, 8, Rgb([255, 255, 255]))
+        .save(&light_source)
+        .expect("save light frame");
+
+    let dark_cache = cache_dir.path().to_path_buf();
+    let light_cache = dark_cache.clone();
+    let dark = std::thread::spawn(move || {
+        generate_value_analysis(dark_source, "same-logical-frame", 3, false, dark_cache)
+            .expect("dark analysis")
+    });
+    let light = std::thread::spawn(move || {
+        generate_value_analysis(light_source, "same-logical-frame", 3, false, light_cache)
+            .expect("light analysis")
+    });
+
+    let dark = dark.join().expect("dark worker");
+    let light = light.join().expect("light worker");
+    assert_ne!(dark.preview, light.preview);
+    assert_ne!(dark.neutral, light.neutral);
+    assert_ne!(dark.bucket_map, light.bucket_map);
+    assert!(dark.p10 < 0.01);
+    assert!(light.p10 > 0.99);
+
+    let dark_preview = std::fs::read(&dark.preview).expect("read dark preview");
+    let light_preview = std::fs::read(&light.preview).expect("read light preview");
+    assert_ne!(dark_preview, light_preview);
+    assert_eq!(
+        std::fs::read(&dark.preview).expect("reread dark preview"),
+        dark_preview
+    );
+}
