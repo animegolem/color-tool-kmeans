@@ -164,10 +164,12 @@ pub fn run_kmeans_soa(dataset: &PointsSoa, cfg: &KMeansConfig) -> KMeansResult {
 
         counts.fill(0);
         let mut shift = 0.0;
+        let mut reseeded = false;
         for (idx, part) in partials.into_iter().enumerate() {
             if part.count == 0 {
                 let rand_idx = rng.gen_range(0..dataset.len());
                 centroids.set_from_soa(idx, dataset, rand_idx);
+                reseeded = true;
                 continue;
             }
             let inv = 1.0 / part.count as f32;
@@ -183,7 +185,7 @@ pub fn run_kmeans_soa(dataset: &PointsSoa, cfg: &KMeansConfig) -> KMeansResult {
         }
 
         iterations += 1;
-        if shift.sqrt() < cfg.tol {
+        if !reseeded && shift.sqrt() < cfg.tol {
             break;
         }
     }
@@ -577,5 +579,52 @@ mod tests {
         let result = run_kmeans(&points, &cfg);
         let total: usize = result.counts.iter().sum();
         assert_eq!(total, points.len());
+    }
+
+    #[test]
+    fn sweep_012_refines_a_reseeded_values_cluster_to_its_assigned_mean() {
+        let mut points = vec![[0.2, 0.0, 0.0]; 40];
+        points.extend([
+            [0.0, 0.0, 0.0],
+            [0.1, 0.0, 0.0],
+            [0.3, 0.0, 0.0],
+            [0.4, 0.0, 0.0],
+        ]);
+        points.extend(vec![[1.0, 0.0, 0.0]; 10]);
+        let cfg = KMeansConfig {
+            k: 3,
+            max_iters: 40,
+            tol: 1e-6,
+            seed: 1,
+            warm_start: Some(vec![[0.2, 0.0, 0.0], [0.2, 0.0, 0.0], [1.0, 0.0, 0.0]]),
+            mini_batch: None,
+        };
+
+        let result = run_kmeans(&points, &cfg);
+
+        assert!(
+            result.iterations > 1,
+            "empty-cluster reseeding must force a refinement iteration"
+        );
+        let dataset = PointsSoa::from_points(&points);
+        let centroids = CentroidsSoa::from_vec(&result.centroids);
+        let (assigned, _) = assignment_step(&dataset, &centroids);
+        for (idx, cluster) in assigned.iter().enumerate() {
+            if cluster.count == 0 {
+                continue;
+            }
+            let inv = 1.0 / cluster.count as f32;
+            let assigned_mean = [
+                cluster.sum_x * inv,
+                cluster.sum_y * inv,
+                cluster.sum_z * inv,
+            ];
+            for (component, expected) in result.centroids[idx].iter().zip(assigned_mean) {
+                assert!(
+                    (component - expected).abs() <= cfg.tol,
+                    "centroid {idx} component {component} did not match assigned mean {expected}"
+                );
+            }
+        }
     }
 }
