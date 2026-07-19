@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import type { SelectedImage } from '../../stores/ui';
+import type { SelectedImage, ValueAnalysisResult } from '../../stores/ui';
 import {
   valueAnalysisLevels,
   valueAnalysisNotanMode,
@@ -34,6 +34,16 @@ export interface ValuesExportDeps {
   performSave(action: () => Promise<void>): Promise<void>;
   baseName(): string;
   setStatus(value: string | null, variant: 'info' | 'error'): void;
+}
+
+function toNotanCell(study: ValueAnalysisResult): NotanCellData {
+  return {
+    previewSrc: assetUrl(study.preview),
+    previewWidth: study.previewWidth,
+    previewHeight: study.previewHeight,
+    bucketValues: study.bucketValues,
+    counts: study.counts,
+  };
 }
 
 export function createValuesExportRunner(deps: ValuesExportDeps) {
@@ -158,19 +168,12 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
             loadValueAnalysisForExport(4, false),
             loadValueAnalysisForExport(5, false),
           ]);
-          const toCell = (study: typeof level2): NotanCellData => ({
-            previewSrc: assetUrl(study.preview),
-            previewWidth: study.previewWidth,
-            previewHeight: study.previewHeight,
-            bucketValues: study.bucketValues,
-            counts: study.counts,
-          });
           col2Result = await generateNotanStudySvg({
             cells: [
-              toCell(level2),
-              toCell(level3),
-              toCell(level4),
-              toCell(level5),
+              toNotanCell(level2),
+              toNotanCell(level3),
+              toNotanCell(level4),
+              toNotanCell(level5),
             ],
           });
         } else {
@@ -343,19 +346,12 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
           loadValueAnalysisForExport(4, false),
           loadValueAnalysisForExport(5, false),
         ]);
-        const toCell = (study: typeof level2): NotanCellData => ({
-          previewSrc: assetUrl(study.preview),
-          previewWidth: study.previewWidth,
-          previewHeight: study.previewHeight,
-          bucketValues: study.bucketValues,
-          counts: study.counts,
-        });
         ({ svg, width, height } = await generateNotanStudySvg({
           cells: [
-            toCell(level2),
-            toCell(level3),
-            toCell(level4),
-            toCell(level5),
+            toNotanCell(level2),
+            toNotanCell(level3),
+            toNotanCell(level4),
+            toNotanCell(level5),
           ],
         }));
       } else {
