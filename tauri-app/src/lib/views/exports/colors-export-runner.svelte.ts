@@ -53,7 +53,8 @@ export function formatTimestamp(timestamp: number): string {
 }
 
 export function createColorsExportRunner(deps: ColorsExportDeps) {
-  let analysisRunning = $state(false);
+  let analysisRunning = false;
+  let analysisQueued = false;
   let isSaving = $state(false);
   let message = $state<string | null>(null);
   let messageVariant = $state<'info' | 'error'>('info');
@@ -93,12 +94,11 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
 
   // --- Auto-analyze ---
 
-  async function ensureColorAnalysis() {
+  async function analyzeCurrentFile() {
     const file = deps.getFile();
     const result = deps.getResult();
-    if (!file?.path || result || analysisRunning) return;
+    if (!file?.path || result) return;
     if (get(analysisState) === 'pending') return;
-    analysisRunning = true;
     const storeToken = setAnalysisPending();
     try {
       const paramSnapshot = deps.getParams();
@@ -113,6 +113,24 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Analysis failed';
       setAnalysisError(msg, storeToken);
+    }
+  }
+
+  async function ensureColorAnalysis() {
+    const file = deps.getFile();
+    if (!file?.path || deps.getResult()) return;
+    if (analysisRunning) {
+      analysisQueued = true;
+      return;
+    }
+    if (get(analysisState) === 'pending') return;
+
+    analysisRunning = true;
+    try {
+      do {
+        analysisQueued = false;
+        await analyzeCurrentFile();
+      } while (analysisQueued);
     } finally {
       analysisRunning = false;
     }

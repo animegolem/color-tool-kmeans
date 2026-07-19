@@ -64,6 +64,7 @@ import { createVideoScrubber } from '../values/video-scrubber.svelte';
 import {
   clearFile,
   appendFile,
+  analysisResult,
   analysisState,
   cacheVideoState,
   images,
@@ -576,6 +577,92 @@ describe('audit reproductions for async control-flow invariants', () => {
     expect(get(analysisState)).toBe('pending');
     viewRequest.resolve(colorResult());
     await vi.runAllTimersAsync();
+    expect(get(analysisState)).toBe('ready');
+  });
+
+  it('SWEEP-015 retries the selected Colors file after the previous file succeeds', async () => {
+    const requestA = deferred<AnalysisResult>();
+    const requestB = deferred<AnalysisResult>();
+    mocks.analyzeImage
+      .mockReturnValueOnce(requestA.promise)
+      .mockReturnValueOnce(requestB.promise);
+    const datasetA = { ...emptyDataset, pixels: new Uint8Array([1]) };
+    const datasetB = { ...emptyDataset, pixels: new Uint8Array([2]) };
+    let file = {
+      ...imageEntry({ id: 'image-a', path: '/tmp/a.png' }),
+      dataset: datasetA,
+    } satisfies SelectedImage;
+    setFile(file, datasetA);
+    const exportRunner = createColorsExportRunner({
+      getFile: () => file,
+      getResult: () => get(analysisResult),
+      getParams: () => get(params),
+      getExportScale: () => 2,
+      getExportChecks: () => ({}) as ExportChecks,
+      getGraphExportFormat: () => 'png',
+      getVideoStrip: () => null,
+      getVideoFrameLabel: () => 'timestamp',
+      getVideoFps: () => null,
+    });
+
+    const running = exportRunner.ensureColorAnalysis();
+    file = {
+      ...imageEntry({ id: 'image-b', path: '/tmp/b.png' }),
+      dataset: datasetB,
+    };
+    setFile(file, datasetB);
+    void exportRunner.ensureColorAnalysis();
+
+    requestA.resolve(colorResult());
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mocks.analyzeImage).toHaveBeenCalledTimes(2);
+    expect(mocks.analyzeImage.mock.calls[1][0]).toBe(datasetB);
+
+    requestB.resolve(colorResult());
+    await running;
+    expect(get(analysisState)).toBe('ready');
+  });
+
+  it('SWEEP-015 retries the selected Colors file after the previous file fails', async () => {
+    const requestA = deferred<AnalysisResult>();
+    const requestB = deferred<AnalysisResult>();
+    mocks.analyzeImage
+      .mockReturnValueOnce(requestA.promise)
+      .mockReturnValueOnce(requestB.promise);
+    const datasetA = { ...emptyDataset, pixels: new Uint8Array([1]) };
+    const datasetB = { ...emptyDataset, pixels: new Uint8Array([2]) };
+    let file = {
+      ...imageEntry({ id: 'image-a', path: '/tmp/a.png' }),
+      dataset: datasetA,
+    } satisfies SelectedImage;
+    setFile(file, datasetA);
+    const exportRunner = createColorsExportRunner({
+      getFile: () => file,
+      getResult: () => get(analysisResult),
+      getParams: () => get(params),
+      getExportScale: () => 2,
+      getExportChecks: () => ({}) as ExportChecks,
+      getGraphExportFormat: () => 'png',
+      getVideoStrip: () => null,
+      getVideoFrameLabel: () => 'timestamp',
+      getVideoFps: () => null,
+    });
+
+    const running = exportRunner.ensureColorAnalysis();
+    file = {
+      ...imageEntry({ id: 'image-b', path: '/tmp/b.png' }),
+      dataset: datasetB,
+    };
+    setFile(file, datasetB);
+    void exportRunner.ensureColorAnalysis();
+
+    requestA.reject(new Error('A failed'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mocks.analyzeImage).toHaveBeenCalledTimes(2);
+    expect(mocks.analyzeImage.mock.calls[1][0]).toBe(datasetB);
+
+    requestB.resolve(colorResult());
+    await running;
     expect(get(analysisState)).toBe('ready');
   });
 
