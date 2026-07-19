@@ -1,6 +1,6 @@
 import { get } from 'svelte/store';
-import { tauriInvoke } from '../../bridges/tauri';
-import { TauriComputeError, parseTauriResponse } from '../../bridges/compute';
+import { TauriComputeError } from '../../bridges/compute';
+import { analyzeImagePath } from '../../compute/bridge';
 import { composeGrid } from '../../bridges/compose';
 import {
   multiAnalysisState,
@@ -9,16 +9,11 @@ import {
   multiCompositePath,
   resetMultiAnalysis,
 } from '../../stores/multi-analysis';
-import type { AnalysisParams, AnalysisResult } from '../../stores/analysis';
+import type { AnalysisParams } from '../../stores/analysis';
 import { logEvent } from '../../bridges/log';
 
 const ANALYZE_DEBOUNCE_MS = 400;
 const SPINNER_THRESHOLD_MS = 150;
-const DEFAULT_TOLERANCE = 1e-3;
-const DEFAULT_MAX_ITER = 40;
-const DEFAULT_MAX_SAMPLES = 300_000;
-const DEFAULT_SEED = 1;
-
 function mapErrorToMessage(error: unknown): string {
   if (error instanceof TauriComputeError) {
     switch (error.code) {
@@ -156,46 +151,15 @@ export function createBatchRunner() {
       if (token === currentToken) spinnerVisible = true;
     }, SPINNER_THRESHOLD_MS);
 
-    const req = {
-      path: compositePath,
-      k: params.clusters,
-      quality: params.quality ?? 2,
-      ignoreTopN: params.ignoreTopN ?? 0,
-      mergeThreshold: params.mergeThreshold ?? 0,
-      snapToReal: params.snapToReal ?? false,
-      minLum: 0,
-      tol: DEFAULT_TOLERANCE,
-      maxIter: DEFAULT_MAX_ITER,
-      seed: DEFAULT_SEED,
-      maxSamples: DEFAULT_MAX_SAMPLES,
-    };
-
     try {
-      const rawResponse = await tauriInvoke('analyze_image', { req });
+      const analysisResult = await analyzeImagePath(compositePath, params);
       if (token !== currentToken) return;
 
-      const parsed = parseTauriResponse(rawResponse);
-      const clusters = parsed.clusters.map((cluster) => ({
-        count: cluster.count,
-        share: cluster.share,
-        centroidSpace: cluster.centroidSpace,
-        oklab: cluster.oklab,
-        oklch: cluster.oklch,
-        rgb: cluster.rgb,
-        hsv: cluster.hsv,
-      })) as AnalysisResult['clusters'];
-
-      multiAnalysisResult.set({
-        clusters,
-        iterations: parsed.iterations,
-        durationMs: parsed.durationMs,
-        totalSamples: parsed.totalSamples,
-        variant: String(parsed.variant ?? 'tauri-native'),
-      });
+      multiAnalysisResult.set(analysisResult);
       multiAnalysisState.set('ready');
       restoreAnalysisScroll(token);
       void logEvent(
-        `batch:reanalysis:success ms=${Math.round(parsed.durationMs)} iterations=${parsed.iterations} samples=${parsed.totalSamples}`
+        `batch:reanalysis:success ms=${Math.round(analysisResult.durationMs)} iterations=${analysisResult.iterations} samples=${analysisResult.totalSamples}`
       );
     } catch (err) {
       if (token !== currentToken) return;
@@ -254,42 +218,9 @@ export function createBatchRunner() {
     multiAnalysisState.set('analyzing');
     if (token !== currentToken) return;
 
-    const req = {
-      path: compositePath,
-      k: params.clusters,
-      quality: params.quality ?? 2,
-      ignoreTopN: params.ignoreTopN ?? 0,
-      mergeThreshold: params.mergeThreshold ?? 0,
-      snapToReal: params.snapToReal ?? false,
-      minLum: 0,
-      tol: DEFAULT_TOLERANCE,
-      maxIter: DEFAULT_MAX_ITER,
-      seed: DEFAULT_SEED,
-      maxSamples: DEFAULT_MAX_SAMPLES,
-    };
-
     try {
-      const rawResponse = await tauriInvoke('analyze_image', { req });
+      const analysisResult = await analyzeImagePath(compositePath, params);
       if (token !== currentToken) return;
-
-      const parsed = parseTauriResponse(rawResponse);
-      const clusters = parsed.clusters.map((cluster) => ({
-        count: cluster.count,
-        share: cluster.share,
-        centroidSpace: cluster.centroidSpace,
-        oklab: cluster.oklab,
-        oklch: cluster.oklch,
-        rgb: cluster.rgb,
-        hsv: cluster.hsv,
-      })) as AnalysisResult['clusters'];
-
-      const analysisResult: AnalysisResult = {
-        clusters,
-        iterations: parsed.iterations,
-        durationMs: parsed.durationMs,
-        totalSamples: parsed.totalSamples,
-        variant: String(parsed.variant ?? 'tauri-native'),
-      };
 
       multiAnalysisResult.set(analysisResult);
       multiAnalysisState.set('ready');

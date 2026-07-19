@@ -2,10 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
 
 const mocks = vi.hoisted(() => ({
-  tauriInvoke: vi.fn(),
+  analyzeImagePath: vi.fn(),
+  composeGrid: vi.fn(),
 }));
 
-vi.mock('../../bridges/tauri', () => ({ tauriInvoke: mocks.tauriInvoke }));
+vi.mock('../../compute/bridge', () => ({
+  analyzeImagePath: mocks.analyzeImagePath,
+}));
+vi.mock('../../bridges/compose', () => ({ composeGrid: mocks.composeGrid }));
 vi.mock('../../bridges/log', () => ({ logEvent: vi.fn() }));
 
 import { createBatchRunner } from '../batch/batch-runner.svelte';
@@ -32,19 +36,9 @@ const previousResult: AnalysisResult = {
   variant: 'previous',
 };
 
-function response(variant: string) {
+function analysisResult(variant: string): AnalysisResult {
   return {
-    clusters: [
-      {
-        count: 1,
-        share: 1,
-        centroidSpace: [0.5, 0, 0],
-        oklab: [0.5, 0, 0],
-        oklch: [0.5, 0, 0],
-        rgb: { r: 128, g: 128, b: 128 },
-        hsv: [0, 0, 0.5],
-      },
-    ],
+    clusters: [],
     iterations: 2,
     durationMs: 4,
     totalSamples: 5,
@@ -84,9 +78,9 @@ describe('Batch reanalysis recovery', () => {
   });
 
   it('SWEEP-020 preserves the last result and permits a later parameter retry', async () => {
-    mocks.tauriInvoke
+    mocks.analyzeImagePath
       .mockRejectedValueOnce(new Error('refresh failed'))
-      .mockResolvedValueOnce(response('recovered'));
+      .mockResolvedValueOnce(analysisResult('recovered'));
     const runner = createBatchRunner();
     const paths = ['/tmp/a.png', '/tmp/b.png'];
     const firstParams = { ...get(batchParams), clusters: 4 };
@@ -102,16 +96,16 @@ describe('Batch reanalysis recovery', () => {
     runner.scheduleReanalysis(paths, retryParams);
     await vi.advanceTimersByTimeAsync(400);
 
-    expect(mocks.tauriInvoke).toHaveBeenCalledTimes(2);
+    expect(mocks.analyzeImagePath).toHaveBeenCalledTimes(2);
     expect(get(multiAnalysisState)).toBe('ready');
     expect(get(multiAnalysisResult)?.variant).toBe('recovered');
     expect(get(multiAnalysisError)).toBeNull();
   });
 
   it('SWEEP-020 explicitly retries the failed parameter set', async () => {
-    mocks.tauriInvoke
+    mocks.analyzeImagePath
       .mockRejectedValueOnce(new Error('refresh failed'))
-      .mockResolvedValueOnce(response('retried'));
+      .mockResolvedValueOnce(analysisResult('retried'));
     const runner = createBatchRunner();
     const paths = ['/tmp/a.png', '/tmp/b.png'];
     const params = { ...get(batchParams), clusters: 4 };
@@ -120,8 +114,28 @@ describe('Batch reanalysis recovery', () => {
     await vi.advanceTimersByTimeAsync(400);
     await runner.retryReanalysis(paths, params);
 
-    expect(mocks.tauriInvoke).toHaveBeenCalledTimes(2);
+    expect(mocks.analyzeImagePath).toHaveBeenCalledTimes(2);
     expect(get(multiAnalysisResult)?.variant).toBe('retried');
     expect(get(multiAnalysisError)).toBeNull();
+  });
+
+  it('SWEEP-025 sends initial Batch analysis through the explicit composite path', async () => {
+    mocks.composeGrid.mockResolvedValueOnce({
+      path: '/tmp/composed.png',
+      width: 10,
+      height: 10,
+    });
+    mocks.analyzeImagePath.mockResolvedValueOnce(analysisResult('typed-path'));
+    const runner = createBatchRunner();
+    const paths = ['/tmp/a.png', '/tmp/b.png'];
+    const params = { ...get(batchParams), clusters: 4 };
+
+    await runner.analyze(paths, params);
+
+    expect(mocks.analyzeImagePath).toHaveBeenCalledWith(
+      '/tmp/composed.png',
+      params
+    );
+    expect(get(multiAnalysisResult)?.variant).toBe('typed-path');
   });
 });

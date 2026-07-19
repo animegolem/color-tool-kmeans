@@ -20,3 +20,12 @@ export async function analyzeImage(
   const bridge = await getComputeBridge();
   return bridge.analyze(dataset, merged);
 }
+
+export async function analyzeImagePath(
+  path: string,
+  params: AnalyzeOptions
+): Promise<AnalysisResult> {
+  const merged: BridgeAnalyzeOptions = { ...params };
+  const bridge = await getComputeBridge();
+  return bridge.analyzePath(path, merged);
+}

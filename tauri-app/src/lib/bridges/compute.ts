@@ -25,6 +25,7 @@ export interface ComputeBridge {
     dataset: ImageDataset,
     params: AnalyzeOptions
   ): Promise<AnalysisResult>;
+  analyzePath(path: string, params: AnalyzeOptions): Promise<AnalysisResult>;
 }
 
 type TauriComputeErrorCode =
@@ -238,59 +239,68 @@ export function parseTauriResponse(raw: unknown): ParsedTauriResponse {
 
 function createTauriComputeBridge(): ComputeBridge | null {
   if (!isTauriEnv()) return null;
+
+  async function analyzePath(
+    path: string,
+    params: AnalyzeOptions
+  ): Promise<AnalysisResult> {
+    const req = {
+      path,
+      k: params.clusters,
+      quality: params.quality ?? DEFAULT_QUALITY,
+      ignoreTopN: params.ignoreTopN ?? DEFAULT_IGNORE_TOP_N,
+      mergeThreshold: params.mergeThreshold ?? DEFAULT_MERGE_THRESHOLD,
+      snapToReal: params.snapToReal ?? false,
+      minLum: 0,
+      tol: params.tol ?? DEFAULT_TOLERANCE,
+      maxIter: params.maxIter ?? DEFAULT_MAX_ITER,
+      seed: params.seed ?? DEFAULT_SEED,
+      maxSamples: params.maxSamples ?? DEFAULT_MAX_SAMPLES,
+    };
+    if (!req.path) {
+      throw new TauriComputeError(
+        'missing-path',
+        'No image path available for native analysis'
+      );
+    }
+    let rawResponse: unknown;
+    try {
+      rawResponse = await tauriInvoke('analyze_image', { req });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new TauriComputeError(
+        'invoke-failed',
+        `Tauri analyze_image invoke failed: ${message}`,
+        { cause: err }
+      );
+    }
+
+    const parsed = parseTauriResponse(rawResponse);
+    const clusters = parsed.clusters.map((cluster: ParsedTauriCluster) => ({
+      count: cluster.count,
+      share: cluster.share,
+      centroidSpace: cluster.centroidSpace,
+      oklab: cluster.oklab,
+      oklch: cluster.oklch,
+      rgb: cluster.rgb,
+      hsv: cluster.hsv,
+    })) as AnalysisResult['clusters'];
+
+    return {
+      clusters,
+      iterations: parsed.iterations,
+      durationMs: parsed.durationMs,
+      totalSamples: parsed.totalSamples,
+      variant: String(parsed.variant ?? 'tauri-native'),
+    } satisfies AnalysisResult;
+  }
+
   return {
     id: 'tauri-native',
     async analyze(_dataset, params) {
-      const req = {
-        path: getActivePath() ?? '',
-        k: params.clusters,
-        quality: params.quality ?? DEFAULT_QUALITY,
-        ignoreTopN: params.ignoreTopN ?? DEFAULT_IGNORE_TOP_N,
-        mergeThreshold: params.mergeThreshold ?? DEFAULT_MERGE_THRESHOLD,
-        snapToReal: params.snapToReal ?? false,
-        minLum: 0,
-        tol: params.tol ?? DEFAULT_TOLERANCE,
-        maxIter: params.maxIter ?? DEFAULT_MAX_ITER,
-        seed: params.seed ?? DEFAULT_SEED,
-        maxSamples: params.maxSamples ?? DEFAULT_MAX_SAMPLES,
-      };
-      if (!req.path) {
-        throw new TauriComputeError(
-          'missing-path',
-          'No image path available for native analysis'
-        );
-      }
-      let rawResponse: unknown;
-      try {
-        rawResponse = await tauriInvoke('analyze_image', { req });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        throw new TauriComputeError(
-          'invoke-failed',
-          `Tauri analyze_image invoke failed: ${message}`,
-          { cause: err }
-        );
-      }
-
-      const parsed = parseTauriResponse(rawResponse);
-      const clusters = parsed.clusters.map((cluster: ParsedTauriCluster) => ({
-        count: cluster.count,
-        share: cluster.share,
-        centroidSpace: cluster.centroidSpace,
-        oklab: cluster.oklab,
-        oklch: cluster.oklch,
-        rgb: cluster.rgb,
-        hsv: cluster.hsv,
-      })) as AnalysisResult['clusters'];
-
-      return {
-        clusters,
-        iterations: parsed.iterations,
-        durationMs: parsed.durationMs,
-        totalSamples: parsed.totalSamples,
-        variant: String(parsed.variant ?? 'tauri-native'),
-      } satisfies AnalysisResult;
+      return analyzePath(getActivePath() ?? '', params);
     },
+    analyzePath,
   } satisfies ComputeBridge;
 }
 
