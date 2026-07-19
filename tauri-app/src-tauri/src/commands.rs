@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tauri::{AppHandle, Manager};
+use tempfile::Builder;
 
 use tauri_app::color;
 use tauri_app::compose_grid;
@@ -240,17 +241,41 @@ pub async fn save_file(req: SaveFileRequest) -> Result<SaveFileResponse, String>
 
 #[tauri::command]
 pub async fn copy_file(req: CopyFileRequest) -> Result<CopyFileResponse, String> {
-    let source = std::path::PathBuf::from(&req.source);
-    let dest = std::path::PathBuf::from(&req.dest);
-    if let Some(parent) = dest.parent() {
-        if !parent.exists() {
-            std::fs::create_dir_all(parent).map_err(|e| format!("Cannot create directory: {e}"))?;
-        }
-    }
-    std::fs::copy(&source, &dest).map_err(|e| format!("Failed to copy file: {e}"))?;
+    let source = PathBuf::from(&req.source);
+    let dest = PathBuf::from(&req.dest);
+    copy_file_atomically(&source, &dest).map_err(|e| format!("Failed to copy file: {e}"))?;
     Ok(CopyFileResponse {
         path: dest.display().to_string(),
     })
+}
+
+fn copy_file_atomically(source: &Path, dest: &Path) -> std::io::Result<()> {
+    match same_file::is_same_file(source, dest) {
+        Ok(true) => return Ok(()),
+        Ok(false) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error),
+    }
+
+    let parent = dest
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    std::fs::create_dir_all(parent)?;
+
+    let mut source_file = std::fs::File::open(source)?;
+    let source_permissions = source_file.metadata()?.permissions();
+    let mut temp_file = Builder::new()
+        .prefix(".color-tool-copy-")
+        .tempfile_in(parent)?;
+    std::io::copy(&mut source_file, temp_file.as_file_mut())?;
+    temp_file
+        .as_file_mut()
+        .set_permissions(source_permissions)?;
+    temp_file.as_file_mut().sync_all()?;
+    temp_file.persist(dest).map_err(|error| error.error)?;
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -392,4 +417,53 @@ pub async fn compose_grid(
         grid_cols: cols,
         grid_rows: rows,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::copy_file_atomically;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn copy_file_same_path_preserves_source_bytes() {
+        let dir = TempDir::new().expect("temp dir");
+        let path = dir.path().join("source.png");
+        let bytes = b"preserve-me";
+        fs::write(&path, bytes).expect("seed source");
+
+        copy_file_atomically(&path, &path).expect("same-path copy is a no-op");
+
+        assert_eq!(fs::read(path).expect("read source"), bytes);
+    }
+
+    #[test]
+    fn copy_file_replaces_destination_with_source_bytes() {
+        let dir = TempDir::new().expect("temp dir");
+        let source = dir.path().join("source.png");
+        let dest = dir.path().join("export.png");
+        let bytes = b"new-export-bytes";
+        fs::write(&source, bytes).expect("seed source");
+        fs::write(&dest, b"stale").expect("seed destination");
+
+        copy_file_atomically(&source, &dest).expect("copy succeeds");
+
+        assert_eq!(fs::read(&source).expect("read source"), bytes);
+        assert_eq!(fs::read(dest).expect("read destination"), bytes);
+    }
+
+    #[test]
+    fn copy_file_hard_link_alias_preserves_source_bytes() {
+        let dir = TempDir::new().expect("temp dir");
+        let source = dir.path().join("source.png");
+        let alias = dir.path().join("source-alias.png");
+        let bytes = b"preserve-linked-source";
+        fs::write(&source, bytes).expect("seed source");
+        fs::hard_link(&source, &alias).expect("create hard-link alias");
+
+        copy_file_atomically(&source, &alias).expect("same-file alias copy is a no-op");
+
+        assert_eq!(fs::read(source).expect("read source"), bytes);
+        assert_eq!(fs::read(alias).expect("read alias"), bytes);
+    }
 }

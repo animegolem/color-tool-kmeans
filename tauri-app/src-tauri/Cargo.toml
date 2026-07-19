@@ -21,11 +21,12 @@ tauri-plugin-shell = "2.0"
 tauri-plugin-dialog = "2.0"
 tauri-plugin-store = "2"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
+same-file = "1.0"
+tempfile = "3.10"
 wide = { version = "0.7", optional = true, default-features = false, features = ["std"] }
 
 [dev-dependencies]
 proptest = "1.4"
-tempfile = "3.10"
 
 [build-dependencies]
 tauri-build = { version = "2.0", features = [] }
