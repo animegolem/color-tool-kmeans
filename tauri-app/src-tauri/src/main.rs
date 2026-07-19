@@ -9,7 +9,7 @@ use std::time::Duration;
 use tauri::{AppHandle, Manager};
 use tauri_app::value_analysis::{prune_value_analysis_cache, remove_value_analysis_artifacts};
 
-use cache::{build_log_path, prune_event_logs, prune_runtime_cache, EventLog};
+use cache::{build_log_path, prune_event_logs, prune_startup_cache, EventLog};
 use commands::*;
 
 #[derive(serde::Deserialize)]
@@ -20,7 +20,7 @@ struct RemoveMediaArtifactsRequest {
 }
 
 fn prune_media_artifacts(cache_dir: &std::path::Path, local_data_dir: &std::path::Path) {
-    prune_runtime_cache(cache_dir, local_data_dir);
+    prune_startup_cache(cache_dir, local_data_dir);
     prune_value_analysis_cache(cache_dir);
 }
 
@@ -72,10 +72,6 @@ fn main() {
                     std::thread::sleep(Duration::from_secs(10));
                     heartbeat.append("[system] heartbeat");
                 }
-            });
-            std::thread::spawn(move || loop {
-                std::thread::sleep(cache::RUNTIME_PRUNE_INTERVAL);
-                prune_media_artifacts(&cache_dir, &local_data_dir);
             });
             Ok(())
         })

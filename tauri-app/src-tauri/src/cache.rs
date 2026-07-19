@@ -4,10 +4,8 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-pub const RUNTIME_PRUNE_INTERVAL: Duration = Duration::from_secs(60);
-
-// Runtime-created media is intentionally retained generously, but no class is
-// allowed to grow without a session-time cap.
+// These limits are applied at startup, before renderer state can reference any
+// artifact. During a session, explicit media removal owns cleanup.
 const VIDEO_FRAME_KEEP: usize = 80;
 const VIDEO_STRIP_KEEP: usize = 10;
 const ARTIFACT_MAX_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);
@@ -125,7 +123,7 @@ pub fn prune_video_cache(cache_dir: &Path, keep_frames: usize, keep_strips: usiz
     }
 }
 
-pub fn prune_runtime_cache(cache_dir: &Path, local_data_dir: &Path) {
+pub fn prune_startup_cache(cache_dir: &Path, local_data_dir: &Path) {
     prune_video_cache(cache_dir, VIDEO_FRAME_KEEP, VIDEO_STRIP_KEEP);
     prune_flat_directory(
         &cache_dir.join("clipboard"),
