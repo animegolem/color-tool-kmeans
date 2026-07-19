@@ -1,7 +1,7 @@
 import { listen } from '@tauri-apps/api/event';
 import { isTauriEnv } from '../bridges/tauri';
-import { inferMimeType } from '../bridges/fs';
 import type { FileSelection } from '../bridges/fs';
+import { inferMimeType } from './media-types';
 
 function pathsToSelections(paths: string[]): FileSelection[] {
   return paths.map((p) => {
