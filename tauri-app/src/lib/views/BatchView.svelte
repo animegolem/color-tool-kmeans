@@ -3,9 +3,6 @@
   import { get } from 'svelte/store';
   import {
     openZoomOverlay,
-    appendFile,
-    setFile,
-    updateEntryPreview,
     libraryDrawerOpen,
     batchParams,
   } from '../stores/ui';
@@ -28,8 +25,6 @@
   import { assetUrl } from '../utils/asset-url';
   import { getFsBridge } from '../bridges/fs';
   import { logEvent } from '../bridges/log';
-  import { ingestFileAsEntry } from '../services/media-ingestion';
-  import { setActivePath } from '../services/active-image';
   import { subscribeMediaLoadRequested } from '../services/view-subscriptions';
   import { createBatchRunner } from './batch/batch-runner.svelte';
   import { createBatchDrop } from './batch/batch-drop.svelte';
@@ -197,20 +192,7 @@
       const bridge = await getFsBridge();
       const selections = await bridge.openMediaFiles('images');
       if (!selections?.length) return;
-      let firstActivated = false;
-      for (const sel of selections) {
-        const { entry, dataset } = ingestFileAsEntry(sel, updateEntryPreview);
-        if (!firstActivated) {
-          firstActivated = true;
-          if (entry.path) setActivePath(entry.path);
-          setFile(entry, dataset);
-        } else {
-          appendFile(entry, dataset);
-        }
-        if (!entry.videoPath && pinCount < MAX_PINS) {
-          togglePin(entry.id);
-        }
-      }
+      drop.processDrop(selections, { activateFirst: true });
       if (selections.length > 1) libraryDrawerOpen.set(true);
     } catch (err) {
       console.error('[batch] Failed to open native dialog', err);
