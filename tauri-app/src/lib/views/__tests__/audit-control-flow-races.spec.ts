@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   probeVideo: vi.fn(),
   analyzeImage: vi.fn(),
   requestValueAnalysis: vi.fn(),
+  saveFromPath: vi.fn(),
 }));
 
 vi.mock('../../bridges/video', () => ({
@@ -19,7 +20,10 @@ vi.mock('../../bridges/fs', () => ({
   getFsBridge: () => ({
     id: 'tauri',
     openMediaFiles: vi.fn(),
+    saveBlob: vi.fn().mockResolvedValue({ canceled: false }),
+    saveTextFile: vi.fn().mockResolvedValue({ canceled: false }),
   }),
+  saveFromPath: mocks.saveFromPath,
   isVideoFile: (selection: { name?: string; mimeType?: string }) =>
     selection.mimeType?.startsWith('video/') ||
     /\.(mp4|mov|webm)$/i.test(selection.name ?? ''),
@@ -53,6 +57,7 @@ import {
 } from '../home/video-controller.svelte';
 import { createAnalysisRunner } from '../home/analysis-runner.svelte';
 import { createColorsExportRunner } from '../exports/colors-export-runner.svelte';
+import { createValuesExportRunner } from '../exports/values-export-runner.svelte';
 import { createValuesFileIngestion } from '../values/file-ingestion-values.svelte';
 import { createValueAnalysisRunner } from '../values/value-analysis-runner.svelte';
 import { createVideoScrubber } from '../values/video-scrubber.svelte';
@@ -246,6 +251,7 @@ describe('audit reproductions for async control-flow invariants', () => {
     });
     vi.useFakeTimers();
     vi.clearAllMocks();
+    mocks.saveFromPath.mockResolvedValue({ canceled: false });
     clearFile();
     videoState.set(null);
     valueAnalysisByKey.set({});
@@ -535,6 +541,84 @@ describe('audit reproductions for async control-flow invariants', () => {
     expect(get(analysisState)).toBe('ready');
     request.resolve(colorResult());
     await vi.runAllTimersAsync();
+  });
+
+  it('SWEEP-001 keeps a newer Colors request authoritative over an export completion', async () => {
+    const exportRequest = deferred<AnalysisResult>();
+    const viewRequest = deferred<AnalysisResult>();
+    mocks.analyzeImage
+      .mockReturnValueOnce(exportRequest.promise)
+      .mockReturnValueOnce(viewRequest.promise);
+    const file = {
+      ...imageEntry(),
+      dataset: emptyDataset,
+    } satisfies SelectedImage;
+    const exportRunner = createColorsExportRunner({
+      getFile: () => file,
+      getResult: () => null,
+      getParams: () => get(params),
+      getExportScale: () => 2,
+      getExportChecks: () => ({}) as ExportChecks,
+      getGraphExportFormat: () => 'png',
+      getVideoStrip: () => null,
+      getVideoFrameLabel: () => 'timestamp',
+      getVideoFps: () => null,
+    });
+    const viewRunner = colorsRunner();
+
+    const exporting = exportRunner.ensureColorAnalysis();
+    viewRunner.scheduleAnalysisWith(file, get(params), 'idle');
+    await vi.advanceTimersByTimeAsync(400);
+    exportRequest.resolve(colorResult());
+    await exporting;
+
+    expect(get(analysisState)).toBe('pending');
+    viewRequest.resolve(colorResult());
+    await vi.runAllTimersAsync();
+    expect(get(analysisState)).toBe('ready');
+  });
+
+  it('SWEEP-001 keeps a newer Values request authoritative over an export completion', async () => {
+    const exportRequest = deferred<ValueAnalysisResult>();
+    const viewRequest = deferred<ValueAnalysisResult>();
+    mocks.requestValueAnalysis
+      .mockReturnValueOnce(exportRequest.promise)
+      .mockReturnValueOnce(viewRequest.promise);
+    const file = {
+      ...imageEntry(),
+      dataset: emptyDataset,
+    } satisfies SelectedImage;
+    const exportRunner = createValuesExportRunner({
+      getFile: () => file,
+      getExportScale: () => 2,
+      getCheckboxState: () => ({
+        valuesNeutral: true,
+        valuesIncludeOriginal: false,
+        valuesRangeFinder: false,
+        valuesHistogram: false,
+        valuesSimplified: false,
+        valuesAllStudies: false,
+      }),
+      getGraphExportFormat: () => 'png',
+      performSave: async (action) => action(),
+      baseName: () => 'image',
+      setStatus: vi.fn(),
+    });
+    const viewRunner = valuesRunner();
+
+    const exporting = exportRunner.saveNeutralImage();
+    const viewing = viewRunner.ensureAnalysis(file, 3, false);
+    exportRequest.resolve(valueResult());
+    await exporting;
+
+    expect(
+      get(valueAnalysisStateByKey)[valueAnalysisKey(file.id, 3, false)]
+    ).toBe('pending');
+    viewRequest.resolve(valueResult());
+    await viewing;
+    expect(
+      get(valueAnalysisStateByKey)[valueAnalysisKey(file.id, 3, false)]
+    ).toBe('ready');
   });
 
   it('AUD-004: invalidates cached Values analysis when a logical video entry receives a new frame', () => {

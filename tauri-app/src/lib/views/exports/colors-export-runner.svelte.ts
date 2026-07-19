@@ -99,7 +99,7 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
     if (!file?.path || result || analysisRunning) return;
     if (get(analysisState) === 'pending') return;
     analysisRunning = true;
-    setAnalysisPending();
+    const storeToken = setAnalysisPending();
     try {
       const paramSnapshot = deps.getParams();
       const response = await analyzeImage(file.dataset, {
@@ -109,10 +109,10 @@ export function createColorsExportRunner(deps: ColorsExportDeps) {
         seed: 1,
         maxSamples: 300_000,
       });
-      setAnalysisSuccess(response, file.id);
+      setAnalysisSuccess(response, file.id, storeToken);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Analysis failed';
-      setAnalysisError(msg);
+      setAnalysisError(msg, storeToken);
     } finally {
       analysisRunning = false;
     }

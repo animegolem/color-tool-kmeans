@@ -45,7 +45,7 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
     if (!file?.path) {
       throw new Error('Values analysis export requires a native file path.');
     }
-    setValueAnalysisPending(file.id, levels, notanMode);
+    const storeToken = setValueAnalysisPending(file.id, levels, notanMode);
     try {
       const loaded = await requestValueAnalysis(
         file.path,
@@ -53,11 +53,11 @@ export function createValuesExportRunner(deps: ValuesExportDeps) {
         levels,
         notanMode
       );
-      setValueAnalysisSuccess(file.id, levels, notanMode, loaded);
+      setValueAnalysisSuccess(file.id, levels, notanMode, loaded, storeToken);
       return loaded;
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
-      setValueAnalysisError(file.id, levels, notanMode, msg);
+      setValueAnalysisError(file.id, levels, notanMode, msg, storeToken);
       throw error;
     }
   }
