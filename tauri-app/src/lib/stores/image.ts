@@ -20,6 +20,7 @@ import {
   valueAnalysisLevels,
   valueAnalysisNotanMode,
   invalidateValueAnalysisForImage,
+  clearAllValueAnalysis,
 } from './value-analysis';
 import { setVideoState, videoStateCache } from './video';
 import {
@@ -242,26 +243,13 @@ export function appendFile(entry: ImageEntry, dataset: ImageDataset) {
   devlog.resources('store:appendFile');
 }
 
-function removeKeysForImage(imageId: string) {
-  return (cache: Record<string, any>) => {
-    const next: typeof cache = {};
-    for (const [key, val] of Object.entries(cache)) {
-      if (!key.startsWith(imageId + ':')) next[key] = val;
-    }
-    return next;
-  };
-}
-
 export function invalidateAnalysisForImage(imageId: string) {
   analysisById.update((cache) => {
     const next = { ...cache };
     delete next[imageId];
     return next;
   });
-  const remover = removeKeysForImage(imageId);
-  valueAnalysisByKey.update(remover);
-  valueAnalysisStateByKey.update(remover);
-  valueAnalysisErrorByKey.update(remover);
+  invalidateValueAnalysisForImage(imageId);
 }
 
 export function removeFile(id: string) {
@@ -277,15 +265,7 @@ export function removeFile(id: string) {
     remaining: get(images).length,
   });
   devlog.resources('store:removeFile');
-  analysisById.update((cache) => {
-    const next = { ...cache };
-    delete next[id];
-    return next;
-  });
-  const remover = removeKeysForImage(id);
-  valueAnalysisByKey.update(remover);
-  valueAnalysisStateByKey.update(remover);
-  valueAnalysisErrorByKey.update(remover);
+  invalidateAnalysisForImage(id);
   if (get(activeImageId) === id) {
     const remaining = get(images);
     const successor = remaining.find(
@@ -372,9 +352,7 @@ export function clearFile() {
   devlog.resources('store:clearFile');
   activeImageId.set(null);
   analysisById.set({});
-  valueAnalysisByKey.set({});
-  valueAnalysisStateByKey.set({});
-  valueAnalysisErrorByKey.set({});
+  clearAllValueAnalysis();
   videoStateCache.set({});
   resetAnalysis();
   setVideoState(null);

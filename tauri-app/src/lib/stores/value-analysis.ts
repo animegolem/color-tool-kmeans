@@ -74,6 +74,13 @@ export function invalidateValueAnalysisForImage(imageId: string) {
   );
 }
 
+export function clearAllValueAnalysis() {
+  pendingValueAnalysisTokenByKey.clear();
+  valueAnalysisByKey.set({});
+  valueAnalysisStateByKey.set({});
+  valueAnalysisErrorByKey.set({});
+}
+
 export function setValueAnalysisPending(
   imageId: string,
   levels: number,
