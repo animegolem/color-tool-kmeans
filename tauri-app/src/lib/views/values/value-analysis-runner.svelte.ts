@@ -19,6 +19,7 @@ import {
 import { requestValueAnalysis } from '../../bridges/value-analysis';
 import { inferMimeType } from '../../bridges/fs';
 import { logEvent } from '../../bridges/log';
+import { createAnalysisScrollLock } from '../../services/analysis-scroll-lock';
 
 export function createValueAnalysisRunner() {
   let file = $state<SelectedImage | null>(null);
@@ -37,34 +38,11 @@ export function createValueAnalysisRunner() {
     notanMode: boolean;
     storeToken: number;
   } | null = null;
-  let analysisScrollLock: { top: number; token: number | null } | null = null;
+  const analysisScrollLock = createAnalysisScrollLock();
 
   const renderAnalysis = $derived.by(() => analysis ?? displayAnalysis);
   const hasCurrentAnalysis = $derived.by(() => analysis !== null);
   const effectiveNotanMode = $derived.by(() => levels === 2);
-
-  function captureAnalysisScroll() {
-    if (typeof document === 'undefined') return;
-    const el = document.querySelector('.view-container');
-    if (el instanceof HTMLElement) {
-      analysisScrollLock = { top: el.scrollTop, token: null };
-    }
-  }
-
-  function restoreAnalysisScroll(token: number) {
-    if (!analysisScrollLock || analysisScrollLock.token !== token) return;
-    if (typeof document === 'undefined') return;
-    const targetTop = analysisScrollLock.top;
-    analysisScrollLock = null;
-    Promise.resolve().then(() => {
-      requestAnimationFrame(() => {
-        const el = document.querySelector('.view-container');
-        if (el instanceof HTMLElement) {
-          el.scrollTop = targetTop;
-        }
-      });
-    });
-  }
 
   function clearOwnedPending() {
     if (!pendingRequest) return;
@@ -80,7 +58,7 @@ export function createValueAnalysisRunner() {
   function cancelPending() {
     currentToken += 1;
     clearOwnedPending();
-    analysisScrollLock = null;
+    analysisScrollLock.clear();
   }
 
   async function ensureAnalysis(
@@ -100,9 +78,7 @@ export function createValueAnalysisRunner() {
     clearOwnedPending();
     currentToken += 1;
     const token = currentToken;
-    if (analysisScrollLock) {
-      analysisScrollLock.token = token;
-    }
+    analysisScrollLock.bind(token);
     const startedAt = performance.now();
     void logEvent(
       `values:analysis:start levels=${requestedLevels} twoTone=${requestedNotanMode}`
@@ -136,7 +112,7 @@ export function createValueAnalysisRunner() {
         result,
         storeToken
       );
-      restoreAnalysisScroll(token);
+      analysisScrollLock.restore(token);
     } catch (err) {
       if (token !== currentToken) return;
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -158,7 +134,7 @@ export function createValueAnalysisRunner() {
 
   function updateLevels(next: number) {
     levels = next;
-    captureAnalysisScroll();
+    analysisScrollLock.capture();
     valueAnalysisLevels.set(next);
     void logEvent(`values:levels ${next}`);
     // Explicit trigger: the file-change $effect deliberately skips video frames
@@ -291,7 +267,7 @@ export function createValueAnalysisRunner() {
     updateLevels,
     ensureAnalysis,
     cancelPending,
-    captureAnalysisScroll,
+    captureAnalysisScroll: analysisScrollLock.capture,
     trackMaskKey,
     mount,
   };

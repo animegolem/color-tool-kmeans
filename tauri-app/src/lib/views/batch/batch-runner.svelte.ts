@@ -11,6 +11,7 @@ import {
 } from '../../stores/multi-analysis';
 import type { AnalysisParams } from '../../stores/analysis';
 import { logEvent } from '../../bridges/log';
+import { createAnalysisScrollLock } from '../../services/analysis-scroll-lock';
 
 const ANALYZE_DEBOUNCE_MS = 400;
 const SPINNER_THRESHOLD_MS = 150;
@@ -39,30 +40,7 @@ export function createBatchRunner() {
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let lastRequestKey = '';
   let spinnerVisible = $state(false);
-  let analysisScrollLock: { top: number; token: number | null } | null = null;
-
-  function captureAnalysisScroll() {
-    if (typeof document === 'undefined') return;
-    const el = document.querySelector('.view-container');
-    if (el instanceof HTMLElement) {
-      analysisScrollLock = { top: el.scrollTop, token: null };
-    }
-  }
-
-  function restoreAnalysisScroll(token: number) {
-    if (!analysisScrollLock || analysisScrollLock.token !== token) return;
-    if (typeof document === 'undefined') return;
-    const targetTop = analysisScrollLock.top;
-    analysisScrollLock = null;
-    Promise.resolve().then(() => {
-      requestAnimationFrame(() => {
-        const el = document.querySelector('.view-container');
-        if (el instanceof HTMLElement) {
-          el.scrollTop = targetTop;
-        }
-      });
-    });
-  }
+  const analysisScrollLock = createAnalysisScrollLock();
 
   function clearSpinner() {
     if (spinnerTimer) {
@@ -81,7 +59,7 @@ export function createBatchRunner() {
 
   function cancel() {
     currentToken += 1;
-    analysisScrollLock = null;
+    analysisScrollLock.clear();
     clearSpinner();
     clearDebounce();
     const state = get(multiAnalysisState);
@@ -137,9 +115,7 @@ export function createBatchRunner() {
 
     currentToken += 1;
     const token = currentToken;
-    if (analysisScrollLock) {
-      analysisScrollLock.token = token;
-    }
+    analysisScrollLock.bind(token);
 
     void logEvent(`batch:reanalysis:start clusters=${params.clusters}`);
     multiAnalysisState.set('analyzing');
@@ -157,7 +133,7 @@ export function createBatchRunner() {
 
       multiAnalysisResult.set(analysisResult);
       multiAnalysisState.set('ready');
-      restoreAnalysisScroll(token);
+      analysisScrollLock.restore(token);
       void logEvent(
         `batch:reanalysis:success ms=${Math.round(analysisResult.durationMs)} iterations=${analysisResult.iterations} samples=${analysisResult.totalSamples}`
       );
@@ -167,7 +143,7 @@ export function createBatchRunner() {
       void logEvent('batch:reanalysis:error');
       multiAnalysisError.set(mapErrorToMessage(err));
       multiAnalysisState.set(get(multiAnalysisResult) ? 'ready' : 'error');
-      restoreAnalysisScroll(token);
+      analysisScrollLock.restore(token);
     } finally {
       if (token === currentToken) clearSpinner();
     }
@@ -249,7 +225,7 @@ export function createBatchRunner() {
     scheduleReanalysis,
     retryReanalysis,
     seedRequestKey,
-    captureAnalysisScroll,
+    captureAnalysisScroll: analysisScrollLock.capture,
     cancel,
     reset,
   };

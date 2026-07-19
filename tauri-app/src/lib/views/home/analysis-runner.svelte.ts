@@ -6,6 +6,7 @@ import type {
 import { resetAnalysisPending } from '../../stores/ui';
 import { TauriComputeError } from '../../bridges/compute';
 import { analyzeImage } from '../../compute/bridge';
+import { createAnalysisScrollLock } from '../../services/analysis-scroll-lock';
 
 export interface AnalysisRunnerDeps {
   setAnalysisPending: () => number;
@@ -31,7 +32,7 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
   let pendingRequest: { token: number; storeToken: number } | null = null;
   let lastRequestKey: string | null = null;
   let spinnerVisible = $state(false);
-  let analysisScrollLock: { top: number; token: number | null } | null = null;
+  const analysisScrollLock = createAnalysisScrollLock();
 
   function mapErrorToMessage(error: unknown): string {
     if (error instanceof TauriComputeError) {
@@ -60,7 +61,7 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
       resetAnalysisPending(pendingRequest.storeToken);
       pendingRequest = null;
     }
-    analysisScrollLock = null;
+    analysisScrollLock.clear();
     if (debounceTimer) {
       clearTimeout(debounceTimer);
       debounceTimer = null;
@@ -70,29 +71,6 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
       spinnerTimer = null;
     }
     spinnerVisible = false;
-  }
-
-  function captureAnalysisScroll() {
-    if (typeof document === 'undefined') return;
-    const el = document.querySelector('.view-container');
-    if (el instanceof HTMLElement) {
-      analysisScrollLock = { top: el.scrollTop, token: null };
-    }
-  }
-
-  function restoreAnalysisScroll(token: number) {
-    if (!analysisScrollLock || analysisScrollLock.token !== token) return;
-    if (typeof document === 'undefined') return;
-    const targetTop = analysisScrollLock.top;
-    analysisScrollLock = null;
-    Promise.resolve().then(() => {
-      requestAnimationFrame(() => {
-        const el = document.querySelector('.view-container');
-        if (el instanceof HTMLElement) {
-          el.scrollTop = targetTop;
-        }
-      });
-    });
   }
 
   function scheduleAnalysisWith(
@@ -133,9 +111,7 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
   ) {
     currentToken += 1;
     const token = currentToken;
-    if (analysisScrollLock) {
-      analysisScrollLock.token = token;
-    }
+    analysisScrollLock.bind(token);
     const storeToken = deps.setAnalysisPending();
     pendingRequest = { token, storeToken };
     spinnerVisible = false;
@@ -161,7 +137,7 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
       }
       deps.recordDevEvent({ computeVariant: response.variant }, 'analysis');
       deps.setAnalysisSuccess(response, image.id, storeToken);
-      restoreAnalysisScroll(token);
+      analysisScrollLock.restore(token);
     } catch (err) {
       if (token !== currentToken) {
         return;
@@ -170,7 +146,7 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
       console.error('[home] analysis failed', err);
       const message = mapErrorToMessage(err);
       deps.setAnalysisError(message, storeToken);
-      restoreAnalysisScroll(token);
+      analysisScrollLock.restore(token);
     } finally {
       if (token === currentToken) {
         if (pendingRequest?.token === token) {
@@ -213,7 +189,7 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
     },
     scheduleAnalysisWith,
     cancelPending,
-    captureAnalysisScroll,
+    captureAnalysisScroll: analysisScrollLock.capture,
     clearLastRequestKey,
     seedLastRequestKey,
   };
