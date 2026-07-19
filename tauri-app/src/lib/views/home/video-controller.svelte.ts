@@ -11,6 +11,15 @@ import { logEvent } from '../../bridges/log';
 import { devlog } from '../../utils/devlog';
 import { formatTime } from '../../utils/time';
 import { setActivePath } from '../../services/active-image';
+import type {
+  LiveAnalysisError,
+  LiveAnalysisFrame,
+} from '../../bridges/live-analysis';
+import {
+  startLiveAnalysis,
+  stopLiveAnalysis,
+} from '../../bridges/live-analysis';
+import type { AnalysisResult } from '../../stores/analysis';
 
 export interface VideoControllerDeps {
   isNativeModeActive: () => boolean;
@@ -42,6 +51,11 @@ export interface VideoControllerDeps {
   findExistingFrameId: (videoPath: string) => string | null;
   seedAnalysisKey: (imageId: string, params: any) => void;
   hasAnalysisForImage: (id: string) => boolean;
+  cancelPendingAnalysis: () => void;
+  setLiveAnalysisResult: (
+    result: AnalysisResult,
+    imageId: string | null
+  ) => void;
 }
 
 export function subscribeToVideoStripMode(
@@ -79,6 +93,20 @@ export function createVideoController(deps: VideoControllerDeps) {
   let _currentLoadCid: string | null = null;
   let _loadSrcTimer: ReturnType<typeof setTimeout> | null = null;
   let _pendingSeekTime: number | null = null;
+  let videoPlaying = $state(false);
+  let liveStarting = $state(false);
+  let liveSessionId: number | null = null;
+  let liveEffectiveFps = $state(0);
+  let liveDroppedFrames = $state(0);
+  let liveStartToken = 0;
+  let liveReconfigureTimer: ReturnType<typeof setTimeout> | null = null;
+  let liveCommandQueue: Promise<unknown> = Promise.resolve();
+
+  function queueLiveCommand<T>(command: () => Promise<T>): Promise<T> {
+    const run = liveCommandQueue.catch(() => undefined).then(command);
+    liveCommandQueue = run;
+    return run;
+  }
 
   function videoResourceSnapshot() {
     return {
@@ -118,6 +146,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function resetVideoState() {
+    void stopLivePlayback(false);
     const prevFrameId = videoFrameId;
     const prevSrcUrl = videoSrcUrl;
     devlog('video:reset', 'Reset video state', {
@@ -159,6 +188,10 @@ export function createVideoController(deps: VideoControllerDeps) {
     if (_loadSrcTimer) {
       clearTimeout(_loadSrcTimer);
       _loadSrcTimer = null;
+    }
+    if (liveReconfigureTimer) {
+      clearTimeout(liveReconfigureTimer);
+      liveReconfigureTimer = null;
     }
   }
 
@@ -379,6 +412,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function scheduleVideoFrameDecode() {
+    if (videoPlaying) return;
     if (!videoSelection?.path) return;
     if (!deps.isNativeModeActive()) {
       deps.setBannerMessage('Video analysis requires the desktop app.');
@@ -614,6 +648,124 @@ export function createVideoController(deps: VideoControllerDeps) {
     pushVideoState();
   }
 
+  function liveRequest(timestamp: number) {
+    const params = deps.getCurrentParams();
+    return {
+      path: videoSelection?.path ?? '',
+      startTimestamp: timestamp,
+      k: params.clusters,
+      ignoreTopN: params.ignoreTopN,
+      mergeThreshold: params.mergeThreshold,
+      snapToReal: params.snapToReal,
+    };
+  }
+
+  async function startLiveStream(timestamp: number, token: number) {
+    const request = liveRequest(timestamp);
+    const response = await queueLiveCommand(() => startLiveAnalysis(request));
+    if (token !== liveStartToken) return false;
+    liveSessionId = response.sessionId;
+    liveEffectiveFps = 0;
+    liveDroppedFrames = 0;
+    return true;
+  }
+
+  async function startLivePlayback() {
+    if (!videoSelection?.path || !videoElement || videoPlaying || liveStarting)
+      return;
+    liveStarting = true;
+    deps.cancelPendingAnalysis();
+    if (videoDecodeTimer) {
+      clearTimeout(videoDecodeTimer);
+      videoDecodeTimer = null;
+    }
+    videoDecodeToken += 1;
+    frameDecoding = false;
+    const timestamp = videoElement.currentTime;
+    const token = ++liveStartToken;
+    try {
+      if (!(await startLiveStream(timestamp, token))) return;
+      await videoElement.play();
+      if (token !== liveStartToken) return;
+      videoPlaying = true;
+    } catch (error) {
+      liveSessionId = null;
+      await queueLiveCommand(stopLiveAnalysis).catch(() => undefined);
+      const message = error instanceof Error ? error.message : String(error);
+      deps.setBannerMessage(`Live analysis failed to start: ${message}`);
+    } finally {
+      if (token === liveStartToken) liveStarting = false;
+    }
+  }
+
+  async function stopLivePlayback(settleFrame = true) {
+    const wasPlaying = videoPlaying || liveSessionId !== null;
+    liveStartToken += 1;
+    videoPlaying = false;
+    liveStarting = false;
+    liveSessionId = null;
+    videoElement?.pause();
+    if (wasPlaying) {
+      await queueLiveCommand(stopLiveAnalysis).catch(() => undefined);
+    }
+    if (videoElement) {
+      videoCurrentTime = videoElement.currentTime;
+    }
+    if (settleFrame && videoSelection?.path) {
+      scheduleVideoFrameDecode();
+    }
+  }
+
+  function toggleVideoPlayback() {
+    if (videoPlaying) {
+      void stopLivePlayback();
+    } else {
+      void startLivePlayback();
+    }
+  }
+
+  function handleVideoTimeUpdate() {
+    if (!videoElement || !videoPlaying) return;
+    videoCurrentTime = videoElement.currentTime;
+  }
+
+  function handleVideoEnded() {
+    void stopLivePlayback();
+  }
+
+  function handleLiveAnalysisFrame(frame: LiveAnalysisFrame) {
+    if (!videoPlaying || frame.sessionId !== liveSessionId) return;
+    liveEffectiveFps = frame.effectiveFps;
+    liveDroppedFrames = frame.droppedFrames;
+    deps.setLiveAnalysisResult(frame.analysis, videoFrameId);
+  }
+
+  function handleLiveAnalysisError(error: LiveAnalysisError) {
+    if (error.sessionId !== liveSessionId) return;
+    void stopLivePlayback(false);
+    deps.setBannerMessage(`Live analysis stopped: ${error.message}`);
+  }
+
+  function reconfigureLiveAnalysis() {
+    if (!videoPlaying || !videoElement) return;
+    if (liveReconfigureTimer) clearTimeout(liveReconfigureTimer);
+    liveReconfigureTimer = setTimeout(() => {
+      liveReconfigureTimer = null;
+      if (!videoPlaying || !videoElement) return;
+      const token = ++liveStartToken;
+      void startLiveStream(videoElement.currentTime, token).catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        deps.setBannerMessage(
+          `Live analysis could not reconfigure: ${message}`
+        );
+      });
+    }, 100);
+  }
+
+  function dispose() {
+    void stopLivePlayback(false);
+  }
+
   function handleVideoScrubStart() {
     videoScrubbing = true;
     deps.captureAnalysisScroll();
@@ -828,6 +980,18 @@ export function createVideoController(deps: VideoControllerDeps) {
     get frameDecoding() {
       return frameDecoding;
     },
+    get videoPlaying() {
+      return videoPlaying;
+    },
+    get liveStarting() {
+      return liveStarting;
+    },
+    get liveEffectiveFps() {
+      return liveEffectiveFps;
+    },
+    get liveDroppedFrames() {
+      return liveDroppedFrames;
+    },
     loadVideoSelection,
     clearVideoSelection,
     regenerateStrip,
@@ -843,5 +1007,12 @@ export function createVideoController(deps: VideoControllerDeps) {
     handleVideoStateChange,
     setVideoElementRef,
     loadSrcEffect,
+    toggleVideoPlayback,
+    handleVideoTimeUpdate,
+    handleVideoEnded,
+    handleLiveAnalysisFrame,
+    handleLiveAnalysisError,
+    reconfigureLiveAnalysis,
+    dispose,
   };
 }

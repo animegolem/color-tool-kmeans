@@ -63,6 +63,7 @@
   import { saveChart, type ChartOutput } from '../exports/chart-save';
   import { exportScale } from '../stores/ui';
   import { inferMimeType } from '../bridges/fs';
+  import { listenToLiveAnalysis } from '../bridges/live-analysis';
 
   const devEnabled = import.meta.env.DEV ?? false;
 
@@ -233,6 +234,10 @@
       );
     },
     hasAnalysisForImage: (id: string) => !!get(analysisById)[id],
+    cancelPendingAnalysis: runner.cancelPending,
+    setLiveAnalysisResult: (liveResult, imageId) => {
+      setAnalysisSuccess(liveResult, imageId);
+    },
   });
 
   // --- Derived chart state ---
@@ -342,6 +347,7 @@
       }),
       params.subscribe((value) => {
         currentParams = { ...value };
+        video.reconfigureLiveAnalysis();
       }),
       analysisState.subscribe((value) => {
         status = value;
@@ -397,6 +403,12 @@
         );
       }),
       subscribeMediaLoadRequested(() => ingestion.chooseMedia()),
+      mountAsyncListener(() =>
+        listenToLiveAnalysis(
+          video.handleLiveAnalysisFrame,
+          video.handleLiveAnalysisError
+        )
+      ),
     ];
     let dragDepth = 0;
     let hideTimer: ReturnType<typeof setTimeout> | null = null;
@@ -454,6 +466,7 @@
       window.removeEventListener('pointerup', handleScrubEnd);
       window.removeEventListener('pointercancel', handleScrubEnd);
       cleanupDragDrop();
+      video.dispose();
       devlog('home:unmount', 'HomeView unmounting');
       devlog.resources('home:unmount');
       void logEvent('home:view:unmount');
@@ -476,6 +489,9 @@
       return;
     }
     if (isScrubbing) {
+      return;
+    }
+    if (video.videoPlaying) {
       return;
     }
     if (status === 'error') {

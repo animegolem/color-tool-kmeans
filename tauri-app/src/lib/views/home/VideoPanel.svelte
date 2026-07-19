@@ -61,6 +61,8 @@
           onloadedmetadata={video.handleVideoMetadata}
           onloadeddata={video.handleVideoLoadedData}
           onseeked={video.handleVideoSeeked}
+          ontimeupdate={video.handleVideoTimeUpdate}
+          onended={video.handleVideoEnded}
           onerror={video.handleVideoError}
         >
           <source
@@ -77,7 +79,11 @@
             class="settled-frame"
             src={video.videoDisplayUrl}
             alt=""
-            style:opacity={video.videoScrubbing || video.frameDecoding ? 0 : 1}
+            style:opacity={video.videoPlaying ||
+            video.videoScrubbing ||
+            video.frameDecoding
+              ? 0
+              : 1}
           />
         {/if}
       </div>
@@ -89,16 +95,33 @@
     <div class="step-group">
       <button
         type="button"
+        class="step-btn play-btn"
+        title={video.videoPlaying
+          ? 'Pause live analysis'
+          : 'Play with live analysis'}
+        aria-label={video.videoPlaying
+          ? 'Pause live analysis'
+          : 'Play with live analysis'}
+        disabled={video.liveStarting || video.frameDecoding}
+        onclick={video.toggleVideoPlayback}
+        >{video.liveStarting
+          ? 'Starting…'
+          : video.videoPlaying
+            ? 'Pause'
+            : 'Play'}</button
+      >
+      <button
+        type="button"
         class="step-btn"
         title="Back 10 frames"
-        disabled={video.frameDecoding}
+        disabled={video.frameDecoding || video.videoPlaying}
         onclick={() => video.stepVideoFrames(-10)}>◀◀</button
       >
       <button
         type="button"
         class="step-btn"
         title="Back 1 frame"
-        disabled={video.frameDecoding}
+        disabled={video.frameDecoding || video.videoPlaying}
         onclick={() => video.stepVideoFrames(-1)}>◀</button
       >
     </div>
@@ -122,18 +145,26 @@
         type="button"
         class="step-btn"
         title="Forward 1 frame"
-        disabled={video.frameDecoding}
+        disabled={video.frameDecoding || video.videoPlaying}
         onclick={() => video.stepVideoFrames(1)}>▶</button
       >
       <button
         type="button"
         class="step-btn"
         title="Forward 10 frames"
-        disabled={video.frameDecoding}
+        disabled={video.frameDecoding || video.videoPlaying}
         onclick={() => video.stepVideoFrames(10)}>▶▶</button
       >
     </div>
   </div>
+  {#if video.videoPlaying}
+    <div class="live-metrics" aria-live="polite">
+      Live analysis {video.liveEffectiveFps.toFixed(1)} fps
+      {#if video.liveDroppedFrames > 0}
+        · {video.liveDroppedFrames} dropped
+      {/if}
+    </div>
+  {/if}
   <div class="video-strip">
     {#if video.videoStripUrl}
       <div
@@ -229,6 +260,16 @@
 
   .step-group--right {
     justify-content: flex-end;
+  }
+
+  .play-btn {
+    min-width: 62px;
+  }
+
+  .live-metrics {
+    color: rgba(33, 33, 32, 0.62);
+    font-size: 0.75rem;
+    text-align: center;
   }
 
   .step-btn {

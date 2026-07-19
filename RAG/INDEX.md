@@ -72,14 +72,14 @@ Generated from tracked files; binary assets excluded.
 ### > 600 LOC
 
 - RAG/Colors Tool.fig (10051 LOC)
+- tauri-app/src/lib/views/home/video-controller.svelte.ts (1018 LOC)
 - tauri-app/src/lib/views/BatchView.svelte (912 LOC)
-- tauri-app/src/lib/views/home/video-controller.svelte.ts (847 LOC)
+- tauri-app/src/lib/views/HomeView.svelte (809 LOC)
 - tauri-app/src/lib/views/ValuesView.svelte (806 LOC)
-- tauri-app/src/lib/views/HomeView.svelte (793 LOC)
 - tauri-app/src/lib/views/ExportsView.svelte (743 LOC)
 - tauri-app/src-tauri/src/value_analysis.rs (741 LOC)
 - tauri-app/src-tauri/src/color.rs (740 LOC)
-- tauri-app/src/lib/views/__tests__/audit-control-flow-races.spec.ts (630 LOC)
+- tauri-app/src/lib/views/__tests__/audit-control-flow-races.spec.ts (681 LOC)
 
 ### > 300 LOC
 
@@ -98,6 +98,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/exports/color-study-compositor.ts (368 LOC)
 - tauri-app/src/lib/views/SettingsView.svelte (351 LOC)
 - tauri-app/src-tauri/src/bin/live_loop_probe.rs (347 LOC)
+- tauri-app/src/lib/views/home/VideoPanel.svelte (340 LOC)
 - tauri-app/src/lib/components/MediaBucket.svelte (324 LOC)
 - tauri-app/src/lib/bridges/compute.ts (321 LOC)
 - tauri-app/src/lib/exports/__tests__/color-study-compositor.spec.ts (319 LOC)
