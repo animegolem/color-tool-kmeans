@@ -159,7 +159,15 @@ function releaseImage(entry: ImageEntry) {
   }
 }
 
-export function setFile(entry: ImageEntry, dataset: ImageDataset) {
+export interface SetFileOptions {
+  preserveColorAnalysis?: boolean;
+}
+
+export function setFile(
+  entry: ImageEntry,
+  dataset: ImageDataset,
+  options: SetFileOptions = {}
+) {
   const current = get(images);
   const existingById = current.find((item) => item.id === entry.id);
   const existingByPath = entry.path
@@ -180,7 +188,13 @@ export function setFile(entry: ImageEntry, dataset: ImageDataset) {
     }
     return [...list, entry];
   });
-  if (matched) invalidateValueAnalysisForImage(entry.id);
+  if (matched) {
+    if (options.preserveColorAnalysis) {
+      invalidateValueAnalysisForImage(entry.id);
+    } else {
+      invalidateAnalysisForImage(entry.id);
+    }
+  }
   activeImageId.set(entry.id);
   devlog('store:setFile', 'Set file', {
     id: entry.id,

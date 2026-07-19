@@ -21,7 +21,8 @@ export interface VideoControllerDeps {
   maxDimensionForQuality: (quality: number) => number;
   setFile: (
     entry: ImageEntry,
-    dataset: { width: number; height: number; pixels: Uint8Array }
+    dataset: { width: number; height: number; pixels: Uint8Array },
+    options?: { preserveColorAnalysis?: boolean }
   ) => void;
   setVideoState: (state: VideoState | null) => void;
   clearFile: () => void;
@@ -344,7 +345,11 @@ export function createVideoController(deps: VideoControllerDeps) {
       };
       const wasRestoring = _restoringFromSessionCache;
       _restoringFromSessionCache = false;
-      deps.setFile(entry, dataset);
+      if (wasRestoring) {
+        deps.setFile(entry, dataset, { preserveColorAnalysis: true });
+      } else {
+        deps.setFile(entry, dataset);
+      }
       if (wasRestoring && deps.hasAnalysisForImage(frameId)) {
         // setFile already restored analysisState='ready' from analysisById cache.
         // Seed the dedup key so the HomeView $effect won't re-trigger analysis.

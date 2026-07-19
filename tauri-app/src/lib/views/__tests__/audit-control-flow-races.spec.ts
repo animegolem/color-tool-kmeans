@@ -374,7 +374,8 @@ describe('audit reproductions for async control-flow invariants', () => {
         path: '/cache/current-frame.png',
         frameTimestamp: 1 / 24,
       }),
-      emptyDataset
+      emptyDataset,
+      { preserveColorAnalysis: true }
     );
   });
 
