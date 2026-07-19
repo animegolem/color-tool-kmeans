@@ -41,7 +41,7 @@
   import VideoScrubber from './values/VideoScrubber.svelte';
   import SnapshotButton from '../components/SnapshotButton.svelte';
   import { snapshotCurrentFrame } from '../services/frame-snapshot';
-  import { mountAsyncListener } from './batch/batch-drop.svelte';
+  import { mountAsyncListener } from '../services/async-listener';
 
   let videoEl = $state<HTMLVideoElement | null>(null);
 
@@ -184,7 +184,10 @@
         runner.effectiveNotanMode
       );
     }
-    const cleanupDragDrop = mountAsyncListener(() => ingestion.setupDragDrop());
+    const cleanupDragDrop = mountAsyncListener(
+      () => ingestion.setupDragDrop(),
+      (error) => console.error('[values] Failed to set up drag/drop', error)
+    );
     const unsubs = [
       videoState.subscribe((vs) => {
         scrubber.syncFromVideoState(vs);

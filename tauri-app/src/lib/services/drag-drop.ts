@@ -29,23 +29,34 @@ export async function setupTauriDragDrop(
 ): Promise<(() => void) | null> {
   if (!isTauriEnv()) return null;
   const unlistens: Array<() => void> = [];
-  unlistens.push(
-    await listen<{ paths?: string[] }>('tauri://drag-drop', (event) => {
-      options?.onLeave?.();
-      const paths = event.payload?.paths;
-      if (!paths?.length) return;
-      onBatch(pathsToSelections(paths));
-    })
-  );
-  if (options?.onEnter) {
+  try {
     unlistens.push(
-      await listen('tauri://drag-enter', () => options.onEnter?.())
+      await listen<{ paths?: string[] }>('tauri://drag-drop', (event) => {
+        options?.onLeave?.();
+        const paths = event.payload?.paths;
+        if (!paths?.length) return;
+        onBatch(pathsToSelections(paths));
+      })
     );
-  }
-  if (options?.onLeave) {
-    unlistens.push(
-      await listen('tauri://drag-leave', () => options.onLeave?.())
-    );
+    if (options?.onEnter) {
+      unlistens.push(
+        await listen('tauri://drag-enter', () => options.onEnter?.())
+      );
+    }
+    if (options?.onLeave) {
+      unlistens.push(
+        await listen('tauri://drag-leave', () => options.onLeave?.())
+      );
+    }
+  } catch (error) {
+    for (const unlisten of unlistens.reverse()) {
+      try {
+        unlisten();
+      } catch (cleanupError) {
+        console.error('[drag-drop] Failed to roll back listener', cleanupError);
+      }
+    }
+    throw error;
   }
   return () => unlistens.forEach((fn) => fn());
 }

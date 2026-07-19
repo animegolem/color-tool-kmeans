@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../bridges/tauri', () => mocks);
 
-import { mountAsyncListener } from '../batch/batch-drop.svelte';
+import { mountAsyncListener } from '../../services/async-listener';
 import { cleanupAllMediaArtifacts } from '../../services/artifact-cleanup';
 import type { ImageEntry } from '../../stores/ui';
 
@@ -61,12 +61,23 @@ describe('resource-integrity regressions', () => {
     });
     const unlisten = vi.fn();
 
-    const cleanup = mountAsyncListener(() => registration);
+    const cleanup = mountAsyncListener(() => registration, vi.fn());
     cleanup();
     resolveRegistration(unlisten);
     await registration;
     await Promise.resolve();
 
     expect(unlisten).toHaveBeenCalledOnce();
+  });
+
+  it('SWEEP-004: consumes and reports async listener registration rejection', async () => {
+    const error = new Error('listener unavailable');
+    const reportError = vi.fn();
+
+    mountAsyncListener(() => Promise.reject(error), reportError);
+    await Promise.resolve();
+
+    expect(reportError).toHaveBeenCalledOnce();
+    expect(reportError).toHaveBeenCalledWith(error);
   });
 });

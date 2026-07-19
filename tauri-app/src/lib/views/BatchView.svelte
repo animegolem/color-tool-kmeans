@@ -26,6 +26,7 @@
   import { getFsBridge } from '../bridges/fs';
   import { logEvent } from '../bridges/log';
   import { subscribeMediaLoadRequested } from '../services/view-subscriptions';
+  import { mountAsyncListener } from '../services/async-listener';
   import { createBatchRunner } from './batch/batch-runner.svelte';
   import { createBatchDrop } from './batch/batch-drop.svelte';
   import PinExpandOverlay from './batch/PinExpandOverlay.svelte';
@@ -101,10 +102,10 @@
   onMount(() => {
     void logEvent('batch:view:mount');
     unsubs.push(subscribeMediaLoadRequested(() => chooseMedia()));
-    let unlistenDrop: (() => void) | null = null;
-    drop.setup().then((fn) => {
-      unlistenDrop = fn ?? null;
-    });
+    const cleanupDragDrop = mountAsyncListener(
+      () => drop.setup(),
+      (error) => console.error('[batch] Failed to set up drag/drop', error)
+    );
     // Defer heavy content one frame so the nav + header paint first (avoids the
     // ~0.25s nav-label lag when entering Batch with a loaded analysis).
     const readyRaf = requestAnimationFrame(() => {
@@ -114,7 +115,7 @@
     window.addEventListener('pointercancel', handleScrubEnd);
     return () => {
       cancelAnimationFrame(readyRaf);
-      unlistenDrop?.();
+      cleanupDragDrop();
       window.removeEventListener('pointerup', handleScrubEnd);
       window.removeEventListener('pointercancel', handleScrubEnd);
     };
