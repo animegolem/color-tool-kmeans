@@ -39,6 +39,7 @@ export interface ImageEntry {
   size: number;
   source: ImageSource;
   previewUrl: string | null;
+  contentRevision?: number;
 }
 
 export interface SelectedImage extends ImageEntry {
@@ -193,6 +194,9 @@ export function setFile(
     : undefined;
   const existing = existingByPath ?? existingById;
   if (existingByPath) entry.id = existingByPath.id;
+  entry.contentRevision = existing
+    ? (existing.contentRevision ?? 0) + 1
+    : (entry.contentRevision ?? 0);
 
   imageDatasets.set(entry.id, dataset);
   trackPreviewUrl(entry);
@@ -252,6 +256,11 @@ export function appendFile(entry: ImageEntry, dataset: ImageDataset) {
     devlog.resources('store:appendFile');
     return;
   }
+
+  const existingById = current.find((item) => item.id === entry.id);
+  entry.contentRevision = existingById
+    ? (existingById.contentRevision ?? 0) + 1
+    : (entry.contentRevision ?? 0);
 
   imageDatasets.set(entry.id, dataset);
   trackPreviewUrl(entry);

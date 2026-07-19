@@ -1,4 +1,4 @@
-import { writable, derived, get } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 import { images, type ImageEntry } from './image';
 import type { AnalysisResult } from './analysis';
 
@@ -48,17 +48,26 @@ export function resetMultiAnalysis() {
   multiCompositePath.set(null);
 }
 
-// --- Auto-cleanup: prune pins when images are removed ---
-images.subscribe(($images) => {
+// --- Auto-cleanup: prune pins and invalidate results when pinned pixels change ---
+let pinnedRevisions = new Map<string, number>();
+
+derived(
+  [images, pinnedImageIds],
+  ([$images, $pinned]) => [$images, $pinned] as const
+).subscribe(([$images, $pinned]) => {
   const currentIds = new Set($images.map((img) => img.id));
-  const $pinned = get(pinnedImageIds);
-  let pruned = false;
-  for (const id of $pinned) {
-    if (!currentIds.has(id)) {
-      pruned = true;
-      break;
-    }
-  }
+  const pruned = [...$pinned].some((id) => !currentIds.has(id));
+  const nextPinnedRevisions = new Map(
+    $images
+      .filter((image) => $pinned.has(image.id))
+      .map((image) => [image.id, image.contentRevision ?? 0] as const)
+  );
+  const contentChanged = [...nextPinnedRevisions].some(
+    ([id, revision]) =>
+      pinnedRevisions.has(id) && pinnedRevisions.get(id) !== revision
+  );
+  pinnedRevisions = nextPinnedRevisions;
+
   if (pruned) {
     pinnedImageIds.update((set) => {
       const next = new Set<string>();
@@ -67,6 +76,8 @@ images.subscribe(($images) => {
       }
       return next;
     });
+    resetMultiAnalysis();
+  } else if (contentChanged) {
     resetMultiAnalysis();
   }
 });
