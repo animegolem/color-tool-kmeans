@@ -3,6 +3,7 @@ use std::time::Instant;
 use tauri::{AppHandle, Manager};
 use tempfile::Builder;
 
+use tauri_app::artifact_id::canonical_artifact_id;
 use tauri_app::color;
 use tauri_app::compose_grid;
 use tauri_app::ffmpeg;
@@ -334,14 +335,10 @@ pub async fn extract_video_frame(
         .path()
         .app_cache_dir()
         .map_err(|_| String::from("Failed to resolve cache directory"))?;
-    let safe_id: String = req
-        .frame_id
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
-        .collect();
-    if safe_id.is_empty() {
+    if req.frame_id.trim().is_empty() {
         return Err("Invalid frame id".into());
     }
+    let safe_id = canonical_artifact_id(&req.frame_id);
     let max_dimension = req.max_dimension.clamp(80, 4096);
     let output_path = cache_dir.join(format!("video-frame-{safe_id}.png"));
     let frame_req = ffmpeg::FrameExtractRequest {
@@ -381,14 +378,10 @@ pub async fn extract_video_strip(
         .path()
         .app_cache_dir()
         .map_err(|_| String::from("Failed to resolve cache directory"))?;
-    let safe_id: String = req
-        .strip_id
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
-        .collect();
-    if safe_id.is_empty() {
+    if req.strip_id.trim().is_empty() {
         return Err("Invalid strip id".into());
     }
+    let safe_id = canonical_artifact_id(&req.strip_id);
     let is_barcode = req.strip_mode.as_deref() == Some("barcode");
     let strip_mode = if is_barcode {
         ffmpeg::StripMode::Barcode

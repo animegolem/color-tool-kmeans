@@ -1,3 +1,4 @@
+pub mod artifact_id;
 pub mod color;
 pub mod compose_grid;
 pub mod ffmpeg;
