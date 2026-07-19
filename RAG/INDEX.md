@@ -93,8 +93,8 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/exports/polar-chart.ts (417 LOC)
 - tauri-app/src/app.css (403 LOC)
 - tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (390 LOC)
+- tauri-app/src/lib/stores/image.ts (388 LOC)
 - tauri-app/src-tauri/src/bin/live_pipe_probe.rs (379 LOC)
-- tauri-app/src/lib/stores/image.ts (376 LOC)
 - tauri-app/src/lib/exports/color-study-compositor.ts (368 LOC)
 - tauri-app/src/lib/views/SettingsView.svelte (351 LOC)
 - tauri-app/src-tauri/src/bin/live_loop_probe.rs (347 LOC)
@@ -102,6 +102,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/bridges/compute.ts (321 LOC)
 - tauri-app/src/lib/exports/__tests__/color-study-compositor.spec.ts (319 LOC)
 - tauri-app/src/lib/views/batch/batch-runner.svelte.ts (315 LOC)
+- tauri-app/src/lib/stores/prefs.ts (307 LOC)
 
 ---
 

@@ -50,10 +50,9 @@ try {
   // ignore
 }
 
-// Hydrate preferences from persistent store (non-blocking)
-loadPrefs()
-  .then(hydrateFromPrefs)
-  .catch(() => {});
+// Hydrate before the UI becomes interactive so a late store read cannot
+// overwrite a newer user change.
+hydrateFromPrefs(await loadPrefs());
 
 // Suppress native WebKit context menus in production —
 // images/video expose Save/Copy/Download that bypass app export settings.

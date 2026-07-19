@@ -141,6 +141,7 @@ export const DEFAULTS: PrefsV1 = {
 };
 
 let store: LazyStore | null = null;
+let writeQueue: Promise<void> = Promise.resolve();
 
 function getStore(): LazyStore {
   if (!store) {
@@ -257,8 +258,19 @@ export async function loadPrefs(): Promise<PrefsV1> {
   }
 }
 
-export async function savePrefs(partial: Partial<PrefsV1>): Promise<void> {
-  try {
+function enqueueWrite(
+  label: 'save' | 'reset',
+  operation: () => Promise<void>
+): Promise<void> {
+  const queued = writeQueue.then(operation);
+  writeQueue = queued.catch((err) => {
+    console.warn(`[prefs] failed to ${label} preferences`, err);
+  });
+  return writeQueue;
+}
+
+export function savePrefs(partial: Partial<PrefsV1>): Promise<void> {
+  return enqueueWrite('save', async () => {
     const s = getStore();
     const current = await s.get<Record<string, unknown>>('prefs');
     const base =
@@ -283,17 +295,13 @@ export async function savePrefs(partial: Partial<PrefsV1>): Promise<void> {
 
     await s.set('prefs', base);
     await s.save();
-  } catch (err) {
-    console.warn('[prefs] failed to save preferences', err);
-  }
+  });
 }
 
-export async function resetPrefs(): Promise<void> {
-  try {
+export function resetPrefs(): Promise<void> {
+  return enqueueWrite('reset', async () => {
     const s = getStore();
     await s.set('prefs', { ...DEFAULTS });
     await s.save();
-  } catch (err) {
-    console.warn('[prefs] failed to reset preferences', err);
-  }
+  });
 }
