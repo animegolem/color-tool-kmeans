@@ -1,35 +1,13 @@
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 use tauri::{AppHandle, Manager};
 
-use tauri_app::color;
+use color_core::analyze::ImageSource;
 use tauri_app::compose_grid;
 use tauri_app::ffmpeg;
-use tauri_app::image_pipeline::{prepare_samples, quality_preset, SampleParams};
-use tauri_app::kmeans::{run_kmeans, KMeansConfig};
 use tauri_app::value_analysis::{generate_value_analysis, ValueAnalysisResult};
 
 use crate::cache::EventLog;
 use crate::commands_types::*;
-use crate::merge::{merge_clusters_by_threshold, RawCluster};
-
-fn snap_centroids_to_nearest(raw_clusters: &mut [RawCluster], samples_oklab: &[[f32; 3]]) {
-    for cluster in raw_clusters.iter_mut() {
-        let mut best_dist = f32::MAX;
-        let mut best = cluster.centroid;
-        for sample in samples_oklab {
-            let dx = cluster.centroid[0] - sample[0];
-            let dy = cluster.centroid[1] - sample[1];
-            let dz = cluster.centroid[2] - sample[2];
-            let d = dx * dx + dy * dy + dz * dz;
-            if d < best_dist {
-                best_dist = d;
-                best = *sample;
-            }
-        }
-        cluster.centroid = best;
-    }
-}
 
 #[tauri::command]
 pub async fn analyze_image(
@@ -39,128 +17,8 @@ pub async fn analyze_image(
     if req.path.is_empty() {
         return Err("No file selected".into());
     }
-    let k = if req.k == 0 { 16 } else { req.k };
-
-    // 1) Sampling
-    let (stride, max_samples, max_dimension) = if let Some(quality) = req.quality {
-        let preset = quality_preset(quality);
-        (preset.stride, preset.max_samples, preset.max_dimension)
-    } else {
-        (req.stride.max(1), req.max_samples.max(1), Some(3200))
-    };
-    let sample_params = SampleParams {
-        path: PathBuf::from(&req.path),
-        stride,
-        min_lum: req.min_lum,
-        max_samples,
-        max_dimension,
-        seed: req.seed,
-    };
-    let samples = prepare_samples(&sample_params).map_err(|e| format!("Sampling failed: {e}"))?;
-    if samples.sampled_pixels == 0 {
-        return Err("No pixels met sampling criteria (check stride/minLum)".into());
-    }
-
-    // 2) Build working dataset in OKLab (perceptual)
-    let dataset: Vec<[f32; 3]> = if let Some(lab) = &samples.samples_oklab {
-        lab.clone()
-    } else {
-        samples
-            .samples
-            .iter()
-            .map(|&rgb| color::rgb8_to_oklab(rgb))
-            .collect()
-    };
-
-    let effective_k = k.min(dataset.len().max(1));
-
-    // 3) Run k-means
-    let cfg = KMeansConfig {
-        k: effective_k,
-        max_iters: req.max_iter as usize,
-        tol: req.tol,
-        seed: req.seed,
-        warm_start: None,
-        mini_batch: None,
-    };
-    let start = Instant::now();
-    let result = run_kmeans(&dataset, &cfg);
-    let duration_ms = start.elapsed().as_secs_f64() * 1000.0;
-
-    // 4) Build clusters; apply merge threshold; convert centroid to RGB and HSV
-    let mut raw_clusters: Vec<RawCluster> = result
-        .centroids
-        .iter()
-        .zip(result.counts.iter())
-        .filter_map(|(centroid, &count)| {
-            if count == 0 {
-                return None;
-            }
-            Some(RawCluster {
-                centroid: *centroid,
-                count,
-            })
-        })
-        .collect();
-    if req.snap_to_real {
-        let oklab = samples.samples_oklab.as_ref().unwrap();
-        snap_centroids_to_nearest(&mut raw_clusters, oklab);
-    }
-    let merge_threshold = req.merge_threshold.clamp(0.0, 0.2);
-    if merge_threshold > 0.0 {
-        let before_count = raw_clusters.len();
-        raw_clusters = merge_clusters_by_threshold(raw_clusters, merge_threshold);
-        let after_count = raw_clusters.len();
-        println!(
-            "[analyze_image] merge_threshold={:.3} clusters={} -> {}",
-            merge_threshold, before_count, after_count
-        );
-    } else {
-        raw_clusters.sort_by_key(|c| std::cmp::Reverse(c.count));
-    }
-
-    let mut clusters: Vec<ClusterOut> = raw_clusters
-        .into_iter()
-        .map(|cluster| {
-            let rgb_u8 = color::oklab_to_srgb8_gamut_mapped(cluster.centroid);
-            let rgb = RgbValue {
-                r: rgb_u8[0],
-                g: rgb_u8[1],
-                b: rgb_u8[2],
-            };
-            let oklab = cluster.centroid;
-            let oklch = color::oklab_to_oklch(cluster.centroid);
-            let hsv = color::rgb8_to_hsv(rgb_u8);
-            ClusterOut {
-                count: cluster.count,
-                share: (cluster.count as f64) / (samples.sampled_pixels as f64),
-                centroid_space: cluster.centroid,
-                oklab,
-                oklch,
-                rgb,
-                hsv,
-            }
-        })
-        .collect();
-    clusters.sort_by_key(|c| std::cmp::Reverse(c.count));
-    let ignore_top_n = req.ignore_top_n.min(clusters.len().saturating_sub(1));
-    if ignore_top_n > 0 {
-        clusters = clusters.into_iter().skip(ignore_top_n).collect();
-    }
-
-    let variant = if merge_threshold > 0.0 {
-        "inhouse+merge"
-    } else {
-        "inhouse"
-    };
-
-    Ok(AnalyzeResponse {
-        clusters,
-        iterations: result.iterations,
-        duration_ms,
-        total_samples: samples.sampled_pixels,
-        variant: variant.into(),
-    })
+    let path = PathBuf::from(&req.path);
+    color_core::analyze(&req, ImageSource::Path(&path)).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

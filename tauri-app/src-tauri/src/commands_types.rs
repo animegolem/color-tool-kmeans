@@ -1,78 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-pub fn default_tol() -> f32 {
-    1e-3
-}
-pub fn default_max_iters() -> u32 {
-    40
-}
-pub fn default_seed() -> u64 {
-    1
-}
-pub fn default_max_samples() -> usize {
-    300_000
-}
+// The analyze IPC contract (request/response shapes, including the nested
+// ClusterOut/RgbValue types) is defined by color-core; re-export the parts
+// the commands reference so the command surface stays unchanged.
+pub use color_core::analyze::{AnalyzeRequest, AnalyzeResponse};
+
 pub fn default_value_levels() -> usize {
     3
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AnalyzeRequest {
-    #[serde(default)]
-    pub path: String,
-    #[serde(default, alias = "K", alias = "k", alias = "clusters")]
-    pub k: usize,
-    #[serde(default)]
-    pub stride: u32,
-    #[serde(default)]
-    pub quality: Option<i8>,
-    #[serde(default, alias = "ignoreTopN", alias = "ignore_top_n")]
-    pub ignore_top_n: usize,
-    #[serde(default, alias = "mergeThreshold", alias = "merge_threshold")]
-    pub merge_threshold: f32,
-    #[serde(default, alias = "min_lum")]
-    pub min_lum: u8,
-    #[serde(default = "default_tol")]
-    pub tol: f32,
-    #[serde(default = "default_max_iters", alias = "max_iters")]
-    pub max_iter: u32,
-    #[serde(default = "default_seed")]
-    pub seed: u64,
-    #[serde(default = "default_max_samples")]
-    pub max_samples: usize,
-    #[serde(default, alias = "snap_to_real")]
-    pub snap_to_real: bool,
-}
-
-#[derive(Debug, Serialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
-pub struct RgbValue {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ClusterOut {
-    pub count: usize,
-    pub share: f64,
-    pub centroid_space: [f32; 3],
-    pub oklab: [f32; 3],
-    pub oklch: [f32; 3],
-    pub rgb: RgbValue,
-    pub hsv: [f32; 3],
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AnalyzeResponse {
-    pub clusters: Vec<ClusterOut>,
-    pub iterations: usize,
-    pub duration_ms: f64,
-    pub total_samples: usize,
-    pub variant: String,
 }
 
 #[derive(Debug, Deserialize)]

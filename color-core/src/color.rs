@@ -482,7 +482,7 @@ mod tests {
     }
 
     fn clamp01_ref(v: f64) -> f64 {
-        v.max(0.0).min(1.0)
+        v.clamp(0.0, 1.0)
     }
 
     fn to_u8_ref(v: f64) -> u8 {
@@ -558,7 +558,7 @@ mod tests {
     }
 
     fn is_in_gamut_rgb_ref(rgb: [f64; 3]) -> bool {
-        rgb.iter().all(|&c| c >= -1e-9 && c <= 1.0 + 1e-9)
+        rgb.iter().all(|&c| (-1e-9..=1.0 + 1e-9).contains(&c))
     }
 
     fn oklab_to_srgb8_gamut_mapped_ref(lab: [f64; 3]) -> [u8; 3] {

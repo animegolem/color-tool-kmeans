@@ -3,7 +3,6 @@
 mod cache;
 mod commands;
 mod commands_types;
-mod merge;
 
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
@@ -112,8 +111,7 @@ mod tests {
     use tauri_app::color;
     use tauri_app::image_pipeline::{prepare_samples, SampleParams};
     use tauri_app::kmeans::{run_kmeans, KMeansConfig};
-
-    use crate::merge::{merge_clusters_by_threshold, RawCluster};
+    use tauri_app::merge::{merge_clusters_by_threshold, RawCluster};
 
     fn test_pattern_path(name: &str) -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))

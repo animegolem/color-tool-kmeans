@@ -1,3 +1,4 @@
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -103,6 +104,27 @@ pub fn prepare_samples(params: &SampleParams) -> Result<SampleResult> {
         .with_guessed_format()?
         .decode()?;
 
+    sample_decoded(img, params, start)
+}
+
+/// Same as [`prepare_samples`], but decodes the image from an in-memory
+/// encoded buffer (PNG/JPEG/... — the format is guessed from the magic
+/// bytes). `params.path` is ignored.
+pub fn prepare_samples_from_bytes(bytes: &[u8], params: &SampleParams) -> Result<SampleResult> {
+    let start = Instant::now();
+
+    let img = ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()?
+        .decode()?;
+
+    sample_decoded(img, params, start)
+}
+
+fn sample_decoded(
+    img: DynamicImage,
+    params: &SampleParams,
+    start: Instant,
+) -> Result<SampleResult> {
     let rgba = to_rgba_with_downscale(img, params.max_dimension);
     let (width, height) = rgba.dimensions();
     let samples = sample_pixels(&rgba, params);
