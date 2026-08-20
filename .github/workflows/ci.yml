@@ -54,15 +54,18 @@ jobs:
           cd tauri-app
           npm test -- src/lib/exports/__tests__/gamut-boundary.spec.ts
 
-      - name: Run k-means snapshot test
+      - name: Run k-means snapshot test (scalar path, no simd)
+        run: cargo test -p color-core --no-default-features --test kmeans_snapshots
+
+      - name: Verify color-core stays tauri-free
         run: |
-          cd tauri-app/src-tauri
-          cargo test --no-default-features --test kmeans_snapshots
+          if cargo tree -p color-core --edges normal | grep -i tauri; then
+            echo "color-core must not depend on tauri" >&2
+            exit 1
+          fi
 
       - name: Run full Rust workspace test suite
-        run: |
-          cd tauri-app/src-tauri
-          cargo test --workspace
+        run: cargo test --workspace
 
       - name: Electron app tests
         if: ${{ hashFiles('electron-app/package.json') != '' }}
@@ -110,4 +113,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tauri-windows-bundle
-          path: tauri-app/src-tauri/target/release/bundle
+          path: target/release/bundle

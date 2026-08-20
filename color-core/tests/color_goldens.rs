@@ -1,5 +1,5 @@
+use color_core::color::{oklab_to_oklch, rgb8_to_hsv, rgb8_to_oklab};
 use serde::Deserialize;
-use tauri_app::color::{oklab_to_oklch, rgb8_to_hsv, rgb8_to_oklab};
 
 const OKLAB_TOL: f32 = 2e-3;
 const OKLCH_TOL: f32 = 2e-3;

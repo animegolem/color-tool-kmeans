@@ -1,7 +1,7 @@
+use color_core::image_pipeline::{prepare_samples, SampleParams};
+use color_core::kmeans::{run_kmeans, KMeansConfig};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use tauri_app::image_pipeline::{prepare_samples, SampleParams};
-use tauri_app::kmeans::{run_kmeans, KMeansConfig};
 
 const SNAPSHOT_DIR: &str = "tests/snapshots";
 const ROUND_DIGITS: f32 = 1_000_000.0;
@@ -137,7 +137,7 @@ fn snapshot_path(name: &str) -> PathBuf {
 }
 
 fn test_patterns_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test-patterns")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../test-patterns")
 }
 
 fn write_snapshot(path: &Path, snapshot: &SnapshotFile) {

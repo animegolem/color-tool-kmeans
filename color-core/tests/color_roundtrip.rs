@@ -1,5 +1,5 @@
+use color_core::color::{hsv_to_rgb8, oklab_to_rgb8, rgb8_to_hsv, rgb8_to_oklab};
 use proptest::prelude::*;
-use tauri_app::color::{hsv_to_rgb8, oklab_to_rgb8, rgb8_to_hsv, rgb8_to_oklab};
 
 const RGB_TOLERANCE: u8 = 2;
 
