@@ -217,7 +217,7 @@ pub fn analyze(
         let before_count = raw_clusters.len();
         raw_clusters = merge_clusters_by_threshold(raw_clusters, merge_threshold);
         let after_count = raw_clusters.len();
-        println!(
+        eprintln!(
             "[analyze_image] merge_threshold={:.3} clusters={} -> {}",
             merge_threshold, before_count, after_count
         );
