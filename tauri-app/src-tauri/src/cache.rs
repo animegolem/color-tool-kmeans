@@ -13,6 +13,8 @@ const VIDEO_STRIP_KEEP: usize = 10;
 const ARTIFACT_MAX_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 const CLIPBOARD_MAX_BYTES: u64 = 512 * 1024 * 1024;
 const SNAPSHOT_MAX_BYTES: u64 = 1024 * 1024 * 1024;
+const CLIPBOARD_IMAGE_EXTENSIONS: &[&str] =
+    &["png", "jpg", "jpeg", "webp", "bmp", "gif", "tif", "tiff"];
 
 #[derive(Debug)]
 pub struct EventLog {
@@ -149,9 +151,14 @@ pub fn remove_managed_artifact(
         .file_name()
         .and_then(|value| value.to_str())
         .unwrap_or_default();
+    let clipboard_extension = name
+        .rsplit_once('.')
+        .map(|(_, extension)| extension.to_ascii_lowercase());
     let is_clipboard = parent == Some(cache_dir.join("clipboard").as_path())
         && name.starts_with("paste-")
-        && name.ends_with(".png");
+        && clipboard_extension
+            .as_deref()
+            .is_some_and(|extension| CLIPBOARD_IMAGE_EXTENSIONS.contains(&extension));
     let is_video_frame =
         parent == Some(cache_dir) && name.starts_with("video-frame-") && name.ends_with(".png");
     let is_snapshot = parent == Some(local_data_dir.join("snapshots").as_path())
@@ -241,6 +248,65 @@ mod tests {
             .expect("removal result");
 
         assert!(!removed);
+        assert!(external.exists());
+    }
+
+    #[test]
+    fn sweep_011_removes_supported_clipboard_artifacts() {
+        let temp = TempDir::new().expect("temp dir");
+        let cache_dir = temp.path().join("cache");
+        let local_data_dir = temp.path().join("data");
+        let clipboard_dir = cache_dir.join("clipboard");
+        fs::create_dir_all(&clipboard_dir).expect("clipboard dir");
+
+        for extension in CLIPBOARD_IMAGE_EXTENSIONS {
+            let artifact = clipboard_dir.join(format!("paste-owned.{extension}"));
+            fs::write(&artifact, [1_u8]).expect("clipboard artifact");
+
+            let removed = remove_managed_artifact(&cache_dir, &local_data_dir, &artifact)
+                .expect("removal result");
+
+            assert!(removed, "expected .{extension} artifact to be removed");
+            assert!(!artifact.exists());
+        }
+
+        let uppercase_alias = clipboard_dir.join("paste-owned.JPEG");
+        fs::write(&uppercase_alias, [1_u8]).expect("uppercase clipboard artifact");
+        assert!(
+            remove_managed_artifact(&cache_dir, &local_data_dir, &uppercase_alias)
+                .expect("uppercase removal result")
+        );
+    }
+
+    #[test]
+    fn sweep_011_preserves_unowned_or_unsupported_clipboard_paths() {
+        let temp = TempDir::new().expect("temp dir");
+        let cache_dir = temp.path().join("cache");
+        let local_data_dir = temp.path().join("data");
+        let clipboard_dir = cache_dir.join("clipboard");
+        fs::create_dir_all(&clipboard_dir).expect("clipboard dir");
+
+        let preserved = [
+            clipboard_dir.join("unrelated.png"),
+            clipboard_dir.join("paste-owned.svg"),
+            clipboard_dir.join("paste-owned.heic"),
+            clipboard_dir.join("paste-owned"),
+            clipboard_dir.join("paste-owned.png.tmp"),
+        ];
+        for artifact in &preserved {
+            fs::write(artifact, [1_u8]).expect("preserved artifact");
+            let removed = remove_managed_artifact(&cache_dir, &local_data_dir, artifact)
+                .expect("preserved removal result");
+            assert!(!removed, "unexpectedly removed {}", artifact.display());
+            assert!(artifact.exists());
+        }
+
+        let external = temp.path().join("paste-owned.tiff");
+        fs::write(&external, [1_u8]).expect("external clipboard-style artifact");
+        assert!(
+            !remove_managed_artifact(&cache_dir, &local_data_dir, &external)
+                .expect("external removal result")
+        );
         assert!(external.exists());
     }
 }
