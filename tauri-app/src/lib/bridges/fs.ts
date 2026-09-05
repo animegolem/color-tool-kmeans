@@ -2,6 +2,15 @@ import { get } from 'svelte/store';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { isTauriEnv, tauriInvoke } from './tauri';
 import { exportDir } from '../stores/ui';
+import {
+  IMAGE_EXTENSIONS,
+  VIDEO_EXTENSIONS,
+  canonicalImageExtension,
+  hasVideoExtension,
+  inferMimeType,
+} from '../services/media-types';
+
+export { inferMimeType } from '../services/media-types';
 
 const TAURI_ID = 'tauri' as const;
 
@@ -29,12 +38,7 @@ export interface FsBridge {
 }
 
 export function sourceImageExtension(name: string): string {
-  const extension = name
-    .match(/\.(jpe?g|png|webp|bmp|gif|tiff?)$/i)?.[1]
-    ?.toLowerCase();
-  if (!extension) return 'png';
-  if (extension === 'tiff') return 'tif';
-  return extension === 'jpeg' ? 'jpg' : extension;
+  return canonicalImageExtension(name);
 }
 
 export function sourceImageExportName(
@@ -98,20 +102,25 @@ export async function saveFromPath(
 }
 
 function buildFilters(mode: 'images' | 'videos' | 'all') {
-  const IMG = ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'tiff'];
-  const VID = ['mp4', 'mov', 'webm'];
-  if (mode === 'images') return [{ name: 'Images', extensions: IMG }];
-  if (mode === 'videos') return [{ name: 'Videos', extensions: VID }];
+  if (mode === 'images') {
+    return [{ name: 'Images', extensions: [...IMAGE_EXTENSIONS] }];
+  }
+  if (mode === 'videos') {
+    return [{ name: 'Videos', extensions: [...VIDEO_EXTENSIONS] }];
+  }
   return [
-    { name: 'All Media', extensions: [...IMG, ...VID] },
-    { name: 'Images', extensions: IMG },
-    { name: 'Videos', extensions: VID },
+    {
+      name: 'All Media',
+      extensions: [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS],
+    },
+    { name: 'Images', extensions: [...IMAGE_EXTENSIONS] },
+    { name: 'Videos', extensions: [...VIDEO_EXTENSIONS] },
   ];
 }
 
 export function isVideoFile(sel: FileSelection): boolean {
   if (sel.mimeType?.startsWith('video/')) return true;
-  return /\.(mp4|mov|webm)$/i.test(sel.name ?? '');
+  return hasVideoExtension(sel.name ?? '');
 }
 
 function createTauriFsBridge(): FsBridge | null {
@@ -143,20 +152,6 @@ function createTauriFsBridge(): FsBridge | null {
       return nativeSaveBlob(blob, defaultName);
     },
   } satisfies FsBridge;
-}
-
-export function inferMimeType(name: string): string {
-  const lower = name.toLowerCase();
-  if (lower.endsWith('.png')) return 'image/png';
-  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-  if (lower.endsWith('.webp')) return 'image/webp';
-  if (lower.endsWith('.bmp')) return 'image/bmp';
-  if (lower.endsWith('.gif')) return 'image/gif';
-  if (lower.endsWith('.tiff') || lower.endsWith('.tif')) return 'image/tiff';
-  if (lower.endsWith('.mp4')) return 'video/mp4';
-  if (lower.endsWith('.mov')) return 'video/quicktime';
-  if (lower.endsWith('.webm')) return 'video/webm';
-  return 'application/octet-stream';
 }
 
 function logSelection(label: string, id: FsBridge['id']) {

@@ -89,7 +89,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/exports/value-analysis.ts (570 LOC)
 - tauri-app/src-tauri/src/ffmpeg.rs (446 LOC)
 - tauri-app/src/lib/views/exports/colors-export-runner.svelte.ts (442 LOC)
-- tauri-app/src/App.svelte (423 LOC)
+- tauri-app/src/App.svelte (431 LOC)
 - tauri-app/src/lib/exports/polar-chart.ts (417 LOC)
 - tauri-app/src/app.css (403 LOC)
 - tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (390 LOC)
@@ -103,6 +103,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/exports/__tests__/color-study-compositor.spec.ts (319 LOC)
 - tauri-app/src/lib/views/batch/batch-runner.svelte.ts (315 LOC)
 - color-core/src/image_pipeline.rs (313 LOC)
+- tauri-app/src-tauri/src/cache.rs (312 LOC)
 
 ---
 

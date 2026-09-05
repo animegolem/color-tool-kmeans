@@ -98,4 +98,38 @@ describe('Tauri drag-drop listener lifecycle', () => {
       cleanupError
     );
   });
+
+  it('W2-3 infers native drag/drop payloads through the shared registry', async () => {
+    const unlisten = vi.fn();
+    const onBatch = vi.fn();
+    mocks.listen.mockResolvedValueOnce(unlisten);
+
+    const cleanup = await setupTauriDragDrop(onBatch);
+    const handleDrop = mocks.listen.mock.calls[0]?.[1] as (event: {
+      payload: { paths?: string[] };
+    }) => void;
+    handleDrop({
+      payload: {
+        paths: [
+          '/tmp/scan.TIF',
+          '/tmp/photo.TIFF',
+          '/tmp/clip.WEBM',
+          '/tmp/sample.constructor',
+        ],
+      },
+    });
+
+    expect(onBatch).toHaveBeenCalledWith([
+      expect.objectContaining({ name: 'scan.TIF', mimeType: 'image/tiff' }),
+      expect.objectContaining({ name: 'photo.TIFF', mimeType: 'image/tiff' }),
+      expect.objectContaining({ name: 'clip.WEBM', mimeType: 'video/webm' }),
+      expect.objectContaining({
+        name: 'sample.constructor',
+        mimeType: 'application/octet-stream',
+      }),
+    ]);
+
+    cleanup?.();
+    expect(unlisten).toHaveBeenCalledOnce();
+  });
 });
