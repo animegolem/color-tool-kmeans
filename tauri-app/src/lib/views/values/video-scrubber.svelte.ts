@@ -23,6 +23,18 @@ export interface VideoScrubberDeps {
   ) => void;
 }
 
+export function settledFrameSnapshotRequest(
+  file: Pick<ImageEntry, 'path' | 'name' | 'frameTimestamp'> | null,
+  decodePending: boolean
+) {
+  if (decodePending || !file?.path || file.frameTimestamp == null) return null;
+  return {
+    framePath: file.path,
+    name: file.name,
+    timestamp: file.frameTimestamp,
+  };
+}
+
 export function createVideoScrubber(deps: VideoScrubberDeps) {
   let currentTime = $state(0);
   let duration = $state(0);
@@ -81,11 +93,11 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
     frameId = fid;
     const maxDimension = deps.getMaxDimension();
     const token = ++decodeToken;
+    extracting = true;
 
     decodeTimer = setTimeout(async () => {
       decodeTimer = null;
       if (token !== decodeToken) return;
-      extracting = true;
       try {
         void logEvent(
           `values:video:frame:start t=${requestTime.toFixed(2)} max=${maxDimension}`
@@ -155,6 +167,7 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
 
   function destroy() {
     decodeToken += 1;
+    extracting = false;
     if (decodeTimer) {
       clearTimeout(decodeTimer);
       decodeTimer = null;

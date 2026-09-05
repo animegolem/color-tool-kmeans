@@ -99,6 +99,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/exports/color-study-compositor.ts (368 LOC)
 - tauri-app/src/lib/views/SettingsView.svelte (351 LOC)
 - tauri-app/src-tauri/src/bin/live_loop_probe.rs (347 LOC)
+- tauri-app/src/lib/views/values/video-scrubber-snapshot.spec.ts (329 LOC)
 - tauri-app/src/lib/components/MediaBucket.svelte (324 LOC)
 - tauri-app/src/lib/bridges/compute.ts (321 LOC)
 - tauri-app/src/lib/exports/__tests__/color-study-compositor.spec.ts (319 LOC)
