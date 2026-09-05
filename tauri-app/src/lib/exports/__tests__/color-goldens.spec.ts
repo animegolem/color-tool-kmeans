@@ -24,7 +24,7 @@ type FixtureSample = {
 describe('color goldens (TS)', () => {
   it('matches reference fixture values', () => {
     const fixturePath = new URL(
-      '../../../../src-tauri/tests/fixtures/color_golden.json',
+      '../../../../../color-core/tests/fixtures/color_golden.json',
       import.meta.url
     );
     const contents = readFileSync(fileURLToPath(fixturePath), 'utf-8');
