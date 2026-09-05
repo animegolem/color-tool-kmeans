@@ -4,7 +4,6 @@ node_modules/
 
 # Build artifacts
 /target/
-/Cargo.lock
 dist/
 electron-app/dist/
 electron-app/release/

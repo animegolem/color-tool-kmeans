@@ -72,6 +72,7 @@ Generated from tracked files; binary assets excluded.
 ### > 600 LOC
 
 - RAG/Colors Tool.fig (10051 LOC)
+- Cargo.lock (5239 LOC)
 - tauri-app/src/lib/views/BatchView.svelte (913 LOC)
 - color-core/tests/fixtures/color_golden.json (850 LOC)
 - tauri-app/src/lib/views/home/video-controller.svelte.ts (847 LOC)
