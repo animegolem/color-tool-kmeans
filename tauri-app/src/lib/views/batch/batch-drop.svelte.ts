@@ -1,4 +1,3 @@
-import { onDestroy } from 'svelte';
 import { get } from 'svelte/store';
 import type { FileSelection } from '../../bridges/fs';
 import { isVideoFile } from '../../bridges/fs';
@@ -17,39 +16,6 @@ export interface BatchDropOptions {
   maxPins: number;
 }
 
-function createAsyncListenerLifecycle() {
-  let disposed = false;
-  let unlisten: (() => void) | null = null;
-
-  function attach(registered: (() => void) | null): (() => void) | null {
-    if (disposed) {
-      registered?.();
-      return null;
-    }
-    unlisten = registered;
-    return () => {
-      if (unlisten === registered) unlisten = null;
-      registered?.();
-    };
-  }
-
-  function dispose() {
-    disposed = true;
-    unlisten?.();
-    unlisten = null;
-  }
-
-  return { attach, dispose };
-}
-
-export function mountAsyncListener(
-  register: () => Promise<(() => void) | null>
-): () => void {
-  const lifecycle = createAsyncListenerLifecycle();
-  void register().then(lifecycle.attach);
-  return lifecycle.dispose;
-}
-
 /**
  * Drop handling for BatchView: dropped images are appended to the media
  * bucket (deduped by path) without activating, then auto-pinned under the
@@ -57,8 +23,6 @@ export function mountAsyncListener(
  */
 export function createBatchDrop(opts: BatchDropOptions) {
   let dragOver = $state(false);
-  const listenerLifecycle = createAsyncListenerLifecycle();
-  onDestroy(listenerLifecycle.dispose);
 
   function processDrop(selections: FileSelection[]) {
     let added = 0;
@@ -94,18 +58,14 @@ export function createBatchDrop(opts: BatchDropOptions) {
   }
 
   async function setup(): Promise<(() => void) | null> {
-    const registered = await setupTauriDragDrop(
-      (selections) => processDrop(selections),
-      {
-        onEnter: () => {
-          dragOver = true;
-        },
-        onLeave: () => {
-          dragOver = false;
-        },
-      }
-    );
-    return listenerLifecycle.attach(registered);
+    return setupTauriDragDrop((selections) => processDrop(selections), {
+      onEnter: () => {
+        dragOver = true;
+      },
+      onLeave: () => {
+        dragOver = false;
+      },
+    });
   }
 
   return {

@@ -47,7 +47,7 @@
   } from './home/video-controller.svelte';
   import { createAnalysisRunner } from './home/analysis-runner.svelte';
   import { createFileIngestion } from './home/file-ingestion.svelte';
-  import { mountAsyncListener } from './batch/batch-drop.svelte';
+  import { mountAsyncListener } from '../services/async-listener';
   import { clearActivePath } from '../services/active-image';
   import {
     subscribePendingVideoSwitch,
@@ -332,7 +332,10 @@
     devlog('home:mount', 'HomeView mounted');
     void logEvent('home:view:mount');
     void checkFfmpegVersion();
-    const cleanupDragDrop = mountAsyncListener(() => ingestion.setupDragDrop());
+    const cleanupDragDrop = mountAsyncListener(
+      () => ingestion.setupDragDrop(),
+      (error) => console.error('[home] Failed to set up drag/drop', error)
+    );
     const unsubs = [
       selectedFile.subscribe((value) => {
         file = value;

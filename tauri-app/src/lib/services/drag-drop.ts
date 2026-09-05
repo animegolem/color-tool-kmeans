@@ -23,29 +23,47 @@ export interface DragDropOptions {
   onLeave?: () => void;
 }
 
+function releaseListeners(
+  unlistens: Array<() => void>,
+  action: 'remove' | 'roll back'
+): void {
+  for (const unlisten of unlistens.splice(0).reverse()) {
+    try {
+      unlisten();
+    } catch (error) {
+      console.error(`[drag-drop] Failed to ${action} listener`, error);
+    }
+  }
+}
+
 export async function setupTauriDragDrop(
   onBatch: (selections: FileSelection[]) => void,
   options?: DragDropOptions
 ): Promise<(() => void) | null> {
   if (!isTauriEnv()) return null;
   const unlistens: Array<() => void> = [];
-  unlistens.push(
-    await listen<{ paths?: string[] }>('tauri://drag-drop', (event) => {
-      options?.onLeave?.();
-      const paths = event.payload?.paths;
-      if (!paths?.length) return;
-      onBatch(pathsToSelections(paths));
-    })
-  );
-  if (options?.onEnter) {
+  try {
     unlistens.push(
-      await listen('tauri://drag-enter', () => options.onEnter?.())
+      await listen<{ paths?: string[] }>('tauri://drag-drop', (event) => {
+        options?.onLeave?.();
+        const paths = event.payload?.paths;
+        if (!paths?.length) return;
+        onBatch(pathsToSelections(paths));
+      })
     );
+    if (options?.onEnter) {
+      unlistens.push(
+        await listen('tauri://drag-enter', () => options.onEnter?.())
+      );
+    }
+    if (options?.onLeave) {
+      unlistens.push(
+        await listen('tauri://drag-leave', () => options.onLeave?.())
+      );
+    }
+  } catch (error) {
+    releaseListeners(unlistens, 'roll back');
+    throw error;
   }
-  if (options?.onLeave) {
-    unlistens.push(
-      await listen('tauri://drag-leave', () => options.onLeave?.())
-    );
-  }
-  return () => unlistens.forEach((fn) => fn());
+  return () => releaseListeners(unlistens, 'remove');
 }

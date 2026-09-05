@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../bridges/tauri', () => mocks);
 
-import { mountAsyncListener } from '../batch/batch-drop.svelte';
+import { mountAsyncListener } from '../../services/async-listener';
 import { cleanupAllMediaArtifacts } from '../../services/artifact-cleanup';
 import type { ImageEntry } from '../../stores/ui';
 
@@ -61,12 +61,56 @@ describe('resource-integrity regressions', () => {
     });
     const unlisten = vi.fn();
 
-    const cleanup = mountAsyncListener(() => registration);
+    const reportError = vi.fn();
+    const cleanup = mountAsyncListener(() => registration, reportError);
+    cleanup();
     cleanup();
     resolveRegistration(unlisten);
     await registration;
     await Promise.resolve();
 
     expect(unlisten).toHaveBeenCalledOnce();
+    expect(reportError).not.toHaveBeenCalled();
+  });
+
+  it('SWEEP-004: reports async listener registration rejection', async () => {
+    const error = new Error('listener unavailable');
+    const reportError = vi.fn();
+
+    mountAsyncListener(() => Promise.reject(error), reportError);
+    await Promise.resolve();
+
+    expect(reportError).toHaveBeenCalledOnce();
+    expect(reportError).toHaveBeenCalledWith(error);
+  });
+
+  it('SWEEP-004: reports synchronous listener registration throws', () => {
+    const error = new Error('listener registration threw');
+    const reportError = vi.fn();
+
+    const cleanup = mountAsyncListener(() => {
+      throw error;
+    }, reportError);
+
+    cleanup();
+    cleanup();
+    expect(reportError).toHaveBeenCalledOnce();
+    expect(reportError).toHaveBeenCalledWith(error);
+  });
+
+  it('SWEEP-004: releases a normally registered listener only once', async () => {
+    const unlisten = vi.fn();
+    const reportError = vi.fn();
+    const cleanup = mountAsyncListener(
+      () => Promise.resolve(unlisten),
+      reportError
+    );
+    await Promise.resolve();
+
+    cleanup();
+    cleanup();
+
+    expect(unlisten).toHaveBeenCalledOnce();
+    expect(reportError).not.toHaveBeenCalled();
   });
 });
