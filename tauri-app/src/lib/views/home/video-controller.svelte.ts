@@ -147,6 +147,8 @@ export function createVideoController(deps: VideoControllerDeps) {
     videoStripPending = false;
     videoStripId = null;
     _currentLoadCid = null;
+    _restoringFromSessionCache = false;
+    _pendingSeekTime = null;
     if (videoElement) {
       videoElement.pause();
       videoElement.currentTime = 0;
