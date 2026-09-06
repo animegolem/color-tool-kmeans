@@ -58,6 +58,15 @@ export const analysisState = writable<AnalysisState>('idle');
 export const analysisById = writable<Record<string, AnalysisResult>>({});
 export const analysisError = writable<string | null>(null);
 
+export type AnalysisSuccessReceipt = Readonly<{
+  status: 'accepted' | 'stale-token';
+  imageId: string | null;
+}>;
+
+export type AnalysisErrorReceipt = Readonly<{
+  status: 'accepted-error' | 'stale-token';
+}>;
+
 let nextAnalysisRequestToken = 0;
 let pendingAnalysisRequestToken: number | null = null;
 
@@ -80,29 +89,34 @@ export function setAnalysisSuccess(
   result: AnalysisResult,
   imageId: string | null,
   requestToken?: number
-) {
+): AnalysisSuccessReceipt {
   if (
     requestToken !== undefined &&
     pendingAnalysisRequestToken !== requestToken
   )
-    return;
+    return Object.freeze({ status: 'stale-token', imageId });
   pendingAnalysisRequestToken = null;
   if (imageId) {
     analysisById.update((cache) => ({ ...cache, [imageId]: result }));
   }
   analysisState.set('ready');
   analysisError.set(null);
+  return Object.freeze({ status: 'accepted', imageId });
 }
 
-export function setAnalysisError(message: string, requestToken?: number) {
+export function setAnalysisError(
+  message: string,
+  requestToken?: number
+): AnalysisErrorReceipt {
   if (
     requestToken !== undefined &&
     pendingAnalysisRequestToken !== requestToken
   )
-    return;
+    return Object.freeze({ status: 'stale-token' });
   pendingAnalysisRequestToken = null;
   analysisError.set(message);
   analysisState.set('error');
+  return Object.freeze({ status: 'accepted-error' });
 }
 
 export function resetAnalysis() {

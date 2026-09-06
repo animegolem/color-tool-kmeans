@@ -3,6 +3,13 @@
 mod cache;
 mod commands;
 mod commands_types;
+mod profiling;
+mod profiling_validation;
+mod profiling_wire;
+mod profiling_writer;
+
+#[cfg(test)]
+mod profiling_tests;
 
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
@@ -10,6 +17,9 @@ use tauri_app::value_analysis::{prune_value_analysis_cache, remove_value_analysi
 
 use cache::{build_log_path, prune_event_logs, prune_runtime_cache, EventLog};
 use commands::*;
+use profiling::{
+    profile_append_batch, profile_finalize, profile_status, ProfileState, PROFILE_SESSION_ENV,
+};
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -62,6 +72,10 @@ fn main() {
             prune_event_logs(&cache_dir, 5, &logger.path);
             prune_media_artifacts(&cache_dir, &local_data_dir);
             app.manage(logger);
+            app.manage(ProfileState::from_launch(
+                &cache_dir,
+                std::env::var_os(PROFILE_SESSION_ENV),
+            ));
             let heartbeat_path = app.state::<EventLog>().path.clone();
             std::thread::spawn(move || {
                 let heartbeat = EventLog {
@@ -98,7 +112,10 @@ fn main() {
             extract_video_strip,
             ffmpeg_version,
             compose_grid,
-            remove_media_artifacts
+            remove_media_artifacts,
+            profile_status,
+            profile_append_batch,
+            profile_finalize
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -27,6 +27,7 @@
   import SettingsView from './lib/views/SettingsView.svelte';
   import ZoomOverlay from './lib/components/ZoomOverlay.svelte';
   import MediaBucket from './lib/components/MediaBucket.svelte';
+  import ProfileCaptureControl from './lib/components/ProfileCaptureControl.svelte';
   import { logEvent } from './lib/bridges/log';
 
   $effect(() => {
@@ -363,6 +364,7 @@
         <span class="header-view-title">{activeViewLabel}</span>
         <span class="header-view-desc">{activeViewDesc}</span>
       </div>
+      <ProfileCaptureControl />
     </div>
 
     <button

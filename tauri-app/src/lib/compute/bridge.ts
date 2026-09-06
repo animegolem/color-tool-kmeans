@@ -3,6 +3,7 @@ import type { ImageDataset } from './image-loader';
 import {
   getComputeBridge,
   type AnalyzeOptions as BridgeAnalyzeOptions,
+  type ComputeProfileObservation,
 } from '../bridges/compute';
 
 export interface AnalyzeOptions extends AnalysisParams {
@@ -14,9 +15,10 @@ export interface AnalyzeOptions extends AnalysisParams {
 
 export async function analyzeImage(
   dataset: ImageDataset,
-  params: AnalyzeOptions
+  params: AnalyzeOptions,
+  observation?: ComputeProfileObservation
 ): Promise<AnalysisResult> {
   const merged: BridgeAnalyzeOptions = { ...params };
   const bridge = await getComputeBridge();
-  return bridge.analyze(dataset, merged);
+  return bridge.analyze(dataset, merged, observation);
 }

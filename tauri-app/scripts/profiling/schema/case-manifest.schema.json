@@ -1,0 +1,327 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://color-tool.invalid/profiling/case-manifest.v1.schema.json",
+  "title": "Color Tool profiling case manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "kind",
+    "id",
+    "source",
+    "frame",
+    "analysisConfig",
+    "renderConfig",
+    "viewport",
+    "verification",
+    "evidence"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "kind": { "const": "case" },
+    "id": { "$ref": "#/$defs/opaqueId" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "digestSha256", "privatePathMapId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "digestSha256": { "$ref": "#/$defs/sha256" },
+        "privatePathMapId": {
+          "anyOf": [{ "$ref": "#/$defs/opaqueId" }, { "type": "null" }]
+        }
+      }
+    },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestedSeconds",
+        "achievedSeconds",
+        "status",
+        "decodedFrameDigest"
+      ],
+      "properties": {
+        "requestedSeconds": { "$ref": "#/$defs/numericValue" },
+        "achievedSeconds": { "$ref": "#/$defs/numericValue" },
+        "status": { "enum": ["exact", "unmatched", "unverified"] },
+        "decodedFrameDigest": { "$ref": "#/$defs/digestValue" }
+      }
+    },
+    "analysisConfig": { "$ref": "#/$defs/analysisConfig" },
+    "renderConfig": { "$ref": "#/$defs/renderConfig" },
+    "viewport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "scale"],
+      "properties": {
+        "width": { "$ref": "#/$defs/positiveIntegerValue" },
+        "height": { "$ref": "#/$defs/positiveIntegerValue" },
+        "scale": { "$ref": "#/$defs/positiveNumberValue" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "runtimeConfig", "evidenceRefs"],
+      "properties": {
+        "source": {
+          "enum": [
+            "asserted",
+            "hash-verified",
+            "runtime-verified",
+            "unverified"
+          ]
+        },
+        "runtimeConfig": {
+          "enum": ["asserted", "runtime-verified", "unverified"]
+        },
+        "evidenceRefs": { "$ref": "#/$defs/evidenceRefs" }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/evidence" }
+    }
+  },
+  "$defs": {
+    "availability": {
+      "if": { "properties": { "value": { "type": "null" } } },
+      "then": {
+        "properties": {
+          "unavailableReason": { "$ref": "#/$defs/unavailableReason" }
+        }
+      },
+      "else": {
+        "properties": { "unavailableReason": { "type": "null" } }
+      }
+    },
+    "opaqueId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "unavailableReason": {
+      "enum": [
+        "not-collected",
+        "not-exposed",
+        "not-applicable",
+        "unverified",
+        "control-failure",
+        "source-missing"
+      ]
+    },
+    "numericValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unavailableReason"],
+      "properties": {
+        "value": { "type": ["number", "null"], "minimum": 0 },
+        "unavailableReason": {
+          "anyOf": [{ "$ref": "#/$defs/unavailableReason" }, { "type": "null" }]
+        }
+      },
+      "allOf": [{ "$ref": "#/$defs/availability" }]
+    },
+    "positiveNumberValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unavailableReason"],
+      "properties": {
+        "value": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "unavailableReason": {
+          "anyOf": [{ "$ref": "#/$defs/unavailableReason" }, { "type": "null" }]
+        }
+      },
+      "allOf": [{ "$ref": "#/$defs/availability" }]
+    },
+    "positiveIntegerValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unavailableReason"],
+      "properties": {
+        "value": { "type": ["integer", "null"], "minimum": 1 },
+        "unavailableReason": {
+          "anyOf": [{ "$ref": "#/$defs/unavailableReason" }, { "type": "null" }]
+        }
+      },
+      "allOf": [{ "$ref": "#/$defs/availability" }]
+    },
+    "qualityValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unavailableReason"],
+      "properties": {
+        "value": { "type": ["integer", "null"], "minimum": 0, "maximum": 4 },
+        "unavailableReason": {
+          "anyOf": [{ "$ref": "#/$defs/unavailableReason" }, { "type": "null" }]
+        }
+      },
+      "allOf": [{ "$ref": "#/$defs/availability" }]
+    },
+    "digestValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unavailableReason"],
+      "properties": {
+        "value": {
+          "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        },
+        "unavailableReason": {
+          "anyOf": [{ "$ref": "#/$defs/unavailableReason" }, { "type": "null" }]
+        }
+      },
+      "allOf": [{ "$ref": "#/$defs/availability" }]
+    },
+    "numberValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unavailableReason"],
+      "properties": {
+        "value": { "type": ["number", "null"], "minimum": 0 },
+        "unavailableReason": {
+          "anyOf": [{ "$ref": "#/$defs/unavailableReason" }, { "type": "null" }]
+        }
+      },
+      "allOf": [{ "$ref": "#/$defs/availability" }]
+    },
+    "integerValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unavailableReason"],
+      "properties": {
+        "value": { "type": ["integer", "null"], "minimum": 0 },
+        "unavailableReason": {
+          "anyOf": [{ "$ref": "#/$defs/unavailableReason" }, { "type": "null" }]
+        }
+      },
+      "allOf": [{ "$ref": "#/$defs/availability" }]
+    },
+    "booleanValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unavailableReason"],
+      "properties": {
+        "value": { "type": ["boolean", "null"] },
+        "unavailableReason": {
+          "anyOf": [{ "$ref": "#/$defs/unavailableReason" }, { "type": "null" }]
+        }
+      },
+      "allOf": [{ "$ref": "#/$defs/availability" }]
+    },
+    "stringValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unavailableReason"],
+      "properties": {
+        "value": { "type": ["string", "null"], "minLength": 1 },
+        "unavailableReason": {
+          "anyOf": [{ "$ref": "#/$defs/unavailableReason" }, { "type": "null" }]
+        }
+      },
+      "allOf": [{ "$ref": "#/$defs/availability" }]
+    },
+    "warmStartValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unavailableReason"],
+      "properties": {
+        "value": { "enum": ["none", "provided", null] },
+        "unavailableReason": {
+          "anyOf": [{ "$ref": "#/$defs/unavailableReason" }, { "type": "null" }]
+        }
+      },
+      "allOf": [{ "$ref": "#/$defs/availability" }]
+    },
+    "analysisConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clusters",
+        "quality",
+        "sampleCap",
+        "maxDimension",
+        "ignoreTopN",
+        "mergeThreshold",
+        "snapToReal",
+        "seed",
+        "maxIterations",
+        "tolerance",
+        "warmStart"
+      ],
+      "properties": {
+        "clusters": { "$ref": "#/$defs/positiveIntegerValue" },
+        "quality": { "$ref": "#/$defs/qualityValue" },
+        "sampleCap": { "$ref": "#/$defs/positiveIntegerValue" },
+        "maxDimension": { "$ref": "#/$defs/positiveIntegerValue" },
+        "ignoreTopN": { "$ref": "#/$defs/integerValue" },
+        "mergeThreshold": { "$ref": "#/$defs/numberValue" },
+        "snapToReal": { "$ref": "#/$defs/booleanValue" },
+        "seed": { "$ref": "#/$defs/integerValue" },
+        "maxIterations": { "$ref": "#/$defs/positiveIntegerValue" },
+        "tolerance": { "$ref": "#/$defs/numberValue" },
+        "warmStart": { "$ref": "#/$defs/warmStartValue" }
+      }
+    },
+    "renderConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "polarMode",
+        "histogramSort",
+        "hueLightnessSizeMode",
+        "showAxisLabels",
+        "showClusterOutline",
+        "symbolScale",
+        "showHistogram",
+        "showHueLightness",
+        "showPolarChart",
+        "showSimplifiedTones",
+        "frameLabel",
+        "stripMode",
+        "compactSidebars"
+      ],
+      "properties": {
+        "polarMode": { "$ref": "#/$defs/stringValue" },
+        "histogramSort": { "$ref": "#/$defs/stringValue" },
+        "hueLightnessSizeMode": { "$ref": "#/$defs/stringValue" },
+        "showAxisLabels": { "$ref": "#/$defs/booleanValue" },
+        "showClusterOutline": { "$ref": "#/$defs/booleanValue" },
+        "symbolScale": { "$ref": "#/$defs/positiveNumberValue" },
+        "showHistogram": { "$ref": "#/$defs/booleanValue" },
+        "showHueLightness": { "$ref": "#/$defs/booleanValue" },
+        "showPolarChart": { "$ref": "#/$defs/booleanValue" },
+        "showSimplifiedTones": { "$ref": "#/$defs/booleanValue" },
+        "frameLabel": { "$ref": "#/$defs/stringValue" },
+        "stripMode": { "$ref": "#/$defs/stringValue" },
+        "compactSidebars": { "$ref": "#/$defs/booleanValue" }
+      }
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/opaqueId" }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "ref", "digestSha256", "note"],
+      "properties": {
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "kind": {
+          "enum": [
+            "caller-assertion",
+            "hash-checked-file",
+            "external-reference"
+          ]
+        },
+        "ref": { "type": ["string", "null"] },
+        "digestSha256": {
+          "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        },
+        "note": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://color-tool.invalid/profiling/build-manifest.v1.schema.json",
+  "title": "Color Tool profiling build manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "kind",
+    "id",
+    "commit",
+    "dirty",
+    "executable",
+    "artifacts",
+    "toolchain",
+    "evidence"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "kind": { "const": "build" },
+    "id": { "$ref": "#/$defs/opaqueId" },
+    "commit": { "$ref": "#/$defs/commitClaim" },
+    "dirty": { "$ref": "#/$defs/booleanClaim" },
+    "executable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "localPath",
+        "digestSha256",
+        "uuid",
+        "profile",
+        "compilerFlags",
+        "evidenceRefs"
+      ],
+      "properties": {
+        "localPath": { "type": "string", "minLength": 1 },
+        "digestSha256": { "$ref": "#/$defs/sha256" },
+        "uuid": { "$ref": "#/$defs/uuidClaim" },
+        "profile": { "$ref": "#/$defs/stringClaim" },
+        "compilerFlags": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": { "$ref": "#/$defs/stringClaim" }
+        },
+        "evidenceRefs": { "$ref": "#/$defs/evidenceRefs" }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locks", "symbols", "sourceMaps", "sidecars"],
+      "properties": {
+        "locks": { "$ref": "#/$defs/artifacts" },
+        "symbols": { "$ref": "#/$defs/artifacts" },
+        "sourceMaps": { "$ref": "#/$defs/artifacts" },
+        "sidecars": { "$ref": "#/$defs/artifacts" }
+      }
+    },
+    "toolchain": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "version"],
+        "properties": {
+          "name": { "$ref": "#/$defs/opaqueId" },
+          "version": { "$ref": "#/$defs/stringClaim" }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/evidence" }
+    }
+  },
+  "$defs": {
+    "opaqueId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "unavailableReason": {
+      "enum": [
+        "not-collected",
+        "not-exposed",
+        "not-applicable",
+        "unverified",
+        "control-failure",
+        "source-missing"
+      ]
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/opaqueId" }
+    },
+    "stringClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "status", "evidenceRef", "unavailableReason"],
+      "properties": {
+        "value": { "type": ["string", "null"] },
+        "status": {
+          "enum": [
+            "asserted",
+            "verified-file",
+            "external-reference",
+            "unavailable"
+          ]
+        },
+        "evidenceRef": {
+          "anyOf": [{ "$ref": "#/$defs/opaqueId" }, { "type": "null" }]
+        },
+        "unavailableReason": {
+          "anyOf": [{ "$ref": "#/$defs/unavailableReason" }, { "type": "null" }]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "unavailable" } } },
+          "then": {
+            "properties": {
+              "value": { "type": "null" },
+              "evidenceRef": { "type": "null" },
+              "unavailableReason": { "$ref": "#/$defs/unavailableReason" }
+            }
+          },
+          "else": {
+            "properties": {
+              "value": { "type": "string", "minLength": 1 },
+              "evidenceRef": { "$ref": "#/$defs/opaqueId" },
+              "unavailableReason": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "commitClaim": {
+      "allOf": [
+        { "$ref": "#/$defs/stringClaim" },
+        {
+          "if": { "properties": { "status": { "const": "unavailable" } } },
+          "else": {
+            "properties": {
+              "value": {
+                "type": "string",
+                "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "uuidClaim": {
+      "allOf": [
+        { "$ref": "#/$defs/stringClaim" },
+        {
+          "if": { "properties": { "status": { "const": "unavailable" } } },
+          "else": {
+            "properties": {
+              "value": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "booleanClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "status", "evidenceRef", "unavailableReason"],
+      "properties": {
+        "value": { "type": ["boolean", "null"] },
+        "status": {
+          "enum": [
+            "asserted",
+            "verified-file",
+            "external-reference",
+            "unavailable"
+          ]
+        },
+        "evidenceRef": {
+          "anyOf": [{ "$ref": "#/$defs/opaqueId" }, { "type": "null" }]
+        },
+        "unavailableReason": {
+          "anyOf": [{ "$ref": "#/$defs/unavailableReason" }, { "type": "null" }]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "unavailable" } } },
+          "then": {
+            "properties": {
+              "value": { "type": "null" },
+              "evidenceRef": { "type": "null" },
+              "unavailableReason": { "$ref": "#/$defs/unavailableReason" }
+            }
+          },
+          "else": {
+            "properties": {
+              "value": { "type": "boolean" },
+              "evidenceRef": { "$ref": "#/$defs/opaqueId" },
+              "unavailableReason": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "localPath", "digestSha256", "evidenceRefs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "localPath": { "type": "string", "minLength": 1 },
+        "digestSha256": { "$ref": "#/$defs/sha256" },
+        "evidenceRefs": { "$ref": "#/$defs/evidenceRefs" }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "ref", "digestSha256", "note"],
+      "properties": {
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "kind": {
+          "enum": [
+            "caller-assertion",
+            "hash-checked-file",
+            "external-reference"
+          ]
+        },
+        "ref": { "type": ["string", "null"] },
+        "digestSha256": {
+          "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        },
+        "note": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

@@ -8,17 +8,37 @@ use tauri_app::value_analysis::{generate_value_analysis, ValueAnalysisResult};
 
 use crate::cache::EventLog;
 use crate::commands_types::*;
+use crate::profiling::{ProfileInvocationContext, ProfileState};
 
 #[tauri::command]
 pub async fn analyze_image(
     req: AnalyzeRequest,
-    _app: AppHandle,
+    profile_context: Option<ProfileInvocationContext>,
+    app: AppHandle,
 ) -> Result<AnalyzeResponse, String> {
-    if req.path.is_empty() {
-        return Err("No file selected".into());
-    }
-    let path = PathBuf::from(&req.path);
-    color_core::analyze(&req, ImageSource::Path(&path)).map_err(|e| e.to_string())
+    let profiling = app.state::<ProfileState>();
+    let span = profiling.begin_native(profile_context.as_ref());
+    let result = if req.path.is_empty() {
+        Err("No file selected".into())
+    } else {
+        let path = PathBuf::from(&req.path);
+        color_core::analyze(&req, ImageSource::Path(&path)).map_err(|e| e.to_string())
+    };
+    // Capture the aggregate endpoint before any return-event serialization or I/O.
+    let return_ns = profiling.capture_native_end();
+    profiling.finish_native(
+        span,
+        return_ns,
+        if result.is_ok() { "success" } else { "error" },
+        if result.is_ok() {
+            None
+        } else if req.path.is_empty() {
+            Some("no-file-selected")
+        } else {
+            Some("analysis-failed")
+        },
+    );
+    result
 }
 
 #[tauri::command]

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { get } from 'svelte/store';
   import type {
     AnalysisParams,
@@ -30,6 +30,9 @@
     getCachedVideoState,
     cacheVideoState,
     videoStripMode,
+    videoFrameLabel,
+    showSimplifiedTones,
+    compactSidebars,
     libraryDrawerOpen,
   } from '../stores/ui';
   import { analysisById } from '../stores/analysis';
@@ -63,6 +66,8 @@
   import { saveChart, type ChartOutput } from '../exports/chart-save';
   import { exportScale } from '../stores/ui';
   import { inferMimeType } from '../bridges/fs';
+  import { getRendererProfileTrace } from '../profiling/trace';
+  import { createProfilingCoordinator } from './home/profiling-coordinator.svelte';
 
   const devEnabled = import.meta.env.DEV ?? false;
 
@@ -108,9 +113,12 @@
     };
   }
   let status = $state<AnalysisState>(get(analysisState));
-  let result = $state<AnalysisResult | null>(null);
-  let displayResult = $state<AnalysisResult | null>(null);
+  // Results are replaced, never mutated. Raw state preserves observational
+  // object identity while retaining the same assignment-driven UI updates.
+  let result = $state.raw<AnalysisResult | null>(null);
+  let displayResult = $state.raw<AnalysisResult | null>(null);
   let analysisErr = $state<string | null>(null);
+  let analysisStudyRoot = $state<HTMLElement | null>(null);
 
   interface DevBannerDetails {
     detection: ReturnType<typeof tauriDetectionInfo>;
@@ -163,12 +171,28 @@
     devBannerVisible = false;
   }
 
+  const profiling = createProfilingCoordinator({
+    getFile: () => file,
+    getParams: () => currentParams,
+    getDisplayResult: () => displayResult ?? result,
+    getStudyRoot: () => analysisStudyRoot,
+    getRenderExtras: () => ({
+      showSimplifiedTones: get(showSimplifiedTones),
+      frameLabel: get(videoFrameLabel),
+      stripMode: get(videoStripMode),
+      compactSidebars: get(compactSidebars),
+    }),
+    settle: tick,
+  });
+
   // --- Analysis runner ---
   const runner = createAnalysisRunner({
     setAnalysisPending,
     setAnalysisSuccess,
     setAnalysisError,
     recordDevEvent,
+    getProfileTrace: getRendererProfileTrace,
+    onProfileAccepted: profiling.acceptResult,
   });
 
   // Seed dedup key so remount doesn't re-trigger cached analysis
@@ -239,19 +263,22 @@
   const chartResult = $derived(displayResult ?? result);
 
   const polarChart = $derived.by(() => {
-    if (!chartResult) return null;
-    return generateCircleGraphSvg(chartResult.clusters, {
+    if (!chartResult || !currentParams.showPolarChart) return null;
+    const startedAt = profiling.beginFigure('polar', chartResult);
+    const generated = generateCircleGraphSvg(chartResult.clusters, {
       symbolScale: currentParams.symbolScale,
       showAxisLabels: currentParams.showAxisLabels,
       showStroke: currentParams.showClusterOutline,
       mode: currentParams.polarMode,
       size: 420,
     });
+    return profiling.finishFigure('polar', chartResult, generated, startedAt);
   });
 
   const hueLightnessChart = $derived.by(() => {
-    if (!chartResult) return null;
-    return generateHueLightnessSvg(chartResult.clusters, {
+    if (!chartResult || !currentParams.showHueLightness) return null;
+    const startedAt = profiling.beginFigure('hue-lightness', chartResult);
+    const generated = generateHueLightnessSvg(chartResult.clusters, {
       symbolScale: currentParams.symbolScale,
       showAxisLabels: currentParams.showAxisLabels,
       showStroke: currentParams.showClusterOutline,
@@ -259,16 +286,29 @@
       width: 420,
       height: 240,
     });
+    return profiling.finishFigure(
+      'hue-lightness',
+      chartResult,
+      generated,
+      startedAt
+    );
   });
 
   const histogram = $derived.by(() => {
-    if (!chartResult) return null;
-    return generateHistogramSvg(chartResult.clusters, {
+    if (!chartResult || !currentParams.showHistogram) return null;
+    const startedAt = profiling.beginFigure('histogram', chartResult);
+    const generated = generateHistogramSvg(chartResult.clusters, {
       width: 520,
       height: 180,
       maxBars: 120,
       sortBy: currentParams.histogramSort,
     });
+    return profiling.finishFigure(
+      'histogram',
+      chartResult,
+      generated,
+      startedAt
+    );
   });
 
   const histogramSortLabel = $derived.by(() => {
@@ -288,7 +328,12 @@
     if (!isScrubbing) return;
     isScrubbing = false;
     if (file) {
-      runner.scheduleAnalysisWith(file, currentParams, status);
+      runner.scheduleAnalysisWith(
+        file,
+        currentParams,
+        status,
+        profiling.resolveAction(file, currentParams)
+      );
     }
   }
 
@@ -332,6 +377,7 @@
     devlog('home:mount', 'HomeView mounted');
     void logEvent('home:view:mount');
     void checkFfmpegVersion();
+    void profiling.initialize();
     const cleanupDragDrop = mountAsyncListener(
       () => ingestion.setupDragDrop(),
       (error) => console.error('[home] Failed to set up drag/drop', error)
@@ -464,7 +510,8 @@
   });
 
   onDestroy(() => {
-    runner.cancelPending();
+    profiling.cancel('view-unmounted');
+    runner.cancelPending('view-unmounted');
   });
 
   $effect(() => {
@@ -489,7 +536,35 @@
       status,
       clusters: paramSnapshot.clusters,
     });
-    runner.scheduleAnalysisWith(activeFile, paramSnapshot, status);
+    runner.scheduleAnalysisWith(
+      activeFile,
+      paramSnapshot,
+      status,
+      profiling.resolveAction(activeFile, paramSnapshot)
+    );
+  });
+
+  $effect(() => {
+    const accepted = profiling.acceptedResult;
+    const sourceResult = chartResult;
+    if (!accepted || accepted.result !== sourceResult) return;
+    if (currentParams.showHistogram) {
+      void histogram;
+    }
+    if (currentParams.showPolarChart) {
+      void polarChart;
+    }
+    if (currentParams.showHueLightness) {
+      void hueLightnessChart;
+    }
+    profiling.coordinate();
+  });
+
+  $effect(() => {
+    file;
+    currentParams;
+    chartResult;
+    profiling.reconcile();
   });
 </script>
 
@@ -500,6 +575,7 @@
 
   {#if file || video.videoSelection}
     <section
+      bind:this={analysisStudyRoot}
       class="analysis-layout"
       class:two-columns={currentParams.showPolarChart ||
         currentParams.showHueLightness}
@@ -561,6 +637,7 @@
             hueLightnessChart={null}
             {histogramSortLabel}
             showHistogramFrame={currentParams.showHistogram}
+            profileActionId={profiling.profileActionId}
             onChartContext={openChartMenu}
           />
         {/if}
@@ -577,6 +654,7 @@
             histogramSortLabel=""
             showPolarFrame={currentParams.showPolarChart}
             showHueLightnessFrame={currentParams.showHueLightness}
+            profileActionId={profiling.profileActionId}
             onChartContext={openChartMenu}
           />
         </div>
@@ -676,6 +754,7 @@
     <ParameterControls
       onScrubStart={handleScrubStart}
       onScrubEnd={handleScrubEnd}
+      onAnalysisInput={profiling.enabled ? profiling.handleInput : undefined}
     />
   {/if}
 </section>

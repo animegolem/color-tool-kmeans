@@ -11,15 +11,57 @@
     paramsStore?: Writable<AnalysisParams>;
     onScrubStart: (event: PointerEvent) => void;
     onScrubEnd: () => void;
+    onAnalysisInput?: (delivery: {
+      control:
+        | 'clusters'
+        | 'quality'
+        | 'ignoreTopN'
+        | 'mergeThreshold'
+        | 'snapToReal';
+      rawValue: string;
+      targetValue: number | boolean | null;
+      deliveredAt: number;
+    }) => void;
   }
 
   let {
     paramsStore = globalParams,
     onScrubStart,
     onScrubEnd,
+    onAnalysisInput,
   }: Props = $props();
 
   const params = $derived(paramsStore);
+
+  function observeAnalysisInput(
+    control:
+      | 'clusters'
+      | 'quality'
+      | 'ignoreTopN'
+      | 'mergeThreshold'
+      | 'snapToReal',
+    event: Event
+  ) {
+    if (!onAnalysisInput) return;
+    const input = event.currentTarget;
+    if (!(input instanceof HTMLInputElement)) return;
+    const checkbox = input.type === 'checkbox';
+    const numericValue = input.valueAsNumber;
+    try {
+      onAnalysisInput({
+        control,
+        rawValue: checkbox ? String(input.checked) : input.value,
+        targetValue: checkbox
+          ? input.checked
+          : Number.isFinite(numericValue)
+            ? numericValue
+            : null,
+        deliveredAt: performance.now(),
+      });
+    } catch {
+      // Profiling is observational; normal bound input must still proceed.
+    }
+  }
 </script>
 
 <section class="controls">
@@ -33,6 +75,9 @@
         max={$clusterMax}
         step="1"
         bind:value={$params.clusters}
+        oninputcapture={onAnalysisInput
+          ? (event) => observeAnalysisInput('clusters', event)
+          : undefined}
         onpointerdown={onScrubStart}
         onpointerup={onScrubEnd}
         onpointercancel={onScrubEnd}
@@ -45,6 +90,9 @@
         max={$clusterMax}
         step="1"
         bind:value={$params.clusters}
+        oninputcapture={onAnalysisInput
+          ? (event) => observeAnalysisInput('clusters', event)
+          : undefined}
       />
     </label>
     <label title="Trade speed for accuracy — higher values sample more pixels">
@@ -55,6 +103,9 @@
         max="4"
         step="1"
         bind:value={$params.quality}
+        oninputcapture={onAnalysisInput
+          ? (event) => observeAnalysisInput('quality', event)
+          : undefined}
         onpointerdown={onScrubStart}
         onpointerup={onScrubEnd}
         onpointercancel={onScrubEnd}
@@ -69,6 +120,9 @@
         max={$excludeTopMax}
         step="1"
         bind:value={$params.ignoreTopN}
+        oninputcapture={onAnalysisInput
+          ? (event) => observeAnalysisInput('ignoreTopN', event)
+          : undefined}
         onpointerdown={onScrubStart}
         onpointerup={onScrubEnd}
         onpointercancel={onScrubEnd}
@@ -89,6 +143,9 @@
         max="0.1"
         step="0.01"
         bind:value={$params.mergeThreshold}
+        oninputcapture={onAnalysisInput
+          ? (event) => observeAnalysisInput('mergeThreshold', event)
+          : undefined}
         onpointerdown={onScrubStart}
         onpointerup={onScrubEnd}
         onpointercancel={onScrubEnd}
@@ -122,7 +179,13 @@
       class="choice"
       title="Snap chart markers to actual sampled pixels rather than computed centroids"
     >
-      <input type="checkbox" bind:checked={$params.snapToReal} />
+      <input
+        type="checkbox"
+        bind:checked={$params.snapToReal}
+        oninputcapture={onAnalysisInput
+          ? (event) => observeAnalysisInput('snapToReal', event)
+          : undefined}
+      />
       Snap to real pixels
     </label>
   </div>

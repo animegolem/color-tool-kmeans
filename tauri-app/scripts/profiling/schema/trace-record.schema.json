@@ -1,0 +1,600 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://color-tool.invalid/profiling/trace-record.v1.schema.json",
+  "title": "Color Tool profiling trace record or acquisition binding v1",
+  "oneOf": [
+    { "$ref": "#/$defs/traceSession" },
+    { "$ref": "#/$defs/nativeEvent" },
+    { "$ref": "#/$defs/rendererBatch" },
+    { "$ref": "#/$defs/actionClose" },
+    { "$ref": "#/$defs/sessionLoss" },
+    { "$ref": "#/$defs/sessionSeal" },
+    { "$ref": "#/$defs/acquisitionBinding" }
+  ],
+  "$defs": {
+    "opaqueId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "finiteNumber": { "type": "number", "minimum": 0 },
+    "decimalNanoseconds": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]*)$"
+    },
+    "availabilityNumber": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unavailableReason"],
+      "properties": {
+        "value": { "type": ["number", "null"], "minimum": 0 },
+        "unavailableReason": {
+          "enum": [
+            "not-collected",
+            "not-exposed",
+            "not-applicable",
+            "unverified",
+            "control-failure",
+            "source-missing",
+            null
+          ]
+        }
+      }
+    },
+    "availabilityDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unavailableReason"],
+      "properties": {
+        "value": {
+          "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+        },
+        "unavailableReason": {
+          "enum": [
+            "not-collected",
+            "not-exposed",
+            "not-applicable",
+            "unverified",
+            "control-failure",
+            "source-missing",
+            null
+          ]
+        }
+      }
+    },
+    "analysisConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clusters",
+        "quality",
+        "sampleCap",
+        "maxDimension",
+        "ignoreTopN",
+        "mergeThreshold",
+        "snapToReal",
+        "seed",
+        "maxIterations",
+        "tolerance",
+        "warmStart"
+      ],
+      "properties": {
+        "clusters": { "type": "integer", "minimum": 1 },
+        "quality": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "sampleCap": { "type": "integer", "minimum": 1 },
+        "maxDimension": { "type": "integer", "minimum": 1 },
+        "ignoreTopN": { "type": "integer", "minimum": 0 },
+        "mergeThreshold": { "$ref": "#/$defs/finiteNumber" },
+        "snapToReal": { "type": "boolean" },
+        "seed": { "type": "integer", "minimum": 0 },
+        "maxIterations": { "type": "integer", "minimum": 1 },
+        "tolerance": { "$ref": "#/$defs/finiteNumber" },
+        "warmStart": { "enum": ["none", "provided"] }
+      }
+    },
+    "renderConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "polarMode",
+        "histogramSort",
+        "hueLightnessSizeMode",
+        "showAxisLabels",
+        "showClusterOutline",
+        "symbolScale",
+        "showHistogram",
+        "showHueLightness",
+        "showPolarChart",
+        "showSimplifiedTones",
+        "frameLabel",
+        "stripMode",
+        "compactSidebars"
+      ],
+      "properties": {
+        "polarMode": { "type": "string", "minLength": 1 },
+        "histogramSort": { "type": "string", "minLength": 1 },
+        "hueLightnessSizeMode": { "type": "string", "minLength": 1 },
+        "showAxisLabels": { "type": "boolean" },
+        "showClusterOutline": { "type": "boolean" },
+        "symbolScale": { "type": "number", "exclusiveMinimum": 0 },
+        "showHistogram": { "type": "boolean" },
+        "showHueLightness": { "type": "boolean" },
+        "showPolarChart": { "type": "boolean" },
+        "showSimplifiedTones": { "type": "boolean" },
+        "frameLabel": { "enum": ["timestamp", "frame"] },
+        "stripMode": { "type": "string", "minLength": 1 },
+        "compactSidebars": { "type": "boolean" }
+      }
+    },
+    "rendererEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "actionId", "clockId", "rendererMs"],
+      "properties": {
+        "type": {
+          "enum": [
+            "delivered_input",
+            "input_resolved",
+            "schedule_observed",
+            "request_admitted",
+            "renderer_native_issue",
+            "renderer_native_settle",
+            "renderer_response_parsed",
+            "store_accepted",
+            "store_rejected",
+            "figure_generated",
+            "enabled_figures_generated",
+            "dom_settled",
+            "raf1",
+            "associated_result_dom_raf2_approx",
+            "action_outcome"
+          ]
+        },
+        "actionId": { "$ref": "#/$defs/opaqueId" },
+        "clockId": { "$ref": "#/$defs/opaqueId" },
+        "rendererMs": { "$ref": "#/$defs/finiteNumber" },
+        "data": {
+          "type": "object",
+          "maxProperties": 16,
+          "additionalProperties": false,
+          "properties": {
+            "control": { "type": "string" },
+            "targetState": { "type": "string" },
+            "targetNumber": { "type": "number" },
+            "targetBoolean": { "type": "boolean" },
+            "sourceMatches": { "type": "boolean" },
+            "targetMatches": { "type": "boolean" },
+            "disposition": { "enum": ["repeated", "deduped", "bound"] },
+            "pathMatches": { "type": "boolean" },
+            "requestMatches": { "type": "boolean" },
+            "ok": { "type": "boolean" },
+            "error": { "type": "boolean" },
+            "figure": { "enum": ["histogram", "polar", "hue-lightness"] },
+            "durationMs": { "$ref": "#/$defs/finiteNumber" },
+            "count": { "$ref": "#/$defs/count" },
+            "status": { "type": "string" },
+            "reasonCode": { "type": ["string", "null"] },
+            "endpoint": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+    "associationChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "inputTargetResolved": { "type": "boolean" },
+        "actualPathMatchesExpected": { "type": "boolean" },
+        "nativeRequestMatchesAdmitted": { "type": "boolean" },
+        "storeReceiptAccepted": { "type": "boolean" },
+        "activeImageMatchesAdmitted": { "type": "boolean" },
+        "acceptedResultObjectMatches": { "type": "boolean" },
+        "analysisConfigMatches": { "type": "boolean" },
+        "renderConfigMatches": { "type": "boolean" },
+        "enabledFiguresMatch": { "type": "boolean" },
+        "domFiguresMatch": { "type": "boolean" },
+        "visibleAtDomSettle": { "type": "boolean" },
+        "visibleAtRaf1": { "type": "boolean" },
+        "visibleAtRaf2": { "type": "boolean" }
+      }
+    },
+    "observedOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reasonCode",
+        "endpoint",
+        "rendererMs",
+        "freshExecution",
+        "associationChecks",
+        "measurements"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "completed",
+            "failed",
+            "cancelled",
+            "stale",
+            "cache",
+            "deduped",
+            "unverified"
+          ]
+        },
+        "reasonCode": { "type": ["string", "null"] },
+        "endpoint": { "enum": ["associated_result_dom_raf2_approx", null] },
+        "rendererMs": { "$ref": "#/$defs/finiteNumber" },
+        "freshExecution": { "type": ["boolean", "null"] },
+        "associationChecks": { "$ref": "#/$defs/associationChecks" },
+        "measurements": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "input_to_request_admitted_ms": { "$ref": "#/$defs/finiteNumber" },
+            "renderer_native_roundtrip_ms": { "$ref": "#/$defs/finiteNumber" },
+            "input_to_store_accepted_ms": { "$ref": "#/$defs/finiteNumber" },
+            "input_to_enabled_figures_generated_ms": {
+              "$ref": "#/$defs/finiteNumber"
+            },
+            "input_to_dom_settled_ms": { "$ref": "#/$defs/finiteNumber" },
+            "input_to_associated_result_dom_raf2_approx_ms": {
+              "$ref": "#/$defs/finiteNumber"
+            },
+            "run_kmeans_ms": { "$ref": "#/$defs/finiteNumber" }
+          }
+        }
+      }
+    },
+    "inputObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["control", "targetState"],
+      "properties": {
+        "control": { "$ref": "#/$defs/opaqueId" },
+        "targetState": { "enum": ["number", "boolean", "invalid-or-empty"] },
+        "targetNumber": { "type": "number" },
+        "targetBoolean": { "type": "boolean" }
+      },
+      "oneOf": [
+        {
+          "properties": { "targetState": { "const": "number" } },
+          "required": ["targetNumber"],
+          "not": { "required": ["targetBoolean"] }
+        },
+        {
+          "properties": { "targetState": { "const": "boolean" } },
+          "required": ["targetBoolean"],
+          "not": { "required": ["targetNumber"] }
+        },
+        {
+          "properties": {
+            "targetState": { "const": "invalid-or-empty" }
+          },
+          "not": {
+            "anyOf": [
+              { "required": ["targetNumber"] },
+              { "required": ["targetBoolean"] }
+            ]
+          }
+        }
+      ]
+    },
+    "traceSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "sessionId",
+        "nativeClockId",
+        "nativeMonotonicNs",
+        "wallUnixMs",
+        "limits"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "recordType": { "const": "trace-session" },
+        "sessionId": { "$ref": "#/$defs/opaqueId" },
+        "nativeClockId": { "$ref": "#/$defs/opaqueId" },
+        "nativeMonotonicNs": { "$ref": "#/$defs/decimalNanoseconds" },
+        "wallUnixMs": { "$ref": "#/$defs/finiteNumber" },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "maxActions",
+            "maxArtifactRecords",
+            "maxArtifactEvents",
+            "maxArtifactBytes",
+            "maxRendererBatchEvents",
+            "maxRendererBatchBytes",
+            "maxRendererEventBytes"
+          ],
+          "properties": {
+            "maxActions": { "$ref": "#/$defs/count" },
+            "maxArtifactRecords": { "$ref": "#/$defs/count" },
+            "maxArtifactEvents": { "$ref": "#/$defs/count" },
+            "maxArtifactBytes": { "$ref": "#/$defs/count" },
+            "maxRendererBatchEvents": { "$ref": "#/$defs/count" },
+            "maxRendererBatchBytes": { "$ref": "#/$defs/count" },
+            "maxRendererEventBytes": { "$ref": "#/$defs/count" }
+          }
+        }
+      }
+    },
+    "nativeEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "sessionId",
+        "actionId",
+        "rendererClockId",
+        "nativeClockId",
+        "phase",
+        "nativeMonotonicNs",
+        "outcome",
+        "errorCode"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "recordType": { "const": "native-event" },
+        "sessionId": { "$ref": "#/$defs/opaqueId" },
+        "actionId": { "$ref": "#/$defs/opaqueId" },
+        "rendererClockId": { "$ref": "#/$defs/opaqueId" },
+        "nativeClockId": { "$ref": "#/$defs/opaqueId" },
+        "phase": { "enum": ["receive", "return"] },
+        "nativeMonotonicNs": { "$ref": "#/$defs/decimalNanoseconds" },
+        "nativeAggregateNs": { "$ref": "#/$defs/decimalNanoseconds" },
+        "outcome": { "enum": ["success", "error", null] },
+        "errorCode": {
+          "anyOf": [{ "$ref": "#/$defs/opaqueId" }, { "type": "null" }]
+        }
+      }
+    },
+    "rendererBatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "sessionId",
+        "batchSequence",
+        "actionId",
+        "rendererProcessClockId",
+        "events",
+        "observedOutcome",
+        "rendererDroppedEventCount",
+        "analysisConfig",
+        "renderConfig",
+        "input",
+        "imageRuntimeId"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "recordType": { "const": "renderer-batch" },
+        "sessionId": { "$ref": "#/$defs/opaqueId" },
+        "batchSequence": { "$ref": "#/$defs/count" },
+        "actionId": { "$ref": "#/$defs/opaqueId" },
+        "rendererProcessClockId": { "$ref": "#/$defs/opaqueId" },
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": { "$ref": "#/$defs/rendererEvent" }
+        },
+        "observedOutcome": { "$ref": "#/$defs/observedOutcome" },
+        "rendererDroppedEventCount": { "$ref": "#/$defs/count" },
+        "analysisConfig": { "$ref": "#/$defs/analysisConfig" },
+        "renderConfig": { "$ref": "#/$defs/renderConfig" },
+        "input": { "$ref": "#/$defs/inputObservation" },
+        "imageRuntimeId": { "$ref": "#/$defs/opaqueId" }
+      }
+    },
+    "actionClose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "sessionId",
+        "batchSequence",
+        "actionId",
+        "acceptedEventCount",
+        "acceptedByteCount",
+        "droppedEventCount",
+        "observedOutcomePersisted",
+        "nativeReceiveRecorded",
+        "nativeReturnRecorded",
+        "sessionTainted",
+        "closed"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "recordType": { "const": "action-close" },
+        "sessionId": { "$ref": "#/$defs/opaqueId" },
+        "batchSequence": { "$ref": "#/$defs/count" },
+        "actionId": { "$ref": "#/$defs/opaqueId" },
+        "acceptedEventCount": { "$ref": "#/$defs/count" },
+        "acceptedByteCount": { "$ref": "#/$defs/count" },
+        "droppedEventCount": { "$ref": "#/$defs/count" },
+        "observedOutcomePersisted": { "type": "boolean" },
+        "nativeReceiveRecorded": { "type": "boolean" },
+        "nativeReturnRecorded": { "type": "boolean" },
+        "sessionTainted": { "type": "boolean" },
+        "closed": { "const": true }
+      }
+    },
+    "sessionLoss": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "sessionId",
+        "nativeClockId",
+        "droppedEventCount",
+        "errorCode"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "recordType": { "const": "session-loss" },
+        "sessionId": { "$ref": "#/$defs/opaqueId" },
+        "nativeClockId": { "$ref": "#/$defs/opaqueId" },
+        "droppedEventCount": { "$ref": "#/$defs/count" },
+        "errorCode": { "$ref": "#/$defs/opaqueId" }
+      }
+    },
+    "sessionSeal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "recordType",
+        "sessionId",
+        "nativeClockId",
+        "recordCount",
+        "eventCount",
+        "actionCount",
+        "closedActionCount",
+        "nativeReceiveCount",
+        "nativeReturnCount",
+        "rendererBatchCount",
+        "rendererEventCount",
+        "artifactByteCount",
+        "droppedEventCount",
+        "lastBatchSequence",
+        "sealed"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "recordType": { "const": "session-seal" },
+        "sessionId": { "$ref": "#/$defs/opaqueId" },
+        "nativeClockId": { "$ref": "#/$defs/opaqueId" },
+        "recordCount": { "$ref": "#/$defs/count" },
+        "eventCount": { "$ref": "#/$defs/count" },
+        "actionCount": { "$ref": "#/$defs/count" },
+        "closedActionCount": { "$ref": "#/$defs/count" },
+        "nativeReceiveCount": { "$ref": "#/$defs/count" },
+        "nativeReturnCount": { "$ref": "#/$defs/count" },
+        "rendererBatchCount": { "$ref": "#/$defs/count" },
+        "rendererEventCount": { "$ref": "#/$defs/count" },
+        "artifactByteCount": { "$ref": "#/$defs/count" },
+        "droppedEventCount": { "$ref": "#/$defs/count" },
+        "lastBatchSequence": { "$ref": "#/$defs/count" },
+        "sealed": { "const": true }
+      }
+    },
+    "frameBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestedSeconds",
+        "achievedSeconds",
+        "status",
+        "decodedFrameDigestSha256"
+      ],
+      "properties": {
+        "requestedSeconds": { "$ref": "#/$defs/availabilityNumber" },
+        "achievedSeconds": { "$ref": "#/$defs/availabilityNumber" },
+        "status": { "enum": ["exact", "unmatched", "unverified"] },
+        "decodedFrameDigestSha256": { "$ref": "#/$defs/availabilityDigest" }
+      }
+    },
+    "viewportBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "scale"],
+      "properties": {
+        "width": { "$ref": "#/$defs/availabilityNumber" },
+        "height": { "$ref": "#/$defs/availabilityNumber" },
+        "scale": { "$ref": "#/$defs/availabilityNumber" }
+      }
+    },
+    "acquisitionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "kind",
+        "id",
+        "trace",
+        "build",
+        "case",
+        "actions",
+        "verification"
+      ],
+      "properties": {
+        "version": { "const": 1 },
+        "kind": { "const": "trace-acquisition-binding" },
+        "id": { "$ref": "#/$defs/opaqueId" },
+        "trace": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["digestSha256", "sessionId"],
+          "properties": {
+            "digestSha256": { "$ref": "#/$defs/sha256" },
+            "sessionId": { "$ref": "#/$defs/opaqueId" }
+          }
+        },
+        "build": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["manifestDigestSha256", "executableDigestSha256"],
+          "properties": {
+            "manifestDigestSha256": { "$ref": "#/$defs/sha256" },
+            "executableDigestSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "case": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "manifestDigestSha256",
+            "sourceDigestSha256",
+            "configDigestSha256",
+            "frame",
+            "viewport"
+          ],
+          "properties": {
+            "manifestDigestSha256": { "$ref": "#/$defs/sha256" },
+            "sourceDigestSha256": { "$ref": "#/$defs/sha256" },
+            "configDigestSha256": { "$ref": "#/$defs/sha256" },
+            "frame": { "$ref": "#/$defs/frameBinding" },
+            "viewport": { "$ref": "#/$defs/viewportBinding" }
+          }
+        },
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "disposition", "role"],
+            "properties": {
+              "id": { "$ref": "#/$defs/opaqueId" },
+              "disposition": { "enum": ["selected", "nonselected"] },
+              "role": { "enum": ["setup", "reset", "warmup", "measured"] }
+            }
+          }
+        },
+        "verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "evidenceRef"],
+          "properties": {
+            "status": { "enum": ["verified", "caller-asserted", "unverified"] },
+            "evidenceRef": {
+              "anyOf": [{ "$ref": "#/$defs/opaqueId" }, { "type": "null" }]
+            }
+          }
+        }
+      }
+    }
+  }
+}

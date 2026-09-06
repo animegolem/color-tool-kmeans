@@ -19,12 +19,50 @@ export interface AnalyzeOptions extends AnalysisParams {
   maxSamples?: number;
 }
 
+export interface ComputeProfileInvocationContext {
+  sessionId: string;
+  actionId: string;
+  rendererClockId: string;
+}
+
+export interface ObservedNativeRequest {
+  k: number;
+  quality: number;
+  ignoreTopN: number;
+  mergeThreshold: number;
+  snapToReal: boolean;
+  minLum: number;
+  tol: number;
+  maxIter: number;
+  seed: number;
+  maxSamples: number;
+}
+
+export interface ComputeProfileObservation {
+  profileContext: ComputeProfileInvocationContext;
+  requestIssued: (detail: {
+    actualSourcePath: string;
+    request: ObservedNativeRequest;
+  }) => void;
+  requestSettled: (outcome: 'success' | 'error') => void;
+  responseParsed: () => void;
+}
+
 export interface ComputeBridge {
   readonly id: 'tauri-native';
   analyze(
     dataset: ImageDataset,
-    params: AnalyzeOptions
+    params: AnalyzeOptions,
+    observation?: ComputeProfileObservation
   ): Promise<AnalysisResult>;
+}
+
+function observeSafely(callback: () => void): void {
+  try {
+    callback();
+  } catch {
+    // Profiling is observational and must never affect a valid analysis.
+  }
 }
 
 type TauriComputeErrorCode =
@@ -240,9 +278,10 @@ function createTauriComputeBridge(): ComputeBridge | null {
   if (!isTauriEnv()) return null;
   return {
     id: 'tauri-native',
-    async analyze(_dataset, params) {
+    async analyze(_dataset, params, observation) {
+      const activePath = getActivePath() ?? '';
       const req = {
-        path: getActivePath() ?? '',
+        path: activePath,
         k: params.clusters,
         quality: params.quality ?? DEFAULT_QUALITY,
         ignoreTopN: params.ignoreTopN ?? DEFAULT_IGNORE_TOP_N,
@@ -260,10 +299,30 @@ function createTauriComputeBridge(): ComputeBridge | null {
           'No image path available for native analysis'
         );
       }
+      if (observation) {
+        const { path: _path, ...observedRequest } = req;
+        observeSafely(() =>
+          observation.requestIssued({
+            actualSourcePath: activePath,
+            request: observedRequest,
+          })
+        );
+      }
       let rawResponse: unknown;
       try {
-        rawResponse = await tauriInvoke('analyze_image', { req });
+        rawResponse = await tauriInvoke('analyze_image', {
+          req,
+          ...(observation
+            ? { profileContext: observation.profileContext }
+            : {}),
+        });
+        if (observation) {
+          observeSafely(() => observation.requestSettled('success'));
+        }
       } catch (err) {
+        if (observation) {
+          observeSafely(() => observation.requestSettled('error'));
+        }
         const message = err instanceof Error ? err.message : String(err);
         throw new TauriComputeError(
           'invoke-failed',
@@ -273,6 +332,9 @@ function createTauriComputeBridge(): ComputeBridge | null {
       }
 
       const parsed = parseTauriResponse(rawResponse);
+      if (observation) {
+        observeSafely(() => observation.responseParsed());
+      }
       const clusters = parsed.clusters.map((cluster: ParsedTauriCluster) => ({
         count: cluster.count,
         share: cluster.share,

@@ -19,6 +19,7 @@
     showPolarFrame?: boolean;
     showHueLightnessFrame?: boolean;
     showHistogramFrame?: boolean;
+    profileActionId?: string | null;
     onChartContext?: (
       event: MouseEvent,
       chart: ChartOutput,
@@ -35,6 +36,7 @@
     showPolarFrame = false,
     showHueLightnessFrame = false,
     showHistogramFrame = false,
+    profileActionId = null,
     onChartContext,
   }: Props = $props();
 </script>
@@ -79,6 +81,8 @@
     {#if histogram}
       <div
         class="chart zoomable"
+        data-profile-action={profileActionId}
+        data-profile-figure="histogram"
         role="button"
         tabindex="0"
         onclick={() =>
@@ -145,6 +149,8 @@
     {#if polarChart}
       <div
         class="chart zoomable"
+        data-profile-action={profileActionId}
+        data-profile-figure="polar"
         role="button"
         tabindex="0"
         onclick={() =>
@@ -199,6 +205,8 @@
     {#if hueLightnessChart}
       <div
         class="chart zoomable"
+        data-profile-action={profileActionId}
+        data-profile-figure="hue-lightness"
         role="button"
         tabindex="0"
         onclick={() =>
