@@ -3,6 +3,7 @@
 pub use color_core::{color, image_pipeline, kmeans, merge};
 
 pub mod artifact_id;
+pub mod artifact_ownership;
 pub mod compose_grid;
 pub mod ffmpeg;
 pub mod value_analysis;
