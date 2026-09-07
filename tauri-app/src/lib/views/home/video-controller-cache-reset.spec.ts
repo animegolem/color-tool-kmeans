@@ -89,6 +89,73 @@ function isCurrentSelection(selection: SelectionAuthority): boolean {
   return selection.epoch === currentSelection.epoch;
 }
 
+type RestoreGesture = 'seek' | 'step';
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+function cachedVideoState() {
+  return {
+    duration: 10,
+    fps: 24,
+    currentTime: 7,
+    stripPath: null,
+    stripId: null,
+    posterPath: null,
+    frameId: 'cached-frame',
+  };
+}
+
+function applyRestoreGesture(
+  controller: ReturnType<typeof createVideoController>,
+  gesture: RestoreGesture
+) {
+  if (gesture === 'step') {
+    controller.stepVideoFrames(1);
+    return 7 + 1 / 24;
+  }
+  controller.handleVideoScrubStart();
+  controller.handleVideoScrubInput({
+    target: { value: '8' },
+  } as unknown as Event);
+  controller.handleVideoScrubEnd();
+  return 8;
+}
+
+function cachedController(
+  overrides: Partial<Parameters<typeof createVideoController>[0]> = {}
+) {
+  return createVideoController({
+    isNativeModeActive: () => true,
+    buildPreviewUrl: (file) => `asset://${file.path}`,
+    maxDimensionForQuality: () => 1200,
+    setFile: vi.fn(() => true),
+    setVideoState: vi.fn(),
+    clearFile: vi.fn(),
+    getQuality: () => 2,
+    setBannerMessage: vi.fn(),
+    scheduleAnalysisWith: vi.fn(),
+    getCurrentParams: () => ({}),
+    cancelPending: vi.fn(),
+    clearLastRequestKey: vi.fn(),
+    captureAnalysisScroll: vi.fn(),
+    getVideoStripMode: () => 'filmstrip',
+    getCachedVideoState: () => cachedVideoState(),
+    cacheVideoState: vi.fn(),
+    findExistingFrameId: () => null,
+    beginSelection,
+    isCurrentSelection,
+    ...overrides,
+  });
+}
+
 describe('video controller cache restoration reset', () => {
   beforeEach(() => {
     installRuneShim();
@@ -216,7 +283,151 @@ describe('video controller cache restoration reset', () => {
     expect(scheduleAnalysisWith.mock.invocationCallOrder[0]).toBeGreaterThan(
       setFile.mock.invocationCallOrder[0]
     );
+    expect(mocks.extractVideoFrame).toHaveBeenCalledOnce();
+    expect(mocks.extractVideoFrame).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '/tmp/cached.mp4',
+        frameId: 'cached-frame',
+        timestamp: 7,
+      })
+    );
+    expect(setFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        frameTimestamp: 7,
+        path: '/cache/fresh-frame.png',
+      }),
+      expect.any(Object),
+      { selection: expect.any(Object) }
+    );
   });
+
+  it.each<RestoreGesture>(['seek', 'step'])(
+    'AI-IMP-182: %s during cached restore debounce extracts and schedules only the final frame',
+    async (gesture) => {
+      const setFile = vi.fn(() => true);
+      const scheduleAnalysisWith = vi.fn();
+      const cancelPending = vi.fn();
+      const clearLastRequestKey = vi.fn();
+      const controller = cachedController({
+        setFile,
+        scheduleAnalysisWith,
+        cancelPending,
+        clearLastRequestKey,
+      });
+      const element = videoElement();
+      controller.setVideoElementRef(element);
+
+      controller.loadVideoSelection(selection('/tmp/cached.mp4'));
+      controller.handleVideoMetadata();
+      const finalTime = applyRestoreGesture(controller, gesture);
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(controller.videoCurrentTime).toBe(finalTime);
+      expect(mocks.extractVideoFrame).toHaveBeenCalledOnce();
+      expect(mocks.extractVideoFrame).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: '/tmp/cached.mp4',
+          frameId: 'cached-frame',
+          timestamp: finalTime,
+        })
+      );
+      expect(setFile).toHaveBeenCalledOnce();
+      expect(setFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          frameTimestamp: finalTime,
+          path: '/cache/fresh-frame.png',
+        }),
+        expect.any(Object),
+        { selection: expect.any(Object) }
+      );
+      expect(cancelPending).toHaveBeenCalledOnce();
+      expect(clearLastRequestKey).toHaveBeenCalledOnce();
+      expect(scheduleAnalysisWith).toHaveBeenCalledOnce();
+    }
+  );
+
+  it.each<RestoreGesture>(['seek', 'step'])(
+    'AI-IMP-182: %s during cached frame IPC serializes the final frame and blocks stale publication',
+    async (gesture) => {
+      const staleFrame = deferred<{ path: string; timestampUsed: string }>();
+      const finalFrame = deferred<{ path: string; timestampUsed: string }>();
+      mocks.extractVideoFrame
+        .mockReturnValueOnce(staleFrame.promise)
+        .mockReturnValueOnce(finalFrame.promise);
+      const setFile = vi.fn(() => true);
+      const scheduleAnalysisWith = vi.fn();
+      const cancelPending = vi.fn();
+      const clearLastRequestKey = vi.fn();
+      const setVideoState = vi.fn();
+      const cacheVideoState = vi.fn();
+      const controller = cachedController({
+        setFile,
+        scheduleAnalysisWith,
+        cancelPending,
+        clearLastRequestKey,
+        setVideoState,
+        cacheVideoState,
+      });
+      const element = videoElement();
+      controller.setVideoElementRef(element);
+
+      controller.loadVideoSelection(selection('/tmp/cached.mp4'));
+      controller.handleVideoMetadata();
+      await vi.advanceTimersByTimeAsync(250);
+      expect(mocks.extractVideoFrame).toHaveBeenCalledOnce();
+      expect(mocks.extractVideoFrame).toHaveBeenLastCalledWith(
+        expect.objectContaining({ timestamp: 7 })
+      );
+
+      const finalTime = applyRestoreGesture(controller, gesture);
+      await vi.advanceTimersByTimeAsync(250);
+      expect(mocks.extractVideoFrame).toHaveBeenCalledOnce();
+      expect(controller.frameDecoding).toBe(true);
+      const stateCallsBeforeStale = setVideoState.mock.calls.length;
+      const cacheCallsBeforeStale = cacheVideoState.mock.calls.length;
+
+      staleFrame.resolve({
+        path: '/cache/stale-cached-frame.png',
+        timestampUsed: '7.000',
+      });
+      await vi.waitFor(() =>
+        expect(mocks.extractVideoFrame).toHaveBeenCalledTimes(2)
+      );
+
+      expect(setFile).not.toHaveBeenCalled();
+      expect(cancelPending).not.toHaveBeenCalled();
+      expect(clearLastRequestKey).not.toHaveBeenCalled();
+      expect(scheduleAnalysisWith).not.toHaveBeenCalled();
+      expect(setVideoState).toHaveBeenCalledTimes(stateCallsBeforeStale);
+      expect(cacheVideoState).toHaveBeenCalledTimes(cacheCallsBeforeStale);
+      expect(controller.frameDecoding).toBe(true);
+      expect(mocks.extractVideoFrame).toHaveBeenLastCalledWith(
+        expect.objectContaining({ timestamp: finalTime })
+      );
+
+      finalFrame.resolve({
+        path: '/cache/final-frame.png',
+        timestampUsed: finalTime.toFixed(3),
+      });
+      await vi.waitFor(() => expect(controller.frameDecoding).toBe(false));
+
+      expect(controller.videoCurrentTime).toBe(finalTime);
+      expect(setFile).toHaveBeenCalledOnce();
+      expect(setFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          frameTimestamp: finalTime,
+          path: '/cache/final-frame.png',
+        }),
+        expect.any(Object),
+        { selection: expect.any(Object) }
+      );
+      expect(cancelPending).toHaveBeenCalledOnce();
+      expect(clearLastRequestKey).toHaveBeenCalledOnce();
+      expect(scheduleAnalysisWith).toHaveBeenCalledOnce();
+      expect(setVideoState).toHaveBeenCalledTimes(stateCallsBeforeStale + 1);
+      expect(cacheVideoState).toHaveBeenCalledTimes(cacheCallsBeforeStale + 1);
+    }
+  );
 
   it('SWEEP-003: repeated full resets leave a subsequent fresh video at zero', async () => {
     const scheduleAnalysisWith = vi.fn();

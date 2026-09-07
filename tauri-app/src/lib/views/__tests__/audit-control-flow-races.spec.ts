@@ -226,6 +226,24 @@ function videoSelection() {
   };
 }
 
+type RestoreGesture = 'seek' | 'step';
+
+function applyRestoreGesture(
+  controller: ReturnType<typeof createVideoController>,
+  gesture: RestoreGesture
+) {
+  if (gesture === 'step') {
+    controller.stepVideoFrames(1);
+    return 7 + 1 / 24;
+  }
+  controller.handleVideoScrubStart();
+  controller.handleVideoScrubInput({
+    target: { value: '8' },
+  } as unknown as Event);
+  controller.handleVideoScrubEnd();
+  return 8;
+}
+
 function colorResult(): AnalysisResult {
   return {
     clusters: [],
@@ -707,6 +725,168 @@ describe('audit reproductions for async control-flow invariants', () => {
       { selection: expect.any(Object) }
     );
   });
+
+  it.each([
+    {
+      label: 'no-step cached restore',
+      stage: 'debounce' as const,
+      gesture: null,
+    },
+    {
+      label: 'seek during restore debounce',
+      stage: 'debounce' as const,
+      gesture: 'seek' as const,
+    },
+    {
+      label: 'step during restore debounce',
+      stage: 'debounce' as const,
+      gesture: 'step' as const,
+    },
+    {
+      label: 'seek during active restore IPC',
+      stage: 'active-ipc' as const,
+      gesture: 'seek' as const,
+    },
+    {
+      label: 'step during active restore IPC',
+      stage: 'active-ipc' as const,
+      gesture: 'step' as const,
+    },
+  ])(
+    'AI-IMP-182: $label admits one fresh revision and result through the real store and runner',
+    async ({ label, stage, gesture }) => {
+      const cachedResult = {
+        ...colorResult(),
+        iterations: 7,
+        variant: 'cached-a',
+      };
+      const freshResult = {
+        ...colorResult(),
+        iterations: 8,
+        variant: `fresh-b-${label}`,
+      };
+      const cachedFile = {
+        ...imageEntry({
+          id: 'frame-1',
+          name: 'a.mp4',
+          path: '/cache/cached-a.png',
+          videoPath: '/tmp/a.mp4',
+          frameTimestamp: 7,
+        }),
+        dataset: emptyDataset,
+      } satisfies SelectedImage;
+      setFile(cachedFile, emptyDataset);
+      const cachedRevision = get(selectedFile)?.contentRevision;
+      expect(cachedRevision).toEqual(expect.any(Number));
+      setAnalysisSuccess(cachedResult, cachedFile.id);
+      expect(get(analysisById)[cachedFile.id]).toBe(cachedResult);
+      expect(get(analysisState)).toBe('ready');
+
+      const staleFrame = deferred<{ path: string; timestampUsed: string }>();
+      const finalFrame = deferred<{ path: string; timestampUsed: string }>();
+      mocks.extractVideoFrame.mockReset();
+      if (stage === 'active-ipc') {
+        mocks.extractVideoFrame
+          .mockReturnValueOnce(staleFrame.promise)
+          .mockReturnValueOnce(finalFrame.promise);
+      } else {
+        mocks.extractVideoFrame.mockReturnValueOnce(finalFrame.promise);
+      }
+      mocks.analyzeImage.mockResolvedValueOnce(freshResult);
+      const runner = colorsRunner();
+      const cancelPending = vi.spyOn(runner, 'cancelPending');
+      const controller = auditVideoController({
+        getCachedVideoState: () => ({
+          duration: 10,
+          fps: 24,
+          currentTime: 7,
+          stripPath: null,
+          stripId: null,
+          posterPath: '/cache/cached-a.png',
+          frameId: 'frame-1',
+        }),
+        setFile,
+        cancelPending: runner.cancelPending,
+        clearLastRequestKey: runner.clearLastRequestKey,
+        scheduleAnalysisWith: (file, currentParams) =>
+          runner.scheduleAnalysisWith(file, currentParams, get(analysisState)),
+        getCurrentParams: () => get(params),
+      });
+      controller.loadVideoSelection(videoSelection());
+
+      if (stage === 'active-ipc') {
+        await vi.advanceTimersByTimeAsync(250);
+        expect(mocks.extractVideoFrame).toHaveBeenCalledOnce();
+        expect(mocks.extractVideoFrame).toHaveBeenLastCalledWith(
+          expect.objectContaining({ timestamp: 7 })
+        );
+      }
+
+      const finalTime = gesture ? applyRestoreGesture(controller, gesture) : 7;
+      if (stage === 'active-ipc') {
+        await vi.advanceTimersByTimeAsync(250);
+        expect(mocks.extractVideoFrame).toHaveBeenCalledOnce();
+        staleFrame.resolve({
+          path: '/cache/stale-a.png',
+          timestampUsed: '7.000',
+        });
+        await vi.waitFor(() =>
+          expect(mocks.extractVideoFrame).toHaveBeenCalledTimes(2)
+        );
+        expect(cancelPending).not.toHaveBeenCalled();
+        expect(get(selectedFile)).toMatchObject({
+          id: 'frame-1',
+          path: '/cache/cached-a.png',
+          contentRevision: cachedRevision,
+          frameTimestamp: 7,
+        });
+        expect(get(analysisById)['frame-1']).toBe(cachedResult);
+        expect(get(analysisState)).toBe('ready');
+      } else {
+        await vi.advanceTimersByTimeAsync(250);
+        expect(mocks.extractVideoFrame).toHaveBeenCalledOnce();
+      }
+
+      expect(mocks.extractVideoFrame).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          path: '/tmp/a.mp4',
+          frameId: 'frame-1',
+          timestamp: finalTime,
+        })
+      );
+      expect(get(selectedFile)).toMatchObject({
+        path: '/cache/cached-a.png',
+        contentRevision: cachedRevision,
+      });
+
+      const freshPath = `/cache/fresh-${stage}-${gesture ?? 'no-step'}.png`;
+      finalFrame.resolve({
+        path: freshPath,
+        timestampUsed: finalTime.toFixed(3),
+      });
+      await vi.waitFor(() => expect(get(selectedFile)?.path).toBe(freshPath));
+
+      const freshRevision = get(selectedFile)?.contentRevision;
+      expect(freshRevision).toBe((cachedRevision as number) + 1);
+      expect(get(selectedFile)).toMatchObject({
+        id: 'frame-1',
+        path: freshPath,
+        videoPath: '/tmp/a.mp4',
+        frameTimestamp: finalTime,
+      });
+      expect(controller.videoCurrentTime).toBe(finalTime);
+      expect(cancelPending).toHaveBeenCalledOnce();
+      expect(get(analysisById)['frame-1']).toBeUndefined();
+      expect(get(analysisState)).toBe('idle');
+
+      await vi.advanceTimersByTimeAsync(400);
+      await vi.waitFor(() => expect(get(analysisState)).toBe('ready'));
+
+      expect(mocks.analyzeImage).toHaveBeenCalledOnce();
+      expect(get(analysisById)['frame-1']).toBe(freshResult);
+      expect(get(analysisById)['frame-1']).not.toBe(cachedResult);
+    }
+  );
 
   it('AUD-004: rejects a stale Home completion after video frame replacement', async () => {
     const staleAnalysis = deferred<AnalysisResult>();
