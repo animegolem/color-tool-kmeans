@@ -23,6 +23,7 @@ import type {
 import {
   createProfileTraceHarness,
   deliverProfileTestAction,
+  profileTestSnapshot,
 } from '../../profiling/trace-fixtures';
 import { createAnalysisRunner } from '../home/analysis-runner.svelte';
 
@@ -190,6 +191,81 @@ describe('Colors profiling runner contract', () => {
     );
     expect(trace.markResponseParsed).toHaveBeenCalledWith(accepted.analysis);
     expect(onProfileAccepted).toHaveBeenCalledWith(accepted);
+  });
+
+  it('observes revision-distinct opaque keys while production deduplicates repeated B', async () => {
+    const { trace } = createProfileTraceHarness();
+    const observeSchedule = vi.spyOn(trace, 'observeSchedule');
+    const actionA = deliverProfileTestAction(trace);
+    trace.resolveDeliveredAction(actionA, profileTestSnapshot());
+    const fileA: SelectedImage = {
+      ...FILE,
+      path: '/private/source-a.png',
+      source: { kind: 'path', path: '/private/source-a.png' },
+      contentRevision: 11,
+    };
+    const fileB: SelectedImage = { ...fileA, contentRevision: 12 };
+    const setAnalysisSuccess = vi.fn(() => ({
+      status: 'accepted' as const,
+      imageId: fileB.id,
+    }));
+    const onProfileAccepted = vi.fn();
+    mocks.analyzeImage.mockImplementation(
+      async (_dataset, request, observer) => {
+        observer?.requestIssued({
+          actualSourcePath: '/private/source-a.png',
+          request: {
+            k: request.clusters,
+            quality: request.quality,
+            ignoreTopN: request.ignoreTopN,
+            mergeThreshold: request.mergeThreshold,
+            snapToReal: request.snapToReal,
+            minLum: 0,
+            tol: request.tol,
+            maxIter: request.maxIter,
+            seed: request.seed,
+            maxSamples: request.maxSamples,
+          },
+        });
+        observer?.requestSettled('success');
+        observer?.responseParsed();
+        return RESULT;
+      }
+    );
+    const runner = createRunner(trace, {
+      setAnalysisSuccess,
+      onProfileAccepted,
+    });
+
+    runner.scheduleAnalysisWith(fileA, PARAMS, 'idle', actionA);
+    const actionB = deliverProfileTestAction(trace);
+    trace.resolveDeliveredAction(actionB, profileTestSnapshot());
+    runner.scheduleAnalysisWith(fileB, PARAMS, 'idle', actionB);
+    runner.scheduleAnalysisWith(fileB, PARAMS, 'pending', actionB);
+    await vi.advanceTimersByTimeAsync(400);
+
+    const [keyA, keyB, repeatedKeyB] = observeSchedule.mock.calls.map(
+      ([, key]) => JSON.parse(key) as Record<string, unknown>
+    );
+    expect(keyA).toEqual({ ...keyB, contentRevision: 11 });
+    expect(repeatedKeyB).toEqual(keyB);
+    expect(observeSchedule.mock.calls.map(([, , deduped]) => deduped)).toEqual([
+      false,
+      false,
+      true,
+    ]);
+    expect(mocks.analyzeImage).toHaveBeenCalledOnce();
+    const nativeRequest = mocks.analyzeImage.mock.calls[0][1];
+    expect(nativeRequest).toEqual({
+      ...PARAMS,
+      tol: 1e-3,
+      maxIter: 40,
+      seed: 1,
+      maxSamples: 300_000,
+    });
+    expect(setAnalysisSuccess).toHaveBeenCalledWith(RESULT, fileB.id, 1);
+    expect(onProfileAccepted).toHaveBeenCalledOnce();
+    trace.cancelAction(actionB, 'view-unmounted');
   });
 
   it('does not run a same-key action that production deduplicates', async () => {

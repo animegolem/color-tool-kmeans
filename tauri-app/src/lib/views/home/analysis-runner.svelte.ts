@@ -46,6 +46,25 @@ function observeSafely<T>(callback: () => T, fallback: T): T {
   }
 }
 
+function analysisRequestKey(
+  file: SelectedImage,
+  paramSnapshot: AnalysisParams
+): string {
+  return JSON.stringify({
+    id: file.id,
+    contentRevision: file.contentRevision,
+    clusters: paramSnapshot.clusters,
+    quality: paramSnapshot.quality,
+    ignoreTopN: paramSnapshot.ignoreTopN,
+    mergeThreshold: paramSnapshot.mergeThreshold,
+    snapToReal: paramSnapshot.snapToReal,
+    tol: 1e-3,
+    maxIter: 40,
+    seed: 1,
+    maxSamples: 300_000,
+  });
+}
+
 export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let spinnerTimer: ReturnType<typeof setTimeout> | null = null;
@@ -138,19 +157,7 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
     status: string,
     profileAction: ProfileActionRef | null = null
   ) {
-    const keyObj = {
-      id: fileHandle.id,
-      clusters: paramSnapshot.clusters,
-      quality: paramSnapshot.quality,
-      ignoreTopN: paramSnapshot.ignoreTopN,
-      mergeThreshold: paramSnapshot.mergeThreshold,
-      snapToReal: paramSnapshot.snapToReal,
-      tol: 1e-3,
-      maxIter: 40,
-      seed: 1,
-      maxSamples: 300_000,
-    };
-    const key = JSON.stringify(keyObj);
+    const key = analysisRequestKey(fileHandle, paramSnapshot);
     const trace = observeSafely(() => deps.getProfileTrace?.() ?? null, null);
     const scheduleDisposition = profileAction
       ? observeSafely(
@@ -320,18 +327,7 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
     file: SelectedImage,
     paramSnapshot: AnalysisParams
   ) {
-    lastRequestKey = JSON.stringify({
-      id: file.id,
-      clusters: paramSnapshot.clusters,
-      quality: paramSnapshot.quality,
-      ignoreTopN: paramSnapshot.ignoreTopN,
-      mergeThreshold: paramSnapshot.mergeThreshold,
-      snapToReal: paramSnapshot.snapToReal,
-      tol: 1e-3,
-      maxIter: 40,
-      seed: 1,
-      maxSamples: 300_000,
-    });
+    lastRequestKey = analysisRequestKey(file, paramSnapshot);
   }
 
   return {
