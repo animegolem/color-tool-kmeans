@@ -10,6 +10,16 @@ use crate::cache::EventLog;
 use crate::commands_types::*;
 use crate::profiling::{ProfileInvocationContext, ProfileState};
 
+async fn run_blocking<T, F>(operation: &'static str, task: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(task)
+        .await
+        .map_err(|error| format!("{operation} worker failed: {error}"))?
+}
+
 #[tauri::command]
 pub async fn analyze_image(
     req: AnalyzeRequest,
@@ -17,12 +27,24 @@ pub async fn analyze_image(
     app: AppHandle,
 ) -> Result<AnalyzeResponse, String> {
     let profiling = app.state::<ProfileState>();
+    run_profiled_analysis(req, profile_context, &profiling, analyze_image_sync).await
+}
+
+async fn run_profiled_analysis<F>(
+    req: AnalyzeRequest,
+    profile_context: Option<ProfileInvocationContext>,
+    profiling: &ProfileState,
+    task: F,
+) -> Result<AnalyzeResponse, String>
+where
+    F: FnOnce(AnalyzeRequest) -> Result<AnalyzeResponse, String> + Send + 'static,
+{
     let span = profiling.begin_native(profile_context.as_ref());
-    let result = if req.path.is_empty() {
+    let no_file_selected = req.path.is_empty();
+    let result = if no_file_selected {
         Err("No file selected".into())
     } else {
-        let path = PathBuf::from(&req.path);
-        color_core::analyze(&req, ImageSource::Path(&path)).map_err(|e| e.to_string())
+        run_blocking("Analyze image", move || task(req)).await
     };
     // Capture the aggregate endpoint before any return-event serialization or I/O.
     let return_ns = profiling.capture_native_end();
@@ -32,13 +54,18 @@ pub async fn analyze_image(
         if result.is_ok() { "success" } else { "error" },
         if result.is_ok() {
             None
-        } else if req.path.is_empty() {
+        } else if no_file_selected {
             Some("no-file-selected")
         } else {
             Some("analysis-failed")
         },
     );
     result
+}
+
+fn analyze_image_sync(req: AnalyzeRequest) -> Result<AnalyzeResponse, String> {
+    let path = PathBuf::from(&req.path);
+    color_core::analyze(&req, ImageSource::Path(&path)).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -56,6 +83,16 @@ pub async fn value_analysis(
         .path()
         .app_cache_dir()
         .map_err(|_| String::from("Failed to resolve cache directory"))?;
+    run_blocking("Value analysis", move || {
+        value_analysis_sync(req, cache_dir)
+    })
+    .await
+}
+
+fn value_analysis_sync(
+    req: ValueAnalysisRequest,
+    cache_dir: PathBuf,
+) -> Result<ValueAnalysisResponse, String> {
     let levels = req.levels.clamp(2, 5);
     let notan_mode = req.notan_mode && levels == 2;
     let ValueAnalysisResult {
@@ -104,7 +141,11 @@ pub async fn value_analysis(
 
 #[tauri::command]
 pub async fn save_file(req: SaveFileRequest) -> Result<SaveFileResponse, String> {
-    let path = std::path::PathBuf::from(&req.path);
+    run_blocking("Save file", move || save_file_sync(req)).await
+}
+
+fn save_file_sync(req: SaveFileRequest) -> Result<SaveFileResponse, String> {
+    let path = PathBuf::from(&req.path);
     if let Some(parent) = path.parent() {
         if !parent.exists() {
             std::fs::create_dir_all(parent).map_err(|e| format!("Cannot create directory: {e}"))?;
@@ -118,8 +159,12 @@ pub async fn save_file(req: SaveFileRequest) -> Result<SaveFileResponse, String>
 
 #[tauri::command]
 pub async fn copy_file(req: CopyFileRequest) -> Result<CopyFileResponse, String> {
-    let source = std::path::PathBuf::from(&req.source);
-    let dest = std::path::PathBuf::from(&req.dest);
+    run_blocking("Copy file", move || copy_file_sync(req)).await
+}
+
+fn copy_file_sync(req: CopyFileRequest) -> Result<CopyFileResponse, String> {
+    let source = PathBuf::from(&req.source);
+    let dest = PathBuf::from(&req.dest);
     if let Some(parent) = dest.parent() {
         if !parent.exists() {
             std::fs::create_dir_all(parent).map_err(|e| format!("Cannot create directory: {e}"))?;
@@ -259,6 +304,13 @@ pub async fn compose_grid(
         .path()
         .app_cache_dir()
         .map_err(|_| String::from("Failed to resolve cache directory"))?;
+    run_blocking("Compose grid", move || compose_grid_sync(req, cache_dir)).await
+}
+
+fn compose_grid_sync(
+    req: ComposeGridRequest,
+    cache_dir: PathBuf,
+) -> Result<ComposeGridResponse, String> {
     let max_cell_dim = req.max_cell_dim.unwrap_or(800);
     let (path, width, height, cols, rows) =
         compose_grid::compose_grid(&req.paths, max_cell_dim, &cache_dir)
@@ -270,4 +322,195 @@ pub async fn compose_grid(
         grid_cols: cols,
         grid_rows: rows,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{analyze_image_sync, run_blocking, run_profiled_analysis};
+    use crate::commands_types::AnalyzeRequest;
+    use crate::profiling::{ProfileInvocationContext, ProfileState};
+    use crate::profiling_wire::PROFILE_DIRECTORY;
+    use image::{Rgb, RgbImage};
+    use serde_json::Value;
+    use std::ffi::OsString;
+    use std::path::Path;
+    use tempfile::TempDir;
+
+    const PROFILE_SESSION: &str = "phase029-commands";
+    const RENDERER_CLOCK: &str = "phase029-renderer";
+
+    fn analysis_request(path: impl Into<String>) -> AnalyzeRequest {
+        AnalyzeRequest {
+            path: path.into(),
+            k: 2,
+            stride: 1,
+            quality: None,
+            ignore_top_n: 0,
+            merge_threshold: 0.0,
+            min_lum: 0,
+            tol: 0.001,
+            max_iter: 20,
+            seed: 1,
+            max_samples: 1_000,
+            snap_to_real: false,
+        }
+    }
+
+    fn profile_context(action_id: &str) -> ProfileInvocationContext {
+        ProfileInvocationContext {
+            session_id: PROFILE_SESSION.into(),
+            action_id: action_id.into(),
+            renderer_clock_id: RENDERER_CLOCK.into(),
+        }
+    }
+
+    fn profile_artifact(root: &Path) -> std::path::PathBuf {
+        root.join(PROFILE_DIRECTORY)
+            .join(format!("profile-{PROFILE_SESSION}.jsonl"))
+    }
+
+    fn native_records(root: &Path) -> Vec<Value> {
+        std::fs::read_to_string(profile_artifact(root))
+            .expect("read profile artifact")
+            .lines()
+            .map(|line| serde_json::from_str(line).expect("parse profile record"))
+            .filter(|record: &Value| record["recordType"] == "native-event")
+            .collect()
+    }
+
+    #[test]
+    fn sweep_029_run_blocking_moves_typed_work_off_the_calling_thread() {
+        let caller = std::thread::current().id();
+        let (worker, value) =
+            tauri::async_runtime::block_on(run_blocking("Test operation", || {
+                Ok::<_, String>((std::thread::current().id(), 42_u32))
+            }))
+            .expect("typed worker result");
+
+        assert_ne!(caller, worker, "blocking work must leave the caller thread");
+        assert_eq!(value, 42);
+
+        let error = tauri::async_runtime::block_on(run_blocking("Test operation", || {
+            Err::<u32, _>("domain failure".to_string())
+        }));
+        assert_eq!(error, Err("domain failure".to_string()));
+    }
+
+    #[test]
+    fn sweep_029_maps_worker_panic_without_panicking_the_awaiting_future() {
+        let error = tauri::async_runtime::block_on(run_blocking::<(), _>("Copy file", || {
+            panic!("worker panic")
+        }))
+        .expect_err("panic must become an operation-labelled command error");
+
+        assert!(error.starts_with("Copy file worker failed:"), "{error}");
+    }
+
+    #[test]
+    fn sweep_029_profiled_analysis_finishes_success_errors_and_worker_panic() {
+        let root = TempDir::new().expect("profile root");
+        let state = ProfileState::from_launch(root.path(), Some(OsString::from(PROFILE_SESSION)));
+        let source = root.path().join("small.png");
+        let image = RgbImage::from_fn(8, 8, |x, _| {
+            if x < 4 {
+                Rgb([255, 0, 0])
+            } else {
+                Rgb([0, 0, 255])
+            }
+        });
+        image.save(&source).expect("save small source");
+
+        let success = tauri::async_runtime::block_on(run_profiled_analysis(
+            analysis_request(source.to_string_lossy()),
+            Some(profile_context("phase029-success")),
+            &state,
+            analyze_image_sync,
+        ));
+        assert!(success.is_ok());
+
+        let no_file = tauri::async_runtime::block_on(run_profiled_analysis(
+            analysis_request(""),
+            Some(profile_context("phase029-no-file")),
+            &state,
+            analyze_image_sync,
+        ));
+        assert_eq!(
+            no_file.expect_err("empty path must fail"),
+            "No file selected"
+        );
+
+        let invalid = tauri::async_runtime::block_on(run_profiled_analysis(
+            analysis_request(root.path().join("missing.png").to_string_lossy()),
+            Some(profile_context("phase029-invalid-source")),
+            &state,
+            analyze_image_sync,
+        ));
+        assert!(!invalid.expect_err("missing source must fail").is_empty());
+
+        let panic = tauri::async_runtime::block_on(run_profiled_analysis(
+            analysis_request(source.to_string_lossy()),
+            Some(profile_context("phase029-worker-panic")),
+            &state,
+            |_| panic!("analysis worker panic"),
+        ));
+        assert!(panic
+            .expect_err("worker panic must be mapped")
+            .starts_with("Analyze image worker failed:"));
+
+        let records = native_records(root.path());
+        assert_eq!(records.len(), 8, "four actions need receive/return pairs");
+        for (action_id, outcome, error_code) in [
+            ("phase029-success", "success", Value::Null),
+            ("phase029-no-file", "error", Value::from("no-file-selected")),
+            (
+                "phase029-invalid-source",
+                "error",
+                Value::from("analysis-failed"),
+            ),
+            (
+                "phase029-worker-panic",
+                "error",
+                Value::from("analysis-failed"),
+            ),
+        ] {
+            let action_records: Vec<_> = records
+                .iter()
+                .filter(|record| record["actionId"] == action_id)
+                .collect();
+            assert_eq!(action_records.len(), 2, "paired action {action_id}");
+            assert_eq!(action_records[0]["phase"], "receive");
+            assert_eq!(action_records[1]["phase"], "return");
+            assert_eq!(action_records[1]["outcome"], outcome);
+            assert_eq!(action_records[1]["errorCode"], error_code);
+            assert_eq!(action_records[1]["rendererClockId"], RENDERER_CLOCK);
+            assert!(action_records[1]["nativeAggregateNs"].is_string());
+        }
+
+        let before_missing_context = records.len();
+        let missing_context = tauri::async_runtime::block_on(run_profiled_analysis(
+            analysis_request(""),
+            None,
+            &state,
+            analyze_image_sync,
+        ));
+        assert_eq!(
+            missing_context.expect_err("empty path remains an error"),
+            "No file selected"
+        );
+        assert_eq!(native_records(root.path()).len(), before_missing_context);
+
+        let disabled_root = TempDir::new().expect("disabled profile root");
+        let disabled = ProfileState::from_launch(disabled_root.path(), None);
+        let disabled_result = tauri::async_runtime::block_on(run_profiled_analysis(
+            analysis_request(""),
+            Some(profile_context("phase029-disabled")),
+            &disabled,
+            analyze_image_sync,
+        ));
+        assert_eq!(
+            disabled_result.expect_err("empty path remains an error"),
+            "No file selected"
+        );
+        assert!(!profile_artifact(disabled_root.path()).exists());
+    }
 }

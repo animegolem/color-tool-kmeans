@@ -99,6 +99,7 @@ Generated from tracked files; binary assets excluded.
 - RAG/scripts/generate-index.sh (576 LOC)
 - tauri-app/src/lib/exports/value-analysis.ts (570 LOC)
 - tauri-app/src-tauri/src/profiling.rs (544 LOC)
+- tauri-app/src-tauri/src/commands.rs (516 LOC)
 - tauri-app/src/lib/stores/image.ts (507 LOC)
 - tauri-app/src-tauri/src/profiling_validation.rs (497 LOC)
 - tauri-app/scripts/profiling/trace-fixtures.mjs (486 LOC)
