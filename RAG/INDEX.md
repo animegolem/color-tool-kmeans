@@ -140,6 +140,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/components/MediaBucket.svelte (324 LOC)
 - tauri-app/src/lib/exports/__tests__/color-study-compositor.spec.ts (319 LOC)
 - tauri-app/src/lib/views/batch/batch-runner.svelte.ts (315 LOC)
+- tauri-app/src/lib/bridges/ipc-contracts.spec.ts (314 LOC)
 - color-core/src/image_pipeline.rs (313 LOC)
 
 ---
