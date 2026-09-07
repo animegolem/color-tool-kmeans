@@ -35,6 +35,7 @@ export interface ImageEntry {
   path?: string;
   videoPath?: string;
   frameTimestamp?: number;
+  contentRevision?: number;
   size: number;
   source: ImageSource;
   previewUrl: string | null;
@@ -49,6 +50,13 @@ export const activeImageId = writable<string | null>(null);
 
 const imageDatasets = new Map<string, ImageDataset>();
 const objectUrls = new Map<string, string>();
+let nextContentRevision = 0;
+
+function allocateContentRevision(): number {
+  if (nextContentRevision >= Number.MAX_SAFE_INTEGER)
+    throw new Error('Content revision exhausted');
+  return ++nextContentRevision;
+}
 
 export function getResourceCounts() {
   return {
@@ -165,7 +173,9 @@ export function setFile(entry: ImageEntry, dataset: ImageDataset) {
     ? current.find((item) => item.path === entry.path)
     : undefined;
   const existing = existingByPath ?? existingById;
+  const contentRevision = allocateContentRevision();
   if (existingByPath) entry.id = existingByPath.id;
+  entry.contentRevision = contentRevision;
 
   const matched = existing !== undefined;
   if (matched) {
@@ -224,6 +234,7 @@ export function appendFile(entry: ImageEntry, dataset: ImageDataset) {
     return;
   }
 
+  entry.contentRevision = allocateContentRevision();
   const matched = existingById !== undefined;
   if (matched) {
     invalidateAnalysisForImage(entry.id);

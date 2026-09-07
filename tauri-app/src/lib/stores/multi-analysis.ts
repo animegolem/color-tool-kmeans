@@ -48,6 +48,25 @@ export function resetMultiAnalysis() {
   multiCompositePath.set(null);
 }
 
+function snapshotPinnedRevisions(
+  entries: ImageEntry[],
+  pinned: Set<string>
+): Map<string, number | undefined> {
+  const revisions = new Map<string, number | undefined>();
+  for (const entry of entries) {
+    if (pinned.has(entry.id)) {
+      revisions.set(entry.id, entry.contentRevision);
+    }
+  }
+  return revisions;
+}
+
+let pinnedRevisionSnapshot = new Map<string, number | undefined>();
+
+pinnedImageIds.subscribe(($pinned) => {
+  pinnedRevisionSnapshot = snapshotPinnedRevisions(get(images), $pinned);
+});
+
 // --- Auto-cleanup: prune pins when images are removed ---
 images.subscribe(($images) => {
   const currentIds = new Set($images.map((img) => img.id));
@@ -67,6 +86,18 @@ images.subscribe(($images) => {
       }
       return next;
     });
+    resetMultiAnalysis();
+    return;
+  }
+
+  const nextRevisionSnapshot = snapshotPinnedRevisions($images, $pinned);
+  const pinnedContentChanged = [...$pinned].some(
+    (id) =>
+      pinnedRevisionSnapshot.has(id) &&
+      pinnedRevisionSnapshot.get(id) !== nextRevisionSnapshot.get(id)
+  );
+  pinnedRevisionSnapshot = nextRevisionSnapshot;
+  if (pinnedContentChanged) {
     resetMultiAnalysis();
   }
 });

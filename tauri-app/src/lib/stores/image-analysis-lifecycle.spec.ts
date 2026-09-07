@@ -21,9 +21,11 @@ import {
   clearFile,
   getResourceCounts,
   images,
+  removeFile,
   selectedFile,
   setFile,
   switchToFile,
+  updateEntryPreview,
   type ImageEntry,
 } from './image';
 
@@ -214,5 +216,121 @@ describe('image analysis lifecycle', () => {
     expect(get(valueAnalysisStateByKey)[successKey]).toBeUndefined();
     expect(get(valueAnalysisStateByKey)[errorKey]).toBeUndefined();
     expect(get(valueAnalysisErrorByKey)[errorKey]).toBeUndefined();
+  });
+
+  it('SWEEP-017: assigns safe store-owned revisions and normalizes the caller object', () => {
+    const forgedValues = [
+      undefined,
+      -1,
+      1.5,
+      Number.MAX_SAFE_INTEGER + 1,
+      Number.NaN,
+    ];
+    const revisions: number[] = [];
+
+    for (const [index, forged] of forgedValues.entries()) {
+      const entry = imageEntry({
+        id: `revision-${index}`,
+        name: `revision-${index}.png`,
+        path: `/tmp/revision-${index}.png`,
+        source: { kind: 'path', path: `/tmp/revision-${index}.png` },
+        previewUrl: `asset:///tmp/revision-${index}.png`,
+        contentRevision: forged,
+      });
+      appendFile(entry, emptyDataset);
+      const stored = get(images).find((item) => item.id === entry.id);
+
+      expect(Number.isSafeInteger(entry.contentRevision)).toBe(true);
+      expect(entry.contentRevision).toBeGreaterThan(0);
+      expect(stored?.contentRevision).toBe(entry.contentRevision);
+      revisions.push(entry.contentRevision!);
+    }
+
+    expect(revisions).toEqual([...revisions].sort((a, b) => a - b));
+    expect(new Set(revisions).size).toBe(revisions.length);
+  });
+
+  it('SWEEP-017: normalizes retained path identity and revision on the supplied entry', () => {
+    const first = imageEntry({ id: 'retained-id' });
+    setFile(first, emptyDataset);
+    const firstRevision = first.contentRevision!;
+    const replacement = imageEntry({
+      id: 'forged-id',
+      contentRevision: -99,
+      frameTimestamp: 2,
+    });
+
+    setFile(replacement, { ...emptyDataset, width: 2 });
+
+    expect(replacement.id).toBe(first.id);
+    expect(replacement.contentRevision).toBeGreaterThan(firstRevision);
+    expect(get(selectedFile)?.contentRevision).toBe(
+      replacement.contentRevision
+    );
+  });
+
+  it('SWEEP-017: rejects a duplicate path without consuming an admission revision', () => {
+    const accepted = imageEntry({ id: 'accepted' });
+    appendFile(accepted, emptyDataset);
+    const acceptedRevision = accepted.contentRevision!;
+    const rejected = imageEntry({
+      id: 'rejected',
+      contentRevision: Number.MAX_SAFE_INTEGER,
+    });
+
+    appendFile(rejected, emptyDataset);
+    const next = imageEntry({
+      id: 'next',
+      name: 'next.png',
+      path: '/tmp/next.png',
+      source: { kind: 'path', path: '/tmp/next.png' },
+      previewUrl: 'asset:///tmp/next.png',
+    });
+    appendFile(next, emptyDataset);
+
+    expect(get(images).map((entry) => entry.id)).toEqual(['accepted', 'next']);
+    expect(next.contentRevision).toBe(acceptedRevision + 1);
+  });
+
+  it('SWEEP-017: never recycles a revision after remove or clear', () => {
+    const first = imageEntry({ id: 'reused-id' });
+    appendFile(first, emptyDataset);
+    const firstRevision = first.contentRevision!;
+    removeFile(first.id);
+
+    const second = imageEntry({ id: first.id });
+    appendFile(second, emptyDataset);
+    const secondRevision = second.contentRevision!;
+    clearFile();
+
+    const third = imageEntry({ id: first.id });
+    setFile(third, emptyDataset);
+
+    expect(secondRevision).toBeGreaterThan(firstRevision);
+    expect(third.contentRevision).toBeGreaterThan(secondRevision);
+  });
+
+  it('SWEEP-017: preserves revision for preview updates and stored-entry selection', () => {
+    const first = imageEntry({ id: 'stable-id' });
+    const other = imageEntry({
+      id: 'other-id',
+      name: 'other.png',
+      path: '/tmp/other.png',
+      source: { kind: 'path', path: '/tmp/other.png' },
+      previewUrl: 'asset:///tmp/other.png',
+    });
+    setFile(first, emptyDataset);
+    appendFile(other, emptyDataset);
+    const revision = first.contentRevision;
+
+    updateEntryPreview(first.id, 'asset:///tmp/new-preview.png');
+    switchToFile(other.id);
+    switchToFile(first.id);
+
+    expect(get(selectedFile)).toMatchObject({
+      id: first.id,
+      previewUrl: 'asset:///tmp/new-preview.png',
+      contentRevision: revision,
+    });
   });
 });
