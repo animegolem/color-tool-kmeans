@@ -1,4 +1,5 @@
 use std::fs;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
@@ -121,12 +122,22 @@ pub fn generate_value_analysis(
     let cache_dir = cache_dir.join(format!("k{levels}-{mode_tag}"));
     fs::create_dir_all(&cache_dir)?;
 
+    let source_path_str = path.as_ref().to_string_lossy();
+    let (source_mtime_nanos, source_length) = file_freshness(path.as_ref());
+    // This tuple only separates observed generations. Equal metadata can hide
+    // changed bytes, same-generation writers can overlap, and the output group
+    // is still written directly rather than atomically published.
+    let cache_dir = cache_dir.join(source_generation_tag(
+        &source_path_str,
+        source_mtime_nanos,
+        source_length,
+    ));
+    fs::create_dir_all(&cache_dir)?;
+
     let neutral_path = cache_dir.join(NEUTRAL_FILE);
     let preview_path = cache_dir.join(PREVIEW_FILE);
     let bucket_map_path = cache_dir.join(BUCKET_MAP_FILE);
 
-    let source_path_str = path.as_ref().to_string_lossy();
-    let (source_mtime_nanos, source_length) = file_freshness(path.as_ref());
     if neutral_path.exists() && preview_path.exists() && bucket_map_path.exists() {
         if let Some(meta) = load_meta(&cache_dir).filter(|meta| {
             is_meta_current(
@@ -659,6 +670,21 @@ fn file_freshness(path: &Path) -> (Option<u64>, Option<u64>) {
         .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
         .and_then(|duration| u64::try_from(duration.as_nanos()).ok());
     (modified_nanos, Some(metadata.len()))
+}
+
+fn source_generation_tag(
+    source_path: &str,
+    source_mtime_nanos: Option<u64>,
+    source_length: Option<u64>,
+) -> String {
+    let mut hasher = DefaultHasher::new();
+    source_path.hash(&mut hasher);
+    format!(
+        "{:016x}-{:016x}-{:016x}",
+        hasher.finish(),
+        source_mtime_nanos.unwrap_or_default(),
+        source_length.unwrap_or_default()
+    )
 }
 
 fn sanitize_id(value: &str) -> String {
