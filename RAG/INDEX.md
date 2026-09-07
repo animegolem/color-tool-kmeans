@@ -108,6 +108,7 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/scripts/profiling/summarize-runs.mjs (427 LOC)
 - tauri-app/src/lib/views/home/analysis-runner-revision.spec.ts (426 LOC)
 - tauri-app/src/lib/exports/polar-chart.ts (417 LOC)
+- tauri-app/src-tauri/src/compose_grid.rs (415 LOC)
 - tauri-app/src/App.svelte (408 LOC)
 - tauri-app/src-tauri/src/ffmpeg.rs (406 LOC)
 - tauri-app/src/app.css (403 LOC)

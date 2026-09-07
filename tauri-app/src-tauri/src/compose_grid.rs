@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use image::imageops::FilterType;
-use image::{ImageReader, RgbaImage};
+use image::{DynamicImage, ImageFormat, ImageReader, RgbaImage};
+use tempfile::Builder;
 
 const GAP: u32 = 8;
 
@@ -93,10 +94,21 @@ pub fn compose_grid(
             .map_err(|e| format!("Failed to create cache directory: {e}"))?;
     }
 
-    let output_path = cache_dir.join("batch-grid.png");
-    canvas
-        .save(&output_path)
+    let mut output = Builder::new()
+        .prefix("batch-grid-")
+        .suffix(".png")
+        .tempfile_in(cache_dir)
+        .map_err(|e| format!("Failed to create grid image: {e}"))?;
+    DynamicImage::ImageRgba8(canvas)
+        .write_to(output.as_file_mut(), ImageFormat::Png)
         .map_err(|e| format!("Failed to save grid image: {e}"))?;
+    output
+        .as_file()
+        .sync_all()
+        .map_err(|e| format!("Failed to sync grid image: {e}"))?;
+    let (_, output_path) = output
+        .keep()
+        .map_err(|e| format!("Failed to retain grid image: {}", e.error))?;
 
     Ok((output_path, total_width, total_height, cols, rows))
 }
@@ -149,6 +161,25 @@ mod tests {
             img.save(&path).expect("save test image");
             paths.push(path.to_string_lossy().to_string());
         }
+        (dir, paths)
+    }
+
+    fn make_solid_test_images(
+        count: usize,
+        w: u32,
+        h: u32,
+        color: [u8; 3],
+    ) -> (TempDir, Vec<String>) {
+        let dir = TempDir::new().expect("temp dir");
+        let paths = (0..count)
+            .map(|index| {
+                let path = dir.path().join(format!("solid_{index}.png"));
+                RgbImage::from_pixel(w, h, Rgb(color))
+                    .save(&path)
+                    .expect("save solid test image");
+                path.to_string_lossy().to_string()
+            })
+            .collect();
         (dir, paths)
     }
 
@@ -211,6 +242,8 @@ mod tests {
     fn error_on_unreadable_path() {
         let (_dir, good_path) = make_test_image(100, 100, [255, 0, 0]);
         let cache = TempDir::new().expect("temp dir");
+        let unrelated_path = cache.path().join("unrelated.txt");
+        std::fs::write(&unrelated_path, b"keep me").expect("write unrelated fixture");
         let bad_path = "/nonexistent/path/image.png".to_string();
         let result = compose_grid(&[good_path, bad_path.clone()], 800, cache.path());
         assert!(result.is_err());
@@ -218,6 +251,30 @@ mod tests {
         assert!(
             err.contains(&bad_path),
             "Error should identify the bad path: {err}"
+        );
+        assert_eq!(
+            std::fs::read(&unrelated_path).expect("read unrelated fixture"),
+            b"keep me"
+        );
+    }
+
+    #[test]
+    fn error_on_unusable_cache_destination_preserves_existing_file() {
+        let (_dir, paths) = make_test_images(2, 40, 30);
+        let parent = TempDir::new().expect("parent dir");
+        let cache_file = parent.path().join("not-a-directory");
+        std::fs::write(&cache_file, b"keep me").expect("write cache-path fixture");
+
+        let result = compose_grid(&paths, 800, &cache_file);
+
+        let err = result.expect_err("regular file cannot be used as a cache directory");
+        assert!(
+            err.contains("Failed to create grid image"),
+            "error should identify output creation: {err}"
+        );
+        assert_eq!(
+            std::fs::read(&cache_file).expect("read cache-path fixture"),
+            b"keep me"
         );
     }
 
@@ -265,17 +322,78 @@ mod tests {
     #[test]
     fn deterministic_output() {
         let (_dir, paths) = make_test_images(4, 80, 60);
-        let cache1 = TempDir::new().expect("temp dir");
-        let cache2 = TempDir::new().expect("temp dir");
+        let cache = TempDir::new().expect("temp dir");
 
-        let (path1, ..) = compose_grid(&paths, 800, cache1.path()).expect("first compose");
-        let (path2, ..) = compose_grid(&paths, 800, cache2.path()).expect("second compose");
+        let (path1, ..) = compose_grid(&paths, 800, cache.path()).expect("first compose");
+        let (path2, ..) = compose_grid(&paths, 800, cache.path()).expect("second compose");
 
+        assert_ne!(path1, path2, "each composition must retain its own path");
         let bytes1 = std::fs::read(&path1).expect("read first");
         let bytes2 = std::fs::read(&path2).expect("read second");
         assert_eq!(
             bytes1, bytes2,
             "Same inputs should produce identical output"
+        );
+    }
+
+    #[test]
+    fn sweep_019_concurrent_compositions_retain_unique_immutable_outputs() {
+        let (_red_dir, red_paths) = make_solid_test_images(2, 80, 60, [255, 0, 0]);
+        let (_blue_dir, blue_paths) = make_solid_test_images(2, 80, 60, [0, 0, 255]);
+        let cache = TempDir::new().expect("cache dir");
+        let cache_path = cache.path().to_path_buf();
+        let start = std::sync::Barrier::new(2);
+
+        let (red_result, blue_result) = std::thread::scope(|scope| {
+            let red = scope.spawn(|| {
+                start.wait();
+                compose_grid(&red_paths, 800, &cache_path).expect("compose red grid")
+            });
+            let blue = scope.spawn(|| {
+                start.wait();
+                compose_grid(&blue_paths, 800, &cache_path).expect("compose blue grid")
+            });
+            (
+                red.join().expect("red worker"),
+                blue.join().expect("blue worker"),
+            )
+        });
+
+        assert_ne!(
+            red_result.0, blue_result.0,
+            "concurrent compositions must not share a writable path"
+        );
+        let red_bytes = std::fs::read(&red_result.0).expect("read retained red grid");
+        let blue_bytes = std::fs::read(&blue_result.0).expect("read retained blue grid");
+        assert_eq!(
+            image::load_from_memory(&red_bytes)
+                .expect("decode retained red grid")
+                .to_rgba8()
+                .get_pixel(0, 0),
+            &Rgba([255, 0, 0, 255])
+        );
+        assert_eq!(
+            image::load_from_memory(&blue_bytes)
+                .expect("decode retained blue grid")
+                .to_rgba8()
+                .get_pixel(0, 0),
+            &Rgba([0, 0, 255, 255])
+        );
+
+        let (_green_dir, green_paths) = make_solid_test_images(2, 80, 60, [0, 255, 0]);
+        let (green_path, ..) =
+            compose_grid(&green_paths, 800, &cache_path).expect("compose later green grid");
+        assert_ne!(green_path, red_result.0);
+        assert_ne!(green_path, blue_result.0);
+        assert_eq!(
+            std::fs::read(&red_result.0).expect("reread retained red grid"),
+            red_bytes,
+            "later work must not mutate the accepted red output"
+        );
+        assert_eq!(
+            std::fs::read(&blue_result.0).expect("reread retained blue grid"),
+            blue_bytes,
+            "later work must not mutate the accepted blue output"
         );
     }
 
