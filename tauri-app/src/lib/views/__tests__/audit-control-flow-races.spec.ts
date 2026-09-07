@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   extractVideoFrame: vi.fn(),
   extractVideoStrip: vi.fn(),
   probeVideo: vi.fn(),
+  logEvent: vi.fn(),
   analyzeImage: vi.fn(),
   requestValueAnalysis: vi.fn(),
 }));
@@ -33,7 +34,7 @@ vi.mock('../../bridges/tauri', () => ({
   tauriDetectionInfo: () => ({}),
 }));
 
-vi.mock('../../bridges/log', () => ({ logEvent: vi.fn() }));
+vi.mock('../../bridges/log', () => ({ logEvent: mocks.logEvent }));
 
 vi.mock('../../bridges/value-analysis', () => ({
   requestValueAnalysis: mocks.requestValueAnalysis,
@@ -59,10 +60,12 @@ import { createVideoScrubber } from '../values/video-scrubber.svelte';
 import {
   clearFile,
   appendFile,
+  beginSelection,
   analysisById,
   analysisState,
   cacheVideoState,
   images,
+  isCurrentSelection,
   params,
   removeFile,
   resetAnalysis,
@@ -71,6 +74,7 @@ import {
   setAnalysisPending,
   setAnalysisSuccess,
   setFile,
+  switchToFile,
   valueAnalysisByKey,
   valueAnalysisErrorByKey,
   valueAnalysisResult,
@@ -82,6 +86,7 @@ import {
   setValueAnalysisSuccess,
   valueAnalysisKey,
 } from '../../stores/value-analysis';
+import { getActivePath, setActivePath } from '../../services/active-image';
 import type {
   AnalysisResult,
   ExportChecks,
@@ -132,6 +137,12 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
+async function flushMicrotasks() {
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 const emptyDataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
 
 function imageEntry(overrides: Partial<ImageEntry> = {}): ImageEntry {
@@ -177,7 +188,7 @@ function auditVideoController(
     isNativeModeActive: () => true,
     buildPreviewUrl: () => 'asset:///tmp/a.mp4',
     maxDimensionForQuality: () => 1200,
-    setFile: vi.fn(),
+    setFile: vi.fn(() => true),
     setVideoState: vi.fn(),
     clearFile: vi.fn(),
     getQuality: () => 2,
@@ -199,6 +210,8 @@ function auditVideoController(
     }),
     cacheVideoState: vi.fn(),
     findExistingFrameId: () => 'frame-1',
+    beginSelection,
+    isCurrentSelection,
     ...overrides,
   });
 }
@@ -269,14 +282,16 @@ describe('audit reproductions for async control-flow invariants', () => {
   it('AUD-001: discards a Values frame completion after switching to another video', async () => {
     const firstFrame = deferred<{ path: string; timestampUsed: string }>();
     mocks.extractVideoFrame.mockReturnValueOnce(firstFrame.promise);
-    const onFrameExtracted = vi.fn();
+    const onFrameExtracted = vi.fn(() => true);
     const scrubber = createVideoScrubber({
       getMaxDimension: () => 1200,
       onFrameExtracted,
       updateVideoState: vi.fn(),
+      isCurrentSelection,
     });
 
     scrubber.syncFromVideoState({
+      selection: beginSelection('video-a'),
       path: '/tmp/a.mp4',
       name: 'a.mp4',
       duration: 10,
@@ -287,6 +302,7 @@ describe('audit reproductions for async control-flow invariants', () => {
     await vi.advanceTimersByTimeAsync(250);
 
     scrubber.syncFromVideoState({
+      selection: beginSelection('video-b'),
       path: '/tmp/b.mp4',
       name: 'b.mp4',
       duration: 20,
@@ -317,6 +333,317 @@ describe('audit reproductions for async control-flow invariants', () => {
     expect(get(videoState)?.path).toBe('/tmp/b.mp4');
   });
 
+  it('AI-IMP-192: Home rejects an old probe after leaving and returning to the same path', async () => {
+    const firstProbe = deferred<{ duration: number; fps: number }>();
+    const secondProbe = deferred<{ duration: number; fps: number }>();
+    mocks.probeVideo
+      .mockReturnValueOnce(firstProbe.promise)
+      .mockReturnValueOnce(secondProbe.promise);
+    mocks.extractVideoFrame.mockReturnValue(new Promise(() => undefined));
+    mocks.extractVideoStrip.mockReturnValue(new Promise(() => undefined));
+    const controller = auditVideoController({
+      getCachedVideoState: () => null,
+    });
+
+    controller.loadVideoSelection(videoSelection());
+    const firstSelection = controller.selection!;
+    beginSelection('intervening-still');
+    controller.loadVideoSelection(videoSelection());
+    const secondSelection = controller.selection!;
+    firstProbe.resolve({ duration: 99, fps: 99 });
+    await Promise.resolve();
+    secondProbe.resolve({ duration: 12, fps: 25 });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(secondSelection.epoch).toBeGreaterThan(firstSelection.epoch);
+    await vi.waitFor(() => expect(controller.videoDuration).toBe(12));
+    expect(controller.videoFps).toBe(25);
+  });
+
+  it('AI-IMP-192: a canonical still switch blocks Home frame publication and cancellation', async () => {
+    const frame = deferred<{ path: string; timestampUsed: string }>();
+    mocks.extractVideoFrame.mockReturnValue(frame.promise);
+    const setFileForFrame = vi.fn(() => true);
+    const cancelPending = vi.fn();
+    setFile(imageEntry({ id: 'still-b' }), emptyDataset);
+    const controller = auditVideoController({
+      setFile: setFileForFrame,
+      cancelPending,
+    });
+    controller.loadVideoSelection(videoSelection());
+    await vi.advanceTimersByTimeAsync(250);
+
+    switchToFile('still-b');
+    controller.handleVideoStateChange(null);
+    frame.resolve({ path: '/cache/stale-a.png', timestampUsed: '0.000' });
+    await vi.runAllTimersAsync();
+
+    expect(setFileForFrame).not.toHaveBeenCalled();
+    expect(cancelPending).not.toHaveBeenCalled();
+    expect(get(selectedFile)?.id).toBe('still-b');
+    expect(controller.frameDecoding).toBe(false);
+  });
+
+  it('AI-IMP-192: epoch-only revocation blocks an old Home frame while the current owner stays pending and succeeds', async () => {
+    const staleFrame = deferred<{ path: string; timestampUsed: string }>();
+    const currentFrame = deferred<{ path: string; timestampUsed: string }>();
+    mocks.extractVideoFrame.mockReset();
+    mocks.extractVideoFrame
+      .mockReturnValueOnce(staleFrame.promise)
+      .mockReturnValueOnce(currentFrame.promise);
+    const staleSetFile = vi.fn(() => true);
+    const staleCancel = vi.fn();
+    const staleClearKey = vi.fn();
+    const staleSchedule = vi.fn();
+    const staleState = vi.fn();
+    const staleCache = vi.fn();
+    const staleController = auditVideoController({
+      setFile: staleSetFile,
+      cancelPending: staleCancel,
+      clearLastRequestKey: staleClearKey,
+      scheduleAnalysisWith: staleSchedule,
+      setVideoState: staleState,
+      cacheVideoState: staleCache,
+    });
+    setActivePath('/tmp/original.png');
+    staleController.loadVideoSelection(videoSelection());
+    await vi.advanceTimersByTimeAsync(250);
+    const staleStateCalls = staleState.mock.calls.length;
+    const staleCacheCalls = staleCache.mock.calls.length;
+
+    const currentSetFile = vi.fn(() => true);
+    const currentCancel = vi.fn();
+    const currentSchedule = vi.fn();
+    const currentState = vi.fn();
+    const currentCache = vi.fn();
+    const currentController = auditVideoController({
+      setFile: currentSetFile,
+      cancelPending: currentCancel,
+      scheduleAnalysisWith: currentSchedule,
+      setVideoState: currentState,
+      cacheVideoState: currentCache,
+    });
+    currentController.loadVideoSelection(videoSelection());
+    await vi.advanceTimersByTimeAsync(250);
+    expect(staleController.videoSelection?.path).toBe('/tmp/a.mp4');
+    expect(currentController.videoSelection?.path).toBe('/tmp/a.mp4');
+    expect(currentController.frameDecoding).toBe(true);
+
+    staleFrame.resolve({
+      path: '/cache/stale-epoch-frame.png',
+      timestampUsed: '0.000',
+    });
+    await flushMicrotasks();
+
+    expect(staleSetFile).not.toHaveBeenCalled();
+    expect(staleCancel).not.toHaveBeenCalled();
+    expect(staleClearKey).not.toHaveBeenCalled();
+    expect(staleSchedule).not.toHaveBeenCalled();
+    expect(staleState).toHaveBeenCalledTimes(staleStateCalls);
+    expect(staleCache).toHaveBeenCalledTimes(staleCacheCalls);
+    expect(getActivePath()).toBe('/tmp/original.png');
+    expect(currentController.frameDecoding).toBe(true);
+    expect(currentSetFile).not.toHaveBeenCalled();
+
+    currentFrame.resolve({
+      path: '/cache/current-epoch-frame.png',
+      timestampUsed: '0.000',
+    });
+    await vi.waitFor(() => expect(currentController.frameDecoding).toBe(false));
+
+    expect(currentSetFile).toHaveBeenCalledOnce();
+    expect(currentCancel).toHaveBeenCalledOnce();
+    expect(currentSchedule).toHaveBeenCalledOnce();
+    expect(currentState).toHaveBeenCalledTimes(2);
+    expect(currentCache).toHaveBeenCalledOnce();
+    expect(getActivePath()).toBe('/cache/current-epoch-frame.png');
+  });
+
+  it('AI-IMP-192: stale Home frame rejection is silent and cannot clear a newer rejecting owner', async () => {
+    const staleFrame = deferred<{ path: string; timestampUsed: string }>();
+    const currentFrame = deferred<{ path: string; timestampUsed: string }>();
+    mocks.extractVideoFrame.mockReset();
+    mocks.extractVideoFrame
+      .mockReturnValueOnce(staleFrame.promise)
+      .mockReturnValueOnce(currentFrame.promise);
+    const decodeError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const staleBanner = vi.fn();
+    const staleSetFile = vi.fn(() => true);
+    const staleCancel = vi.fn();
+    const staleState = vi.fn();
+    const staleCache = vi.fn();
+    const staleController = auditVideoController({
+      setFile: staleSetFile,
+      cancelPending: staleCancel,
+      setBannerMessage: staleBanner,
+      setVideoState: staleState,
+      cacheVideoState: staleCache,
+    });
+    staleController.loadVideoSelection(videoSelection());
+    await vi.advanceTimersByTimeAsync(250);
+    const staleStateCalls = staleState.mock.calls.length;
+    const staleCacheCalls = staleCache.mock.calls.length;
+
+    const currentBanner = vi.fn();
+    const currentSetFile = vi.fn(() => true);
+    const currentCancel = vi.fn();
+    const currentState = vi.fn();
+    const currentCache = vi.fn();
+    const currentController = auditVideoController({
+      setFile: currentSetFile,
+      cancelPending: currentCancel,
+      setBannerMessage: currentBanner,
+      setVideoState: currentState,
+      cacheVideoState: currentCache,
+    });
+    currentController.loadVideoSelection(videoSelection());
+    await vi.advanceTimersByTimeAsync(250);
+
+    staleFrame.reject(new Error('stale frame failure'));
+    await flushMicrotasks();
+
+    expect(decodeError).not.toHaveBeenCalled();
+    expect(staleBanner).not.toHaveBeenCalled();
+    expect(staleSetFile).not.toHaveBeenCalled();
+    expect(staleCancel).not.toHaveBeenCalled();
+    expect(staleState).toHaveBeenCalledTimes(staleStateCalls);
+    expect(staleCache).toHaveBeenCalledTimes(staleCacheCalls);
+    expect(currentController.frameDecoding).toBe(true);
+
+    const currentFailure = new Error('current frame failure');
+    currentFrame.reject(currentFailure);
+    await vi.waitFor(() => expect(currentController.frameDecoding).toBe(false));
+
+    expect(decodeError).toHaveBeenCalledOnce();
+    expect(decodeError).toHaveBeenCalledWith(
+      '[home] Video frame decode failed',
+      currentFailure
+    );
+    expect(currentBanner).toHaveBeenCalledWith(
+      'Failed to decode video frame. Please try another file.'
+    );
+    expect(currentSetFile).not.toHaveBeenCalled();
+    expect(currentCancel).not.toHaveBeenCalled();
+    expect(currentState).toHaveBeenCalledOnce();
+    expect(currentCache).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: 'success', rejects: false },
+    { label: 'rejection', rejects: true },
+  ])(
+    'AI-IMP-192: epoch-only stale strip $label cannot publish or clear the current owner',
+    async ({ rejects }) => {
+      const staleStrip = deferred<{ path: string }>();
+      const currentStrip = deferred<{ path: string }>();
+      mocks.extractVideoStrip.mockReset();
+      mocks.extractVideoStrip
+        .mockReturnValueOnce(staleStrip.promise)
+        .mockReturnValueOnce(currentStrip.promise);
+      mocks.extractVideoFrame.mockReset();
+      mocks.extractVideoFrame.mockReturnValue(new Promise(() => undefined));
+      const staleState = vi.fn();
+      const staleCache = vi.fn();
+      const staleSchedule = vi.fn();
+      const staleController = auditVideoController({
+        setVideoState: staleState,
+        cacheVideoState: staleCache,
+        scheduleAnalysisWith: staleSchedule,
+      });
+      staleController.loadVideoSelection(videoSelection());
+      staleController.regenerateStrip();
+      const staleStateCalls = staleState.mock.calls.length;
+      const staleCacheCalls = staleCache.mock.calls.length;
+
+      const currentState = vi.fn();
+      const currentCache = vi.fn();
+      const currentSchedule = vi.fn();
+      const currentController = auditVideoController({
+        setVideoState: currentState,
+        cacheVideoState: currentCache,
+        scheduleAnalysisWith: currentSchedule,
+      });
+      currentController.loadVideoSelection(videoSelection());
+      currentController.regenerateStrip();
+      const currentStateCalls = currentState.mock.calls.length;
+      const currentCacheCalls = currentCache.mock.calls.length;
+      const stripErrorsBefore = mocks.logEvent.mock.calls.filter(([message]) =>
+        String(message).startsWith('video:strip:error')
+      ).length;
+      expect(currentController.videoStripPending).toBe(true);
+
+      if (rejects) staleStrip.reject(new Error('stale strip failure'));
+      else staleStrip.resolve({ path: '/cache/stale-strip.png' });
+      await flushMicrotasks();
+
+      expect(staleController.videoStripUrl).toBeNull();
+      expect(staleState).toHaveBeenCalledTimes(staleStateCalls);
+      expect(staleCache).toHaveBeenCalledTimes(staleCacheCalls);
+      expect(staleSchedule).not.toHaveBeenCalled();
+      expect(currentController.videoStripPending).toBe(true);
+      expect(currentState).toHaveBeenCalledTimes(currentStateCalls);
+      expect(currentCache).toHaveBeenCalledTimes(currentCacheCalls);
+      expect(
+        mocks.logEvent.mock.calls.filter(([message]) =>
+          String(message).startsWith('video:strip:error')
+        )
+      ).toHaveLength(stripErrorsBefore);
+
+      if (rejects) currentStrip.reject(new Error('current strip failure'));
+      else currentStrip.resolve({ path: '/cache/current-strip.png' });
+      await vi.waitFor(() =>
+        expect(currentController.videoStripPending).toBe(false)
+      );
+
+      if (rejects) {
+        expect(currentController.videoStripUrl).toBeNull();
+        expect(currentState).toHaveBeenCalledTimes(currentStateCalls);
+        expect(currentCache).toHaveBeenCalledTimes(currentCacheCalls);
+        expect(
+          mocks.logEvent.mock.calls.filter(([message]) =>
+            String(message).startsWith('video:strip:error')
+          )
+        ).toHaveLength(stripErrorsBefore + 1);
+      } else {
+        expect(currentController.videoStripUrl).toMatch(
+          /^asset:\/\/\/cache\/current-strip\.png\?t=\d+$/
+        );
+        expect(currentState).toHaveBeenCalledTimes(currentStateCalls + 1);
+        expect(currentCache).toHaveBeenCalledTimes(currentCacheCalls + 1);
+      }
+      expect(currentSchedule).not.toHaveBeenCalled();
+    }
+  );
+
+  it('AI-IMP-192: current Home probe rejection owns its error and finally clears pending', async () => {
+    const probe = deferred<{ duration: number; fps: number }>();
+    mocks.probeVideo.mockReset();
+    mocks.probeVideo.mockReturnValue(probe.promise);
+    const state = vi.fn();
+    const cache = vi.fn();
+    const controller = auditVideoController({
+      getCachedVideoState: () => null,
+      setVideoState: state,
+      cacheVideoState: cache,
+    });
+    controller.loadVideoSelection(videoSelection());
+    const selection = controller.selection!;
+    expect(controller.videoProbePending).toBe(true);
+
+    probe.reject(new Error('current probe failure'));
+    await vi.waitFor(() => expect(controller.videoProbePending).toBe(false));
+
+    expect(isCurrentSelection(selection)).toBe(true);
+    expect(state).toHaveBeenCalledOnce();
+    expect(cache).not.toHaveBeenCalled();
+    expect(
+      mocks.logEvent.mock.calls.filter(([message]) =>
+        String(message).startsWith('video:probe:error')
+      )
+    ).toHaveLength(1);
+  });
+
   it('AUD-008: preserves cached strip metadata when Values activates a cached video', () => {
     cacheVideoState('/tmp/a.mp4', {
       duration: 10,
@@ -339,7 +666,7 @@ describe('audit reproductions for async control-flow invariants', () => {
 
   it('AUD-007: serializes Home frame decodes that share a logical frame ID', async () => {
     const firstFrame = deferred<{ path: string; timestampUsed: string }>();
-    const setFileForFrame = vi.fn();
+    const setFileForFrame = vi.fn(() => true);
     const cancelPending = vi.fn();
     mocks.extractVideoFrame
       .mockReturnValueOnce(firstFrame.promise)
@@ -376,7 +703,8 @@ describe('audit reproductions for async control-flow invariants', () => {
         path: '/cache/current-frame.png',
         frameTimestamp: 1 / 24,
       }),
-      emptyDataset
+      emptyDataset,
+      { selection: expect.any(Object) }
     );
   });
 
@@ -590,6 +918,33 @@ describe('audit reproductions for async control-flow invariants', () => {
     expect(get(analysisState)).toBe('ready');
     request.resolve(colorResult());
     await vi.runAllTimersAsync();
+  });
+
+  it('AI-IMP-192: a bare selection epoch does not revoke an independent export analysis', async () => {
+    const request = deferred<AnalysisResult>();
+    mocks.analyzeImage.mockReturnValueOnce(request.promise);
+    const file = {
+      ...imageEntry(),
+      dataset: emptyDataset,
+    } satisfies SelectedImage;
+    const exportRunner = createColorsExportRunner({
+      getFile: () => file,
+      getResult: () => null,
+      getParams: () => get(params),
+      getExportScale: () => 2,
+      getExportChecks: () => ({}) as ExportChecks,
+      getGraphExportFormat: () => 'png',
+      getVideoStrip: () => null,
+      getVideoFrameLabel: () => 'timestamp',
+      getVideoFps: () => null,
+    });
+
+    const pending = exportRunner.ensureColorAnalysis();
+    beginSelection('unrelated-ui-selection');
+    request.resolve(colorResult());
+    await pending;
+
+    expect(get(analysisState)).toBe('ready');
   });
 
   it('AUD-004: invalidates cached Values analysis when a logical video entry receives a new frame', () => {

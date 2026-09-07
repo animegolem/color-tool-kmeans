@@ -15,7 +15,10 @@ import {
   libraryDrawerOpen,
   getCachedVideoState,
   updateEntryPreview,
+  beginSelection,
+  isCurrentSelection,
 } from '../../stores/ui';
+import type { SelectionAuthority } from '../../stores/ui';
 
 export interface ValuesFileIngestionDeps {
   cancelPending: () => void;
@@ -23,17 +26,32 @@ export interface ValuesFileIngestionDeps {
 
 export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
   let videoRequestGeneration = 0;
-  let pendingVideoRequest: { path: string; generation: number } | null = null;
+  let pendingVideoRequest: {
+    path: string;
+    generation: number;
+    selection: SelectionAuthority;
+  } | null = null;
+
+  function ownsRequest(
+    generation: number,
+    selection: SelectionAuthority
+  ): boolean {
+    return (
+      generation === videoRequestGeneration && isCurrentSelection(selection)
+    );
+  }
 
   async function probeAndSetVideoState(
     videoPath: string,
     name: string,
-    generation: number
+    generation: number,
+    selection: SelectionAuthority
   ) {
     const cached = getCachedVideoState(videoPath);
     if (cached) {
-      if (generation !== videoRequestGeneration) return;
+      if (!ownsRequest(generation, selection)) return;
       const restoredState = {
+        selection,
         path: videoPath,
         name,
         duration: cached.duration,
@@ -48,8 +66,9 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
     }
     try {
       const probe = await probeVideo(videoPath);
-      if (generation !== videoRequestGeneration) return;
+      if (!ownsRequest(generation, selection)) return;
       setVideoState({
+        selection,
         path: videoPath,
         name,
         duration: probe.duration,
@@ -58,24 +77,57 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
         posterPath: null,
       });
     } catch (err) {
+      if (!ownsRequest(generation, selection)) return;
       console.error('[values] Video probe failed', err);
     }
   }
 
-  function handleVideoFile(videoPath: string, name: string) {
+  function handleVideoFile(
+    videoPath: string,
+    name: string,
+    capturedSelection?: SelectionAuthority
+  ) {
     const vs = get(videoState);
-    if (vs?.path === videoPath) return;
-    if (pendingVideoRequest?.path === videoPath) return;
+    if (capturedSelection && !isCurrentSelection(capturedSelection)) return;
+    if (
+      !capturedSelection &&
+      ((vs?.path === videoPath && isCurrentSelection(vs.selection)) ||
+        (pendingVideoRequest?.path === videoPath &&
+          isCurrentSelection(pendingVideoRequest.selection)))
+    )
+      return;
+    const selection =
+      capturedSelection ??
+      beginSelection(
+        get(images).find((item) => item.videoPath === videoPath)?.id ?? null
+      );
+    if (
+      pendingVideoRequest?.path === videoPath &&
+      pendingVideoRequest.selection.epoch === selection.epoch
+    )
+      return;
     const generation = ++videoRequestGeneration;
-    pendingVideoRequest = { path: videoPath, generation };
+    pendingVideoRequest = { path: videoPath, generation, selection };
     deps.cancelPending();
-    void probeAndSetVideoState(videoPath, name, generation).finally(() => {
-      if (pendingVideoRequest?.generation === generation)
-        pendingVideoRequest = null;
+    setVideoState({
+      selection,
+      path: videoPath,
+      name,
+      duration: 0,
+      fps: null,
+      currentTime: 0,
+      posterPath: null,
     });
+    void probeAndSetVideoState(videoPath, name, generation, selection).finally(
+      () => {
+        if (pendingVideoRequest?.generation === generation)
+          pendingVideoRequest = null;
+      }
+    );
   }
 
   function handleImageFile(sel: FileSelection) {
+    const selection = beginSelection(null);
     videoRequestGeneration += 1;
     pendingVideoRequest = null;
     setVideoState(null);
@@ -92,11 +144,8 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
       entry.id = existing.id;
     }
 
-    if (nativeMode && sel.path) {
-      setActivePath(sel.path);
-    }
-
-    setFile(entry, dataset);
+    if (!setFile(entry, dataset, { selection })) return;
+    if (nativeMode && sel.path) setActivePath(sel.path);
   }
 
   async function processBatch(selections: FileSelection[]) {
@@ -108,7 +157,14 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
         if (!videoProcessed && sel.path) {
           videoProcessed = true;
           firstActivated = true;
-          handleVideoFile(sel.path, sel.name);
+          const existing = get(images).find(
+            (item) => item.videoPath === sel.path
+          );
+          handleVideoFile(
+            sel.path,
+            sel.name,
+            beginSelection(existing?.id ?? null)
+          );
         } else {
           const { entry, dataset } = ingestFileAsEntry(sel, updateEntryPreview);
           appendFile(entry, dataset);

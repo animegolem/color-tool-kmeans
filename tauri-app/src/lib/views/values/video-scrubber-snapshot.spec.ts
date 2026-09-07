@@ -18,7 +18,7 @@ vi.mock('@tauri-apps/api/core', () => ({
   convertFileSrc: (path: string) => `asset://${path}`,
 }));
 
-import type { ImageEntry } from '../../stores/ui';
+import type { ImageEntry, SelectionAuthority } from '../../stores/ui';
 import {
   createVideoScrubber,
   settledFrameSnapshotRequest,
@@ -81,12 +81,22 @@ function settledFrame(overrides: Partial<ImageEntry> = {}): ImageEntry {
   };
 }
 
+const TEST_SELECTION: SelectionAuthority = Object.freeze({
+  epoch: 1,
+  mediaId: 'video-1',
+});
+
+function isCurrentSelection(selection: SelectionAuthority): boolean {
+  return selection.epoch === TEST_SELECTION.epoch;
+}
+
 function syncVideo(
   scrubber: ReturnType<typeof createVideoScrubber>,
   path = '/tmp/video.mp4',
   currentTime = 1
 ) {
   scrubber.syncFromVideoState({
+    selection: TEST_SELECTION,
     path,
     name: path.split('/').at(-1) ?? 'video.mp4',
     duration: 10,
@@ -157,12 +167,14 @@ describe('Values settled-frame snapshots', () => {
           frameTimestamp: timestamp,
           source: { kind: 'path', path: framePath },
         });
+        return true;
       }
     );
     const scrubber = createVideoScrubber({
       getMaxDimension: () => 1200,
       onFrameExtracted,
       updateVideoState: vi.fn(),
+      isCurrentSelection,
     });
     syncVideo(scrubber);
 
@@ -203,11 +215,12 @@ describe('Values settled-frame snapshots', () => {
   it('SWEEP-008: coalesces seeks during debounce and publishes only the current request', async () => {
     const frame = deferred<{ path: string; timestampUsed: string }>();
     mocks.extractVideoFrame.mockReturnValue(frame.promise);
-    const onFrameExtracted = vi.fn();
+    const onFrameExtracted = vi.fn(() => true);
     const scrubber = createVideoScrubber({
       getMaxDimension: () => 1200,
       onFrameExtracted,
       updateVideoState: vi.fn(),
+      isCurrentSelection,
     });
     syncVideo(scrubber);
 
@@ -231,7 +244,8 @@ describe('Values settled-frame snapshots', () => {
       expect.any(String),
       settledTime,
       '/tmp/video.mp4',
-      'video.mp4'
+      'video.mp4',
+      TEST_SELECTION
     );
     expect(scrubber.extracting).toBe(false);
   });
@@ -242,11 +256,12 @@ describe('Values settled-frame snapshots', () => {
     mocks.extractVideoFrame
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);
-    const onFrameExtracted = vi.fn();
+    const onFrameExtracted = vi.fn(() => true);
     const scrubber = createVideoScrubber({
       getMaxDimension: () => 1200,
       onFrameExtracted,
       updateVideoState: vi.fn(),
+      isCurrentSelection,
     });
     const priorFrame = settledFrame({
       path: '/cache/prior.png',
@@ -286,11 +301,12 @@ describe('Values settled-frame snapshots', () => {
   it('SWEEP-008: a path switch revokes active extraction without publishing the old frame', async () => {
     const oldFrame = deferred<{ path: string; timestampUsed: string }>();
     mocks.extractVideoFrame.mockReturnValue(oldFrame.promise);
-    const onFrameExtracted = vi.fn();
+    const onFrameExtracted = vi.fn(() => true);
     const scrubber = createVideoScrubber({
       getMaxDimension: () => 1200,
       onFrameExtracted,
       updateVideoState: vi.fn(),
+      isCurrentSelection,
     });
     syncVideo(scrubber, '/tmp/a.mp4');
     scrubber.scheduleFrameExtract();
@@ -308,11 +324,12 @@ describe('Values settled-frame snapshots', () => {
   it('SWEEP-008: destruction clears pending state and rejects an active completion', async () => {
     const frame = deferred<{ path: string; timestampUsed: string }>();
     mocks.extractVideoFrame.mockReturnValue(frame.promise);
-    const onFrameExtracted = vi.fn();
+    const onFrameExtracted = vi.fn(() => true);
     const scrubber = createVideoScrubber({
       getMaxDimension: () => 1200,
       onFrameExtracted,
       updateVideoState: vi.fn(),
+      isCurrentSelection,
     });
     syncVideo(scrubber);
     scrubber.scheduleFrameExtract();

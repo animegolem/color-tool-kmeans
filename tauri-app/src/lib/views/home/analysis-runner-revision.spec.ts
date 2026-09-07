@@ -3,6 +3,8 @@ import { get } from 'svelte/store';
 
 const mocks = vi.hoisted(() => ({
   analyzeImage: vi.fn(),
+  isTauriEnv: vi.fn(() => true),
+  loadImageDataset: vi.fn(),
 }));
 
 vi.mock('../../bridges/fs', () => ({
@@ -14,9 +16,13 @@ vi.mock('../../bridges/fs', () => ({
 }));
 
 vi.mock('../../bridges/tauri', () => ({
-  isTauriEnv: () => true,
+  isTauriEnv: mocks.isTauriEnv,
   tauriInvoke: vi.fn(),
   tauriDetectionInfo: () => ({}),
+}));
+
+vi.mock('../../compute/image-loader', () => ({
+  loadImageDataset: mocks.loadImageDataset,
 }));
 
 vi.mock('../../bridges/log', () => ({ logEvent: vi.fn() }));
@@ -40,7 +46,11 @@ import {
   analysisError,
   analysisState,
   appendFile,
+  beginSelection,
   clearFile,
+  getCurrentSelection,
+  images,
+  isCurrentSelection,
   params,
   resetAnalysis,
   selectedFile,
@@ -48,6 +58,7 @@ import {
   setAnalysisPending,
   setAnalysisSuccess,
   setFile,
+  switchToFile,
   updateEntryPreview,
 } from '../../stores/ui';
 import { createAnalysisRunner } from './analysis-runner.svelte';
@@ -129,7 +140,10 @@ function runner() {
   });
 }
 
-function ingestion(activeRunner: ReturnType<typeof runner>) {
+function ingestion(
+  activeRunner: ReturnType<typeof runner>,
+  overrides: Partial<Parameters<typeof createFileIngestion>[0]> = {}
+) {
   return createFileIngestion({
     setFile,
     appendFile,
@@ -144,6 +158,9 @@ function ingestion(activeRunner: ReturnType<typeof runner>) {
     loadVideoSelection: vi.fn(),
     openLibraryDrawer: vi.fn(),
     updateEntryPreview,
+    beginSelection,
+    isCurrentSelection,
+    ...overrides,
   });
 }
 
@@ -159,6 +176,9 @@ describe('analysis runner content revision integration', () => {
     installRuneShims();
     vi.useFakeTimers();
     mocks.analyzeImage.mockReset();
+    mocks.isTauriEnv.mockReturnValue(true);
+    mocks.loadImageDataset.mockReset();
+    mocks.loadImageDataset.mockResolvedValue(DATASET);
     clearFile();
     resetAnalysis();
   });
@@ -267,5 +287,140 @@ describe('analysis runner content revision integration', () => {
 
     expect(mocks.analyzeImage).toHaveBeenCalledOnce();
     expect(get(analysisById)[first.id]).toEqual(replacementResult);
+  });
+
+  it.each([
+    { label: 'success', rejects: false },
+    { label: 'error', rejects: true },
+  ])(
+    'AI-IMP-192: pre-await Home ingress rejects stale decode $label after a newer stored selection',
+    async ({ rejects }) => {
+      mocks.isTauriEnv.mockReturnValue(false);
+      const decode = deferred<typeof DATASET>();
+      mocks.loadImageDataset.mockReturnValue(decode.promise);
+      const older = entry();
+      const newer = {
+        ...entry(),
+        id: 'newer',
+        name: 'newer.png',
+        path: '/tmp/newer.png',
+        source: { kind: 'path', path: '/tmp/newer.png' } as const,
+      };
+      setFile(older, DATASET);
+      appendFile(newer, DATASET);
+      const activeRunner = runner();
+      const decodeError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      const publishError = vi.fn(setAnalysisError);
+
+      const pending = ingestion(activeRunner, {
+        setAnalysisError: publishError,
+      }).ingestSelection(selection());
+      const captured = getCurrentSelection();
+      expect(captured.mediaId).toBeNull();
+      switchToFile(newer.id);
+      if (rejects) decode.reject(new Error('stale decode failed'));
+      else decode.resolve({ ...DATASET, width: 9 });
+      await pending;
+
+      expect(get(selectedFile)?.id).toBe(newer.id);
+      expect(get(analysisError)).toBeNull();
+      expect(decodeError).not.toHaveBeenCalled();
+      expect(publishError).not.toHaveBeenCalled();
+      expect(getCurrentSelection().epoch).toBeGreaterThan(captured.epoch);
+    }
+  );
+
+  it('AI-IMP-192: non-activating Home append neither cancels nor retargets an activating decode', async () => {
+    mocks.isTauriEnv.mockReturnValue(false);
+    const activeDecode = deferred<typeof DATASET>();
+    mocks.loadImageDataset
+      .mockReturnValueOnce(activeDecode.promise)
+      .mockResolvedValueOnce({ ...DATASET, width: 2 });
+    const activeRunner = runner();
+    const cancelPending = vi.spyOn(activeRunner, 'cancelPending');
+    const fileIngestion = ingestion(activeRunner);
+    const active = fileIngestion.ingestSelection(selection(), true);
+    const authority = getCurrentSelection();
+    const inactiveSelection: FileSelection = {
+      ...selection(),
+      name: 'inactive.png',
+      path: '/tmp/inactive.png',
+    };
+
+    await fileIngestion.ingestSelection(inactiveSelection, false);
+    expect(getCurrentSelection()).toEqual(authority);
+    expect(cancelPending).toHaveBeenCalledOnce();
+    activeDecode.resolve({ ...DATASET, width: 3 });
+    await active;
+
+    expect(get(selectedFile)).toMatchObject({
+      path: '/tmp/same.png',
+      dataset: { width: 3 },
+    });
+    expect(get(images).map((item) => item.path)).toEqual([
+      '/tmp/inactive.png',
+      '/tmp/same.png',
+    ]);
+  });
+
+  it('AI-IMP-192: current activating Home decode failure owns its diagnostic and shared error', async () => {
+    mocks.isTauriEnv.mockReturnValue(false);
+    const failure = new Error('current decode failed');
+    mocks.loadImageDataset.mockRejectedValue(failure);
+    const decodeError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const publishError = vi.fn(setAnalysisError);
+    const activeRunner = runner();
+
+    await ingestion(activeRunner, {
+      setAnalysisError: publishError,
+    }).ingestSelection(selection());
+
+    expect(decodeError).toHaveBeenCalledOnce();
+    expect(decodeError).toHaveBeenCalledWith(
+      '[home] Failed to decode image',
+      failure
+    );
+    expect(publishError).toHaveBeenCalledOnce();
+    expect(publishError).toHaveBeenCalledWith(
+      'Failed to decode the selected image. Please try another file.'
+    );
+    expect(get(analysisState)).toBe('error');
+    expect(get(analysisError)).toBe(
+      'Failed to decode the selected image. Please try another file.'
+    );
+  });
+
+  it('AI-IMP-192: non-activating Home decode failure logs locally without retargeting shared state', async () => {
+    mocks.isTauriEnv.mockReturnValue(false);
+    const current = entry();
+    setFile(current, DATASET);
+    const authority = getCurrentSelection();
+    const failure = new Error('inactive decode failed');
+    mocks.loadImageDataset.mockRejectedValue(failure);
+    const decodeError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const publishError = vi.fn(setAnalysisError);
+    const activeRunner = runner();
+
+    await ingestion(activeRunner, {
+      setAnalysisError: publishError,
+    }).ingestSelection(
+      {
+        ...selection(),
+        name: 'inactive.png',
+        path: '/tmp/inactive.png',
+      },
+      false
+    );
+
+    expect(decodeError).toHaveBeenCalledWith(
+      '[home] Failed to decode image',
+      failure
+    );
+    expect(publishError).not.toHaveBeenCalled();
+    expect(getCurrentSelection()).toEqual(authority);
+    expect(get(selectedFile)?.id).toBe(current.id);
+    expect(get(analysisError)).toBeNull();
   });
 });

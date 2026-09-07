@@ -27,6 +27,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 import type { FileSelection } from '../../bridges/fs';
+import type { SelectionAuthority } from '../../stores/ui';
 import { createVideoController } from './video-controller.svelte';
 
 const stateRuneDescriptor = Object.getOwnPropertyDescriptor(
@@ -71,11 +72,29 @@ function videoElement(): HTMLVideoElement {
   } as unknown as HTMLVideoElement;
 }
 
+let currentSelection: SelectionAuthority = Object.freeze({
+  epoch: 0,
+  mediaId: null,
+});
+
+function beginSelection(mediaId: string | null = null): SelectionAuthority {
+  currentSelection = Object.freeze({
+    epoch: currentSelection.epoch + 1,
+    mediaId,
+  });
+  return currentSelection;
+}
+
+function isCurrentSelection(selection: SelectionAuthority): boolean {
+  return selection.epoch === currentSelection.epoch;
+}
+
 describe('video controller cache restoration reset', () => {
   beforeEach(() => {
     installRuneShim();
     vi.useFakeTimers();
     vi.clearAllMocks();
+    currentSelection = Object.freeze({ epoch: 0, mediaId: null });
     mocks.probeVideo.mockReturnValue(new Promise(() => undefined));
     mocks.extractVideoStrip.mockReturnValue(new Promise(() => undefined));
     mocks.extractVideoFrame.mockResolvedValue({
@@ -96,7 +115,7 @@ describe('video controller cache restoration reset', () => {
       isNativeModeActive: () => true,
       buildPreviewUrl: (file) => `asset://${file.path}`,
       maxDimensionForQuality: () => 1200,
-      setFile: vi.fn(),
+      setFile: vi.fn(() => true),
       setVideoState: vi.fn(),
       clearFile: vi.fn(),
       getQuality: () => 2,
@@ -121,6 +140,8 @@ describe('video controller cache restoration reset', () => {
           : null,
       cacheVideoState: vi.fn(),
       findExistingFrameId: () => null,
+      beginSelection,
+      isCurrentSelection,
     });
     const element = videoElement();
     controller.setVideoElementRef(element);
@@ -141,7 +162,7 @@ describe('video controller cache restoration reset', () => {
     const scheduleAnalysisWith = vi.fn();
     const cancelPending = vi.fn();
     const clearLastRequestKey = vi.fn();
-    const setFile = vi.fn();
+    const setFile = vi.fn(() => true);
     const controller = createVideoController({
       isNativeModeActive: () => true,
       buildPreviewUrl: (file) => `asset://${file.path}`,
@@ -168,6 +189,8 @@ describe('video controller cache restoration reset', () => {
       }),
       cacheVideoState: vi.fn(),
       findExistingFrameId: () => null,
+      beginSelection,
+      isCurrentSelection,
     });
     const element = videoElement();
     controller.setVideoElementRef(element);
@@ -201,7 +224,7 @@ describe('video controller cache restoration reset', () => {
       isNativeModeActive: () => true,
       buildPreviewUrl: (file) => `asset://${file.path}`,
       maxDimensionForQuality: () => 1200,
-      setFile: vi.fn(),
+      setFile: vi.fn(() => true),
       setVideoState: vi.fn(),
       clearFile: vi.fn(),
       getQuality: () => 2,
@@ -226,6 +249,8 @@ describe('video controller cache restoration reset', () => {
           : null,
       cacheVideoState: vi.fn(),
       findExistingFrameId: () => null,
+      beginSelection,
+      isCurrentSelection,
     });
     const element = videoElement();
     controller.setVideoElementRef(element);

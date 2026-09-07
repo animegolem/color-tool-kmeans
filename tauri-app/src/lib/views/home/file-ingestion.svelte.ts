@@ -1,6 +1,7 @@
 import type {
   AnalysisParams,
   ImageEntry,
+  SelectionAuthority,
   SelectedImage,
 } from '../../stores/ui';
 import type { FileSelection } from '../../bridges/fs';
@@ -19,8 +20,9 @@ import { setupTauriDragDrop } from '../../services/drag-drop';
 export interface FileIngestionDeps {
   setFile: (
     entry: ImageEntry,
-    dataset: { width: number; height: number; pixels: Uint8Array }
-  ) => void;
+    dataset: { width: number; height: number; pixels: Uint8Array },
+    options?: { selection?: SelectionAuthority }
+  ) => boolean;
   appendFile: (
     entry: ImageEntry,
     dataset: { width: number; height: number; pixels: Uint8Array }
@@ -40,6 +42,8 @@ export interface FileIngestionDeps {
   loadVideoSelection: (sel: FileSelection) => void;
   openLibraryDrawer: () => void;
   updateEntryPreview: (id: string, previewUrl: string) => void;
+  beginSelection: (mediaId?: string | null) => SelectionAuthority;
+  isCurrentSelection: (selection: SelectionAuthority) => boolean;
 }
 
 export function createFileIngestion(deps: FileIngestionDeps) {
@@ -93,9 +97,9 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     fileSelection: FileSelection,
     activate = true
   ) {
-    loadToken += 1;
-    const token = loadToken;
-    deps.cancelPending();
+    const token = activate ? ++loadToken : loadToken;
+    const selection = activate ? deps.beginSelection(null) : null;
+    if (activate) deps.cancelPending();
     try {
       const nativeMode = isTauriEnv() && !!fileSelection.path;
       let dataset;
@@ -104,19 +108,26 @@ export function createFileIngestion(deps: FileIngestionDeps) {
       } else {
         dataset = await loadImageDataset(fileSelection.blob);
       }
-      if (token !== loadToken) return;
+      if (
+        (activate && token !== loadToken) ||
+        (selection && !deps.isCurrentSelection(selection))
+      )
+        return;
 
       const { entry } = ingestFileAsEntry(
         fileSelection,
         deps.updateEntryPreview
       );
 
-      if (activate && nativeMode && fileSelection.path) {
-        setActivePath(fileSelection.path);
-      }
-      deps.setBannerMessage(null);
       if (activate) {
-        deps.setFile(entry, dataset);
+        const accepted = deps.setFile(entry, dataset, {
+          selection: selection!,
+        });
+        if (!accepted) return;
+        if (nativeMode && fileSelection.path) {
+          setActivePath(fileSelection.path);
+        }
+        deps.setBannerMessage(null);
         const snapshot = deps.getParams();
         deps.scheduleAnalysisWith(
           { ...entry, dataset },
@@ -124,11 +135,18 @@ export function createFileIngestion(deps: FileIngestionDeps) {
           deps.getStatus()
         );
       } else {
+        deps.setBannerMessage(null);
         deps.appendFile(entry, dataset);
       }
     } catch (error) {
+      const ownsActivatingError =
+        activate &&
+        token === loadToken &&
+        selection !== null &&
+        deps.isCurrentSelection(selection);
+      if (activate && !ownsActivatingError) return;
       console.error('[home] Failed to decode image', error);
-      if (token === loadToken) {
+      if (ownsActivatingError) {
         deps.setAnalysisError(
           'Failed to decode the selected image. Please try another file.'
         );

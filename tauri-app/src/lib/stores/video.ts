@@ -1,6 +1,8 @@
 import { writable, get } from 'svelte/store';
+import type { SelectionAuthority } from './image';
 
 export interface VideoState {
+  selection: SelectionAuthority;
   path: string;
   name: string;
   duration: number;

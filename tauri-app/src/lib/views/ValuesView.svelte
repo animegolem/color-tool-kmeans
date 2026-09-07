@@ -12,8 +12,8 @@
     images,
     showSimplifiedTones,
     setVideoState,
-    invalidateAnalysisForImage,
     cacheVideoState,
+    isCurrentSelection,
   } from '../stores/ui';
   import {
     subscribePendingVideoSwitch,
@@ -56,13 +56,19 @@
   const scrubber = createVideoScrubber({
     getMaxDimension: () => maxDimensionForQuality($params.quality),
     captureScroll: () => runner.captureAnalysisScroll(),
-    onFrameExtracted: (framePath, frameId, timestamp, videoPath, videoName) => {
-      setActivePath(framePath);
+    isCurrentSelection,
+    onFrameExtracted: (
+      framePath,
+      frameId,
+      timestamp,
+      videoPath,
+      videoName,
+      selection
+    ) => {
       const previewUrl = assetUrl(framePath);
       // Reuse existing frame entry ID for the same video to prevent duplicates
       const existing = get(images).find((item) => item.videoPath === videoPath);
       const entryId = existing?.id ?? frameId;
-      invalidateAnalysisForImage(entryId);
       const entry: ImageEntry = {
         id: entryId,
         name: videoName,
@@ -74,21 +80,24 @@
         previewUrl,
       };
       const dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
-      setFile(entry, dataset);
+      if (!setFile(entry, dataset, { selection })) return false;
+      setActivePath(framePath);
       runner.ensureAnalysis(
         { ...entry, dataset },
         runner.levels,
         runner.effectiveNotanMode
       );
+      return true;
     },
     updateVideoState: (currentTime, posterPath) => {
       const vs = $videoState;
-      if (!vs) return;
+      if (!vs || !isCurrentSelection(vs.selection)) return;
       setVideoState({ ...vs, currentTime, posterPath });
     },
     cacheVideoState: (videoPath, currentTime, posterPath) => {
       const vs = get(videoState);
-      if (!vs) return;
+      if (!vs || vs.path !== videoPath || !isCurrentSelection(vs.selection))
+        return;
       const activeId = get(activeImageId);
       cacheVideoState(videoPath, {
         duration: vs.duration,
@@ -197,8 +206,8 @@
           scrubber.scheduleFrameExtract();
         }
       }),
-      subscribePendingVideoSwitch(({ entry, videoPath }) => {
-        ingestion.handleVideoFile(videoPath, entry.name);
+      subscribePendingVideoSwitch(({ entry, videoPath, selection }) => {
+        ingestion.handleVideoFile(videoPath, entry.name, selection);
       }),
       subscribeMediaLoadRequested(() => ingestion.handleUpload()),
     ];

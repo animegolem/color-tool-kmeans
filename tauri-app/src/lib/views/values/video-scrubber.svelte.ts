@@ -1,5 +1,9 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
-import type { ImageEntry, VideoState } from '../../stores/ui';
+import type {
+  ImageEntry,
+  VideoState,
+  SelectionAuthority,
+} from '../../stores/ui';
 import { extractVideoFrame } from '../../bridges/video';
 import { inferMimeType } from '../../bridges/fs';
 import { logEvent } from '../../bridges/log';
@@ -12,8 +16,9 @@ export interface VideoScrubberDeps {
     frameId: string,
     timestamp: number,
     videoPath: string,
-    videoName: string
-  ) => void;
+    videoName: string,
+    selection: SelectionAuthority
+  ) => boolean;
   updateVideoState: (currentTime: number, posterPath: string) => void;
   captureScroll?: () => void;
   cacheVideoState?: (
@@ -21,6 +26,7 @@ export interface VideoScrubberDeps {
     currentTime: number,
     posterPath: string
   ) => void;
+  isCurrentSelection: (selection: SelectionAuthority) => boolean;
 }
 
 export function settledFrameSnapshotRequest(
@@ -45,6 +51,7 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
   let extracting = $state(false);
   let videoElement: HTMLVideoElement | null = $state(null);
   let frameId: string | null = null;
+  let selection: SelectionAuthority | null = null;
   let decodeToken = 0;
   let decodeTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -54,7 +61,8 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
 
   function syncFromVideoState(vs: VideoState | null) {
     const nextPath = vs?.path ?? null;
-    if (nextPath !== videoPath) {
+    const nextEpoch = vs?.selection.epoch ?? null;
+    if (nextPath !== videoPath || nextEpoch !== selection?.epoch) {
       decodeToken += 1;
       extracting = false;
       frameId = null;
@@ -64,6 +72,7 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
       }
     }
     if (!vs) {
+      selection = null;
       videoPath = null;
       videoName = null;
       duration = 0;
@@ -72,6 +81,7 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
       frameId = null;
       return;
     }
+    selection = vs.selection;
     videoPath = vs.path;
     videoName = vs.name;
     duration = vs.duration;
@@ -83,7 +93,7 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
   }
 
   function scheduleFrameExtract() {
-    if (!videoPath) return;
+    if (!videoPath || !selection || !deps.isCurrentSelection(selection)) return;
     if (decodeTimer) clearTimeout(decodeTimer);
     const requestPath = videoPath;
     const requestName = videoName ?? requestPath;
@@ -93,11 +103,13 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
     frameId = fid;
     const maxDimension = deps.getMaxDimension();
     const token = ++decodeToken;
+    const requestSelection = selection;
     extracting = true;
 
     decodeTimer = setTimeout(async () => {
       decodeTimer = null;
-      if (token !== decodeToken) return;
+      if (token !== decodeToken || !deps.isCurrentSelection(requestSelection))
+        return;
       try {
         void logEvent(
           `values:video:frame:start t=${requestTime.toFixed(2)} max=${maxDimension}`
@@ -108,28 +120,35 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
           timestamp: requestTime,
           maxDimension,
         });
-        if (token !== decodeToken) return;
+        if (token !== decodeToken || !deps.isCurrentSelection(requestSelection))
+          return;
         const framePath = response.path;
         if (!framePath) return;
         void logEvent(
           `values:video:frame:done t_req=${requestTime.toFixed(4)} t_ffmpeg=${response.timestampUsed}`
         );
-        deps.onFrameExtracted(
+        const accepted = deps.onFrameExtracted(
           framePath,
           fid,
           requestTime,
           requestPath,
-          requestName
+          requestName,
+          requestSelection
         );
+        if (!accepted || !deps.isCurrentSelection(requestSelection)) return;
         deps.updateVideoState(requestTime, framePath);
         deps.cacheVideoState?.(requestPath, requestTime, framePath);
       } catch (error) {
-        if (token !== decodeToken) return;
+        if (token !== decodeToken || !deps.isCurrentSelection(requestSelection))
+          return;
         const message = error instanceof Error ? error.message : String(error);
         void logEvent(`values:video:frame:error message=${message}`);
         console.error('[values] Video frame decode failed', error);
       } finally {
-        if (token === decodeToken) {
+        if (
+          token === decodeToken &&
+          deps.isCurrentSelection(requestSelection)
+        ) {
           extracting = false;
         }
       }

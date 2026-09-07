@@ -34,6 +34,8 @@
     showSimplifiedTones,
     compactSidebars,
     libraryDrawerOpen,
+    beginSelection,
+    isCurrentSelection,
   } from '../stores/ui';
   import { isTauriEnv, tauriDetectionInfo } from '../bridges/tauri';
   import { getFfmpegVersion } from '../bridges/ffmpeg';
@@ -224,6 +226,8 @@
     },
     openLibraryDrawer: () => libraryDrawerOpen.set(true),
     updateEntryPreview,
+    beginSelection,
+    isCurrentSelection,
   });
 
   // --- Video controller ---
@@ -250,6 +254,8 @@
       const entry = get(images).find((item) => item.videoPath === videoPath);
       return entry?.id ?? null;
     },
+    beginSelection,
+    isCurrentSelection,
   });
 
   // --- Derived chart state ---
@@ -405,39 +411,45 @@
         video.handleVideoStateChange(state);
       }),
       subscribeToVideoStripMode(videoStripMode, video.regenerateStrip),
-      subscribePendingVideoSwitch(({ entry, videoPath, id, cid }) => {
-        devlog('home:videoSwitch', 'Pending video switch', {
-          id,
-          cid,
-          entryFound: true,
-          path: entry.path ?? null,
-        });
-        if (video.videoSelection?.path === videoPath) {
-          devlog('home:videoSwitch:skip', 'Already active — skipping', {
+      subscribePendingVideoSwitch(
+        ({ entry, videoPath, id, cid, selection }) => {
+          devlog('home:videoSwitch', 'Pending video switch', {
+            id,
             cid,
+            entryFound: true,
+            path: entry.path ?? null,
+          });
+          if (
+            video.videoSelection?.path === videoPath &&
+            video.selection?.epoch === selection.epoch
+          ) {
+            devlog('home:videoSwitch:skip', 'Already active — skipping', {
+              cid,
+              videoPath,
+            });
+            return;
+          }
+          clearActivePath();
+          runner.cancelPending();
+          devlog('home:videoSwitch:load', 'Loading video selection', {
+            cid,
+            existingId: entry.id,
             videoPath,
           });
-          return;
+          video.loadVideoSelection(
+            {
+              name: entry.name,
+              path: videoPath,
+              size: entry.size,
+              blob: new Blob([], { type: inferMimeType(entry.name) }),
+              mimeType: inferMimeType(entry.name),
+            },
+            entry.id,
+            cid,
+            selection
+          );
         }
-        clearActivePath();
-        runner.cancelPending();
-        devlog('home:videoSwitch:load', 'Loading video selection', {
-          cid,
-          existingId: entry.id,
-          videoPath,
-        });
-        video.loadVideoSelection(
-          {
-            name: entry.name,
-            path: videoPath,
-            size: entry.size,
-            blob: new Blob([], { type: inferMimeType(entry.name) }),
-            mimeType: inferMimeType(entry.name),
-          },
-          entry.id,
-          cid
-        );
-      }),
+      ),
       subscribeMediaLoadRequested(() => ingestion.chooseMedia()),
     ];
     let dragDepth = 0;

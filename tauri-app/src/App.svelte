@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { View, ImageEntry } from './lib/stores/ui';
+  import type { View } from './lib/stores/ui';
   import { get } from 'svelte/store';
   import {
     currentView,
@@ -14,12 +14,13 @@
     setFile,
     appendFile,
     updateEntryPreview,
+    isCurrentSelection,
   } from './lib/stores/ui';
-  import { isTauriEnv, tauriInvoke } from './lib/bridges/tauri';
+  import { isTauriEnv } from './lib/bridges/tauri';
   import { getFsBridge } from './lib/bridges/fs';
   import { ingestFileAsEntry } from './lib/services/media-ingestion';
   import { setActivePath } from './lib/services/active-image';
-  import { clipboardImageExtensionForMimeType } from './lib/services/clipboard-image';
+  import { ingestClipboardImage } from './lib/services/clipboard-ingestion';
   import HomeView from './lib/views/HomeView.svelte';
   import ValuesView from './lib/views/ValuesView.svelte';
   import BatchView from './lib/views/BatchView.svelte';
@@ -227,35 +228,9 @@
     };
 
     const pasteImageBlob = async (blob: File | Blob) => {
-      const extension = clipboardImageExtensionForMimeType(blob.type);
-      if (!extension) {
-        throw new Error(
-          `Unsupported clipboard image MIME type: ${blob.type || '(missing)'}`
-        );
-      }
-      const { appCacheDir } = await import('@tauri-apps/api/path');
-      const { convertFileSrc } = await import('@tauri-apps/api/core');
-      const cacheDir = await appCacheDir();
-      const timestamp = Date.now();
-      const path = `${cacheDir}/clipboard/paste-${timestamp}.${extension}`;
-      const buffer = await blob.arrayBuffer();
-      const data = Array.from(new Uint8Array(buffer));
-      await tauriInvoke('save_file', { req: { path, data } });
-      const previewUrl = convertFileSrc(path);
-      const entryId =
-        globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
-      const entry: ImageEntry = {
-        id: entryId,
-        name: `paste-${new Date(timestamp).toISOString().slice(11, 19).replace(/:/g, '')}.${extension}`,
-        path,
-        size: blob.size,
-        source: { kind: 'path', path },
-        previewUrl,
-      };
-      const emptyDataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
-      setVideoState(null);
-      setActivePath(path);
-      setFile(entry, emptyDataset);
+      const result = await ingestClipboardImage(blob);
+      if (result.status !== 'accepted' || !isCurrentSelection(result.selection))
+        return;
       libraryDrawerOpen.set(true);
       void logEvent('clipboard:paste:image');
     };
