@@ -35,7 +35,6 @@
     compactSidebars,
     libraryDrawerOpen,
   } from '../stores/ui';
-  import { analysisById } from '../stores/analysis';
   import { isTauriEnv, tauriDetectionInfo } from '../bridges/tauri';
   import { getFfmpegVersion } from '../bridges/ffmpeg';
   import { logEvent } from '../bridges/log';
@@ -241,6 +240,7 @@
     },
     scheduleAnalysisWith: (f, p) => runner.scheduleAnalysisWith(f, p, status),
     getCurrentParams: () => currentParams,
+    cancelPending: runner.cancelPending,
     clearLastRequestKey: () => runner.clearLastRequestKey(),
     captureAnalysisScroll: () => runner.captureAnalysisScroll(),
     getVideoStripMode: () => get(videoStripMode),
@@ -250,13 +250,6 @@
       const entry = get(images).find((item) => item.videoPath === videoPath);
       return entry?.id ?? null;
     },
-    seedAnalysisKey: (imageId: string, paramSnapshot: any) => {
-      runner.seedLastRequestKey(
-        { id: imageId } as SelectedImage,
-        paramSnapshot
-      );
-    },
-    hasAnalysisForImage: (id: string) => !!get(analysisById)[id],
   });
 
   // --- Derived chart state ---

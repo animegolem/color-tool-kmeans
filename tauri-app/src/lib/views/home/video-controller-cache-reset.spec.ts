@@ -92,7 +92,6 @@ describe('video controller cache restoration reset', () => {
 
   it('SWEEP-003: does not carry cached seek or restoration mode into a fresh video', async () => {
     const scheduleAnalysisWith = vi.fn();
-    const seedAnalysisKey = vi.fn();
     const controller = createVideoController({
       isNativeModeActive: () => true,
       buildPreviewUrl: (file) => `asset://${file.path}`,
@@ -104,6 +103,7 @@ describe('video controller cache restoration reset', () => {
       setBannerMessage: vi.fn(),
       scheduleAnalysisWith,
       getCurrentParams: () => ({}),
+      cancelPending: vi.fn(),
       clearLastRequestKey: vi.fn(),
       captureAnalysisScroll: vi.fn(),
       getVideoStripMode: () => 'filmstrip',
@@ -121,8 +121,6 @@ describe('video controller cache restoration reset', () => {
           : null,
       cacheVideoState: vi.fn(),
       findExistingFrameId: () => null,
-      seedAnalysisKey,
-      hasAnalysisForImage: () => true,
     });
     const element = videoElement();
     controller.setVideoElementRef(element);
@@ -137,24 +135,26 @@ describe('video controller cache restoration reset', () => {
     await vi.advanceTimersByTimeAsync(250);
 
     expect(scheduleAnalysisWith).toHaveBeenCalledTimes(1);
-    expect(seedAnalysisKey).not.toHaveBeenCalled();
   });
 
-  it('SWEEP-003: preserves exact cached seek and analysis reuse for the cached video', async () => {
+  it('SWEEP-010: preserves cached seek but cancels and recomputes the extracted frame', async () => {
     const scheduleAnalysisWith = vi.fn();
-    const seedAnalysisKey = vi.fn();
+    const cancelPending = vi.fn();
+    const clearLastRequestKey = vi.fn();
+    const setFile = vi.fn();
     const controller = createVideoController({
       isNativeModeActive: () => true,
       buildPreviewUrl: (file) => `asset://${file.path}`,
       maxDimensionForQuality: () => 1200,
-      setFile: vi.fn(),
+      setFile,
       setVideoState: vi.fn(),
       clearFile: vi.fn(),
       getQuality: () => 2,
       setBannerMessage: vi.fn(),
       scheduleAnalysisWith,
       getCurrentParams: () => ({ quality: 2 }),
-      clearLastRequestKey: vi.fn(),
+      cancelPending,
+      clearLastRequestKey,
       captureAnalysisScroll: vi.fn(),
       getVideoStripMode: () => 'filmstrip',
       getCachedVideoState: () => ({
@@ -168,8 +168,6 @@ describe('video controller cache restoration reset', () => {
       }),
       cacheVideoState: vi.fn(),
       findExistingFrameId: () => null,
-      seedAnalysisKey,
-      hasAnalysisForImage: (id) => id === 'cached-frame',
     });
     const element = videoElement();
     controller.setVideoElementRef(element);
@@ -182,16 +180,23 @@ describe('video controller cache restoration reset', () => {
 
     await vi.advanceTimersByTimeAsync(250);
 
-    expect(seedAnalysisKey).toHaveBeenCalledOnce();
-    expect(seedAnalysisKey).toHaveBeenCalledWith('cached-frame', {
-      quality: 2,
-    });
-    expect(scheduleAnalysisWith).not.toHaveBeenCalled();
+    expect(cancelPending).toHaveBeenCalledOnce();
+    expect(clearLastRequestKey).toHaveBeenCalledOnce();
+    expect(setFile).toHaveBeenCalledOnce();
+    expect(scheduleAnalysisWith).toHaveBeenCalledOnce();
+    expect(cancelPending.mock.invocationCallOrder[0]).toBeLessThan(
+      setFile.mock.invocationCallOrder[0]
+    );
+    expect(clearLastRequestKey.mock.invocationCallOrder[0]).toBeLessThan(
+      setFile.mock.invocationCallOrder[0]
+    );
+    expect(scheduleAnalysisWith.mock.invocationCallOrder[0]).toBeGreaterThan(
+      setFile.mock.invocationCallOrder[0]
+    );
   });
 
   it('SWEEP-003: repeated full resets leave a subsequent fresh video at zero', async () => {
     const scheduleAnalysisWith = vi.fn();
-    const seedAnalysisKey = vi.fn();
     const controller = createVideoController({
       isNativeModeActive: () => true,
       buildPreviewUrl: (file) => `asset://${file.path}`,
@@ -203,6 +208,7 @@ describe('video controller cache restoration reset', () => {
       setBannerMessage: vi.fn(),
       scheduleAnalysisWith,
       getCurrentParams: () => ({}),
+      cancelPending: vi.fn(),
       clearLastRequestKey: vi.fn(),
       captureAnalysisScroll: vi.fn(),
       getVideoStripMode: () => 'filmstrip',
@@ -220,8 +226,6 @@ describe('video controller cache restoration reset', () => {
           : null,
       cacheVideoState: vi.fn(),
       findExistingFrameId: () => null,
-      seedAnalysisKey,
-      hasAnalysisForImage: () => true,
     });
     const element = videoElement();
     controller.setVideoElementRef(element);
@@ -236,6 +240,5 @@ describe('video controller cache restoration reset', () => {
     expect(controller.videoCurrentTime).toBe(0);
     expect(element.currentTime).toBe(0);
     expect(scheduleAnalysisWith).toHaveBeenCalledOnce();
-    expect(seedAnalysisKey).not.toHaveBeenCalled();
   });
 });

@@ -34,14 +34,13 @@ export interface VideoControllerDeps {
     params: any
   ) => void;
   getCurrentParams: () => any;
+  cancelPending: () => void;
   clearLastRequestKey: () => void;
   captureAnalysisScroll: () => void;
   getVideoStripMode: () => 'filmstrip' | 'barcode';
   getCachedVideoState: (videoPath: string) => VideoCacheEntry | null;
   cacheVideoState: (videoPath: string, entry: VideoCacheEntry) => void;
   findExistingFrameId: (videoPath: string) => string | null;
-  seedAnalysisKey: (imageId: string, params: any) => void;
-  hasAnalysisForImage: (id: string) => boolean;
 }
 
 export function subscribeToVideoStripMode(
@@ -75,7 +74,6 @@ export function createVideoController(deps: VideoControllerDeps) {
   let videoStripId: string | null = $state(null);
   let videoElement: HTMLVideoElement | null = $state(null);
   let restoringVideoState = false;
-  let _restoringFromSessionCache = false;
   let _currentLoadCid: string | null = null;
   let _loadSrcTimer: ReturnType<typeof setTimeout> | null = null;
   let _pendingSeekTime: number | null = null;
@@ -147,7 +145,6 @@ export function createVideoController(deps: VideoControllerDeps) {
     videoStripPending = false;
     videoStripId = null;
     _currentLoadCid = null;
-    _restoringFromSessionCache = false;
     _pendingSeekTime = null;
     if (videoElement) {
       videoElement.pause();
@@ -327,6 +324,8 @@ export function createVideoController(deps: VideoControllerDeps) {
       }
       const framePath = response.path;
       if (!framePath) return;
+      deps.cancelPending();
+      deps.clearLastRequestKey();
       setActivePath(framePath);
       const previewUrl = assetUrl(framePath);
       videoPosterUrl = previewUrl;
@@ -342,20 +341,8 @@ export function createVideoController(deps: VideoControllerDeps) {
         source: { kind: 'path', path: framePath },
         previewUrl,
       };
-      const wasRestoring = _restoringFromSessionCache;
-      _restoringFromSessionCache = false;
       deps.setFile(entry, dataset);
-      if (wasRestoring && deps.hasAnalysisForImage(frameId)) {
-        // setFile already restored analysisState='ready' from analysisById cache.
-        // Seed the dedup key so the HomeView $effect won't re-trigger analysis.
-        deps.seedAnalysisKey(frameId, deps.getCurrentParams());
-      } else {
-        deps.clearLastRequestKey();
-        deps.scheduleAnalysisWith(
-          { ...entry, dataset },
-          deps.getCurrentParams()
-        );
-      }
+      deps.scheduleAnalysisWith({ ...entry, dataset }, deps.getCurrentParams());
       pushVideoState();
       saveToCache(); // capture posterPath so cache restores show hasPoster=true
       devlog('video:frameDecode:done', 'Frame decode done', {
@@ -528,7 +515,6 @@ export function createVideoController(deps: VideoControllerDeps) {
         setActivePath(cached.posterPath);
       }
       pushVideoState();
-      _restoringFromSessionCache = true;
       scheduleVideoFrameDecode();
       return;
     }

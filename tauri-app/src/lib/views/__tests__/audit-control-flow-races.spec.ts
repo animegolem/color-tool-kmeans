@@ -59,6 +59,7 @@ import { createVideoScrubber } from '../values/video-scrubber.svelte';
 import {
   clearFile,
   appendFile,
+  analysisById,
   analysisState,
   cacheVideoState,
   images,
@@ -183,6 +184,7 @@ function auditVideoController(
     setBannerMessage: vi.fn(),
     scheduleAnalysisWith: vi.fn(),
     getCurrentParams: () => ({}),
+    cancelPending: vi.fn(),
     clearLastRequestKey: vi.fn(),
     captureAnalysisScroll: vi.fn(),
     getVideoStripMode: () => 'filmstrip',
@@ -197,8 +199,6 @@ function auditVideoController(
     }),
     cacheVideoState: vi.fn(),
     findExistingFrameId: () => 'frame-1',
-    seedAnalysisKey: vi.fn(),
-    hasAnalysisForImage: () => false,
     ...overrides,
   });
 }
@@ -340,13 +340,17 @@ describe('audit reproductions for async control-flow invariants', () => {
   it('AUD-007: serializes Home frame decodes that share a logical frame ID', async () => {
     const firstFrame = deferred<{ path: string; timestampUsed: string }>();
     const setFileForFrame = vi.fn();
+    const cancelPending = vi.fn();
     mocks.extractVideoFrame
       .mockReturnValueOnce(firstFrame.promise)
       .mockResolvedValueOnce({
         path: '/cache/current-frame.png',
         timestampUsed: '0.042',
       });
-    const controller = auditVideoController({ setFile: setFileForFrame });
+    const controller = auditVideoController({
+      setFile: setFileForFrame,
+      cancelPending,
+    });
 
     controller.loadVideoSelection(videoSelection());
     await vi.advanceTimersByTimeAsync(250);
@@ -362,6 +366,10 @@ describe('audit reproductions for async control-flow invariants', () => {
 
     expect(mocks.extractVideoFrame).toHaveBeenCalledTimes(2);
     expect(setFileForFrame).toHaveBeenCalledTimes(1);
+    expect(cancelPending).toHaveBeenCalledTimes(1);
+    expect(cancelPending.mock.invocationCallOrder[0]).toBeLessThan(
+      setFileForFrame.mock.invocationCallOrder[0]
+    );
     expect(setFileForFrame).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'frame-1',
@@ -370,6 +378,53 @@ describe('audit reproductions for async control-flow invariants', () => {
       }),
       emptyDataset
     );
+  });
+
+  it('AUD-004: rejects a stale Home completion after video frame replacement', async () => {
+    const staleAnalysis = deferred<AnalysisResult>();
+    mocks.analyzeImage
+      .mockReturnValueOnce(staleAnalysis.promise)
+      .mockResolvedValueOnce(colorResult());
+    mocks.extractVideoFrame.mockResolvedValueOnce({
+      path: '/cache/replacement-frame.png',
+      timestampUsed: '0.000',
+    });
+    const runner = colorsRunner();
+    const first = {
+      ...imageEntry({
+        id: 'frame-1',
+        name: 'a.mp4',
+        path: '/cache/old-frame.png',
+        videoPath: '/tmp/a.mp4',
+        frameTimestamp: 0,
+      }),
+      dataset: emptyDataset,
+    } satisfies SelectedImage;
+    setFile(first, emptyDataset);
+    runner.scheduleAnalysisWith(first, get(params), 'idle');
+    await vi.advanceTimersByTimeAsync(400);
+    expect(get(analysisState)).toBe('pending');
+
+    const controller = auditVideoController({
+      setFile,
+      cancelPending: runner.cancelPending,
+      clearLastRequestKey: runner.clearLastRequestKey,
+      scheduleAnalysisWith: (file, currentParams) =>
+        runner.scheduleAnalysisWith(file, currentParams, get(analysisState)),
+      getCurrentParams: () => get(params),
+    });
+    controller.loadVideoSelection(videoSelection());
+    await vi.advanceTimersByTimeAsync(250);
+
+    staleAnalysis.resolve(colorResult());
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(get(analysisById)['frame-1']).toBeUndefined();
+    expect(get(analysisState)).toBe('idle');
+
+    await vi.advanceTimersByTimeAsync(400);
+    expect(mocks.analyzeImage).toHaveBeenCalledTimes(2);
+    expect(get(analysisState)).toBe('ready');
   });
 
   it('AUD-009: starts a replacement strip request when the strip mode changes in flight', () => {

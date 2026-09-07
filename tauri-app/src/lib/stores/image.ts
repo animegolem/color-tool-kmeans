@@ -167,9 +167,13 @@ export function setFile(entry: ImageEntry, dataset: ImageDataset) {
   const existing = existingByPath ?? existingById;
   if (existingByPath) entry.id = existingByPath.id;
 
+  const matched = existing !== undefined;
+  if (matched) {
+    invalidateAnalysisForImage(entry.id);
+    resetAnalysis();
+  }
   imageDatasets.set(entry.id, dataset);
   trackPreviewUrl(entry);
-  const matched = existing !== undefined;
   images.update((list) => {
     const index = list.findIndex((item) => item.id === entry.id);
     if (index !== -1) {
@@ -179,7 +183,6 @@ export function setFile(entry: ImageEntry, dataset: ImageDataset) {
     }
     return [...list, entry];
   });
-  if (matched) invalidateValueAnalysisForImage(entry.id);
   activeImageId.set(entry.id);
   devlog('store:setFile', 'Set file', {
     id: entry.id,
@@ -205,6 +208,7 @@ export function updateEntryPreview(id: string, previewUrl: string) {
 
 export function appendFile(entry: ImageEntry, dataset: ImageDataset) {
   const current = get(images);
+  const existingById = current.find((item) => item.id === entry.id);
   const duplicatePath = entry.path
     ? current.find((item) => item.path === entry.path && item.id !== entry.id)
     : undefined;
@@ -220,13 +224,16 @@ export function appendFile(entry: ImageEntry, dataset: ImageDataset) {
     return;
   }
 
+  const matched = existingById !== undefined;
+  if (matched) {
+    invalidateAnalysisForImage(entry.id);
+    if (get(activeImageId) === entry.id) resetAnalysis();
+  }
   imageDatasets.set(entry.id, dataset);
   trackPreviewUrl(entry);
-  let matched = false;
   images.update((list) => {
     const index = list.findIndex((item) => item.id === entry.id);
     if (index !== -1) {
-      matched = true;
       const next = list.slice();
       next[index] = entry;
       return next;
@@ -258,10 +265,7 @@ export function invalidateAnalysisForImage(imageId: string) {
     delete next[imageId];
     return next;
   });
-  const remover = removeKeysForImage(imageId);
-  valueAnalysisByKey.update(remover);
-  valueAnalysisStateByKey.update(remover);
-  valueAnalysisErrorByKey.update(remover);
+  invalidateValueAnalysisForImage(imageId);
 }
 
 export function removeFile(id: string) {
