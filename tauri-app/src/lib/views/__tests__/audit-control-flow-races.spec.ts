@@ -209,7 +209,7 @@ function auditVideoController(
       frameId: 'frame-1',
     }),
     cacheVideoState: vi.fn(),
-    findExistingFrameId: () => 'frame-1',
+    getSelectedFile: () => get(selectedFile),
     beginSelection,
     isCurrentSelection,
     ...overrides,
@@ -300,11 +300,13 @@ describe('audit reproductions for async control-flow invariants', () => {
   it('AUD-001: discards a Values frame completion after switching to another video', async () => {
     const firstFrame = deferred<{ path: string; timestampUsed: string }>();
     mocks.extractVideoFrame.mockReturnValueOnce(firstFrame.promise);
-    const onFrameExtracted = vi.fn(() => true);
+    const onFrameExtracted = vi.fn(() => null);
     const scrubber = createVideoScrubber({
       getMaxDimension: () => 1200,
       onFrameExtracted,
-      updateVideoState: vi.fn(),
+      getSelectedFile: () => null,
+      publishRequestedTime: vi.fn(),
+      publishSettledFrame: vi.fn(),
       isCurrentSelection,
     });
 
@@ -315,6 +317,7 @@ describe('audit reproductions for async control-flow invariants', () => {
       duration: 10,
       fps: 24,
       currentTime: 1,
+      settledFrame: null,
     });
     scrubber.scheduleFrameExtract();
     await vi.advanceTimersByTimeAsync(250);
@@ -326,6 +329,7 @@ describe('audit reproductions for async control-flow invariants', () => {
       duration: 20,
       fps: 24,
       currentTime: 2,
+      settledFrame: null,
     });
     firstFrame.resolve({ path: '/cache/a-frame.png', timestampUsed: '1.000' });
     await vi.runAllTimersAsync();
@@ -887,6 +891,51 @@ describe('audit reproductions for async control-flow invariants', () => {
       expect(get(analysisById)['frame-1']).not.toBe(cachedResult);
     }
   );
+
+  it('AI-IMP-183: a new selection epoch clears same-path cached settlement and extracts afresh', async () => {
+    const firstSelection = beginSelection('frame-1');
+    const cachedFile = imageEntry({
+      id: 'frame-1',
+      name: 'a.mp4',
+      path: '/cache/settled-a.png',
+      videoPath: '/tmp/a.mp4',
+      frameTimestamp: 0,
+    });
+    setFile(cachedFile, emptyDataset, { selection: firstSelection });
+    const admitted = get(selectedFile)!;
+    const priorRevision = admitted.contentRevision!;
+    cacheVideoState('/tmp/a.mp4', {
+      duration: 10,
+      fps: 24,
+      currentTime: 0,
+      stripPath: null,
+      stripId: null,
+      posterPath: admitted.path!,
+      frameId: admitted.id,
+    });
+    mocks.extractVideoFrame.mockResolvedValueOnce({
+      path: '/cache/new-epoch.png',
+      timestampUsed: '0.000',
+    });
+    const published: Array<unknown> = [];
+    const controller = auditVideoController({
+      setFile,
+      setVideoState: (state) => published.push(state),
+      getSelectedFile: () => get(selectedFile),
+    });
+
+    controller.loadVideoSelection(videoSelection(), admitted.id);
+    const provisional = published.at(-1) as { settledFrame?: unknown };
+    expect(provisional.settledFrame).toBeNull();
+    expect(controller.selection?.epoch).toBeGreaterThan(firstSelection.epoch);
+    expect(get(selectedFile)?.contentRevision).toBe(priorRevision);
+
+    await vi.advanceTimersByTimeAsync(250);
+    await vi.waitFor(() =>
+      expect(get(selectedFile)?.path).toBe('/cache/new-epoch.png')
+    );
+    expect(get(selectedFile)?.contentRevision).toBe(priorRevision + 1);
+  });
 
   it('AUD-004: rejects a stale Home completion after video frame replacement', async () => {
     const staleAnalysis = deferred<AnalysisResult>();

@@ -1,10 +1,13 @@
 import { assetUrl } from '../../utils/asset-url';
 import type {
   ImageEntry,
+  SelectedImage,
   VideoState,
   VideoCacheEntry,
+  SettledVideoFrame,
   SelectionAuthority,
 } from '../../stores/ui';
+import { matchesSettledVideoFrame } from '../../stores/video';
 import type { FileSelection } from '../../bridges/fs';
 import { inferMimeType } from '../../bridges/fs';
 import {
@@ -46,7 +49,7 @@ export interface VideoControllerDeps {
   getVideoStripMode: () => 'filmstrip' | 'barcode';
   getCachedVideoState: (videoPath: string) => VideoCacheEntry | null;
   cacheVideoState: (videoPath: string, entry: VideoCacheEntry) => void;
-  findExistingFrameId: (videoPath: string) => string | null;
+  getSelectedFile: () => SelectedImage | null;
   beginSelection: (mediaId?: string | null) => SelectionAuthority;
   isCurrentSelection: (selection: SelectionAuthority) => boolean;
 }
@@ -86,13 +89,78 @@ export function createVideoController(deps: VideoControllerDeps) {
   let _currentLoadCid: string | null = null;
   let _loadSrcTimer: ReturnType<typeof setTimeout> | null = null;
   let _pendingSeekTime: number | null = null;
+  let settledFrame: SettledVideoFrame | null = null;
+  let pendingFrameRequestKey: string | null = null;
+  let reusedFrameKey: string | null = null;
+  let disposed = false;
 
   function ownsSelection(selection: SelectionAuthority | null): boolean {
     return (
+      !disposed &&
       selection !== null &&
       videoSelectionAuthority?.epoch === selection.epoch &&
       deps.isCurrentSelection(selection)
     );
+  }
+
+  function currentVideoState(): VideoState | null {
+    if (!videoSelection?.path || !videoSelectionAuthority) return null;
+    return {
+      selection: videoSelectionAuthority,
+      path: videoSelection.path,
+      name: videoSelection.name,
+      duration: videoDuration,
+      fps: videoFps,
+      currentTime: videoCurrentTime,
+      settledFrame,
+      stripPath: videoStripPath,
+      stripId: videoStripId,
+      posterPath: videoPosterPath,
+    };
+  }
+
+  function frameRequestKey(
+    selection: SelectionAuthority,
+    path: string,
+    requestedTime: number,
+    maxDimension: number
+  ) {
+    return `${selection.epoch}\u0000${path}\u0000${requestedTime}\u0000${maxDimension}`;
+  }
+
+  function cancelLocalFrameRequest() {
+    videoDecodeToken += 1;
+    pendingFrameRequestKey = null;
+    frameDecoding = false;
+    if (videoDecodeTimer) {
+      clearTimeout(videoDecodeTimer);
+      videoDecodeTimer = null;
+    }
+  }
+
+  function reuseSettledFrame(maxDimension: number): boolean {
+    const state = currentVideoState();
+    const file = deps.getSelectedFile();
+    if (
+      !matchesSettledVideoFrame(
+        state,
+        videoSelectionAuthority,
+        file,
+        maxDimension
+      )
+    )
+      return false;
+    cancelLocalFrameRequest();
+    videoFrameId = file.id;
+    videoPosterPath = file.path;
+    videoPosterUrl = assetUrl(file.path);
+    setActivePath(file.path);
+    const key = `${state!.selection.epoch}\u0000${file.id}\u0000${file.contentRevision}\u0000${maxDimension}`;
+    if (reusedFrameKey !== key) {
+      reusedFrameKey = key;
+      deps.scheduleAnalysisWith(file, deps.getCurrentParams());
+    }
+    return true;
   }
 
   function videoResourceSnapshot() {
@@ -125,6 +193,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function saveToCache(retiring = false) {
+    if (disposed) return;
     if (
       !videoSelection?.path ||
       (!retiring && !ownsSelection(videoSelectionAuthority))
@@ -169,15 +238,14 @@ export function createVideoController(deps: VideoControllerDeps) {
     videoStripId = null;
     _currentLoadCid = null;
     _pendingSeekTime = null;
+    settledFrame = null;
+    pendingFrameRequestKey = null;
+    reusedFrameKey = null;
     if (videoElement) {
       videoElement.pause();
       videoElement.currentTime = 0;
     }
-    videoDecodeToken += 1;
-    if (videoDecodeTimer) {
-      clearTimeout(videoDecodeTimer);
-      videoDecodeTimer = null;
-    }
+    cancelLocalFrameRequest();
     if (_loadSrcTimer) {
       clearTimeout(_loadSrcTimer);
       _loadSrcTimer = null;
@@ -185,6 +253,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function pushVideoState() {
+    if (disposed) return;
     if (restoringVideoState) return;
     if (!videoSelection?.path) {
       deps.setVideoState(null);
@@ -203,7 +272,9 @@ export function createVideoController(deps: VideoControllerDeps) {
       duration: videoDuration,
       fps: videoFps,
       currentTime: videoCurrentTime,
+      settledFrame,
       stripPath: videoStripPath,
+      stripId: videoStripId,
       posterPath: videoPosterPath,
     });
   }
@@ -304,7 +375,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function regenerateStrip() {
-    if (!videoSelection?.path || videoDuration <= 0) return;
+    if (disposed || !videoSelection?.path || videoDuration <= 0) return;
     videoStripPath = null;
     videoStripUrl = null;
     videoStripId =
@@ -375,9 +446,27 @@ export function createVideoController(deps: VideoControllerDeps) {
         previewUrl,
       };
       if (!deps.setFile(entry, dataset, { selection })) return;
+      if (!ownsSelection(selection) || token !== videoDecodeToken) return;
+      videoFrameId = entry.id;
       setActivePath(framePath);
       videoPosterUrl = previewUrl;
       videoPosterPath = framePath;
+      settledFrame =
+        Number.isSafeInteger(entry.contentRevision) &&
+        (entry.contentRevision ?? 0) > 0
+          ? {
+              selectionEpoch: selection.epoch,
+              imageId: entry.id,
+              contentRevision: entry.contentRevision!,
+              outputPath: framePath,
+              videoPath: requestPath,
+              requestedTime: requestTime,
+              maxDimension,
+            }
+          : null;
+      reusedFrameKey = settledFrame
+        ? `${selection.epoch}\u0000${entry.id}\u0000${entry.contentRevision}\u0000${maxDimension}`
+        : null;
       deps.scheduleAnalysisWith({ ...entry, dataset }, deps.getCurrentParams());
       pushVideoState();
       saveToCache(); // capture posterPath so cache restores show hasPoster=true
@@ -399,35 +488,49 @@ export function createVideoController(deps: VideoControllerDeps) {
         'Failed to decode video frame. Please try another file.'
       );
     } finally {
-      if (ownsSelection(selection) && token === videoDecodeToken)
+      if (ownsSelection(selection) && token === videoDecodeToken) {
         frameDecoding = false;
+        pendingFrameRequestKey = null;
+      }
     }
   }
 
   function scheduleVideoFrameDecode() {
-    if (!videoSelection?.path || !ownsSelection(videoSelectionAuthority))
+    if (
+      disposed ||
+      videoScrubbing ||
+      !videoSelection?.path ||
+      !ownsSelection(videoSelectionAuthority)
+    )
       return;
     if (!deps.isNativeModeActive()) {
       deps.setBannerMessage('Video analysis requires the desktop app.');
       return;
     }
-    if (videoDecodeTimer) {
-      clearTimeout(videoDecodeTimer);
-    }
     const requestPath = videoSelection.path;
     const requestName = videoSelection.name;
     const requestTime = videoCurrentTime;
+    const quality = deps.getQuality();
+    const maxDimension = deps.maxDimensionForQuality(quality);
+    if (reuseSettledFrame(maxDimension)) return;
+    const selection = videoSelectionAuthority!;
+    const requestKey = frameRequestKey(
+      selection,
+      requestPath,
+      requestTime,
+      maxDimension
+    );
+    if (pendingFrameRequestKey === requestKey) return;
+    if (videoDecodeTimer) clearTimeout(videoDecodeTimer);
     const wasNull = videoFrameId === null;
     const frameId =
       videoFrameId ??
       globalThis.crypto?.randomUUID?.() ??
       `${Date.now()}-${Math.random()}`;
     videoFrameId = frameId;
-    const quality = deps.getQuality();
-    const maxDimension = deps.maxDimensionForQuality(quality);
     const token = ++videoDecodeToken;
     const decodeCid = _currentLoadCid;
-    const selection = videoSelectionAuthority!;
+    pendingFrameRequestKey = requestKey;
     devlog('video:frameDecode:schedule', 'Schedule frame decode', {
       frameId,
       wasNull,
@@ -490,9 +593,7 @@ export function createVideoController(deps: VideoControllerDeps) {
       if (!videoStripPath) {
         scheduleVideoStripGeneration();
       }
-      if (!videoPosterPath) {
-        scheduleVideoFrameDecode();
-      }
+      scheduleVideoFrameDecode();
       pushVideoState();
       saveToCache();
       if (videoElement) {
@@ -514,6 +615,7 @@ export function createVideoController(deps: VideoControllerDeps) {
     cid?: string,
     capturedSelection?: SelectionAuthority
   ) {
+    if (disposed) return;
     const selectionAuthority =
       capturedSelection ?? deps.beginSelection(existingId ?? null);
     if (!deps.isCurrentSelection(selectionAuthority)) return;
@@ -597,7 +699,8 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function restoreVideoSelection(state: VideoState) {
-    if (!state.path || !deps.isCurrentSelection(state.selection)) return;
+    if (disposed || !state.path || !deps.isCurrentSelection(state.selection))
+      return;
     restoringVideoState = true;
     resetVideoState();
     videoSelectionAuthority = state.selection;
@@ -606,13 +709,19 @@ export function createVideoController(deps: VideoControllerDeps) {
     videoDuration = state.duration ?? 0;
     videoFps = state.fps ?? null;
     videoCurrentTime = state.currentTime ?? 0;
+    settledFrame = state.settledFrame;
     _pendingSeekTime = videoCurrentTime > 0 ? videoCurrentTime : null;
+    const selected = deps.getSelectedFile();
     videoFrameId =
-      deps.findExistingFrameId(state.path) ??
+      state.settledFrame?.imageId ??
+      state.selection.mediaId ??
+      (selected?.videoPath === state.path ? selected.id : null) ??
       globalThis.crypto?.randomUUID?.() ??
       `${Date.now()}-${Math.random()}`;
     videoStripId =
-      globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+      state.stripId ??
+      globalThis.crypto?.randomUUID?.() ??
+      `${Date.now()}-${Math.random()}`;
     if (state.stripPath) {
       videoStripPath = state.stripPath;
       videoStripUrl = assetUrl(state.stripPath);
@@ -629,20 +738,19 @@ export function createVideoController(deps: VideoControllerDeps) {
       if (!videoStripPath && videoDuration > 0) {
         scheduleVideoStripGeneration();
       }
-      if (!videoPosterPath && videoDuration > 0) {
-        scheduleVideoFrameDecode();
-      }
+      scheduleVideoFrameDecode();
     }
   }
 
   function clearVideoSelection() {
+    if (disposed) return;
     saveToCache();
     resetVideoState();
     pushVideoState();
   }
 
   function stepVideoFrames(step: number) {
-    if (videoDuration <= 0) return;
+    if (disposed || videoDuration <= 0) return;
     deps.captureAnalysisScroll();
     const fps = videoFps && videoFps > 0 ? videoFps : 24;
     const delta = step / fps;
@@ -651,17 +759,18 @@ export function createVideoController(deps: VideoControllerDeps) {
     if (videoElement) {
       videoElement.currentTime = next;
     }
-    scheduleVideoFrameDecode();
     pushVideoState();
+    scheduleVideoFrameDecode();
   }
 
   function handleVideoScrubStart() {
+    if (disposed) return;
     videoScrubbing = true;
     deps.captureAnalysisScroll();
   }
 
   function handleVideoMetadata() {
-    if (!videoElement) return;
+    if (disposed || !videoElement) return;
     const duration = videoElement.duration;
     if (Number.isFinite(duration) && duration > 0) {
       videoDuration = duration;
@@ -692,20 +801,18 @@ export function createVideoController(deps: VideoControllerDeps) {
     if (!videoStripPath && videoDuration > 0) {
       scheduleVideoStripGeneration();
     }
-    if (!videoPosterPath) {
-      scheduleVideoFrameDecode();
-    }
+    scheduleVideoFrameDecode();
   }
 
   function handleVideoSeeked() {
-    if (!videoElement || videoScrubbing) return;
+    if (disposed || !videoElement || videoScrubbing) return;
     if (_pendingSeekTime !== null) return;
     videoCurrentTime = videoElement.currentTime;
     pushVideoState();
   }
 
   function handleVideoLoadedData() {
-    if (!videoElement) return;
+    if (disposed || !videoElement) return;
     const seekTarget =
       _pendingSeekTime ?? (videoCurrentTime > 0 ? videoCurrentTime : null);
     if (
@@ -728,6 +835,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function handleVideoError() {
+    if (disposed) return;
     const error = videoElement?.error;
     const code = error?.code ?? 'unknown';
     const message = error?.message ?? 'unknown';
@@ -738,7 +846,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function handleStripSeek(event: PointerEvent) {
-    if (videoDuration <= 0) return;
+    if (disposed || videoDuration <= 0) return;
     deps.captureAnalysisScroll();
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
@@ -751,11 +859,12 @@ export function createVideoController(deps: VideoControllerDeps) {
     if (videoElement) {
       videoElement.currentTime = nextTime;
     }
-    scheduleVideoFrameDecode();
     pushVideoState();
+    scheduleVideoFrameDecode();
   }
 
   function handleVideoScrubInput(event: Event) {
+    if (disposed) return;
     const nextTime = Number((event.target as HTMLInputElement).value);
     videoCurrentTime = nextTime;
     if (videoElement) {
@@ -765,17 +874,19 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function handleVideoScrubEnd() {
+    if (disposed) return;
     videoScrubbing = false;
-    scheduleVideoFrameDecode();
     pushVideoState();
+    scheduleVideoFrameDecode();
   }
 
   function setVideoElementRef(el: HTMLVideoElement | null) {
+    if (disposed) return;
     videoElement = el;
   }
 
   function handleVideoStateChange(state: VideoState | null) {
-    if (restoringVideoState) return;
+    if (disposed || restoringVideoState) return;
     devlog('video:stateChange', 'Video state change', {
       hasState: state !== null,
       isRestoring: restoringVideoState,
@@ -792,6 +903,20 @@ export function createVideoController(deps: VideoControllerDeps) {
       videoSelection?.path === state.path &&
       videoSelectionAuthority?.epoch === state.selection.epoch
     ) {
+      const requestedChanged = videoCurrentTime !== state.currentTime;
+      videoDuration = state.duration;
+      videoFps = state.fps;
+      videoCurrentTime = state.currentTime;
+      settledFrame = state.settledFrame;
+      if (state.stripPath && state.stripPath !== videoStripPath) {
+        videoStripPath = state.stripPath;
+        videoStripUrl = assetUrl(state.stripPath);
+      }
+      if (state.posterPath && state.posterPath !== videoPosterPath) {
+        videoPosterPath = state.posterPath;
+        videoPosterUrl = assetUrl(state.posterPath);
+      }
+      if (requestedChanged && !videoScrubbing) scheduleVideoFrameDecode();
       return;
     }
     try {
@@ -804,6 +929,7 @@ export function createVideoController(deps: VideoControllerDeps) {
   }
 
   function loadSrcEffect() {
+    if (disposed) return;
     const el = videoElement;
     const src = videoSrcUrl;
     devlog('video:srcEffect', 'Src effect (debounced)', {
@@ -829,6 +955,27 @@ export function createVideoController(deps: VideoControllerDeps) {
         }
       }, 100);
     }
+  }
+
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    cancelLocalFrameRequest();
+    videoProbePending = false;
+    videoStripPending = false;
+    videoStripId = null;
+    videoDecodeQueues.clear();
+    if (_loadSrcTimer) {
+      clearTimeout(_loadSrcTimer);
+      _loadSrcTimer = null;
+    }
+    if (videoElement) videoElement.pause();
+    videoElement = null;
+    if (videoSrcUrl?.startsWith('blob:')) URL.revokeObjectURL(videoSrcUrl);
+    videoSrcUrl = null;
+    videoPosterUrl = null;
+    videoStripUrl = null;
+    _pendingSeekTime = null;
   }
 
   return {
@@ -869,7 +1016,23 @@ export function createVideoController(deps: VideoControllerDeps) {
       return videoPosterUrl ?? null;
     },
     get videoPosterPath() {
-      return videoPosterPath;
+      if (
+        !ownsSelection(videoSelectionAuthority) ||
+        frameDecoding ||
+        videoScrubbing ||
+        pendingFrameRequestKey !== null
+      )
+        return null;
+      const maxDimension = deps.maxDimensionForQuality(deps.getQuality());
+      const file = deps.getSelectedFile();
+      return matchesSettledVideoFrame(
+        currentVideoState(),
+        videoSelectionAuthority,
+        file,
+        maxDimension
+      )
+        ? file.path
+        : null;
     },
     get videoScrubbing() {
       return videoScrubbing;
@@ -892,5 +1055,7 @@ export function createVideoController(deps: VideoControllerDeps) {
     handleVideoStateChange,
     setVideoElementRef,
     loadSrcEffect,
+    ensureSettledFrame: scheduleVideoFrameDecode,
+    dispose,
   };
 }

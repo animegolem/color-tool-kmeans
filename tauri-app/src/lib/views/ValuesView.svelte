@@ -14,6 +14,7 @@
     setVideoState,
     cacheVideoState,
     isCurrentSelection,
+    selectedFile,
   } from '../stores/ui';
   import {
     subscribePendingVideoSwitch,
@@ -80,19 +81,49 @@
         previewUrl,
       };
       const dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
-      if (!setFile(entry, dataset, { selection })) return false;
+      if (!setFile(entry, dataset, { selection })) return null;
+      const acceptedFile = get(selectedFile);
+      if (
+        !acceptedFile ||
+        acceptedFile.id !== entry.id ||
+        acceptedFile.contentRevision !== entry.contentRevision
+      )
+        return null;
       setActivePath(framePath);
-      runner.ensureAnalysis(
-        { ...entry, dataset },
+      return acceptedFile;
+    },
+    getSelectedFile: () => get(selectedFile),
+    onFrameAccepted: (file) => {
+      runner.ensureAnalysis(file, runner.levels, runner.effectiveNotanMode);
+    },
+    onFrameReused: (file) => {
+      void runner.ensureAnalysis(
+        file,
         runner.levels,
         runner.effectiveNotanMode
       );
-      return true;
     },
-    updateVideoState: (currentTime, posterPath) => {
+    publishRequestedTime: (currentTime) => {
       const vs = $videoState;
       if (!vs || !isCurrentSelection(vs.selection)) return;
-      setVideoState({ ...vs, currentTime, posterPath });
+      if (vs.currentTime === currentTime) return;
+      setVideoState({ ...vs, currentTime });
+    },
+    publishSettledFrame: (settledFrame) => {
+      const vs = get(videoState);
+      if (
+        !vs ||
+        !isCurrentSelection(vs.selection) ||
+        vs.selection.epoch !== settledFrame.selectionEpoch ||
+        vs.path !== settledFrame.videoPath ||
+        vs.currentTime !== settledFrame.requestedTime
+      )
+        return;
+      setVideoState({
+        ...vs,
+        posterPath: settledFrame.outputPath,
+        settledFrame,
+      });
     },
     cacheVideoState: (videoPath, currentTime, posterPath) => {
       const vs = get(videoState);
@@ -104,7 +135,7 @@
         fps: vs.fps,
         currentTime,
         stripPath: vs.stripPath ?? null,
-        stripId: null,
+        stripId: vs.stripId ?? null,
         posterPath,
         frameId: activeId ?? '',
       });
@@ -128,7 +159,13 @@
   );
 
   const frameSnapshotRequest = $derived.by(() =>
-    settledFrameSnapshotRequest(runner.file, scrubber.extracting)
+    settledFrameSnapshotRequest(
+      $videoState,
+      runner.file,
+      maxDimensionForQuality($params.quality),
+      scrubber.extracting,
+      !!$videoState && isCurrentSelection($videoState.selection)
+    )
   );
 
   const valuesHistogram = $derived.by(() => {
@@ -188,13 +225,8 @@
   onMount(() => {
     const cleanupRunner = runner.mount();
     scrubber.syncFromVideoState($videoState);
-    if (runner.file?.videoPath && !runner.hasCurrentAnalysis) {
-      void runner.ensureAnalysis(
-        runner.file,
-        runner.levels,
-        runner.effectiveNotanMode
-      );
-    }
+    scrubber.reconcileSettledFrame();
+    ingestion.syncFromVideoState($videoState);
     const cleanupDragDrop = mountAsyncListener(
       () => ingestion.setupDragDrop(),
       (error) => console.error('[values] Failed to set up drag/drop', error)
@@ -202,9 +234,8 @@
     const unsubs = [
       videoState.subscribe((vs) => {
         scrubber.syncFromVideoState(vs);
-        if (vs && (!runner.file || runner.file.videoPath !== vs.path)) {
-          scrubber.scheduleFrameExtract();
-        }
+        scrubber.reconcileSettledFrame();
+        ingestion.syncFromVideoState(vs);
       }),
       subscribePendingVideoSwitch(({ entry, videoPath, selection }) => {
         ingestion.handleVideoFile(videoPath, entry.name, selection);
@@ -212,10 +243,11 @@
       subscribeMediaLoadRequested(() => ingestion.handleUpload()),
     ];
     return () => {
+      ingestion.dispose();
+      scrubber.destroy();
       cleanupRunner();
       unsubs.forEach((unsub) => unsub());
       cleanupDragDrop();
-      scrubber.destroy();
     };
   });
 
@@ -230,7 +262,10 @@
       ingestion.handleVideoFile(f.path, f.name);
       return;
     }
-    if (f.videoPath) return;
+    if (f.videoPath) {
+      scrubber.reconcileSettledFrame();
+      return;
+    }
     void runner.ensureAnalysis(f, lvl, mode);
   });
 
@@ -240,6 +275,11 @@
 
   $effect(() => {
     scrubber.setVideoElementRef(videoEl);
+  });
+
+  $effect(() => {
+    $params.quality;
+    scrubber.reconcileSettledFrame();
   });
 
   $effect(() => {

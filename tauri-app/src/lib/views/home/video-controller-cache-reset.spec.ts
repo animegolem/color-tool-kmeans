@@ -27,7 +27,11 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 import type { FileSelection } from '../../bridges/fs';
-import type { SelectionAuthority } from '../../stores/ui';
+import type {
+  SelectedImage,
+  SelectionAuthority,
+  VideoState,
+} from '../../stores/ui';
 import { createVideoController } from './video-controller.svelte';
 
 const stateRuneDescriptor = Object.getOwnPropertyDescriptor(
@@ -149,7 +153,7 @@ function cachedController(
     getVideoStripMode: () => 'filmstrip',
     getCachedVideoState: () => cachedVideoState(),
     cacheVideoState: vi.fn(),
-    findExistingFrameId: () => null,
+    getSelectedFile: () => null,
     beginSelection,
     isCurrentSelection,
     ...overrides,
@@ -206,7 +210,7 @@ describe('video controller cache restoration reset', () => {
             }
           : null,
       cacheVideoState: vi.fn(),
-      findExistingFrameId: () => null,
+      getSelectedFile: () => null,
       beginSelection,
       isCurrentSelection,
     });
@@ -255,7 +259,7 @@ describe('video controller cache restoration reset', () => {
         frameId: 'cached-frame',
       }),
       cacheVideoState: vi.fn(),
-      findExistingFrameId: () => null,
+      getSelectedFile: () => null,
       beginSelection,
       isCurrentSelection,
     });
@@ -459,7 +463,7 @@ describe('video controller cache restoration reset', () => {
             }
           : null,
       cacheVideoState: vi.fn(),
-      findExistingFrameId: () => null,
+      getSelectedFile: () => null,
       beginSelection,
       isCurrentSelection,
     });
@@ -477,4 +481,203 @@ describe('video controller cache restoration reset', () => {
     expect(element.currentTime).toBe(0);
     expect(scheduleAnalysisWith).toHaveBeenCalledOnce();
   });
+
+  it('AI-IMP-183: exact same-epoch stored settlement reuses once and enables only its snapshot path', () => {
+    const authority = beginSelection('frame-1');
+    const file: SelectedImage = {
+      id: 'frame-1',
+      name: 'cached.mp4',
+      path: '/cache/settled.png',
+      videoPath: '/tmp/cached.mp4',
+      frameTimestamp: 7,
+      contentRevision: 41,
+      size: 0,
+      source: { kind: 'path', path: '/cache/settled.png' },
+      previewUrl: 'asset:///cache/settled.png',
+      dataset: { width: 0, height: 0, pixels: new Uint8Array(0) },
+    };
+    const state: VideoState = {
+      selection: authority,
+      path: '/tmp/cached.mp4',
+      name: 'cached.mp4',
+      duration: 10,
+      fps: 24,
+      currentTime: 7,
+      settledFrame: {
+        selectionEpoch: authority.epoch,
+        imageId: file.id,
+        contentRevision: file.contentRevision!,
+        outputPath: file.path!,
+        videoPath: file.videoPath!,
+        requestedTime: file.frameTimestamp!,
+        maxDimension: 1200,
+      },
+      posterPath: file.path,
+    };
+    const scheduleAnalysisWith = vi.fn();
+    const controller = cachedController({
+      getSelectedFile: () => file,
+      scheduleAnalysisWith,
+    });
+
+    controller.handleVideoStateChange(state);
+    controller.ensureSettledFrame();
+    controller.ensureSettledFrame();
+
+    expect(mocks.extractVideoFrame).not.toHaveBeenCalled();
+    expect(scheduleAnalysisWith).toHaveBeenCalledOnce();
+    expect(controller.videoPosterPath).toBe('/cache/settled.png');
+  });
+
+  it('AI-IMP-183 amendment01: canonical epoch revocation immediately disables the Home snapshot seam', () => {
+    const authority = beginSelection('frame-1');
+    const file: SelectedImage = {
+      id: 'frame-1',
+      name: 'cached.mp4',
+      path: '/cache/settled.png',
+      videoPath: '/tmp/cached.mp4',
+      frameTimestamp: 7,
+      contentRevision: 41,
+      size: 0,
+      source: { kind: 'path', path: '/cache/settled.png' },
+      previewUrl: 'asset:///cache/settled.png',
+      dataset: { width: 0, height: 0, pixels: new Uint8Array(0) },
+    };
+    const state: VideoState = {
+      selection: authority,
+      path: '/tmp/cached.mp4',
+      name: 'cached.mp4',
+      duration: 10,
+      fps: 24,
+      currentTime: 7,
+      settledFrame: {
+        selectionEpoch: authority.epoch,
+        imageId: file.id,
+        contentRevision: file.contentRevision!,
+        outputPath: file.path!,
+        videoPath: file.videoPath!,
+        requestedTime: file.frameTimestamp!,
+        maxDimension: 1200,
+      },
+      posterPath: file.path,
+    };
+    const controller = cachedController({ getSelectedFile: () => file });
+
+    controller.handleVideoStateChange(state);
+    expect(controller.videoPosterPath).toBe('/cache/settled.png');
+
+    beginSelection('new-target');
+    expect(controller.videoPosterPath).toBeNull();
+  });
+
+  it('AI-IMP-183 amendment01: reconciliation waits for scrub end before one final extraction', async () => {
+    const authority = beginSelection('frame-1');
+    const file: SelectedImage = {
+      id: 'frame-1',
+      name: 'cached.mp4',
+      path: '/cache/settled.png',
+      videoPath: '/tmp/cached.mp4',
+      frameTimestamp: 7,
+      contentRevision: 41,
+      size: 0,
+      source: { kind: 'path', path: '/cache/settled.png' },
+      previewUrl: 'asset:///cache/settled.png',
+      dataset: { width: 0, height: 0, pixels: new Uint8Array(0) },
+    };
+    const state: VideoState = {
+      selection: authority,
+      path: '/tmp/cached.mp4',
+      name: 'cached.mp4',
+      duration: 10,
+      fps: 24,
+      currentTime: 7,
+      settledFrame: {
+        selectionEpoch: authority.epoch,
+        imageId: file.id,
+        contentRevision: file.contentRevision!,
+        outputPath: file.path!,
+        videoPath: file.videoPath!,
+        requestedTime: file.frameTimestamp!,
+        maxDimension: 1200,
+      },
+      posterPath: file.path,
+    };
+    const setFileForFrame = vi.fn(() => true);
+    const scheduleAnalysisWith = vi.fn();
+    const controller = cachedController({
+      getSelectedFile: () => file,
+      setFile: setFileForFrame,
+      scheduleAnalysisWith,
+    });
+    controller.handleVideoStateChange(state);
+    mocks.extractVideoFrame.mockClear();
+    scheduleAnalysisWith.mockClear();
+
+    controller.handleVideoScrubStart();
+    controller.handleVideoScrubInput({
+      target: { value: '8' },
+    } as unknown as Event);
+    controller.ensureSettledFrame();
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(mocks.extractVideoFrame).not.toHaveBeenCalled();
+    expect(scheduleAnalysisWith).not.toHaveBeenCalled();
+    expect(controller.videoPosterPath).toBeNull();
+
+    controller.handleVideoScrubEnd();
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(mocks.extractVideoFrame).toHaveBeenCalledOnce();
+    expect(mocks.extractVideoFrame).toHaveBeenCalledWith(
+      expect.objectContaining({ timestamp: 8 })
+    );
+    expect(setFileForFrame).toHaveBeenCalledOnce();
+    expect(scheduleAnalysisWith).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { label: 'success', rejects: false },
+    { label: 'rejection', rejects: true },
+  ])(
+    'AI-IMP-183: terminal controller disposal rejects late frame $label and finally',
+    async ({ rejects }) => {
+      const frame = deferred<{ path: string; timestampUsed: string }>();
+      mocks.extractVideoFrame.mockReturnValue(frame.promise);
+      const setFileForFrame = vi.fn(() => true);
+      const setVideoState = vi.fn();
+      const cache = vi.fn();
+      const banner = vi.fn();
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const controller = cachedController({
+        setFile: setFileForFrame,
+        setVideoState,
+        cacheVideoState: cache,
+        setBannerMessage: banner,
+      });
+      controller.loadVideoSelection(selection('/tmp/cached.mp4'));
+      await vi.advanceTimersByTimeAsync(250);
+      const stateCalls = setVideoState.mock.calls.length;
+      const cacheCalls = cache.mock.calls.length;
+
+      controller.dispose();
+      controller.dispose();
+      controller.stepVideoFrames(1);
+      if (rejects) frame.reject(new Error('disposed frame failed'));
+      else
+        frame.resolve({
+          path: '/cache/disposed.png',
+          timestampUsed: '7.000',
+        });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(setFileForFrame).not.toHaveBeenCalled();
+      expect(setVideoState).toHaveBeenCalledTimes(stateCalls);
+      expect(cache).toHaveBeenCalledTimes(cacheCalls);
+      expect(banner).not.toHaveBeenCalled();
+      expect(error).not.toHaveBeenCalled();
+      expect(controller.frameDecoding).toBe(false);
+      expect(controller.videoPosterPath).toBeNull();
+    }
+  );
 });

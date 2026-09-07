@@ -1,24 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({
-  extractVideoFrame: vi.fn(),
-}));
+const mocks = vi.hoisted(() => ({ extractVideoFrame: vi.fn() }));
 
 vi.mock('../../bridges/video', () => ({
   extractVideoFrame: mocks.extractVideoFrame,
 }));
-
-vi.mock('../../bridges/fs', () => ({
-  inferMimeType: () => 'video/mp4',
-}));
-
+vi.mock('../../bridges/fs', () => ({ inferMimeType: () => 'video/mp4' }));
 vi.mock('../../bridges/log', () => ({ logEvent: vi.fn() }));
-
 vi.mock('@tauri-apps/api/core', () => ({
   convertFileSrc: (path: string) => `asset://${path}`,
 }));
 
-import type { ImageEntry, SelectionAuthority } from '../../stores/ui';
+import type {
+  SelectedImage,
+  SelectionAuthority,
+  SettledVideoFrame,
+  VideoState,
+} from '../../stores/ui';
 import {
   createVideoScrubber,
   settledFrameSnapshotRequest,
@@ -67,42 +65,139 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-function settledFrame(overrides: Partial<ImageEntry> = {}): ImageEntry {
+const DATASET = { width: 0, height: 0, pixels: new Uint8Array(0) };
+let currentSelection: SelectionAuthority;
+
+function selectedFrame(overrides: Partial<SelectedImage> = {}): SelectedImage {
   return {
     id: 'frame-1',
     name: 'video.mp4',
     path: '/cache/frame-at-1.png',
     videoPath: '/tmp/video.mp4',
     frameTimestamp: 1,
+    contentRevision: 11,
     size: 0,
     source: { kind: 'path', path: '/cache/frame-at-1.png' },
     previewUrl: 'asset:///cache/frame-at-1.png',
+    dataset: DATASET,
     ...overrides,
   };
 }
 
-const TEST_SELECTION: SelectionAuthority = Object.freeze({
-  epoch: 1,
-  mediaId: 'video-1',
-});
-
-function isCurrentSelection(selection: SelectionAuthority): boolean {
-  return selection.epoch === TEST_SELECTION.epoch;
+function settlement(
+  file: SelectedImage,
+  maxDimension = 1200,
+  selection = currentSelection
+): SettledVideoFrame {
+  return {
+    selectionEpoch: selection.epoch,
+    imageId: file.id,
+    contentRevision: file.contentRevision!,
+    outputPath: file.path!,
+    videoPath: file.videoPath!,
+    requestedTime: file.frameTimestamp!,
+    maxDimension,
+  };
 }
 
-function syncVideo(
-  scrubber: ReturnType<typeof createVideoScrubber>,
-  path = '/tmp/video.mp4',
-  currentTime = 1
-) {
-  scrubber.syncFromVideoState({
-    selection: TEST_SELECTION,
-    path,
-    name: path.split('/').at(-1) ?? 'video.mp4',
+function videoStateFor(
+  file: SelectedImage,
+  settledFrame: SettledVideoFrame | null = settlement(file),
+  requestedTime = file.frameTimestamp!,
+  selection = currentSelection
+): VideoState {
+  return {
+    selection,
+    path: file.videoPath!,
+    name: file.name,
     duration: 10,
     fps: 24,
-    currentTime,
+    currentTime: requestedTime,
+    settledFrame,
+    posterPath: file.path,
+  };
+}
+
+function isCurrentSelection(selection: SelectionAuthority): boolean {
+  return selection.epoch === currentSelection.epoch;
+}
+
+function createHarness(initialFile = selectedFrame()) {
+  let file: SelectedImage | null = initialFile;
+  let state = videoStateFor(initialFile);
+  let revision = initialFile.contentRevision!;
+  const reused = vi.fn();
+  const publishedRequested = vi.fn((currentTime: number) => {
+    state = { ...state, currentTime };
   });
+  const publishedSettled = vi.fn((settledFrame: SettledVideoFrame) => {
+    state = {
+      ...state,
+      currentTime: settledFrame.requestedTime,
+      posterPath: settledFrame.outputPath,
+      settledFrame,
+    };
+  });
+  const onFrameExtracted = vi.fn(
+    (
+      framePath: string,
+      frameId: string,
+      timestamp: number,
+      videoPath: string,
+      videoName: string
+    ) => {
+      file = selectedFrame({
+        id: file?.id ?? frameId,
+        name: videoName,
+        path: framePath,
+        videoPath,
+        frameTimestamp: timestamp,
+        contentRevision: ++revision,
+        source: { kind: 'path', path: framePath },
+        previewUrl: `asset://${framePath}`,
+      });
+      return file;
+    }
+  );
+  const scrubber = createVideoScrubber({
+    getMaxDimension: () => 1200,
+    onFrameExtracted,
+    getSelectedFile: () => file,
+    onFrameReused: reused,
+    publishRequestedTime: publishedRequested,
+    publishSettledFrame: publishedSettled,
+    isCurrentSelection,
+  });
+  scrubber.syncFromVideoState(state);
+  return {
+    scrubber,
+    onFrameExtracted,
+    publishedRequested,
+    publishedSettled,
+    reused,
+    get file() {
+      return file;
+    },
+    get state() {
+      return state;
+    },
+  };
+}
+
+function snapshot(
+  state: VideoState | null,
+  file: SelectedImage | null,
+  pending = false,
+  maxDimension = 1200,
+  current = state ? isCurrentSelection(state.selection) : false
+) {
+  return settledFrameSnapshotRequest(
+    state,
+    file,
+    maxDimension,
+    pending,
+    current
+  );
 }
 
 describe('Values settled-frame snapshots', () => {
@@ -110,6 +205,7 @@ describe('Values settled-frame snapshots', () => {
     installRuneShims();
     vi.useFakeTimers();
     vi.clearAllMocks();
+    currentSelection = Object.freeze({ epoch: 1, mediaId: 'frame-1' });
   });
 
   afterEach(() => {
@@ -118,114 +214,74 @@ describe('Values settled-frame snapshots', () => {
     restoreRuneShims();
   });
 
-  it.each([
-    ['null file', null, false],
-    ['missing path', settledFrame({ path: '' }), false],
-    ['missing timestamp', settledFrame({ frameTimestamp: undefined }), false],
-    ['pending decode', settledFrame(), true],
-  ])(
-    'SWEEP-008: rejects snapshot eligibility for %s',
-    (_label, file, pending) => {
-      expect(settledFrameSnapshotRequest(file, pending)).toBeNull();
-    }
-  );
+  it('SWEEP-008: requires current exact settled identity', () => {
+    const file = selectedFrame();
+    const state = videoStateFor(file);
 
-  it('SWEEP-008: accepts a settled frame at timestamp zero', () => {
+    expect(snapshot(state, null)).toBeNull();
     expect(
-      settledFrameSnapshotRequest(
-        settledFrame({
-          name: 'opening.mov',
-          path: '/cache/opening.png',
-          frameTimestamp: 0,
-        }),
-        false
-      )
-    ).toEqual({
+      snapshot(state, selectedFrame({ path: '/cache/other.png' }))
+    ).toBeNull();
+    expect(snapshot(state, file, true)).toBeNull();
+    expect(snapshot(state, file, false, 800)).toBeNull();
+    expect(snapshot(state, file, false, 1200, false)).toBeNull();
+  });
+
+  it('SWEEP-008: accepts an exact settled frame at timestamp zero', () => {
+    const file = selectedFrame({
+      name: 'opening.mov',
+      path: '/cache/opening.png',
+      frameTimestamp: 0,
+      source: { kind: 'path', path: '/cache/opening.png' },
+    });
+    const state = videoStateFor(file);
+
+    expect(snapshot(state, file)).toEqual({
       framePath: '/cache/opening.png',
       name: 'opening.mov',
       timestamp: 0,
     });
   });
 
-  it('SWEEP-008: blocks capture through debounce and active extraction, then uses one settled entry', async () => {
+  it('AI-IMP-183: publishes request before debounce and withholds snapshots until acceptance', async () => {
     const frame = deferred<{ path: string; timestampUsed: string }>();
     mocks.extractVideoFrame.mockReturnValue(frame.promise);
-    let currentFrame = settledFrame();
-    const onFrameExtracted = vi.fn(
-      (
-        framePath: string,
-        frameId: string,
-        timestamp: number,
-        videoPath: string,
-        videoName: string
-      ) => {
-        currentFrame = settledFrame({
-          id: frameId,
-          name: videoName,
-          path: framePath,
-          videoPath,
-          frameTimestamp: timestamp,
-          source: { kind: 'path', path: framePath },
-        });
-        return true;
-      }
-    );
-    const scrubber = createVideoScrubber({
-      getMaxDimension: () => 1200,
-      onFrameExtracted,
-      updateVideoState: vi.fn(),
-      isCurrentSelection,
-    });
-    syncVideo(scrubber);
+    const harness = createHarness();
 
-    scrubber.stepFrames(1);
+    harness.scrubber.stepFrames(1);
 
-    expect(scrubber.extracting).toBe(true);
+    expect(harness.publishedRequested).toHaveBeenCalledOnce();
     expect(mocks.extractVideoFrame).not.toHaveBeenCalled();
     expect(
-      settledFrameSnapshotRequest(currentFrame, scrubber.extracting)
+      snapshot(harness.state, harness.file, harness.scrubber.extracting)
     ).toBeNull();
 
     await vi.advanceTimersByTimeAsync(250);
+    expect(mocks.extractVideoFrame).toHaveBeenCalledOnce();
+    expect(
+      snapshot(harness.state, harness.file, harness.scrubber.extracting)
+    ).toBeNull();
 
-    expect(scrubber.extracting).toBe(true);
-    expect(mocks.extractVideoFrame).toHaveBeenCalledWith(
-      expect.objectContaining({
-        path: '/tmp/video.mp4',
-        timestamp: 1 + 1 / 24,
-      })
-    );
-    frame.resolve({
-      path: '/cache/frame-at-request.png',
-      timestampUsed: '9.999',
-    });
+    frame.resolve({ path: '/cache/request.png', timestampUsed: '9.999' });
     await vi.runAllTimersAsync();
 
-    expect(scrubber.extracting).toBe(false);
-    expect(onFrameExtracted).toHaveBeenCalledOnce();
-    expect(
-      settledFrameSnapshotRequest(currentFrame, scrubber.extracting)
-    ).toEqual({
-      framePath: '/cache/frame-at-request.png',
+    expect(harness.publishedSettled).toHaveBeenCalledOnce();
+    expect(snapshot(harness.state, harness.file)).toEqual({
+      framePath: '/cache/request.png',
       name: 'video.mp4',
       timestamp: 1 + 1 / 24,
     });
   });
 
   it('SWEEP-008: coalesces seeks during debounce and publishes only the current request', async () => {
-    const frame = deferred<{ path: string; timestampUsed: string }>();
-    mocks.extractVideoFrame.mockReturnValue(frame.promise);
-    const onFrameExtracted = vi.fn(() => true);
-    const scrubber = createVideoScrubber({
-      getMaxDimension: () => 1200,
-      onFrameExtracted,
-      updateVideoState: vi.fn(),
-      isCurrentSelection,
+    mocks.extractVideoFrame.mockResolvedValue({
+      path: '/cache/latest.png',
+      timestampUsed: '1.083',
     });
-    syncVideo(scrubber);
+    const harness = createHarness();
 
-    scrubber.stepFrames(1);
-    scrubber.stepFrames(1);
+    harness.scrubber.stepFrames(1);
+    harness.scrubber.stepFrames(1);
     await vi.advanceTimersByTimeAsync(250);
     const settledTime = 1 + 1 / 24 + 1 / 24;
 
@@ -233,114 +289,97 @@ describe('Values settled-frame snapshots', () => {
     expect(mocks.extractVideoFrame).toHaveBeenCalledWith(
       expect.objectContaining({ timestamp: settledTime })
     );
-    expect(scrubber.extracting).toBe(true);
-
-    frame.resolve({ path: '/cache/latest.png', timestampUsed: '1.083' });
     await vi.runAllTimersAsync();
-
-    expect(onFrameExtracted).toHaveBeenCalledOnce();
-    expect(onFrameExtracted).toHaveBeenCalledWith(
-      '/cache/latest.png',
-      expect.any(String),
-      settledTime,
-      '/tmp/video.mp4',
-      'video.mp4',
-      TEST_SELECTION
-    );
-    expect(scrubber.extracting).toBe(false);
+    expect(harness.onFrameExtracted).toHaveBeenCalledOnce();
+    expect(harness.state.settledFrame?.requestedTime).toBe(settledTime);
   });
 
-  it('SWEEP-008: stale completion cannot clear newer pending state and current rejection retains the prior frame', async () => {
+  it('SWEEP-008: stale completion cannot clear newer pending state and current rejection stays unsettled', async () => {
     const first = deferred<{ path: string; timestampUsed: string }>();
     const second = deferred<{ path: string; timestampUsed: string }>();
     mocks.extractVideoFrame
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);
-    const onFrameExtracted = vi.fn(() => true);
-    const scrubber = createVideoScrubber({
-      getMaxDimension: () => 1200,
-      onFrameExtracted,
-      updateVideoState: vi.fn(),
-      isCurrentSelection,
-    });
-    const priorFrame = settledFrame({
-      path: '/cache/prior.png',
-      frameTimestamp: 0.5,
-    });
-    syncVideo(scrubber);
+    const harness = createHarness();
 
-    scrubber.stepFrames(1);
+    harness.scrubber.stepFrames(1);
     await vi.advanceTimersByTimeAsync(250);
-    scrubber.stepFrames(1);
+    harness.scrubber.stepFrames(1);
     first.resolve({ path: '/cache/stale.png', timestampUsed: '1.042' });
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(onFrameExtracted).not.toHaveBeenCalled();
-    expect(scrubber.extracting).toBe(true);
-    expect(
-      settledFrameSnapshotRequest(priorFrame, scrubber.extracting)
-    ).toBeNull();
-
+    expect(harness.onFrameExtracted).not.toHaveBeenCalled();
+    expect(harness.scrubber.extracting).toBe(true);
     await vi.advanceTimersByTimeAsync(250);
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     second.reject(new Error('decode failed'));
     await vi.runAllTimersAsync();
 
     expect(errorSpy).toHaveBeenCalledOnce();
-    expect(onFrameExtracted).not.toHaveBeenCalled();
-    expect(scrubber.extracting).toBe(false);
-    expect(scrubber.currentTime).toBe(1 + 1 / 24 + 1 / 24);
-    expect(settledFrameSnapshotRequest(priorFrame, false)).toEqual({
-      framePath: '/cache/prior.png',
-      name: 'video.mp4',
-      timestamp: 0.5,
-    });
+    expect(harness.scrubber.extracting).toBe(false);
+    expect(snapshot(harness.state, harness.file)).toBeNull();
   });
 
-  it('SWEEP-008: a path switch revokes active extraction without publishing the old frame', async () => {
-    const oldFrame = deferred<{ path: string; timestampUsed: string }>();
-    mocks.extractVideoFrame.mockReturnValue(oldFrame.promise);
-    const onFrameExtracted = vi.fn(() => true);
-    const scrubber = createVideoScrubber({
-      getMaxDimension: () => 1200,
-      onFrameExtracted,
-      updateVideoState: vi.fn(),
-      isCurrentSelection,
-    });
-    syncVideo(scrubber, '/tmp/a.mp4');
-    scrubber.scheduleFrameExtract();
-    await vi.advanceTimersByTimeAsync(250);
+  it('AI-IMP-183: exact same-epoch settlement reuses the stored entry once', () => {
+    const harness = createHarness();
 
-    syncVideo(scrubber, '/tmp/b.mp4', 2);
-    expect(scrubber.extracting).toBe(false);
-    oldFrame.resolve({ path: '/cache/a.png', timestampUsed: '1.000' });
-    await vi.runAllTimersAsync();
+    harness.scrubber.reconcileSettledFrame();
+    harness.scrubber.reconcileSettledFrame();
 
-    expect(onFrameExtracted).not.toHaveBeenCalled();
-    expect(scrubber.extracting).toBe(false);
+    expect(harness.reused).toHaveBeenCalledOnce();
+    expect(mocks.extractVideoFrame).not.toHaveBeenCalled();
+    expect(snapshot(harness.state, harness.file)).not.toBeNull();
   });
 
-  it('SWEEP-008: destruction clears pending state and rejects an active completion', async () => {
+  it.each([
+    ['removed entry', null],
+    ['replaced revision', selectedFrame({ contentRevision: 12 })],
+    ['replaced output', selectedFrame({ path: '/cache/replaced.png' })],
+  ])(
+    'AI-IMP-183: %s reacquires instead of reusing settlement',
+    async (_label, file) => {
+      const initial = selectedFrame();
+      const scrubber = createVideoScrubber({
+        getMaxDimension: () => 1200,
+        onFrameExtracted: vi.fn(() => null),
+        getSelectedFile: () => file,
+        onFrameReused: vi.fn(),
+        publishRequestedTime: vi.fn(),
+        publishSettledFrame: vi.fn(),
+        isCurrentSelection,
+      });
+      scrubber.syncFromVideoState(videoStateFor(initial));
+      scrubber.reconcileSettledFrame();
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(mocks.extractVideoFrame).toHaveBeenCalledOnce();
+    }
+  );
+
+  it('AI-IMP-183: changed size reacquires and terminal destroy rejects completion', async () => {
     const frame = deferred<{ path: string; timestampUsed: string }>();
     mocks.extractVideoFrame.mockReturnValue(frame.promise);
-    const onFrameExtracted = vi.fn(() => true);
+    const file = selectedFrame();
+    const accepted = vi.fn(() => file);
     const scrubber = createVideoScrubber({
-      getMaxDimension: () => 1200,
-      onFrameExtracted,
-      updateVideoState: vi.fn(),
+      getMaxDimension: () => 800,
+      onFrameExtracted: accepted,
+      getSelectedFile: () => file,
+      publishRequestedTime: vi.fn(),
+      publishSettledFrame: vi.fn(),
       isCurrentSelection,
     });
-    syncVideo(scrubber);
-    scrubber.scheduleFrameExtract();
+    scrubber.syncFromVideoState(videoStateFor(file));
+    scrubber.reconcileSettledFrame();
     await vi.advanceTimersByTimeAsync(250);
 
     scrubber.destroy();
-    expect(scrubber.extracting).toBe(false);
+    scrubber.destroy();
     frame.resolve({ path: '/cache/destroyed.png', timestampUsed: '1.000' });
     await vi.runAllTimersAsync();
 
-    expect(onFrameExtracted).not.toHaveBeenCalled();
+    expect(accepted).not.toHaveBeenCalled();
     expect(scrubber.extracting).toBe(false);
   });
 });

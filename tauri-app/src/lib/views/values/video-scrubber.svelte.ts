@@ -1,9 +1,12 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
 import type {
   ImageEntry,
+  SelectedImage,
+  SettledVideoFrame,
   VideoState,
   SelectionAuthority,
 } from '../../stores/ui';
+import { matchesSettledVideoFrame } from '../../stores/video';
 import { extractVideoFrame } from '../../bridges/video';
 import { inferMimeType } from '../../bridges/fs';
 import { logEvent } from '../../bridges/log';
@@ -18,8 +21,12 @@ export interface VideoScrubberDeps {
     videoPath: string,
     videoName: string,
     selection: SelectionAuthority
-  ) => boolean;
-  updateVideoState: (currentTime: number, posterPath: string) => void;
+  ) => SelectedImage | null;
+  getSelectedFile: () => SelectedImage | null;
+  onFrameAccepted?: (file: SelectedImage) => void;
+  onFrameReused?: (file: SelectedImage) => void;
+  publishRequestedTime: (currentTime: number) => void;
+  publishSettledFrame: (settledFrame: SettledVideoFrame) => void;
   captureScroll?: () => void;
   cacheVideoState?: (
     videoPath: string,
@@ -30,14 +37,27 @@ export interface VideoScrubberDeps {
 }
 
 export function settledFrameSnapshotRequest(
-  file: Pick<ImageEntry, 'path' | 'name' | 'frameTimestamp'> | null,
-  decodePending: boolean
+  state: VideoState | null,
+  file: ImageEntry | null,
+  maxDimension: number,
+  decodePending: boolean,
+  currentSelection: boolean
 ) {
-  if (decodePending || !file?.path || file.frameTimestamp == null) return null;
+  if (
+    decodePending ||
+    !currentSelection ||
+    !matchesSettledVideoFrame(
+      state,
+      state?.selection ?? null,
+      file,
+      maxDimension
+    )
+  )
+    return null;
   return {
-    framePath: file.path,
+    framePath: state.settledFrame.outputPath,
     name: file.name,
-    timestamp: file.frameTimestamp,
+    timestamp: state.settledFrame.requestedTime,
   };
 }
 
@@ -52,26 +72,34 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
   let videoElement: HTMLVideoElement | null = $state(null);
   let frameId: string | null = null;
   let selection: SelectionAuthority | null = null;
+  let state: VideoState | null = null;
   let decodeToken = 0;
   let decodeTimer: ReturnType<typeof setTimeout> | null = null;
+  let pendingRequestKey: string | null = null;
+  let reusedSettlementKey: string | null = null;
+  let disposed = false;
 
   const isVideo = $derived(videoPath !== null && duration > 0);
   const videoSrcUrl = $derived(videoPath ? convertFileSrc(videoPath) : null);
   const mimeType = $derived(videoName ? inferMimeType(videoName) : null);
 
   function syncFromVideoState(vs: VideoState | null) {
+    if (disposed) return;
     const nextPath = vs?.path ?? null;
     const nextEpoch = vs?.selection.epoch ?? null;
     if (nextPath !== videoPath || nextEpoch !== selection?.epoch) {
       decodeToken += 1;
       extracting = false;
       frameId = null;
+      pendingRequestKey = null;
+      reusedSettlementKey = null;
       if (decodeTimer) {
         clearTimeout(decodeTimer);
         decodeTimer = null;
       }
     }
     if (!vs) {
+      state = null;
       selection = null;
       videoPath = null;
       videoName = null;
@@ -81,6 +109,7 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
       frameId = null;
       return;
     }
+    state = vs;
     selection = vs.selection;
     videoPath = vs.path;
     videoName = vs.name;
@@ -92,9 +121,52 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
     }
   }
 
+  function requestKey(
+    requestSelection: SelectionAuthority,
+    requestPath: string,
+    requestTime: number,
+    maxDimension: number
+  ) {
+    return `${requestSelection.epoch}\u0000${requestPath}\u0000${requestTime}\u0000${maxDimension}`;
+  }
+
+  function cancelLocalDecode() {
+    decodeToken += 1;
+    extracting = false;
+    pendingRequestKey = null;
+    if (decodeTimer) {
+      clearTimeout(decodeTimer);
+      decodeTimer = null;
+    }
+  }
+
+  function reconcileSettledFrame() {
+    if (disposed || !state || !selection || !deps.isCurrentSelection(selection))
+      return;
+    const maxDimension = deps.getMaxDimension();
+    const file = deps.getSelectedFile();
+    if (matchesSettledVideoFrame(state, selection, file, maxDimension)) {
+      cancelLocalDecode();
+      frameId = file.id;
+      const key = `${selection.epoch}\u0000${file.id}\u0000${file.contentRevision}\u0000${maxDimension}`;
+      if (reusedSettlementKey !== key) {
+        reusedSettlementKey = key;
+        deps.onFrameReused?.(file);
+      }
+      return;
+    }
+    reusedSettlementKey = null;
+    if (!scrubbing) scheduleFrameExtract();
+  }
+
   function scheduleFrameExtract() {
-    if (!videoPath || !selection || !deps.isCurrentSelection(selection)) return;
-    if (decodeTimer) clearTimeout(decodeTimer);
+    if (
+      disposed ||
+      !videoPath ||
+      !selection ||
+      !deps.isCurrentSelection(selection)
+    )
+      return;
     const requestPath = videoPath;
     const requestName = videoName ?? requestPath;
     const requestTime = currentTime;
@@ -102,8 +174,28 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
       globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     frameId = fid;
     const maxDimension = deps.getMaxDimension();
-    const token = ++decodeToken;
     const requestSelection = selection;
+    if (
+      matchesSettledVideoFrame(
+        state,
+        requestSelection,
+        deps.getSelectedFile(),
+        maxDimension
+      )
+    ) {
+      reconcileSettledFrame();
+      return;
+    }
+    const nextRequestKey = requestKey(
+      requestSelection,
+      requestPath,
+      requestTime,
+      maxDimension
+    );
+    if (pendingRequestKey === nextRequestKey) return;
+    if (decodeTimer) clearTimeout(decodeTimer);
+    const token = ++decodeToken;
+    pendingRequestKey = nextRequestKey;
     extracting = true;
 
     decodeTimer = setTimeout(async () => {
@@ -127,7 +219,7 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
         void logEvent(
           `values:video:frame:done t_req=${requestTime.toFixed(4)} t_ffmpeg=${response.timestampUsed}`
         );
-        const accepted = deps.onFrameExtracted(
+        const acceptedFile = deps.onFrameExtracted(
           framePath,
           fid,
           requestTime,
@@ -135,8 +227,38 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
           requestName,
           requestSelection
         );
-        if (!accepted || !deps.isCurrentSelection(requestSelection)) return;
-        deps.updateVideoState(requestTime, framePath);
+        if (
+          disposed ||
+          !acceptedFile ||
+          !deps.isCurrentSelection(requestSelection) ||
+          token !== decodeToken ||
+          acceptedFile.path !== framePath ||
+          acceptedFile.videoPath !== requestPath ||
+          acceptedFile.frameTimestamp !== requestTime ||
+          !Number.isSafeInteger(acceptedFile.contentRevision)
+        )
+          return;
+        const settledFrame: SettledVideoFrame = {
+          selectionEpoch: requestSelection.epoch,
+          imageId: acceptedFile.id,
+          contentRevision: acceptedFile.contentRevision!,
+          outputPath: framePath,
+          videoPath: requestPath,
+          requestedTime: requestTime,
+          maxDimension,
+        };
+        frameId = acceptedFile.id;
+        reusedSettlementKey = `${requestSelection.epoch}\u0000${acceptedFile.id}\u0000${acceptedFile.contentRevision}\u0000${maxDimension}`;
+        if (state?.selection.epoch === requestSelection.epoch) {
+          state = {
+            ...state,
+            currentTime: requestTime,
+            posterPath: framePath,
+            settledFrame,
+          };
+        }
+        deps.onFrameAccepted?.(acceptedFile);
+        deps.publishSettledFrame(settledFrame);
         deps.cacheVideoState?.(requestPath, requestTime, framePath);
       } catch (error) {
         if (token !== decodeToken || !deps.isCurrentSelection(requestSelection))
@@ -146,51 +268,62 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
         console.error('[values] Video frame decode failed', error);
       } finally {
         if (
+          !disposed &&
           token === decodeToken &&
           deps.isCurrentSelection(requestSelection)
         ) {
           extracting = false;
+          pendingRequestKey = null;
         }
       }
     }, 250);
   }
 
   function handleScrubStart() {
+    if (disposed) return;
     scrubbing = true;
     deps.captureScroll?.();
   }
 
   function handleScrubEnd() {
+    if (disposed) return;
     scrubbing = false;
     scheduleFrameExtract();
   }
 
   function handleScrubInput(event: Event) {
+    if (disposed) return;
     currentTime = Number((event.target as HTMLInputElement).value);
     if (videoElement) videoElement.currentTime = currentTime;
+    if (state) state = { ...state, currentTime };
+    deps.publishRequestedTime(currentTime);
   }
 
   function stepFrames(count: number) {
-    if (duration <= 0) return;
+    if (disposed || duration <= 0) return;
     deps.captureScroll?.();
     const effectiveFps = fps && fps > 0 ? fps : 24;
     const delta = count / effectiveFps;
     currentTime = Math.min(Math.max(currentTime + delta, 0), duration);
     if (videoElement) videoElement.currentTime = currentTime;
+    if (state) state = { ...state, currentTime };
+    deps.publishRequestedTime(currentTime);
     scheduleFrameExtract();
   }
 
   function setVideoElementRef(el: HTMLVideoElement | null) {
+    if (disposed) return;
     videoElement = el;
   }
 
   function destroy() {
-    decodeToken += 1;
-    extracting = false;
-    if (decodeTimer) {
-      clearTimeout(decodeTimer);
-      decodeTimer = null;
-    }
+    if (disposed) return;
+    disposed = true;
+    cancelLocalDecode();
+    scrubbing = false;
+    videoElement = null;
+    state = null;
+    selection = null;
   }
 
   return {
@@ -224,6 +357,7 @@ export function createVideoScrubber(deps: VideoScrubberDeps) {
     setVideoElementRef,
     syncFromVideoState,
     scheduleFrameExtract,
+    reconcileSettledFrame,
     handleScrubStart,
     handleScrubEnd,
     handleScrubInput,

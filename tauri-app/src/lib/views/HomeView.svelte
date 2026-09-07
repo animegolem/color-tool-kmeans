@@ -250,10 +250,7 @@
     getVideoStripMode: () => get(videoStripMode),
     getCachedVideoState,
     cacheVideoState,
-    findExistingFrameId: (videoPath: string) => {
-      const entry = get(images).find((item) => item.videoPath === videoPath);
-      return entry?.id ?? null;
-    },
+    getSelectedFile: () => get(selectedFile),
     beginSelection,
     isCurrentSelection,
   });
@@ -501,6 +498,7 @@
     window.addEventListener('pointerup', handleScrubEnd);
     window.addEventListener('pointercancel', handleScrubEnd);
     return () => {
+      video.dispose();
       unsubs.forEach((unsub) => unsub());
       window.removeEventListener('dragenter', onDragEnter);
       window.removeEventListener('dragleave', onDragLeave);
@@ -524,6 +522,11 @@
   });
 
   $effect(() => {
+    currentParams.quality;
+    video.ensureSettledFrame();
+  });
+
+  $effect(() => {
     const activeFile = file;
     const paramSnapshot = currentParams;
     if (!activeFile) {
@@ -534,6 +537,10 @@
       return;
     }
     if (status === 'error') {
+      return;
+    }
+    if (activeFile.videoPath && !video.videoPosterPath) {
+      video.ensureSettledFrame();
       return;
     }
     devlog('home:analysis:effect', 'Analysis effect triggered', {

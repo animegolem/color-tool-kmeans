@@ -1,5 +1,15 @@
 import { writable, get } from 'svelte/store';
-import type { SelectionAuthority } from './image';
+import type { ImageEntry, SelectionAuthority } from './image';
+
+export interface SettledVideoFrame {
+  selectionEpoch: number;
+  imageId: string;
+  contentRevision: number;
+  outputPath: string;
+  videoPath: string;
+  requestedTime: number;
+  maxDimension: number;
+}
 
 export interface VideoState {
   selection: SelectionAuthority;
@@ -8,8 +18,35 @@ export interface VideoState {
   duration: number;
   fps: number | null;
   currentTime: number;
+  settledFrame: SettledVideoFrame | null;
   stripPath?: string | null;
+  stripId?: string | null;
   posterPath?: string | null;
+}
+
+export function matchesSettledVideoFrame(
+  state: VideoState | null,
+  currentSelection: SelectionAuthority | null,
+  entry: ImageEntry | null,
+  maxDimension: number
+): entry is ImageEntry & { path: string; contentRevision: number } {
+  const settled = state?.settledFrame;
+  return (
+    state !== null &&
+    currentSelection !== null &&
+    state.selection.epoch === currentSelection.epoch &&
+    settled !== null &&
+    entry !== null &&
+    state.path === settled.videoPath &&
+    settled.selectionEpoch === state.selection.epoch &&
+    state.currentTime === settled.requestedTime &&
+    settled.maxDimension === maxDimension &&
+    entry.id === settled.imageId &&
+    entry.contentRevision === settled.contentRevision &&
+    entry.path === settled.outputPath &&
+    entry.videoPath === settled.videoPath &&
+    entry.frameTimestamp === settled.requestedTime
+  );
 }
 
 export const videoState = writable<VideoState | null>(null);

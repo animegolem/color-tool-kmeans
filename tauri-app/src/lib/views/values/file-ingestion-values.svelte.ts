@@ -18,7 +18,7 @@ import {
   beginSelection,
   isCurrentSelection,
 } from '../../stores/ui';
-import type { SelectionAuthority } from '../../stores/ui';
+import type { SelectionAuthority, VideoState } from '../../stores/ui';
 
 export interface ValuesFileIngestionDeps {
   cancelPending: () => void;
@@ -31,13 +31,16 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
     generation: number;
     selection: SelectionAuthority;
   } | null = null;
+  let disposed = false;
 
   function ownsRequest(
     generation: number,
     selection: SelectionAuthority
   ): boolean {
     return (
-      generation === videoRequestGeneration && isCurrentSelection(selection)
+      !disposed &&
+      generation === videoRequestGeneration &&
+      isCurrentSelection(selection)
     );
   }
 
@@ -50,31 +53,43 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
     const cached = getCachedVideoState(videoPath);
     if (cached) {
       if (!ownsRequest(generation, selection)) return;
-      const restoredState = {
-        selection,
-        path: videoPath,
-        name,
+      const current = get(videoState);
+      if (
+        !current ||
+        current.path !== videoPath ||
+        current.selection.epoch !== selection.epoch
+      )
+        return;
+      setVideoState({
+        ...current,
         duration: cached.duration,
-        fps: cached.fps ?? null,
-        currentTime: cached.currentTime ?? 0,
-        stripPath: cached.stripPath ?? null,
-        stripId: cached.stripId ?? null,
-        posterPath: cached.posterPath ?? null,
-      };
-      setVideoState(restoredState);
+        fps: cached.fps ?? current.fps,
+        stripPath: current.stripPath ?? cached.stripPath ?? null,
+        stripId: current.stripId ?? cached.stripId ?? null,
+        posterPath: current.posterPath ?? cached.posterPath ?? null,
+      });
       return;
     }
     try {
       const probe = await probeVideo(videoPath);
       if (!ownsRequest(generation, selection)) return;
+      const current = get(videoState);
+      if (
+        !current ||
+        current.path !== videoPath ||
+        current.selection.epoch !== selection.epoch
+      )
+        return;
       setVideoState({
-        selection,
-        path: videoPath,
-        name,
-        duration: probe.duration,
-        fps: probe.fps ?? null,
-        currentTime: 0,
-        posterPath: null,
+        ...current,
+        duration:
+          Number.isFinite(probe.duration) && probe.duration > 0
+            ? probe.duration
+            : current.duration,
+        fps:
+          Number.isFinite(probe.fps ?? NaN) && (probe.fps ?? 0) > 0
+            ? (probe.fps ?? null)
+            : current.fps,
       });
     } catch (err) {
       if (!ownsRequest(generation, selection)) return;
@@ -87,6 +102,7 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
     name: string,
     capturedSelection?: SelectionAuthority
   ) {
+    if (disposed) return;
     const vs = get(videoState);
     if (capturedSelection && !isCurrentSelection(capturedSelection)) return;
     if (
@@ -109,14 +125,18 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
     const generation = ++videoRequestGeneration;
     pendingVideoRequest = { path: videoPath, generation, selection };
     deps.cancelPending();
+    const cached = getCachedVideoState(videoPath);
     setVideoState({
       selection,
       path: videoPath,
       name,
-      duration: 0,
-      fps: null,
-      currentTime: 0,
-      posterPath: null,
+      duration: cached?.duration ?? 0,
+      fps: cached?.fps ?? null,
+      currentTime: cached?.currentTime ?? 0,
+      settledFrame: null,
+      stripPath: cached?.stripPath ?? null,
+      stripId: cached?.stripId ?? null,
+      posterPath: cached?.posterPath ?? null,
     });
     void probeAndSetVideoState(videoPath, name, generation, selection).finally(
       () => {
@@ -127,6 +147,7 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
   }
 
   function handleImageFile(sel: FileSelection) {
+    if (disposed) return;
     const selection = beginSelection(null);
     videoRequestGeneration += 1;
     pendingVideoRequest = null;
@@ -149,10 +170,12 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
   }
 
   async function processBatch(selections: FileSelection[]) {
+    if (disposed) return;
     let videoProcessed = false;
     let firstActivated = false;
 
     for (const sel of selections) {
+      if (disposed) return;
       if (isVideoFile(sel)) {
         if (!videoProcessed && sel.path) {
           videoProcessed = true;
@@ -185,18 +208,80 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
   }
 
   async function handleUpload() {
+    if (disposed) return;
     try {
       const bridge = await getFsBridge();
       const selections = await bridge.openMediaFiles('all');
+      if (disposed) return;
       if (!selections?.length) return;
       await processBatch(selections);
     } catch (e) {
+      if (disposed) return;
       console.error('[values] Upload failed', e);
     }
   }
 
   function setupDragDrop(): Promise<(() => void) | null> {
-    return setupTauriDragDrop((selections) => void processBatch(selections));
+    if (disposed) return Promise.resolve(null);
+    return setupTauriDragDrop((selections) => {
+      if (!disposed) void processBatch(selections);
+    });
+  }
+
+  function syncFromVideoState(state: VideoState | null) {
+    if (
+      disposed ||
+      !state ||
+      state.duration > 0 ||
+      !isCurrentSelection(state.selection)
+    )
+      return;
+    if (
+      pendingVideoRequest?.path === state.path &&
+      pendingVideoRequest.selection.epoch === state.selection.epoch
+    )
+      return;
+    const generation = ++videoRequestGeneration;
+    const selection = state.selection;
+    const path = state.path;
+    pendingVideoRequest = { path, generation, selection };
+    void probeVideo(path)
+      .then((probe) => {
+        if (!ownsRequest(generation, selection)) return;
+        const current = get(videoState);
+        if (
+          !current ||
+          current.path !== path ||
+          current.selection.epoch !== selection.epoch
+        )
+          return;
+        setVideoState({
+          ...current,
+          duration:
+            Number.isFinite(probe.duration) && probe.duration > 0
+              ? probe.duration
+              : current.duration,
+          fps:
+            Number.isFinite(probe.fps ?? NaN) && (probe.fps ?? 0) > 0
+              ? (probe.fps ?? null)
+              : current.fps,
+        });
+      })
+      .catch((err) => {
+        if (!ownsRequest(generation, selection)) return;
+        console.error('[values] Video probe failed', err);
+      })
+      .finally(() => {
+        if (!disposed && pendingVideoRequest?.generation === generation)
+          pendingVideoRequest = null;
+      });
+  }
+
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    videoRequestGeneration += 1;
+    pendingVideoRequest = null;
   }
 
   return {
@@ -205,5 +290,7 @@ export function createValuesFileIngestion(deps: ValuesFileIngestionDeps) {
     handleImageFile,
     processBatch,
     setupDragDrop,
+    syncFromVideoState,
+    dispose,
   };
 }
