@@ -8,6 +8,7 @@ use image::{DynamicImage, GrayImage, ImageReader, Luma, Rgb, RgbImage};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::artifact_id::canonical_artifact_id;
 use crate::color;
 use crate::kmeans::{run_kmeans, KMeansConfig};
 
@@ -116,7 +117,7 @@ pub fn generate_value_analysis(
     let notan_mode = notan_mode && levels == 2;
     let cache_dir = cache_root.join("value-analysis");
     fs::create_dir_all(&cache_dir)?;
-    let cache_dir = cache_dir.join(sanitize_id(image_id));
+    let cache_dir = cache_dir.join(canonical_artifact_id(image_id));
     fs::create_dir_all(&cache_dir)?;
     let mode_tag = if notan_mode { "notan" } else { "kmeans" };
     let cache_dir = cache_dir.join(format!("k{levels}-{mode_tag}"));
@@ -322,7 +323,7 @@ pub fn remove_value_analysis_artifacts(
     let path = cache_root
         .as_ref()
         .join("value-analysis")
-        .join(sanitize_id(image_id));
+        .join(canonical_artifact_id(image_id));
     if !path.exists() {
         return Ok(false);
     }
@@ -687,22 +688,6 @@ fn source_generation_tag(
     )
 }
 
-fn sanitize_id(value: &str) -> String {
-    let mut sanitized = String::with_capacity(value.len());
-    for ch in value.chars() {
-        if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
-            sanitized.push(ch);
-        } else {
-            sanitized.push('_');
-        }
-    }
-    if sanitized.is_empty() {
-        "image".to_string()
-    } else {
-        sanitized
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -752,7 +737,7 @@ mod tests {
         let entry = temp
             .path()
             .join("value-analysis")
-            .join("image-1")
+            .join(canonical_artifact_id("image-1"))
             .join("k3-kmeans");
         fs::create_dir_all(&entry).expect("cache entry");
         fs::write(entry.join(NEUTRAL_FILE), [0_u8]).expect("artifact");
@@ -761,6 +746,10 @@ mod tests {
             remove_value_analysis_artifacts(temp.path(), "image-1").expect("artifact removal");
 
         assert!(removed);
-        assert!(!temp.path().join("value-analysis").join("image-1").exists());
+        assert!(!temp
+            .path()
+            .join("value-analysis")
+            .join(canonical_artifact_id("image-1"))
+            .exists());
     }
 }

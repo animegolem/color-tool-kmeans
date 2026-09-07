@@ -10,7 +10,10 @@ use std::fs::OpenOptions;
 use std::os::windows::fs::OpenOptionsExt;
 
 use image::{Rgb, RgbImage};
-use tauri_app::value_analysis::{generate_value_analysis, ValueAnalysisResult};
+use tauri_app::artifact_id::canonical_artifact_id;
+use tauri_app::value_analysis::{
+    generate_value_analysis, remove_value_analysis_artifacts, ValueAnalysisResult,
+};
 use tempfile::TempDir;
 
 #[cfg(windows)]
@@ -152,7 +155,10 @@ fn sweep_022_values_generation_preserves_unrelated_prior_artifact_bytes() {
         .iter()
         .map(|path| std::fs::read(path).expect("read prior artifact bytes"))
         .collect();
-    let prior_root = cache_dir.path().join("value-analysis/prior-artifact");
+    let prior_root = cache_dir
+        .path()
+        .join("value-analysis")
+        .join(canonical_artifact_id("prior-artifact"));
     set_tree_modified(&prior_root, UNIX_EPOCH + Duration::from_secs(24 * 60 * 60));
 
     let generated =
@@ -428,4 +434,66 @@ fn sweep_021_unchanged_source_reuses_outputs_without_rewrite() {
             "artifact {index} must not be rewritten"
         );
     }
+}
+
+#[test]
+fn sweep_030_values_removal_isolates_formerly_colliding_logical_ids() {
+    let source_dir = TempDir::new().expect("source temp dir");
+    let cache_dir = TempDir::new().expect("cache temp dir");
+    let source = source_dir.path().join("source.png");
+    RgbImage::from_pixel(8, 8, Rgb([48, 96, 144]))
+        .save(&source)
+        .expect("save source");
+    let sentinel = cache_dir.path().join("unrelated-sentinel.bin");
+    let sentinel_bytes = [9_u8, 8, 7, 6];
+    std::fs::write(&sentinel, sentinel_bytes).expect("write unrelated sentinel");
+
+    let slash = generate_value_analysis(&source, "a/b", 3, false, cache_dir.path())
+        .expect("slash-ID analysis");
+    let slash_paths: Vec<_> = artifact_paths(&slash)
+        .into_iter()
+        .map(Path::to_path_buf)
+        .collect();
+    let slash_bytes = artifact_bytes(&slash);
+
+    let question = generate_value_analysis(&source, "a?b", 3, false, cache_dir.path())
+        .expect("question-ID analysis");
+    let question_paths: Vec<_> = artifact_paths(&question)
+        .into_iter()
+        .map(Path::to_path_buf)
+        .collect();
+    let question_bytes = artifact_bytes(&question);
+
+    for (slash_path, question_path) in slash_paths.iter().zip(&question_paths) {
+        assert_ne!(
+            slash_path, question_path,
+            "formerly colliding IDs must use distinct Values output paths"
+        );
+    }
+    for (path, expected) in slash_paths.iter().zip(&slash_bytes) {
+        assert_eq!(
+            std::fs::read(path).expect("slash-ID artifact after later generation"),
+            *expected,
+            "later generation must not overwrite the first ID's bytes"
+        );
+    }
+
+    assert!(remove_value_analysis_artifacts(cache_dir.path(), "a/b")
+        .expect("remove slash-ID artifacts"));
+    assert!(slash_paths.iter().all(|path| !path.exists()));
+    assert!(
+        !remove_value_analysis_artifacts(cache_dir.path(), "a/b").expect("repeat slash-ID removal")
+    );
+
+    for (path, expected) in question_paths.iter().zip(question_bytes) {
+        assert_eq!(
+            std::fs::read(path).expect("question-ID artifact must survive other-ID removal"),
+            expected,
+            "removing one logical ID must preserve the other's bytes"
+        );
+    }
+    assert_eq!(
+        std::fs::read(sentinel).expect("unrelated sentinel must survive removal"),
+        sentinel_bytes
+    );
 }

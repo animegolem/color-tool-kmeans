@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 
 use color_core::analyze::ImageSource;
+use tauri_app::artifact_id::canonical_artifact_id;
 use tauri_app::compose_grid;
 use tauri_app::ffmpeg;
 use tauri_app::value_analysis::{generate_value_analysis, ValueAnalysisResult};
@@ -200,26 +201,30 @@ pub async fn extract_video_frame(
         .path()
         .app_cache_dir()
         .map_err(|_| String::from("Failed to resolve cache directory"))?;
-    let safe_id: String = req
-        .frame_id
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
-        .collect();
-    if safe_id.is_empty() {
-        return Err("Invalid frame id".into());
-    }
-    let max_dimension = req.max_dimension.clamp(80, 4096);
-    let output_path = cache_dir.join(format!("video-frame-{safe_id}.png"));
-    let frame_req = ffmpeg::FrameExtractRequest {
-        input_path: PathBuf::from(&req.path),
-        timestamp_seconds: req.timestamp.max(0.0),
-        max_dimension,
-        output_path: output_path.clone(),
-    };
+    let frame_req = build_frame_extract_request(&req, &cache_dir)?;
+    let output_path = frame_req.output_path.clone();
     let timestamp_used = ffmpeg::extract_frame_png(&app, &frame_req).await?;
     Ok(VideoFrameResponse {
         path: output_path.to_string_lossy().to_string(),
         timestamp_used,
+    })
+}
+
+fn build_frame_extract_request(
+    req: &VideoFrameRequest,
+    cache_dir: &Path,
+) -> Result<ffmpeg::FrameExtractRequest, String> {
+    if req.frame_id.trim().is_empty() {
+        return Err("Invalid frame id".into());
+    }
+    let component = canonical_artifact_id(&req.frame_id);
+    let max_dimension = req.max_dimension.clamp(80, 4096);
+    let output_path = cache_dir.join(format!("video-frame-{component}.png"));
+    Ok(ffmpeg::FrameExtractRequest {
+        input_path: PathBuf::from(&req.path),
+        timestamp_seconds: req.timestamp.max(0.0),
+        max_dimension,
+        output_path,
     })
 }
 
@@ -247,14 +252,22 @@ pub async fn extract_video_strip(
         .path()
         .app_cache_dir()
         .map_err(|_| String::from("Failed to resolve cache directory"))?;
-    let safe_id: String = req
-        .strip_id
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
-        .collect();
-    if safe_id.is_empty() {
+    let strip_req = build_strip_extract_request(&req, &cache_dir)?;
+    let output_path = strip_req.output_path.clone();
+    ffmpeg::extract_strip_png(&app, &strip_req).await?;
+    Ok(VideoStripResponse {
+        path: output_path.to_string_lossy().to_string(),
+    })
+}
+
+fn build_strip_extract_request(
+    req: &VideoStripRequest,
+    cache_dir: &Path,
+) -> Result<ffmpeg::StripExtractRequest, String> {
+    if req.strip_id.trim().is_empty() {
         return Err("Invalid strip id".into());
     }
+    let component = canonical_artifact_id(&req.strip_id);
     let is_barcode = req.strip_mode.as_deref() == Some("barcode");
     let strip_mode = if is_barcode {
         ffmpeg::StripMode::Barcode
@@ -274,19 +287,15 @@ pub async fn extract_video_strip(
             req.thumb_height.clamp(24, 200),
         )
     };
-    let output_path = cache_dir.join(format!("video-strip-{safe_id}.png"));
-    let strip_req = ffmpeg::StripExtractRequest {
+    let output_path = cache_dir.join(format!("video-strip-{component}.png"));
+    Ok(ffmpeg::StripExtractRequest {
         input_path: PathBuf::from(&req.path),
         duration_seconds: req.duration.max(0.0),
         thumb_count,
         thumb_width,
         thumb_height,
-        output_path: output_path.clone(),
+        output_path,
         strip_mode,
-    };
-    ffmpeg::extract_strip_png(&app, &strip_req).await?;
-    Ok(VideoStripResponse {
-        path: output_path.to_string_lossy().to_string(),
     })
 }
 
@@ -326,14 +335,20 @@ fn compose_grid_sync(
 
 #[cfg(test)]
 mod tests {
-    use super::{analyze_image_sync, run_blocking, run_profiled_analysis};
-    use crate::commands_types::AnalyzeRequest;
+    use super::{
+        analyze_image_sync, build_frame_extract_request, build_strip_extract_request, run_blocking,
+        run_profiled_analysis,
+    };
+    use crate::commands_types::{AnalyzeRequest, VideoFrameRequest, VideoStripRequest};
     use crate::profiling::{ProfileInvocationContext, ProfileState};
     use crate::profiling_wire::PROFILE_DIRECTORY;
     use image::{Rgb, RgbImage};
     use serde_json::Value;
     use std::ffi::OsString;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
+    use tauri_app::artifact_id::canonical_artifact_id;
+    use tauri_app::ffmpeg::StripMode;
+    use tauri_app::value_analysis::generate_value_analysis;
     use tempfile::TempDir;
 
     const PROFILE_SESSION: &str = "phase029-commands";
@@ -376,6 +391,180 @@ mod tests {
             .map(|line| serde_json::from_str(line).expect("parse profile record"))
             .filter(|record: &Value| record["recordType"] == "native-event")
             .collect()
+    }
+
+    fn frame_request(logical_id: &str) -> VideoFrameRequest {
+        VideoFrameRequest {
+            path: "source.mp4".into(),
+            frame_id: logical_id.into(),
+            timestamp: -1.25,
+            max_dimension: 12,
+        }
+    }
+
+    fn strip_request(logical_id: &str) -> VideoStripRequest {
+        VideoStripRequest {
+            path: "source.mp4".into(),
+            strip_id: logical_id.into(),
+            duration: -2.5,
+            thumb_count: 2,
+            thumb_width: 8,
+            thumb_height: 4,
+            strip_mode: None,
+        }
+    }
+
+    fn class_component(path: &Path, prefix: &str) -> String {
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .and_then(|name| name.strip_prefix(prefix))
+            .and_then(|name| name.strip_suffix(".png"))
+            .expect("class-prefixed PNG output")
+            .to_string()
+    }
+
+    fn values_component(cache_root: &Path, artifact: &Path) -> String {
+        artifact
+            .strip_prefix(cache_root.join("value-analysis"))
+            .expect("Values artifact under test cache root")
+            .components()
+            .next()
+            .expect("Values logical-ID component")
+            .as_os_str()
+            .to_string_lossy()
+            .into_owned()
+    }
+
+    #[test]
+    fn sweep_030_same_id_matches_actual_request_builders_and_values_producer() {
+        let source_root = TempDir::new().expect("source root");
+        let cache_root = TempDir::new().expect("cache root");
+        let source = source_root.path().join("source.png");
+        RgbImage::from_pixel(8, 8, Rgb([64, 128, 192]))
+            .save(&source)
+            .expect("save source image");
+        let logical_id = "shared/frame:id";
+
+        let frame = build_frame_extract_request(&frame_request(logical_id), cache_root.path())
+            .expect("frame request");
+        let strip = build_strip_extract_request(&strip_request(logical_id), cache_root.path())
+            .expect("strip request");
+        let values = generate_value_analysis(&source, logical_id, 3, false, cache_root.path())
+            .expect("Values output");
+
+        let frame_component = class_component(&frame.output_path, "video-frame-");
+        let strip_component = class_component(&strip.output_path, "video-strip-");
+        let values_component = values_component(cache_root.path(), &values.neutral);
+        assert_eq!(frame_component, strip_component);
+        assert_eq!(strip_component, values_component);
+        assert_eq!(values_component, canonical_artifact_id(logical_id));
+
+        assert_eq!(frame.input_path, PathBuf::from("source.mp4"));
+        assert_eq!(frame.timestamp_seconds, 0.0);
+        assert_eq!(frame.max_dimension, 80);
+        assert_eq!(strip.input_path, PathBuf::from("source.mp4"));
+        assert_eq!(strip.duration_seconds, 0.0);
+        assert_eq!(strip.thumb_count, 8);
+        assert_eq!(strip.thumb_width, 32);
+        assert_eq!(strip.thumb_height, 24);
+        assert_eq!(strip.strip_mode, StripMode::Filmstrip);
+    }
+
+    #[test]
+    fn sweep_030_frame_builder_separates_ids_collapsed_by_old_sanitizer() {
+        let cache_root = TempDir::new().expect("cache root");
+        let plain = build_frame_extract_request(&frame_request("ab"), cache_root.path())
+            .expect("plain frame request");
+        let punctuated = build_frame_extract_request(&frame_request("a/b"), cache_root.path())
+            .expect("punctuated frame request");
+
+        assert_ne!(plain.output_path, punctuated.output_path);
+    }
+
+    #[test]
+    fn sweep_030_values_producer_separates_ids_collapsed_by_old_sanitizer() {
+        let source_root = TempDir::new().expect("source root");
+        let cache_root = TempDir::new().expect("cache root");
+        let source = source_root.path().join("source.png");
+        RgbImage::from_pixel(8, 8, Rgb([32, 64, 96]))
+            .save(&source)
+            .expect("save source image");
+
+        let slash = generate_value_analysis(&source, "a/b", 3, false, cache_root.path())
+            .expect("slash-ID Values output");
+        let question = generate_value_analysis(&source, "a?b", 3, false, cache_root.path())
+            .expect("question-ID Values output");
+
+        assert_ne!(slash.neutral, question.neutral);
+        assert_ne!(slash.preview, question.preview);
+        assert_ne!(slash.bucket_map, question.bucket_map);
+    }
+
+    #[test]
+    fn sweep_030_builders_reject_blank_ids_and_accept_exact_nonblank_bytes() {
+        let cache_root = TempDir::new().expect("cache root");
+        for blank_id in ["", " \t\n"] {
+            let blank_frame =
+                build_frame_extract_request(&frame_request(blank_id), cache_root.path());
+            assert_eq!(
+                blank_frame.expect_err("blank frame ID must fail"),
+                "Invalid frame id"
+            );
+            let blank_strip =
+                build_strip_extract_request(&strip_request(blank_id), cache_root.path());
+            assert_eq!(
+                blank_strip.expect_err("blank strip ID must fail"),
+                "Invalid strip id"
+            );
+        }
+
+        let unicode = build_frame_extract_request(&frame_request("α/😀"), cache_root.path())
+            .expect("nonblank Unicode frame ID");
+        let spaced = build_strip_extract_request(&strip_request(" α/😀 "), cache_root.path())
+            .expect("nonblank spaced strip ID");
+        assert_eq!(
+            class_component(&unicode.output_path, "video-frame-"),
+            canonical_artifact_id("α/😀")
+        );
+        assert_eq!(
+            class_component(&spaced.output_path, "video-strip-"),
+            canonical_artifact_id(" α/😀 ")
+        );
+        assert_ne!(
+            class_component(&unicode.output_path, "video-frame-"),
+            class_component(&spaced.output_path, "video-strip-")
+        );
+    }
+
+    #[test]
+    fn sweep_030_strip_builder_preserves_barcode_clamps() {
+        let cache_root = TempDir::new().expect("cache root");
+        let mut high_frame = frame_request("high/frame");
+        high_frame.timestamp = 2.5;
+        high_frame.max_dimension = 4_097;
+        let high_frame = build_frame_extract_request(&high_frame, cache_root.path())
+            .expect("high-bound frame request");
+        assert_eq!(high_frame.timestamp_seconds, 2.5);
+        assert_eq!(high_frame.max_dimension, 4_096);
+
+        let mut request = strip_request("barcode/id");
+        request.strip_mode = Some("barcode".into());
+        request.thumb_count = 40_000;
+        request.thumb_width = 999;
+        request.thumb_height = 400;
+        request.duration = 12.5;
+
+        let built = build_strip_extract_request(&request, cache_root.path())
+            .expect("barcode strip request");
+        assert_eq!(built.duration_seconds, 12.5);
+        assert_eq!(built.thumb_count, 30_000);
+        assert_eq!(built.thumb_width, 1);
+        assert_eq!(built.thumb_height, 300);
+        assert_eq!(built.strip_mode, StripMode::Barcode);
+        assert_eq!(
+            class_component(&built.output_path, "video-strip-"),
+            canonical_artifact_id("barcode/id")
+        );
     }
 
     #[test]
