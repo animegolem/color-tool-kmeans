@@ -164,7 +164,6 @@ pub async fn extract_strip_png<R: Runtime>(
         return Err(detail);
     }
 
-    prune_sibling_pngs(&req.output_path, "video-strip-", 10);
     Ok(())
 }
 
@@ -259,46 +258,7 @@ pub async fn extract_frame_png<R: Runtime>(
         return Err(detail);
     }
 
-    prune_sibling_pngs(&req.output_path, "video-frame-", 80);
     Ok(timestamp)
-}
-
-fn prune_sibling_pngs(output_path: &Path, prefix: &str, keep: usize) {
-    let Some(directory) = output_path.parent() else {
-        return;
-    };
-    let Ok(entries) = fs::read_dir(directory) else {
-        return;
-    };
-    let mut artifacts: Vec<(PathBuf, std::time::SystemTime)> = entries
-        .flatten()
-        .filter_map(|entry| {
-            let path = entry.path();
-            let name = path.file_name()?.to_str()?;
-            if !name.starts_with(prefix) || !name.ends_with(".png") {
-                return None;
-            }
-            let modified = entry
-                .metadata()
-                .and_then(|metadata| metadata.modified())
-                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-            Some((path, modified))
-        })
-        .collect();
-    artifacts.sort_by_key(|(_, modified)| *modified);
-
-    let mut to_remove = artifacts.len().saturating_sub(keep.max(1));
-    for (path, _) in artifacts {
-        if to_remove == 0 {
-            break;
-        }
-        if path == output_path {
-            continue;
-        }
-        if fs::remove_file(path).is_ok() {
-            to_remove -= 1;
-        }
-    }
 }
 
 fn ensure_parent_dir(path: &Path) -> Result<(), String> {

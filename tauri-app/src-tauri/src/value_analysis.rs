@@ -301,7 +301,6 @@ pub fn generate_value_analysis(
         histogram_bins,
         notan_mode,
     };
-    prune_value_analysis_cache(cache_root);
     Ok(result)
 }
 

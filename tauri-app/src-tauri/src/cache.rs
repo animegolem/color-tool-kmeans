@@ -4,10 +4,8 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-pub const RUNTIME_PRUNE_INTERVAL: Duration = Duration::from_secs(60);
-
-// Runtime-created media is intentionally retained generously, but no class is
-// allowed to grow without a session-time cap.
+// These limits are applied at startup, before renderer state can reference any
+// artifact. During a session, explicit media removal owns cleanup.
 const VIDEO_FRAME_KEEP: usize = 80;
 const VIDEO_STRIP_KEEP: usize = 10;
 const ARTIFACT_MAX_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);
@@ -127,7 +125,7 @@ pub fn prune_video_cache(cache_dir: &Path, keep_frames: usize, keep_strips: usiz
     }
 }
 
-pub fn prune_runtime_cache(cache_dir: &Path, local_data_dir: &Path) {
+pub fn prune_startup_cache(cache_dir: &Path, local_data_dir: &Path) {
     prune_video_cache(cache_dir, VIDEO_FRAME_KEEP, VIDEO_STRIP_KEEP);
     prune_flat_directory(
         &cache_dir.join("clipboard"),
@@ -218,7 +216,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn aud_011_runtime_prune_enforces_the_flat_directory_size_cap() {
+    fn aud_011_startup_prune_enforces_the_flat_directory_size_cap() {
         let temp = TempDir::new().expect("temp dir");
         let directory = temp.path().join("clipboard");
         fs::create_dir_all(&directory).expect("clipboard dir");
@@ -234,6 +232,54 @@ mod tests {
             .map(|metadata| metadata.len())
             .sum();
         assert!(retained_bytes <= 8);
+    }
+
+    #[test]
+    fn sweep_022_startup_prune_enforces_video_limits_and_preserves_other_paths() {
+        let temp = TempDir::new().expect("temp dir");
+        let cache_dir = temp.path().join("cache");
+        let local_data_dir = temp.path().join("data");
+        let clipboard_dir = cache_dir.join("clipboard");
+        let snapshot_dir = local_data_dir.join("snapshots");
+        fs::create_dir_all(&clipboard_dir).expect("clipboard dir");
+        fs::create_dir_all(&snapshot_dir).expect("snapshot dir");
+
+        for index in 0..=VIDEO_FRAME_KEEP {
+            fs::write(
+                cache_dir.join(format!("video-frame-{index}.png")),
+                [index as u8],
+            )
+            .expect("frame artifact");
+        }
+        for index in 0..=VIDEO_STRIP_KEEP {
+            fs::write(
+                cache_dir.join(format!("video-strip-{index}.png")),
+                [index as u8],
+            )
+            .expect("strip artifact");
+        }
+        let clipboard = clipboard_dir.join("paste-current.png");
+        let snapshot = snapshot_dir.join("snapshot-current.png");
+        let unrelated_cache = cache_dir.join("user-file.txt");
+        let unrelated_data = local_data_dir.join("user-file.txt");
+        for path in [&clipboard, &snapshot, &unrelated_cache, &unrelated_data] {
+            fs::write(path, [42_u8]).expect("preserved path");
+        }
+
+        prune_startup_cache(&cache_dir, &local_data_dir);
+
+        let retained_named = |prefix: &str| {
+            fs::read_dir(&cache_dir)
+                .expect("cache entries")
+                .flatten()
+                .filter(|entry| entry.file_name().to_string_lossy().starts_with(prefix))
+                .count()
+        };
+        assert_eq!(retained_named("video-frame-"), VIDEO_FRAME_KEEP);
+        assert_eq!(retained_named("video-strip-"), VIDEO_STRIP_KEEP);
+        for path in [clipboard, snapshot, unrelated_cache, unrelated_data] {
+            assert_eq!(fs::read(path).expect("preserved path bytes"), [42_u8]);
+        }
     }
 
     #[test]
