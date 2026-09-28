@@ -3,39 +3,48 @@ node_id: AI-IMP-176
 tags:
   - IMP-LIST
   - Implementation
-  - design
   - ui
+  - design-review
 kanban_status: planned
 depends_on:
   - AI-IMP-171
+  - AI-IMP-197
+  - AI-IMP-188
 parent_epic: [[AI-EPIC-027-notebook-ui-redesign]]
-confidence_score: 0.65
+confidence_score: 0.8
 date_created: 2026-07-09
 date_completed:
+assignee: Code Lead (Sol)
 ---
 
 # AI-IMP-176-zoom-and-chart-ground
 
-## Summary of Issue #1
+## Focused source and figure inspection with faithful return
 
-EPIC-027 FR-10/FR-11, Code Change Notes 11/12: (1) ZoomOverlay keeps all behavior, gains chrome — title line (figure number + active bracket set), ✕, fit control, % readout, hint line; frame shrinks 92% → ~70% centered; (2) new display preference **chart ground: flat ink vs pinned cards** (6a) applied to Colors figures; pinned mode lifts a white card and leaves pin hole + ghost outline behind during zoom; histogram bar hover surfaces its ledger row.
+Refresh existing image/2D zoom and the third figure's expansion with explicit return, preserving camera, cluster selection and scroll/focus. The old pinned-card/flat-ground mode and forced 70-percent frame prescription are superseded.
 
-**Design lifecycles owned:** L10 (video-zoom PARTIAL noted; live-zoom deferred with L4).
+Normative basis: PROJECT-RECORD rev 0.5 §9.5, §4 and §6. Visuals: RAG/design-2026-09/README.md. September rescope preserves this ticket ID; the full prior text is archived under RAG/reviews/EPIC-027/legacy-2026-07-09/. Status is a plan, not implementation authorization. First assignment is review-only.
 
 ### Out of Scope
 
-- Zoom behavior/physics changes (wheel/pan/pinch/dbl-click/esc intact).
-- Settings sheet itself (IMP-177) — the pref lands in the store + a temporary control.
+No chart-ground preference, new zoom physics, geometry/math changes or native live-playback implementation.
 
 ### Design/Approach
 
-Chrome from 7a/7b tokens (`--zoom-*`); ground follows the new `chartGround` pref ('flat' | 'pinned') in preferences store (persisted). Pinned ground renders Figure inside PinnedCard on both page and overlay; open/close animates the lift (`--fold`/lift motion per Note 12). Histogram-bar hover → ledger row via existing cluster index mapping.
+Keep the existing image/2D zoom gesture behavior, add an explicit compatible focus target for the 3D component, and prevent drag/click/expand ambiguity. Use Expand to enter focus; selecting a mark selects, dragging rotates. No decorative ground preference or page-lift animation.
 
 ### Files to Touch
 
-- `lib/components/ZoomOverlay.svelte`, `lib/utils/zoom.ts`
-- `lib/stores/preferences.ts` (+ migration/test), `home/AnalysisCards.svelte` ground wiring
-- Tests: pref persistence, keyboard/esc regression
+Paths below are repository-root relative. New-file seams are hypotheses to verify in Round 01; do not silently widen them.
+
+- tauri-app/src/lib/components/ZoomOverlay.svelte
+- tauri-app/src/lib/utils/zoom.ts
+- tauri-app/src/lib/stores/zoom.ts (focus target metadata only)
+- tauri-app/src/lib/components/study/ColorVolume.svelte (focus wiring only, after IMP-197)
+- tauri-app/src/lib/views/__tests__/study-focus.spec.ts (new)
+- This ticket's checklist and Issues Encountered after authorized implementation only.
+
+Do NOT touch unrelated tickets, RAG/PROJECT-RECORD.md, prior review reports, native code/color-core, or other worktrees unless specifically named above. The lead owns INDEX regeneration and all Git commits/merges under repository rules.
 
 ### Implementation Checklist
 
@@ -43,15 +52,15 @@ Chrome from 7a/7b tokens (`--zoom-*`); ground follows the new `chartGround` pref
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Overlay chrome per Note 12; frame ~70%, behavior regression-tested.
-- [ ] chartGround pref: flat/pinned rendering on Colors figures + persisted.
-- [ ] Pinned zoom lift with pin hole + ghost outline.
-- [ ] Histogram hover → ledger row.
-- [ ] Full gates + screenshots (both grounds, open/closed).
+- [ ] Preserve image/2D pan, wheel, fit, keyboard and Escape behavior.
+- [ ] Retain 3D camera and selected cluster on expansion/return.
+- [ ] Test close during pending work and scroll/focus restoration without queued stale callbacks.
+- [ ] Keep focus UI accessible when 3D is unavailable and retain 2D fallback.
+- [ ] Reproduce the applicable gates in PROJECT-RECORD §6; report exact counts, baseline failures, platform gaps and human acceptance still outstanding.
 
 ### Acceptance Criteria
 
-**WHEN** pinned ground is set and the histogram is zoomed. **THEN** a white card lifts off the page leaving a pin hole + ghost, chrome shows `01 · cluster histogram [frequency] hue lightness`, and Esc returns it with the reverse motion.
+GIVEN a selected cluster and rotated inline 3D view, WHEN expanding and returning, THEN camera, selection and study position remain the same; drag does not activate expansion.
 
 ### Issues Encountered
 
@@ -59,3 +68,5 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 The comments under the 'Issues Encountered' heading are the only comments you MUST not remove
 This section is filled out post work as you fill out the checklists.
 -->
+
+Planning: source/visual reconciliation only. No implementation or new application tests have run. Unresolved policy and EPIC-029 prerequisites remain explicit gates.

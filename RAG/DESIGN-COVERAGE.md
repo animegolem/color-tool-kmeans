@@ -1,5 +1,12 @@
 # Design Coverage Manifest — Notebook Redesign (EPIC-027)
 
+> September 5 review update: this manifest preserves the July bundle's historical
+> coverage judgments. Current direction, refreshed ticket ownership, new
+> walkthrough states and remaining acceptance gaps are in
+> [September coverage and waves](design-2026-09/coverage-and-waves.md), governed by
+> PROJECT-RECORD rev 0.5 §9. The new sketches do not mark these lifecycle gates
+> complete or revive superseded folded-paper requirements.
+
 Maintained by AI-IMP-167. Maps every UI lifecycle in the shipping app (plus EPIC-026 live mode) against the notebook design bundle (`RAG/Color Tool Design System.zip` — wireframe sections 3a/3b, 4a, 5a–5e, 6a, 7a–7c; `Code Change Notes.md` 1–12; 18 components). Verdicts: **COVERED** (implementable as-is), **PARTIAL** (spec exists, states missing), **MISSING** (needs new design artifacts).
 
 Implementation tickets (IMP-168..177) each cite the lifecycles they own; design-blocked tickets name the artifact requests below.

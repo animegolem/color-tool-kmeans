@@ -5,7 +5,6 @@ tags:
   - AI
   - ui
   - redesign
-  - design-system
 date_created: 2026-07-09
 date_completed:
 kanban_status: in-progress
@@ -21,78 +20,72 @@ AI_IMP_spawned:
   - AI-IMP-175
   - AI-IMP-176
   - AI-IMP-177
+  - AI-IMP-195
+  - AI-IMP-196
+  - AI-IMP-197
+  - AI-IMP-198
+  - AI-IMP-199
+  - AI-IMP-200
 ---
 
 # AI-EPIC-027-notebook-ui-redesign
 
 ## Problem Statement/Feature Scope
 
-The shipped UI was effectively the wireframe: a conventional sidebar/header shell built before the design direction existed. A complete design system now does — the **notebook redesign** (Claude Design bundle, currently `RAG/Color Tool Design System.zip`): the app as a two-page paper spread on a dark desk, edge tabs riding the page border, figures drawn in ink on ruled paper, the palette as a ledger, errors as paper slips. The bundle ships full-size tokens, 18 specced components (reference JSX + `.d.ts` + prompt docs), an interactive kit covering all five surfaces, wireframes, motion studies, and `Code Change Notes.md` — 12 decided code changes referencing our actual file paths. This epic lands that redesign.
+September rescope: the owner endorsed a flatter study instrument, three arrangements of the same data, an expanded palette index, a compact/full collection flow, real OKLab 3D, and a constrained export preview builder. The older folded-paper blueprint no longer represents the intended implementation. Preserve this epic and ticket identities; the old complete text is archived under RAG/reviews/EPIC-027/legacy-2026-07-09/.
 
 ## Proposed Solution(s)
 
-Rebuild the Svelte template/style layer to the notebook idiom, keeping everything below it untouched (Rust backend, stores, bridges, compute, export generators, extracted `.svelte.ts` runners). Scope is ~4,000–4,500 LOC of Svelte across App.svelte, five views, and three components, guided by the design bundle. Sequenced so the app stays shippable:
-
-1. **Foundation** — vendor the extracted design bundle into the repo (e.g. `RAG/design-system/`, replacing the zips); swap `lib/styles/tokens.css` to the notebook tokens; port the paper primitives to Svelte 5 (EdgeTabs, Spine, FoldedCorner, PaperSlider, PaperCheckbox, BracketSelector, StampButton, Figure, PaletteLedger, BucketStrip, Scrubber, TapedPhoto, PinnedCard, ErrorSlip, ZoomOverlay chrome); refresh stale CLAUDE.md sections while in there.
-2. **Shell** — desk + spread + edge tabs replace the sidebar and per-view header bar (Code Change Note 6); existing views run inside during transition.
-3. **Colors spread (wireframe 4a)** — taped photo, always-visible parameters, figures 01–04 with bracket selectors (Note 7), metrics caption under the histogram (Note 8), live palette ledger with copy/CSV/ase quick actions (Note 3), bucket strip (Note 4a), snap-toggle removal (Note 1), hue×lightness default → frequency (Note 2), upload-affordance removal (Note 5).
-4. **Bucket page + Values (3b, 5b)** — full bucket as a turn-the-page view (Note 4b); Values previews stacked original-over-neutral with scrubber beneath (Note 10).
-5. **Exports + Batch (5c, 5d)** — Exports as single sheet with packing list and stamp composites; Batch checked against the wireframe's own "approximate" caveat before committing.
-6. **Overlay + settings + motion** — zoom overlay chrome and ~70% frame (Note 12), flat-ink vs pinned-cards chart-ground setting (Note 11), spread→column reflow below ~1100px with crossfade re-stack (Note 9), Settings placement decision (corner affordance).
+Implement PROJECT-RECORD rev 0.5 §9 through small review-gated slices. Begin with dormant local references/tokens, native-control styling, FigureFrame and shared feedback. Wire the shell and existing views only after their corrected source/request/artifact seams are available. Use the same study for Workbench/Image first/Study sheet; preserve current controls and formats. The only major added capabilities are true 3D and readable patch annotation, with a preview-based organization of existing export settings.
 
 ## Path(s) Not Taken
 
-- **The .fig kit's componentry** (Feather-style icons, tooltip/slider families) — superseded by the design docs; the notebook idiom uses unicode glyphs in Fira Code, no icon set.
-- **A logo/wordmark** — none is defined in the sources; "Color Tool" renders in type. Do not invent a mark.
-- **New features under cover of redesign** — live video analysis is EPIC-025/026; this epic restyles and restructures existing functionality only (the 12 decided notes are the full behavioral delta).
-- **Dark mode / theming** — the notebook is one material palette; no theme system.
+No forced spine/tape/fold/pinned-ground system, no automatic adoption of the old twelve Code Change Notes, no forced snap/default changes, no freeform export editor, no extra raster formats or data schemas, no runtime CDN, and no web deployment. Images-only web scope remains tentative. EPIC-026 live mode and EPIC-029 correctness retain separate ownership.
 
 ## Success Metrics
 
-- All five surfaces (Colors, Values, Batch, Exports, bucket page) render in the notebook idiom matching the design kit; screenshots against `ui_kits/notebook/` in each PR.
-- All 12 decided code changes from `Code Change Notes.md` landed (or explicitly re-decided with rationale in the ticket).
-- App remains shippable after every phase: existing vitest suites pass, exports remain deterministic, manual smoke (K=300, drag-drop, PNG/SVG/CSV exports) on macOS + Windows.
-- No regression in the offline-first rule: fonts and all design assets vendored.
-- INDEX.md size watch: no view exceeds the informal 600 LOC target post-redesign (submodule extraction pattern continues).
+At each implementation slice, preserve existing workflows and pass the applicable current-base gates. At final acceptance, show all named walkthrough states and supported routes at 360/736/1024/1440 CSS pixels plus the supported desktop minimum; reproduce active selection/camera/config preservation, preview/save correspondence and format determinism. Keep owner, Linux and Windows checks visibly open until executed.
 
 ## Requirements
 
 ### Functional Requirements
 
-- [ ] FR-1: Vendor extracted design bundle into the repo; remove/archive the zips; refresh stale CLAUDE.md sections.
-- [ ] FR-2: Notebook tokens replace current `tokens.css`; Fira Code added to vendored fonts.
-- [ ] FR-3: Paper-primitive component library ported to Svelte 5 with a dev showcase route.
-- [ ] FR-4: Shell rebuilt — desk, two-page spread, edge tabs; sidebar and header bar removed.
-- [ ] FR-5: Colors spread rebuilt per wireframe 4a, incl. Code Change Notes 1, 2, 3, 5, 7, 8 and the bucket strip.
-- [ ] FR-6: Media bucket restructured — recent strip + full bucket page with turn-the-page navigation (Note 4).
-- [ ] FR-7: Values view rebuilt per 5b — stacked previews, scrubber beneath (Note 10).
-- [ ] FR-8: Exports view rebuilt per 5c.
-- [ ] FR-9: Batch view rebuilt per 5d after design check against current BatchView (wireframe flags 5d as approximate).
-- [ ] FR-10: Zoom overlay chrome + ground behavior (Note 12).
-- [ ] FR-11: Chart-ground display setting — flat ink vs pinned cards (Note 11).
-- [ ] FR-12: Responsive reflow — spread folds to single column below ~1100px with crossfade re-stack (Note 9); Settings placement decided and implemented.
+- [ ] FR-1: Searchable current design evidence, existing offline fonts and dormant scoped tokens (168).
+- [ ] FR-2: Minimal accessible shared figure/control and feedback surfaces (169/195).
+- [ ] FR-3: Flat reachable shell and three presentations of the same study (170/196).
+- [ ] FR-4: Colors and Values compositions with current controls and honest lifecycle states (171/173).
+- [ ] FR-5: Capacity-aware collection strip/full browser, separate pin actions and safe return (172).
+- [ ] FR-6: Batch contact sheet, aggregate status and focused pin detail (175).
+- [ ] FR-7: True OKLab sRGB gamut primitive and faithful focus/return (197/176).
+- [ ] FR-8: Shared palette labels and camera-bound 3D capture (199/198).
+- [ ] FR-9: One captured export document and an existing-controls live preview builder (200/174).
+- [ ] FR-10: Complete Settings, compact surfaces and real interaction acceptance (177).
 
 ### Non-Functional Requirements
 
-- Logic layer untouched: stores, runners, bridges, compute, exports, Rust — restyle/restructure only, per-FR exceptions documented in tickets.
-- Runes only (`$state`/`$derived`, `onclick`); pre-commit hooks and LOC discipline apply.
-- Each phase is a separate PR with screenshots against the kit; work happens on a feature branch off `main`.
-- Wireframe-derived sizes are "strong defaults, not measured finals" — visual judgment calls recorded in tickets.
+Preserve PROJECT-RECORD §4 invariants, Svelte 5 runes, offline assets and existing numeric/data-export behavior. Visual patch fixture changes are explicitly scoped; GPU captures use honest platform-specific evidence. No production implementation is authorized by ticket creation or this first review brief. Lead owns commits; the future stack is one issue/ticket per commit in dependency order.
 
 ## Implementation Breakdown
 
-Cut 2026-07-09 with a lifecycle-coverage focus: **IMP-167 (completed at cut) produced `RAG/DESIGN-COVERAGE.md`** — 12 lifecycles mapped against the bundle with a priority-ordered artifact shopping list the owner is producing in Claude Design.
+IMP-167 remains completed historical coverage; its manifest is not silently relabeled as acceptance of the September design. Ten existing pending tickets are refreshed; six new identifiers 195–200 are reserved and cut. The first pre-implementation review covers 168 → 169 → 195 only. See RAG/reviews/EPIC-027/round-01-ui-foundation-brief.md and RAG/design-2026-09/coverage-and-waves.md.
 
-- **AI-IMP-167** — design coverage manifest (lead, done).
-- **AI-IMP-168** — vendor bundle, Fira Code, dormant tokens, CLAUDE.md refresh (FR-1/2). Not design-blocked.
-- **AI-IMP-169** — 18 paper primitives + dev showcase (FR-3). Not design-blocked (pending-idiom slot reserved).
-- **AI-IMP-170** — desk/spread/edge-tabs shell (FR-4). Not design-blocked.
-- **AI-IMP-171** — Colors spread + Notes 1/2/3/5/7/8 (FR-5). Ready states unblocked; pending/ingestion/video states need P1-1, P2-5, P2-6.
-- **AI-IMP-172** — bucket page + turn-page nav (FR-6). Edge states need P3-8.
-- **AI-IMP-173** — Values spread (FR-7). Pending state needs P1-1.
-- **AI-IMP-174** — Exports sheet (FR-8). Feedback states need P3-7.
-- **AI-IMP-175** — Batch spread (FR-9). **Design-blocked on P2-4** (5d flagged approximate by the bundle).
-- **AI-IMP-176** — zoom chrome + chart ground (FR-10/11). Unblocked.
-- **AI-IMP-177** — reflow/motion/Settings (FR-12). Colors reflow unblocked; Settings needs P1-3, compact finals need P3-9.
+- **AI-IMP-168** — Preserve design provenance and add dormant study tokens; planned.
+- **AI-IMP-169** — Minimal flat study surface primitives; planned.
+- **AI-IMP-170** — Flat study shell with preserved navigation; planned.
+- **AI-IMP-171** — Colors study composition and expanded palette index; planned.
+- **AI-IMP-172** — Responsive media strip and full collection browser; backlog.
+- **AI-IMP-173** — Values study surface and shared lifecycle feedback; planned.
+- **AI-IMP-174** — Existing export controls with composed live preview; backlog.
+- **AI-IMP-175** — Batch contact sheet and focused pin detail; backlog.
+- **AI-IMP-176** — Focused source and figure inspection with faithful return; planned.
+- **AI-IMP-177** — Complete Settings placement and cross-surface reflow acceptance; backlog.
+- **AI-IMP-195** — Shared pending stale empty and error presentation; planned.
+- **AI-IMP-196** — Three presentation layouts over one study; planned.
+- **AI-IMP-197** — True sRGB gamut volume in OKLab; planned.
+- **AI-IMP-198** — Camera-bound 3D raster export tile; planned.
+- **AI-IMP-199** — Consistent readable patch labels in app and exports; planned.
+- **AI-IMP-200** — One captured export document for preview and save; backlog.
 
-Sequencing: 168 → 169 → 170 → {171, 173, 174, 176 in parallel} → 172 → 175/177 as artifacts land. Delegation assignments decided at activation per ticket (Sol/Sonnet candidates for 168/169; lead for 170/171). EPIC-026 interleaving note: live-mode UI tickets land against the redesigned shell (VideoPanel/chart surfaces overlap), and the L4 live-mode artifact from DESIGN-COVERAGE feeds both epics.
+Technical holds: runtime identity before active view rewiring; IMP-188 before queued collection/focus returns; IMP-184 before IMP-200; IMP-186 before Batch lifecycle changes. Design holds: UI-D1..D6 in PROJECT-RECORD §7. Optional IMP-189/190/194 are not silently absorbed; coordinate if the actual export seam needs one.
+
+Review checkpoint, PROJECT-RECORD rev 0.7: foundation corrections and test-seam proof accepted; lead reproduced 17/17 targeted tests. Full implementation/toolchain/browser acceptance remains pending. No further general review; next is a separate bounded implementation brief, not automatic coding authorization.

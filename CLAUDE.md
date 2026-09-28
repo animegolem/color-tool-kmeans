@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Project steering and review authority are recorded in `RAG/PROJECT-RECORD.md` (2026-09-04). Read it before assigning or integrating work. EPIC-029 is the proposed current remediation slice; its review brief is not implementation authorization. Historical architecture descriptions below are being reconciled with the newer `color-core` extraction.
+
 ## Project Overview
 
 Color analysis tool for artists using k-means clustering in OKLab/OKLch. Native desktop app: **Tauri 2 + Svelte 5 + Rust** (`tauri-app/`). Shipped as v1.0.x (macOS dmg + Windows msi, unsigned). Offline-first: no network requests at runtime, all assets vendored.
