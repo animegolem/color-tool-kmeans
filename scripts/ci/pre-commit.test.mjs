@@ -30,10 +30,39 @@ test('docs only passes without any language toolchains; index remains unchanged'
   passes(f.run({ path: f.restrictedPath() }), /no staged code/);
 });
 
-test('docs with staged trailing whitespace fail without language toolchains', (t) => {
+test('docs outside RAG with staged trailing whitespace fail without language toolchains', (t) => {
   const f = fixture(t, { dependencies: false });
-  f.stage('RAG/hook-test.md', '# Docs  \n');
+  f.stage('docs/hook-test.md', '# Docs  \n');
   fails(f.run({ path: f.restrictedPath() }), /trailing whitespace/);
+});
+
+for (const [name, file, content] of [
+  [
+    'hard line break',
+    'RAG/hook-test.md',
+    '# Docs\n\nFirst line  \nSecond line\n',
+  ],
+  ['closing blank line', 'RAG/hook-test.md', '# Docs\n\n'],
+  [
+    'both in nested markdown',
+    'RAG/reviews/hook-test.md',
+    '# Docs\n\nFirst line  \nSecond line\n\n',
+  ],
+]) {
+  test(`RAG markdown preserves ${name} without language toolchains`, (t) => {
+    const f = fixture(t, { dependencies: false });
+    f.stage(file, content);
+    passes(f.run({ path: f.restrictedPath() }), /no staged code/);
+  });
+}
+
+test('RAG whitespace exemption never hides staged conflict markers', (t) => {
+  const f = fixture(t, { dependencies: false });
+  f.stage(
+    'RAG/reviews/hook-test.md',
+    '# Docs  \n\n<<<<<<< HEAD\na\n=======\nb\n>>>>>>> other\n\n'
+  );
+  fails(f.run({ path: f.restrictedPath() }), /conflict marker/);
 });
 
 test('staged conflict markers fail', (t) => {
