@@ -3,37 +3,45 @@ node_id: AI-IMP-168
 tags:
   - IMP-LIST
   - Implementation
-  - design
   - ui
+  - design-review
 kanban_status: planned
-depends_on:
+depends_on: []
 parent_epic: [[AI-EPIC-027-notebook-ui-redesign]]
-confidence_score: 0.85
+confidence_score: 0.8
 date_created: 2026-07-09
 date_completed:
+assignee: Code Lead (Sol)
 ---
 
 # AI-IMP-168-vendor-design-bundle
 
-## Summary of Issue #1
+## Preserve design provenance and add dormant study tokens
 
-The notebook design system lives in zips in `RAG/` — not greppable by agents, not diffable, fonts not vendored. EPIC-027 FR-1/FR-2. **Done state:** bundle extracted to `RAG/design-system/` (zips removed), Fira Code woffs vendored into the app, `lib/styles/tokens.css` replaced by the notebook tokens behind the existing custom-property names where they map (full-size values from `tokens/notebook.css`), CLAUDE.md refreshed (stale sections: BatchView/SettingsView/MediaBucket/stores absent today; add design-system pointer).
+Replace the zip-only design handoff with a searchable, provenance-preserving September study-design carrier and a dormant token sheet. Existing Fira Sans/Fira Code assets are already vendored; do not duplicate them. Archive references by copying, never delete the supplied archives.
+
+Normative basis: PROJECT-RECORD rev 0.5 §9.1, §4 and §6. Visuals: RAG/design-2026-09/README.md. September rescope preserves this ticket ID; the full prior text is archived under RAG/reviews/EPIC-027/legacy-2026-07-09/. Status is a plan, not implementation authorization. First assignment is review-only.
 
 ### Out of Scope
 
-- Any component or view changes (tokens land dormant alongside current styles until IMP-169/170 consume them).
-- The `-old ui` zip and `.fig` (archive to `RAG/archive/`).
+No runtime UI, dependencies, font replacement, old-zip deletion, analysis, export output, or IPC changes.
 
 ### Design/Approach
 
-Extract `Color Tool Design System.zip` → `RAG/design-system/` (drop `uploads/` duplication). Copy `assets/fonts/FiraCode-*.woff` → `tauri-app/src/styles/` fonts dir + `@font-face` in `fonts.css` (offline-first, no CDN). Add `tokens/notebook.css` under `lib/styles/` as new file; do NOT delete current tokens yet — IMP-170 swaps consumption. CLAUDE.md: correct architecture section against current tree; add RAG/design-system + DESIGN-COVERAGE pointers.
+Follow PROJECT-RECORD rev 0.6 §9.7 and Round 01 verdict V3/V5/V6. Preserve all eight pinned references byte-for-byte in a dated carrier; record source/copy hashes separately from any generated preview wrappers. Six non-3D HTML fragments plus the Markdown register have no runtime network imports; the preserved 3D HTML is a network-dependent prototype with an honest limitation, not an offline visual fallback. Three.js vendoring/fallback belongs to IMP-197. Add study-tokens.css under [data-study-surface] with only --study-* variables and no production import. Record nine font binaries plus README, six archive matches, and absent in-repo license evidence truthfully; download nothing and keep all archive/font bytes unchanged. Serif remains an unapproved proposal.
 
 ### Files to Touch
 
-- `RAG/design-system/**` (new, extracted), zips removed/archived
-- `tauri-app/src/styles/fonts.css` + font binaries
-- `tauri-app/src/lib/styles/notebook-tokens.css` (new)
-- `CLAUDE.md`
+Paths below are repository-root relative. New-file seams are hypotheses to verify in Round 01; do not silently widen them.
+
+- RAG/design-system/** (new reference-only extraction, excluding duplicate uploads)
+- RAG/design-2026-09/** (provenance/portable previews only; do not rewrite normative decisions)
+- tauri-app/src/lib/styles/study-tokens.css (new, dormant)
+- tauri-app/src/assets/fonts/README.md (inventory only)
+- CLAUDE.md and AGENTS.md (design pointers only)
+- This ticket's checklist and Issues Encountered after authorized implementation only.
+
+Do NOT touch unrelated tickets, RAG/PROJECT-RECORD.md, prior review reports, native code/color-core, or other worktrees unless specifically named above. The lead owns INDEX regeneration and all Git commits/merges under repository rules.
 
 ### Implementation Checklist
 
@@ -41,16 +49,15 @@ Extract `Color Tool Design System.zip` → `RAG/design-system/` (drop `uploads/`
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Bundle extracted, committed, zips archived; `git grep "notebook"` finds the readme.
-- [ ] Fira Code vendored + declared; app builds; no network font requests.
-- [ ] Notebook tokens file added (dormant); documented mapping notes for IMP-170.
-- [ ] CLAUDE.md refreshed and accurate against the current tree. *(General refresh done by lead 2026-07-09, `ef2518b` — this item reduces to: update the design-bundle pointer from the zip to `RAG/design-system/` after extraction, in both CLAUDE.md and AGENTS.md.)*
-- [ ] Gates: `npm run build`, `npm test -- --run`, `format:check`, `lint`, `check`.
+- [ ] Inventory all reference sources, dates, licensing, and hashes; keep originals unchanged.
+- [ ] Verify already-vendored font files; do not download or add fonts without a licensing ruling.
+- [ ] Add dormant scoped tokens with no main-entry import or effect on current rendering.
+- [ ] Keep the non-3D references inspectable offline; explicitly identify the preserved Three.js prototype's network limitation without claiming a bundled fallback. Generated wrappers require separately declared paths and never replace pinned sources.
+- [ ] Reproduce the applicable gates in PROJECT-RECORD §6; report exact counts, baseline failures, platform gaps and human acceptance still outstanding.
 
 ### Acceptance Criteria
 
-**WHEN** an agent greps for a component/token name. **THEN** it hits `RAG/design-system/`, not a zip.
-**AND** the packaged app renders Fira Code offline.
+GIVEN current main and the design carrier, WHEN a developer opens the references offline, THEN they can identify current versus superseded designs and inspect the non-3D walkthrough, AND the shipping UI and source behavior are unchanged.
 
 ### Issues Encountered
 
@@ -58,3 +65,5 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 The comments under the 'Issues Encountered' heading are the only comments you MUST not remove
 This section is filled out post work as you fill out the checklists.
 -->
+
+Planning: source/visual reconciliation only. No implementation or new application tests have run. Unresolved policy and EPIC-029 prerequisites remain explicit gates.

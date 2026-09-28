@@ -3,40 +3,45 @@ node_id: AI-IMP-173
 tags:
   - IMP-LIST
   - Implementation
-  - design
   - ui
+  - design-review
 kanban_status: planned
 depends_on:
   - AI-IMP-170
+  - AI-IMP-195
 parent_epic: [[AI-EPIC-027-notebook-ui-redesign]]
-confidence_score: 0.7
+confidence_score: 0.8
 date_created: 2026-07-09
 date_completed:
+assignee: Code Lead (Sol)
 ---
 
 # AI-IMP-173-values-spread
 
-## Summary of Issue #1
+## Values study surface and shared lifecycle feedback
 
-EPIC-027 FR-7 / Code Change Note 10: ValuesView per wireframe 5b — original stacked over neutral full-width (both larger), Scrubber directly beneath, range finder / values histogram / simplified tones as numbered figures, levels/notan as bracket selector.
+Refresh Values without changing tonal analysis, notan levels, range-finder behavior or video scrubbing. Use the shared honest pending/previous/error presentation and responsive source-to-tonal comparison.
 
-**Design lifecycles owned:** L6 — pending state shares the L2 idiom (P1-1 artifact).
+Normative basis: PROJECT-RECORD rev 0.5 §9.2, §4 and §6. Visuals: RAG/design-2026-09/README.md. September rescope preserves this ticket ID; the full prior text is archived under RAG/reviews/EPIC-027/legacy-2026-07-09/. Status is a plan, not implementation authorization. First assignment is review-only.
 
 ### Out of Scope
 
-- Value analysis logic/runners (untouched).
-- Video pending states beyond what P2-6 provides (shared with IMP-171).
+No value-analysis-runner, scrubber lifecycle, caches, artifacts, IPC, or output generator changes; relevant EPIC-029 fixes must precede integration.
 
 ### Design/Approach
 
-Template/style rebuild over intact `value-analysis-runner`/scrubber factories; `preview-pair` 2-up → stacked rows; microlabels (`ORIGINAL`, mono `--text-55`); figures numbered in the Values page sequence; ErrorSlip for failures.
-
-**Design dependencies:** P1-1 (pending idiom). Ready states implementable now.
+Restyle existing templates and consume status components. Preserve Values' own parameters and eligible-source behavior. Full compact composition is demonstrated in IMP-177; basic reflow is mandatory here. Do not port unverified old stacked-layout geometry at the cost of source comparison.
 
 ### Files to Touch
 
-- `lib/views/ValuesView.svelte`, `values/VideoScrubber.svelte`
-- Tests: layout-agnostic behavior already covered; add stacked-order render assertion if cheap
+Paths below are repository-root relative. New-file seams are hypotheses to verify in Round 01; do not silently widen them.
+
+- tauri-app/src/lib/views/ValuesView.svelte
+- tauri-app/src/lib/views/values/VideoScrubber.svelte (presentation only)
+- tauri-app/src/lib/views/__tests__/study-values.spec.ts (new)
+- This ticket's checklist and Issues Encountered after authorized implementation only.
+
+Do NOT touch unrelated tickets, RAG/PROJECT-RECORD.md, prior review reports, native code/color-core, or other worktrees unless specifically named above. The lead owns INDEX regeneration and all Git commits/merges under repository rules.
 
 ### Implementation Checklist
 
@@ -44,14 +49,15 @@ Template/style rebuild over intact `value-analysis-runner`/scrubber factories; `
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Stacked previews + scrubber beneath per 5b.
-- [ ] Figures + bracket selectors in notebook idiom; metrics/captions per bundle voice.
-- [ ] Pending state per P1-1 artifact (or documented placeholder + follow-on).
-- [ ] Full gates + screenshots; manual smoke incl. video scrub in Values (exercises IMP-162 fixes).
+- [ ] Maintain source, neutral preview, range finder, histogram and simplified study controls.
+- [ ] Identify requested versus shown frame while scrubbing.
+- [ ] Apply S1/S3/S4 states only with valid result provenance.
+- [ ] Test keyboard and compact comparison without changing factories or saved settings.
+- [ ] Reproduce the applicable gates in PROJECT-RECORD §6; report exact counts, baseline failures, platform gaps and human acceptance still outstanding.
 
 ### Acceptance Criteria
 
-**WHEN** a video frame is analyzed in Values. **THEN** the spread matches 5b with both previews rendered full-width and the scrubber operable beneath them.
+GIVEN a selected image or eligible frame, WHEN Values recomputes or the window narrows, THEN source identity and controls remain intact and previous results are visibly distinguished from pending results.
 
 ### Issues Encountered
 
@@ -59,3 +65,5 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 The comments under the 'Issues Encountered' heading are the only comments you MUST not remove
 This section is filled out post work as you fill out the checklists.
 -->
+
+Planning: source/visual reconciliation only. No implementation or new application tests have run. Unresolved policy and EPIC-029 prerequisites remain explicit gates.

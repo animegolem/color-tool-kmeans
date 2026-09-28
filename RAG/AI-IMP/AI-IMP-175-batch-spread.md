@@ -3,39 +3,46 @@ node_id: AI-IMP-175
 tags:
   - IMP-LIST
   - Implementation
-  - design
   - ui
-  - design-blocked
+  - design-review
 kanban_status: backlog
 depends_on:
   - AI-IMP-170
+  - AI-IMP-195
+  - AI-IMP-186
 parent_epic: [[AI-EPIC-027-notebook-ui-redesign]]
-confidence_score: 0.5
+confidence_score: 0.6
 date_created: 2026-07-09
 date_completed:
+assignee: Code Lead (Sol)
 ---
 
 # AI-IMP-175-batch-spread
 
-## Summary of Issue #1
+## Batch contact sheet and focused pin detail
 
-EPIC-027 FR-9: BatchView in the notebook idiom. Wireframe 5d is **flagged "approximate — to be checked against BatchView" by the bundle itself**; this ticket is design-blocked until the P2-4 artifact (verified Batch spread) lands.
+Refresh Batch's selection, less-than-two-pins, aggregate pending/ready/error and focused pin states without conflating active media with pinned inputs. Keep the old approximate wireframe non-normative until the new surface receives a ruling.
 
-**Design lifecycles owned:** L7 — contact sheet, aggregate, pin expand, empty, computing.
+Normative basis: PROJECT-RECORD rev 0.5 §9.2, §4 and §6. Visuals: RAG/design-2026-09/README.md. September rescope preserves this ticket ID; the full prior text is archived under RAG/reviews/EPIC-027/legacy-2026-07-09/. Status is a plan, not implementation authorization. First assignment is review-only.
 
 ### Out of Scope
 
-- Batch analysis/runner logic (untouched).
-- Batch export section (IMP-174 owns export UI idiom; batch export actions restyle here consistently).
+No pin-store semantics, multi-analysis ownership, batch runner, artifact lifetime, or export renderer changes.
 
 ### Design/Approach
 
-**BLOCKED — do not start until `RAG/DESIGN-COVERAGE.md` P2-4 is checked off.** When the artifact lands: template/style rebuild over intact batch runners; PinExpandOverlay adopts the pinned-card/zoom idiom; empty and computing states per artifact; aggregate figures numbered in page sequence.
+Use the walkthrough's batch/detail state as a review candidate, not permission to alter batch defaults. Preserve all existing exclusions and limits. The focused pin overlay returns to the same aggregate and parameter set. Artifact/aggregate ownership remains EPIC-029's concern.
 
 ### Files to Touch
 
-- `lib/views/BatchView.svelte`, `batch/PinExpandOverlay.svelte`
-- Screenshot fixtures
+Paths below are repository-root relative. New-file seams are hypotheses to verify in Round 01; do not silently widen them.
+
+- tauri-app/src/lib/views/BatchView.svelte
+- tauri-app/src/lib/views/batch/PinExpandOverlay.svelte
+- tauri-app/src/lib/views/__tests__/study-batch.spec.ts (new)
+- This ticket's checklist and Issues Encountered after authorized implementation only.
+
+Do NOT touch unrelated tickets, RAG/PROJECT-RECORD.md, prior review reports, native code/color-core, or other worktrees unless specifically named above. The lead owns INDEX regeneration and all Git commits/merges under repository rules.
 
 ### Implementation Checklist
 
@@ -43,14 +50,15 @@ EPIC-027 FR-9: BatchView in the notebook idiom. Wireframe 5d is **flagged "appro
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] P2-4 artifact received and linked here (path/reference recorded).
-- [ ] Contact sheet + aggregate per verified design.
-- [ ] Pin expand, empty, computing states implemented.
-- [ ] Full gates + screenshots; manual batch smoke (pin 4, aggregate, export).
+- [ ] Obtain a lead verdict for contact-sheet and focused-pin geometry.
+- [ ] Preserve zero/one-pin guidance, exact limits and raw-video exclusion.
+- [ ] Display batch parameters separately from Colors and retain the set on overlay close.
+- [ ] Exercise pending/error/invalidated aggregate and per-source failure states with correct source labels.
+- [ ] Reproduce the applicable gates in PROJECT-RECORD §6; report exact counts, baseline failures, platform gaps and human acceptance still outstanding.
 
 ### Acceptance Criteria
 
-**WHEN** four images are pinned. **THEN** the Batch spread matches the verified artifact, aggregate analysis renders in the notebook idiom, and batch exports remain byte-identical.
+GIVEN a completed aggregate, WHEN inspecting one pin and returning, THEN the pin set, source order and batch parameters are unchanged and no stale aggregate is relabeled.
 
 ### Issues Encountered
 
@@ -58,3 +66,5 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
 The comments under the 'Issues Encountered' heading are the only comments you MUST not remove
 This section is filled out post work as you fill out the checklists.
 -->
+
+Planning: source/visual reconciliation only. No implementation or new application tests have run. Unresolved policy and EPIC-029 prerequisites remain explicit gates.
