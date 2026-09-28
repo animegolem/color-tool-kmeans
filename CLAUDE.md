@@ -87,8 +87,8 @@ Linux/NVIDIA/Wayland: `WEBKIT_DISABLE_DMABUF_RENDERER=1 npm run tauri dev` (WebK
 
 Enable once: `git config core.hooksPath .githooks`.
 
-- **Pre-commit**: blocks Svelte `on:` syntax (runes only); runs `format:check` + `lint` (node-based script detection — actually runs, failures block); `cargo fmt --check` + clippy; LOC warning at 400 lines/file (non-blocking); regenerates `RAG/INDEX.md`.
-- **CI** (`.github/workflows/ci.yml`): `npm ci`, format:check, lint, check, full vitest, full `cargo test --workspace`, fmt/clippy, golden/snapshot gates, Windows build. Strict LOC check — bypass with `[loc-bypass]` in the commit message.
+- **Pre-commit**: read-only checks of staged bytes. Docs-only commits run Git whitespace/conflict checks and a nonblocking 400-line advisory, without JS/Rust toolchains. Frontend code/config runs installed Prettier and the shared Svelte `on:` token guard; Rust runs workspace `cargo fmt --check`; shell changes run `bash -n`. Code checks use an index snapshot and fail loudly when tooling is missing. No automatic installs, formatting, RAG generation or staging.
+- **CI** (`.github/workflows/ci.yml`): independent hook regressions, frontend format/lint/type/full Vitest gates, Rust fmt/strict Clippy/full workspace/scalar snapshot/Tauri-free gates, and Windows packaging. The `build-test` aggregate requires every job to succeed. LOC is advisory in the hook, not a strict CI blocker. Known baseline failures are not skipped.
 - Prettier config is `prettier.config.mjs` + `.prettierignore`; `format`/`format:check` carry negative globs for generated trees.
 
 ## Code Style
@@ -108,7 +108,7 @@ Enable once: `git config core.hooksPath .githooks`.
 
 ## Work Tracking (RAG/)
 
-- **`RAG/INDEX.md`** — generated kanban, single source of truth for epic/ticket status. Never edit by hand; regenerate via `RAG/scripts/generate-index.sh` (pre-commit does it).
+- **`RAG/INDEX.md`** — generated kanban, single source of truth for epic/ticket status. Never edit by hand; explicitly run `RAG/scripts/generate-index.sh` before review/staging. The generator may normalize tickets, so review its entire diff; the hook never runs it or stages files.
 - Epics `RAG/AI-EPIC/`, tickets `RAG/AI-IMP/` (templates in `RAG/templates/` are mandatory), session logs `RAG/AI-LOG/`, decisions `RAG/ADR/`.
 - Check ticket checklist items only after implemented AND validated; fill Issues Encountered honestly.
 - `RAG/DATA-FLOW.md` — media/analysis data-flow map. `RAG/DESIGN-COVERAGE.md` — UI lifecycle vs design-bundle coverage (EPIC-027). Design bundle: `RAG/Color Tool Design System.zip` until IMP-168 vendors it to `RAG/design-system/`.

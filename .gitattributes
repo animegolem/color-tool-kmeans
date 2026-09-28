@@ -1,0 +1,3 @@
+# Markdown hard line breaks (two trailing spaces) and a closing blank line are legitimate in the RAG record, and frozen
+# historical evidence there is never rewritten, so the staged whitespace check exempts them (lead, 2026-09-28).
+RAG/**/*.md whitespace=-trailing-space,-blank-at-eof

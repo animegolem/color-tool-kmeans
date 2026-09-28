@@ -4,113 +4,121 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  build-test:
+  hook-regressions:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Install dependencies (tauri-app)
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Install formatter dependencies
+        run: npm ci --prefix tauri-app --no-audit --no-fund
+      - name: Hook and CI regression tests
+        run: node --test scripts/ci/*.test.mjs
+      - name: Check tooling formatting and shell syntax
         run: |
-          cd tauri-app
-          npm ci --no-audit --no-fund
+          (cd tauri-app && node node_modules/prettier/bin/prettier.cjs --check --config prettier.config.mjs "../.github/workflows/ci.yml" "../scripts/ci/*.mjs")
+          bash -n .githooks/pre-commit
+          bash -n scripts/ci/core-boundary.sh
 
-      - name: Enforce Svelte runes event syntax
-        run: |
-          if rg --files-with-matches --glob "*.svelte" "on:[a-zA-Z]" tauri-app/src >/dev/null; then
-            echo "Use onclick/oninput style events (Svelte 5 runes) instead of on: syntax" >&2
-            exit 1
-          fi
+  frontend-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install frontend dependencies
+        run: npm ci --prefix tauri-app --no-audit --no-fund
+      - name: Enforce Svelte runes events
+        run: node scripts/ci/svelte-events.mjs --all
+      - name: Frontend formatting
+        run: npm run --prefix tauri-app format:check
+      - name: Frontend lint
+        run: npm run --prefix tauri-app lint
+      - name: Frontend types
+        run: npm run --prefix tauri-app check
+      # Includes the gamut and golden fixtures. IMP-179 fixes the known stale
+      # golden path separately; never skip it or supply a substitute fixture.
+      - name: Full frontend suite
+        run: npm run --prefix tauri-app test -- --run
 
-      - name: Install FFmpeg sidecars (Linux)
-        run: |
-          cd tauri-app
-          ./scripts/fetch-ffmpeg-btbn-lgpl.sh x86_64-unknown-linux-gnu https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-lgpl.tar.xz
-
-      - name: Install Linux system deps (glib/gtk)
+  rust-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Install Linux Tauri prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev webkit2gtk-4.1 libayatana-appindicator3-dev librsvg2-dev
-
-      - name: Run frontend format, lint, and type checks
-        run: |
-          cd tauri-app
-          npm run format:check
-          npm run lint
-          npm run check
-
-      - name: Run full frontend test suite
-        run: |
-          cd tauri-app
-          npm run test -- --run
-
-      - name: Run TS gamut boundary test
-        run: |
-          cd tauri-app
-          npm test -- src/lib/exports/__tests__/gamut-boundary.spec.ts
-
-      - name: Run k-means snapshot test (scalar path, no simd)
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+      - name: Install FFmpeg sidecars (Linux)
+        working-directory: tauri-app
+        run: ./scripts/fetch-ffmpeg-btbn-lgpl.sh x86_64-unknown-linux-gnu https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-lgpl.tar.xz
+      - name: Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Strict workspace Clippy
+        run: cargo clippy --workspace -- -D warnings
+      - name: Verify Tauri-free color-core
+        run: bash scripts/ci/core-boundary.sh
+      - name: Scalar k-means snapshot
         run: cargo test -p color-core --no-default-features --test kmeans_snapshots
-
-      - name: Verify color-core stays tauri-free
-        run: |
-          if cargo tree -p color-core --edges normal | grep -i tauri; then
-            echo "color-core must not depend on tauri" >&2
-            exit 1
-          fi
-
-      - name: Run full Rust workspace test suite
+      - name: Full Rust workspace suite
         run: cargo test --workspace
-
-      - name: Electron app tests
-        if: ${{ hashFiles('electron-app/package.json') != '' }}
-        run: |
-          cd electron-app
-          npm test
-
-      - name: Rust fmt/clippy
-        if: ${{ hashFiles('src-tauri/Cargo.toml') != '' || hashFiles('tauri-app/src-tauri/Cargo.toml') != '' }}
-        run: |
-          sudo apt-get update && sudo apt-get install -y libgtk-3-dev webkit2gtk-4.1 libayatana-appindicator3-dev librsvg2-dev || true
-          rustup update stable
-          (cd tauri-app/src-tauri 2>/dev/null || cd src-tauri 2>/dev/null; cargo fmt --all -- --check && cargo clippy --workspace -- -D warnings)
 
   build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
+      - uses: dtolnay/rust-toolchain@stable
       - name: Install FFmpeg sidecars (Windows)
-        shell: bash
-        run: |
-          cd tauri-app
-          ./scripts/fetch-ffmpeg-btbn-lgpl.sh x86_64-pc-windows-msvc https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl.zip
-
-      - name: Install dependencies
-        run: |
-          cd tauri-app
-          npm ci --no-audit --no-fund
-
+        working-directory: tauri-app
+        run: ./scripts/fetch-ffmpeg-btbn-lgpl.sh x86_64-pc-windows-msvc https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl.zip
+      - name: Install frontend dependencies
+        run: npm ci --prefix tauri-app --no-audit --no-fund
+      # IMP-201's lock/version repair is a separate slice; build failures block.
       - name: Build Tauri app (Windows)
-        run: |
-          cd tauri-app
-          npm run tauri build
-
+        run: npm run --prefix tauri-app tauri build
       - name: Upload Windows bundle
         uses: actions/upload-artifact@v4
         with:
           name: tauri-windows-bundle
           path: target/release/bundle
+          if-no-files-found: error
+
+  # Preserve the previous build-test status name as an aggregate, not a partial
+  # frontend-only green. No path skips, allowed failures, or skipped-leg success.
+  build-test:
+    if: ${{ always() }}
+    needs: [hook-regressions, frontend-quality, rust-quality, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every gate to pass
+        env:
+          HOOK_RESULT: ${{ needs.hook-regressions.result }}
+          FRONTEND_RESULT: ${{ needs.frontend-quality.result }}
+          RUST_RESULT: ${{ needs.rust-quality.result }}
+          WINDOWS_RESULT: ${{ needs.build-windows.result }}
+        run: |
+          for result in "$HOOK_RESULT" "$FRONTEND_RESULT" "$RUST_RESULT" "$WINDOWS_RESULT"; do
+            if [[ "$result" != success ]]; then
+              echo "A required CI gate did not pass: $result" >&2
+              exit 1
+            fi
+          done

@@ -1,58 +1,130 @@
 #!/usr/bin/env bash
+# Read-only checks of the index, not the working copy. Heavy gates live in CI.
 set -euo pipefail
 
+fail() { echo "[pre-commit] $*" >&2; exit 1; }
+need() { command -v "$1" >/dev/null 2>&1 || fail "missing $1; install the required toolchain before committing staged code"; }
 ROOT_DIR=$(git rev-parse --show-toplevel)
+POLICY_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/../scripts/ci" && pwd)
 cd "$ROOT_DIR"
 
-echo "[pre-commit] running checks..."
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/color-tool-hook.XXXXXX")
+trap 'rm -rf -- "$scratch"' EXIT
+git ls-files --unmerged -z > "$scratch/unmerged"
+[[ ! -s "$scratch/unmerged" ]] || fail "unmerged index entries; resolve them before committing"
+git diff --cached --check
+# --no-renames makes both sides of a rename participate in dispatch.
+git diff --cached --no-renames --name-only --diff-filter=ACDMRT -z > "$scratch/changed"
+git ls-files -z > "$scratch/all"
 
-if rg --files-with-matches --glob '*.svelte' 'on:[a-zA-Z]' tauri-app/src >/dev/null 2>&1; then
-  echo "[pre-commit] blocked: use runes DOM events (onclick/oninput) instead of on: syntax in Svelte components" >&2
-  echo "Add a TODO if a custom component event is required." >&2
-  exit 1
-fi
+frontend=0
+rust=0
+full_frontend=0
+shell_files=()
+format_files=()
+svelte_files=()
 
-run_npm_script() {
-  local dir=$1
-  local script=$2
-  if [ -f "$dir/package.json" ] && node -e '
-    const fs = require("node:fs");
-    const packageJson = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-    const scripts = packageJson.scripts ?? {};
-    process.exit(Object.prototype.hasOwnProperty.call(scripts, process.argv[2]) ? 0 : 1);
-  ' "$dir/package.json" "$script"; then
-    echo "[pre-commit] $dir -> npm run $script"
-    (cd "$dir" && npm run -s "$script") || {
-      echo "[pre-commit] $script failed in $dir" >&2
-      exit 1
-    }
-  else
-    echo "[pre-commit] $dir -> no $script script; skipping"
-  fi
+generated() {
+  case "$1" in
+    node_modules/*|*/node_modules/*|target/*|*/target/*|dist/*|*/dist/*|build/*|figma/*|pkgs/*|tauri-app/coverage/*|tauri-app/.svelte-kit/*|tauri-app/.turbo/*|tauri-app/.ffmpeg-build/*|tauri-app/src-tauri/gen/*|tauri-app/src-tauri/bin/*) return 0 ;;
+    *) return 1 ;;
+  esac
 }
+frontend_file() {
+  generated "$1" && return 1
+  case "$1" in
+    *.js|*.mjs|*.cjs|*.jsx|*.ts|*.tsx|*.svelte|*.css|*.scss|*.html|*.json|*.yml|*.yaml) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+frontend_config() {
+  case "$1" in
+    package.json|package-lock.json|tauri-app/package.json|tauri-app/package-lock.json|.prettierrc*|*/.prettierrc*|prettier.config.*|*/prettier.config.*|.prettierignore|*/.prettierignore|*tsconfig*.json|*vite.config.*|*vitest.config.*|*eslint*|.editorconfig|*/.editorconfig) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+present() { git cat-file -e ":$1" 2>/dev/null; }
 
-# JS/TS formatting & lint (tauri-app)
-run_npm_script tauri-app format:check
-run_npm_script tauri-app lint
+while IFS= read -r -d '' file; do
+  generated "$file" && continue
+  if frontend_file "$file" || frontend_config "$file"; then frontend=1; fi
+  if frontend_config "$file"; then full_frontend=1; fi
+  case "$file" in
+    *.rs|Cargo.toml|*/Cargo.toml|Cargo.lock|*/Cargo.lock|rust-toolchain|rust-toolchain.toml|rustfmt.toml|.rustfmt.toml|*/rustfmt.toml|*/.rustfmt.toml|.cargo/*|*/.cargo/*) rust=1 ;;
+  esac
+  present "$file" || continue
+  if frontend_file "$file"; then format_files+=("$file"); fi
+  case "$file" in *.svelte) svelte_files+=("$file") ;; esac
+  case "$file" in *.sh|.githooks/*) shell_files+=("$file") ;; esac
 
-# Rust checks if present
-if [ -d src-tauri ] || [ -d tauri-app/src-tauri ]; then
-  echo "[pre-commit] rust fmt/clippy"
-  (cd "${ROOT_DIR}/tauri-app/src-tauri" 2>/dev/null || cd "${ROOT_DIR}/src-tauri" 2>/dev/null || true; \
-    command -v cargo >/dev/null 2>&1 && {
-      cargo fmt --all -- --check || exit 1
-      cargo clippy --workspace -- -D warnings || exit 1
-    } || echo "[pre-commit] cargo not found; skipping rust checks")
+  # Advisory only; count staged text, including docs, without a language runtime.
+  git cat-file blob ":$file" > "$scratch/blob"
+  if LC_ALL=C grep -Iq . "$scratch/blob"; then
+    lines=$(awk 'END { print NR }' "$scratch/blob")
+    if (( lines > 400 )); then
+      printf '[pre-commit] LOC warning: %q has %s lines (> 400); review cohesion\n' "$file" "$lines" >&2
+    fi
+  fi
+done < "$scratch/changed"
+
+if (( frontend == 0 && rust == 0 && ${#shell_files[@]} == 0 )); then
+  echo "[pre-commit] no staged code: index checks only; no JS/Rust toolchains"
+  exit 0
 fi
 
-# LOC warning
-bash scripts/loc-check.sh || true
+# Materialize index contents only. Never copy unstaged source/configuration.
+snapshot="$scratch/index"
+mkdir -p "$snapshot"
+git checkout-index --all --prefix="$snapshot/"
+# A staged symlink could make a formatter follow paths outside the snapshot.
+git ls-files --stage -z > "$scratch/modes"
+while IFS= read -r -d '' entry; do
+  case "$entry" in 120000\ *) fail "staged snapshot contains a symlink; code checks require regular files: ${entry#*$'\t'}" ;; esac
+done < "$scratch/modes"
 
-# Generate RAG index and stage changes
-if [ -x "$ROOT_DIR/RAG/scripts/generate-index.sh" ]; then
-  echo "[pre-commit] generating RAG index..."
-  "$ROOT_DIR/RAG/scripts/generate-index.sh"
-  git add RAG/INDEX.md RAG/AI-EPIC/*.md RAG/AI-IMP/*.md 2>/dev/null || true
+if (( full_frontend )); then
+  format_files=()
+  svelte_files=()
+  while IFS= read -r -d '' file; do
+    if frontend_file "$file"; then format_files+=("$file"); fi
+    case "$file" in *.svelte) generated "$file" || svelte_files+=("$file") ;; esac
+  done < "$scratch/all"
 fi
 
-echo "[pre-commit] done"
+if (( ${#shell_files[@]} )); then
+  for file in "${shell_files[@]}"; do
+    bash -n "$snapshot/$file" || fail "shell syntax failed: $file"
+  done
+fi
+
+if (( frontend )); then
+  need node
+  deps="$ROOT_DIR/tauri-app/node_modules"
+  [[ -f "$deps/prettier/bin/prettier.cjs" ]] || fail "missing tauri-app/node_modules/prettier; provision locked frontend dependencies (no auto-install)"
+  [[ -f "$deps/prettier-plugin-svelte/package.json" ]] || fail "missing tauri-app/node_modules/prettier-plugin-svelte; provision locked frontend dependencies"
+  deps=$(cd "$deps" && pwd -P)
+  [[ -f "$snapshot/tauri-app/prettier.config.mjs" ]] || fail "missing staged tauri-app/prettier.config.mjs"
+  [[ -f "$snapshot/tauri-app/.prettierignore" ]] || fail "missing staged tauri-app/.prettierignore"
+  # The only non-index input: installed formatter dependencies, read-only.
+  ln -s "$deps" "$snapshot/tauri-app/node_modules"
+  if (( ${#svelte_files[@]} )); then
+    (cd "$snapshot" && node "$POLICY_DIR/svelte-events.mjs" -- "${svelte_files[@]}")
+  fi
+  echo "[pre-commit] checking staged frontend formatting"
+  # NUL-delimited paths and the API avoid glob expansion and ARG_MAX limits.
+  : > "$scratch/format-paths"
+  if (( ${#format_files[@]} )); then
+    printf '%s\0' "${format_files[@]}" > "$scratch/format-paths"
+  fi
+  (cd "$snapshot/tauri-app" && node "$POLICY_DIR/prettier-index.mjs" \
+    "$deps" "$snapshot" "$scratch/format-paths") || fail "staged frontend formatting failed"
+fi
+
+if (( rust )); then
+  need cargo
+  need rustfmt
+  [[ -f "$snapshot/Cargo.toml" ]] || fail "missing staged workspace Cargo.toml"
+  echo "[pre-commit] checking staged Rust formatting (no build or Clippy)"
+  (cd "$snapshot" && cargo fmt --all -- --check) || fail "staged cargo fmt failed; verify rustfmt is installed and staged Rust is formatted"
+fi
+echo "[pre-commit] passed; index and working copy unchanged"

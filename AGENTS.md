@@ -7,7 +7,7 @@ Color analysis desktop app: Tauri 2 + Svelte 5 renderer (`tauri-app/src/`) + Rus
 - **Your ticket is the normative spec.** `RAG/AI-IMP/AI-IMP-NNN-*.md` — follow Files-to-Touch and Do-NOT-touch lists strictly; sibling agents often work adjacent tickets in parallel and boundary violations get reverted in review. If a fix genuinely requires a fenced file, STOP and request authorization in your report rather than editing it.
 - **Do not attempt `git commit`** — sandboxes cannot write `.git` even in standalone clones. Leave all changes in the working tree; the lead reviews and commits.
 - Check ticket checklist items only after implemented AND validated. Fill **Issues Encountered** honestly — deviations, surprises, failed approaches. That section is where the next session learns what the diff can't say.
-- Ticket status values: `backlog | planned | in-progress | completed | cancelled | deferred` (not "Closed"). `RAG/INDEX.md` is generated — never hand-edit.
+- Ticket status values: `backlog | planned | in-progress | completed | cancelled | deferred` (not "Closed"). `RAG/INDEX.md` is generated — never hand-edit. Run `RAG/scripts/generate-index.sh` explicitly before review/staging and review all normalized files; the hook neither generates nor stages.
 
 ## Environment facts
 
@@ -32,7 +32,7 @@ cargo fmt --all -- --check
 cargo clippy --workspace -- -D warnings
 cargo test --workspace     # --offline ok
 ```
-CI runs all of the above plus golden/snapshot gates and a Windows build. Strict LOC check in CI (warn 400/file locally) — `[loc-bypass]` in the commit message when a file must exceed it (the lead handles this at commit time; flag it in your report).
+CI runs all of the above plus golden/snapshot gates, hook regressions and a Windows build; all jobs must pass the aggregate gate. The pre-commit hook is staged-aware and nonmutating: docs-only needs no JS/Rust tooling, code gets relevant formatters (missing tools fail), Svelte keeps its `on:` token guard, and shell gets `bash -n`. LOC over 400/file is an advisory, not a CI blocker; flag cohesive large files in your report. Heavy lint, type, Clippy and test gates remain required in CI.
 
 ## Code style
 
