@@ -2,7 +2,7 @@
 
 | Status                                   | Revision | Last updated |
 | ---------------------------------------- | -------- | ------------ |
-| CI's Clippy lint fixed (e11320f), every Rust CI step green locally on Rust 1.99; rev1.00 and the fix await the owner's push; redesign and Sol's wave HELD for the owner | 1.01     | 2026-10-09   |
+| IMP-202 rebased on the current deliverable (two arms: main + known-good); Sol's next is a read-only scope report; push of main owed by the owner | 1.02     | 2026-10-09   |
 
 ## 1. Authority and amendment
 
@@ -280,6 +280,8 @@ Keep Svelte 5 runes, local assets, and deterministic exports. Shared helpers pre
 An issue is accepted only after current-base validation and integration evidence. A source-confirmed concern is labeled as such until its regression is executed. No unchecked ticket boxes are marked complete from a plan, and no test failures are reclassified as passing with `it.fails`.
 
 ## 5. Current slice and delivery rules
+
+(rev1.02, 2026-10-09) **IMP-202's scope is ruled** (`RAG/reviews/EPIC-029/profiling-rebase-scope-verdict.md`), at Sol's request after the owner's word to him that the paused objective may start. §10's method binds whole. The matrix rebases to two arms: **A, current `main`** (it replaces "Wave 03 without IMP-178", which it descends from), and **B, the identified known-good prior release** as an immutable end-to-end baseline. IMP-178 stays out of scope. B11–B20 stay preserved, and B20 stays diagnostic-only. Spans go where they survive the held redesign, and every build arm pins its toolchain. **Sol's next assignment** is one read-only scope report (`profiling-rebase-scope-report.md`): no source, build, capture or Git. The lead then issues Stage A (§10.1's matched quiet optimized-build sanity comparison) as its own fence.
 
 (rev1.01, 2026-10-09) **The lint fix is COMMITTED** (e11320f, the lead's): `live_pipe_probe.rs:253/258` use `as_chunks::<3>().0.iter()`, the same iteration. Checked on Rust 1.99.0 (the owner: "If we have an old Rust version, we can update"; rustup stable updated, the machine's default toolchain left at 1.90): strict workspace Clippy reproduced FAILING on the old code with the same two errors and PASSES with the fix; `cargo fmt --check`, `scripts/ci/core-boundary.sh`, the k-means snapshot test and `cargo test --workspace` (48 passed, 0 failed) pass. The 2026-08-20 and 2026-09-04 failures were the old frontend suite (build-test: "Run full frontend test suite"); in run 36403704063 frontend-quality passed, so the fix should turn CI green (inferred until the run). **Owed by the owner:** push main (25572ab rev1.00 and e11320f). **Then:** the redesign and Sol's wave, HELD for the owner's conversation with Astra and Sol; IMP-193-5 (production adapter) stays backlog.
 
