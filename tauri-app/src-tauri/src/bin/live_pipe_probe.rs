@@ -250,12 +250,12 @@ fn run_convert() {
     let frame = deterministic_frame();
     let lut = build_srgb_lut();
     let current_ms = benchmark_conversion(&frame, |input, output| {
-        for (pixel, converted) in input.chunks_exact(3).zip(output) {
+        for (pixel, converted) in input.as_chunks::<3>().0.iter().zip(output) {
             *converted = color::rgb8_to_oklab([pixel[0], pixel[1], pixel[2]]);
         }
     });
     let lut_ms = benchmark_conversion(&frame, |input, output| {
-        for (pixel, converted) in input.chunks_exact(3).zip(output) {
+        for (pixel, converted) in input.as_chunks::<3>().0.iter().zip(output) {
             *converted = lut_pixel_to_oklab(pixel, &lut);
         }
     });
