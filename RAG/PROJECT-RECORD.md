@@ -2,7 +2,7 @@
 
 | Status                                   | Revision | Last updated |
 | ---------------------------------------- | -------- | ------------ |
-| IMP-202 rebased on the current deliverable (two arms: main + known-good); Sol's next is a read-only scope report; push of main owed by the owner | 1.02     | 2026-10-09   |
+| IMP-202 scope report accepted; ancestry corrected; Arm A pins adopted; next is the owner's O1 session (15 min); push of main owed by the owner | 1.03     | 2026-10-09   |
 
 ## 1. Authority and amendment
 
@@ -280,6 +280,8 @@ Keep Svelte 5 runes, local assets, and deterministic exports. Shared helpers pre
 An issue is accepted only after current-base validation and integration evidence. A source-confirmed concern is labeled as such until its regression is executed. No unchecked ticket boxes are marked complete from a plan, and no test failures are reclassified as passing with `it.fails`.
 
 ## 5. Current slice and delivery rules
+
+(rev1.03, 2026-10-09) Sol's scope report is ACCEPTED (`profiling-rebase-scope-report-verdict.md`). **Correction:** `main` does not descend from Wave 03's `8bf3187` (merge-base `5baa20e`). Arm A supersedes Wave 03 by ruling, not by ancestry, and the rev1.02 wording was the lead's error. The Arm A build pins are adopted. **Next: the owner's O1 session (15 min)** confirms Arm B and the corpus. Only then the Stage A fence. Nothing is built before it.
 
 (rev1.02, 2026-10-09) **IMP-202's scope is ruled** (`RAG/reviews/EPIC-029/profiling-rebase-scope-verdict.md`), at Sol's request after the owner's word to him that the paused objective may start. §10's method binds whole. The matrix rebases to two arms: **A, current `main`** (it replaces "Wave 03 without IMP-178", which it descends from), and **B, the identified known-good prior release** as an immutable end-to-end baseline. IMP-178 stays out of scope. B11–B20 stay preserved, and B20 stays diagnostic-only. Spans go where they survive the held redesign, and every build arm pins its toolchain. **Sol's next assignment** is one read-only scope report (`profiling-rebase-scope-report.md`): no source, build, capture or Git. The lead then issues Stage A (§10.1's matched quiet optimized-build sanity comparison) as its own fence.
 
