@@ -2,7 +2,7 @@
 
 | Status                                   | Revision | Last updated |
 | ---------------------------------------- | -------- | ------------ |
-| IMP-193-4 closed by the owner's word (move ahead); hook regression fixed (f24aab9) and IMP-179 (d602d91), pushed; CI red on one new Clippy lint | 1.00     | 2026-10-02   |
+| CI's Clippy lint fixed (e11320f), every Rust CI step green locally on Rust 1.99; rev1.00 and the fix await the owner's push; redesign and Sol's wave HELD for the owner | 1.01     | 2026-10-09   |
 
 ## 1. Authority and amendment
 
@@ -280,6 +280,8 @@ Keep Svelte 5 runes, local assets, and deterministic exports. Shared helpers pre
 An issue is accepted only after current-base validation and integration evidence. A source-confirmed concern is labeled as such until its regression is executed. No unchecked ticket boxes are marked complete from a plan, and no test failures are reclassified as passing with `it.fails`.
 
 ## 5. Current slice and delivery rules
+
+(rev1.01, 2026-10-09) **The lint fix is COMMITTED** (e11320f, the lead's): `live_pipe_probe.rs:253/258` use `as_chunks::<3>().0.iter()`, the same iteration. Checked on Rust 1.99.0 (the owner: "If we have an old Rust version, we can update"; rustup stable updated, the machine's default toolchain left at 1.90): strict workspace Clippy reproduced FAILING on the old code with the same two errors and PASSES with the fix; `cargo fmt --check`, `scripts/ci/core-boundary.sh`, the k-means snapshot test and `cargo test --workspace` (48 passed, 0 failed) pass. The 2026-08-20 and 2026-09-04 failures were the old frontend suite (build-test: "Run full frontend test suite"); in run 36403704063 frontend-quality passed, so the fix should turn CI green (inferred until the run). **Owed by the owner:** push main (25572ab rev1.00 and e11320f). **Then:** the redesign and Sol's wave, HELD for the owner's conversation with Astra and Sol; IMP-193-5 (production adapter) stays backlog.
 
 (rev1.00, 2026-10-02) The hook regression is FIXED (f24aab9, Astra's; 67/67 reproduced by the lead) and IMP-179's fixture path is restored (d602d91); main is pushed to origin at d602d91 (the owner's OK). **CI is red on one thing:** CI run 36403704063 fails at rust-quality's strict workspace Clippy, two `clippy::chunks_exact_to_as_chunks` errors (Rust 1.98's Clippy, fatal under `-D warnings`) at `tauri-app/src-tauri/src/bin/live_pipe_probe.rs:253` and `:258`, on `input.chunks_exact(3).zip(output)`; Clippy suggests `as_chunks::<3>().0.iter()`. CI takes `dtolnay/rust-toolchain@stable` unpinned. The two runs before it (2026-08-20, 2026-09-04) also failed; their causes are not yet read. **Next slice:** the lint fix (or a pinned toolchain), then the redesign and Sol's wave, which stay HELD for the owner's conversation with Astra and Sol.
 
