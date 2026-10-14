@@ -281,6 +281,8 @@ An issue is accepted only after current-base validation and integration evidence
 
 ## 5. Current slice and delivery rules
 
+(rev1.05, 2026-10-14) **Sol's functional-path scope report is ACCEPTED** (`reviews/EPIC-029/functional-path-scope-report-verdict.md`). First usable milestone: one still-image Colors study in a locally served browser AND Tauri from the same renderer. **F1 ruled:** Web Worker + wasm-bindgen over current color-core with a non-Rayon browser feature; boundary = ENCODED BYTES decoded by color-core in both targets (decode parity by construction); digest parity on one fixed still; browser prefs = localStorage under the Tauri Store's versioned schema; Playwright proposed for the real-browser harness. **171 split:** one reviewed layout + current labels is the first Colors acceptance; 196/199 stay open as completion. **F0 build fence ISSUED** (168 → 169 → 195, one commit each, isolated candidate). **F1:** a doc-only source design plus three ticket drafts (F1a file/prefs, F1b worker compute/parity, F1c target selection/harness) next; then the lead mints numbers and fences F1. F2 only after F0+F1 are accepted.
+
 (rev1.04, 2026-10-14) **The owner's priority: functional first, then faster** ("we can just make the app work, then we can make it faster", recorded by Sol after the O1 discussion). Sol's four-point reading is ADOPTED (`reviews/EPIC-029/functional-first-priority-verdict.md`): IMP-202 Stage A does not gate the first usable redesigned app; the O1 corpus and method are preserved as a future profiling package (prior release = published v1.0.2; landmarks kept); delivery returns to the functional shared-web/Tauri path; correctness and cheap gross-performance guardrails stay, and the full campaign waits. IMP-202 is PARKED, not cancelled. **Next: Sol's read-only functional-path scope report** (no source, build, launch, capture or Git); then the lead cuts slices and issues the first build fence.
 
 (rev1.03, 2026-10-09) Sol's scope report is ACCEPTED (`profiling-rebase-scope-report-verdict.md`). **Correction:** `main` does not descend from Wave 03's `8bf3187` (merge-base `5baa20e`). Arm A supersedes Wave 03 by ruling, not by ancestry, and the rev1.02 wording was the lead's error. The Arm A build pins are adopted. **Next: the owner's O1 session (15 min)** confirms Arm B and the corpus. Only then the Stage A fence. Nothing is built before it.
@@ -904,6 +906,8 @@ Planning acceptance is narrower: complete mapping to the current baseline, expli
 - EPIC-026's old K<=128 success line conflicts with its GO text and later performance evidence. Reconcile supported limits and remeasure in that epic; this plan does not choose a new limit.
 
 ## 8. Decision summary
+
+(rev1.05, 2026-10-14) The functional path is mapped and accepted; F0 is building; F1 (worker WASM over color-core, encoded bytes) is being designed.
 
 (rev1.04, 2026-10-14) Functional first, then faster. Profiling is parked with its corpus kept; Sol scopes the functional path read-only next.
 
