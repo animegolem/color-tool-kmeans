@@ -120,6 +120,17 @@ unreasonable artifact size, or digest mismatch stops for a lead amendment.
   `rngs/xoshiro256plusplus.rs:34-41` exactly, including the all-zero-seed branch, which falls back to the SplitMix64
   seeding of 0 (a private helper copied from lines 46+); `next_u32` stays the high 32 bits of `next_u64`. Every other
   clause of amendment 3 and the oracle test stand unchanged.
+- **Lead amendment 5, 2026-10-14 (wasm has no `std::time::Instant`; Sol's feasibility stop):** `Instant::now()` panics on
+  `wasm32-unknown-unknown`. Duration is already excluded from the digest, so this is an honesty question, not a parity one.
+  - `color-core/src/clock.rs` (new, private): `Stopwatch { start() , elapsed_ms() -> Option<f64> }`. Native: wraps
+    `Instant` exactly as today (`Some`). `cfg(target_arch = "wasm32")`: holds nothing and returns `None`. No other API.
+  - `color-core/src/lib.rs`: `mod clock;` (private) only.
+  - `color-core/src/image_pipeline.rs` (lines 3/99/114/126/144) and `color-core/src/analyze.rs` (lines 10/192/194): replace
+    `Instant` with `Stopwatch`. Where the existing field needs a number, use `elapsed_ms().unwrap_or(0)` /
+    `unwrap_or(0.0)` ONLY in core, and no other change to either file. Native durations are therefore unchanged.
+  - The WASM adapter / worker (already fenced) OVERWRITES `durationMs` with the worker's own `performance.now()` delta
+    measured around the synchronous call, so the browser never surfaces core's placeholder 0 as a measurement. A test asserts
+    the worker-reported duration is the JS-measured one (nonzero for the fixed still).
 - **Golden/snapshot fixtures are NOT authorized by this amendment.** If the A1 golden step (ruling step 4) shows any
   expected value changing, stop and report; the lead names the exact fixture paths in a further amendment.
 - `color-core/src/kmeans.rs`: parallel/sequential chunk collection with one
