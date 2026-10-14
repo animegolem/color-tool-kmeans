@@ -113,6 +113,13 @@ unreasonable artifact size, or digest mismatch stops for a lead amendment.
     default seed and `u64::MAX` over 10,000 `next_u64` AND 10,000 `next_u32` draws; and the existing k-means snapshot and
     golden unchanged (the golden-stop rule still holds). Prove `getrandom` absent with `cargo tree --target
     wasm32-unknown-unknown -p color-core-wasm -i getrandom` (expected: no match).
+- **Lead amendment 4, 2026-10-14 (CORRECTS amendment 3's seeding clause; Sol's oracle failed at seed 0, draw 0):**
+  rand 0.8.8's `SmallRng` does NOT override `seed_from_u64` (`rngs/small.rs:105-117`), so it inherits rand_core 0.6.4's
+  default PCG32 seed fill (`rand_core/src/lib.rs:335+`), not the inner type's SplitMix64. Therefore `PortableRng` MUST NOT
+  override `seed_from_u64` (inherit the same rand_core default); its `from_seed` mirrors
+  `rngs/xoshiro256plusplus.rs:34-41` exactly, including the all-zero-seed branch, which falls back to the SplitMix64
+  seeding of 0 (a private helper copied from lines 46+); `next_u32` stays the high 32 bits of `next_u64`. Every other
+  clause of amendment 3 and the oracle test stand unchanged.
 - **Golden/snapshot fixtures are NOT authorized by this amendment.** If the A1 golden step (ruling step 4) shows any
   expected value changing, stop and report; the lead names the exact fixture paths in a further amendment.
 - `color-core/src/kmeans.rs`: parallel/sequential chunk collection with one

@@ -31,3 +31,10 @@ Adopted.
 ## Why in-tree rather than `rand_xoshiro`
 No new dependency or network fetch, and the oracle test against the exact generator the native build uses today is a stronger
 proof than a third crate's documentation.
+
+## Correction (2026-10-14, after Sol's oracle stop): the seeding clause above was WRONG
+It said `SmallRng` seeds via SplitMix64. It doesn't: `SmallRng` (rngs/small.rs:105-117) implements only `from_seed`/`from_rng`
+and inherits rand_core 0.6.4's default `seed_from_u64` (a PCG32 fill of the 32-byte seed). SplitMix64 is the INNER
+Xoshiro256PlusPlus's own `seed_from_u64`, which SmallRng never calls except in `from_seed`'s all-zero fallback. The oracle test
+did its job at seed 0, draw 0. The corrected rule is amendment 4: inherit the default `seed_from_u64`; mirror the inner
+`from_seed` exactly, zero branch included. The original text stays above, uncorrected, as the record of the error.
