@@ -7,12 +7,12 @@ tags:
   - Files
   - Preferences
   - Epic-029
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-EPIC-029]
 parent_epic: [[AI-EPIC-029-control-flow-remediation]]
 confidence_score: 0.88
 date_created: 2026-10-14
-date_completed:
+date_completed: 2026-10-14
 ---
 
 # AI-IMP-204 (F1a) — browser file and preference capability

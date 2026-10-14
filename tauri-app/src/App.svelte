@@ -26,6 +26,7 @@
   import SettingsView from './lib/views/SettingsView.svelte';
   import ZoomOverlay from './lib/components/ZoomOverlay.svelte';
   import MediaBucket from './lib/components/MediaBucket.svelte';
+  import PreferenceStatus from './lib/components/PreferenceStatus.svelte';
   import { logEvent } from './lib/bridges/log';
 
   $effect(() => {
@@ -420,4 +421,5 @@
   {/if}
 
   <ZoomOverlay />
+  <PreferenceStatus />
 </main>

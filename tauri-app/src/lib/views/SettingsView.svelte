@@ -10,13 +10,13 @@
     graphExportFormat,
     compactSidebars,
   } from '../stores/ui';
-  import { hydrateFromPrefs } from '../stores/ui';
-  import { resetPrefs, DEFAULTS } from '../stores/prefs';
+  import { resetAndHydratePreferences } from '../stores/ui';
   import { open } from '@tauri-apps/plugin-dialog';
   import { logEvent } from '../bridges/log';
   import { onMount, onDestroy } from 'svelte';
 
   let isResetting = $state(false);
+  let resetFeedback = $state<string | null>(null);
 
   onMount(() => {
     void logEvent('settings:view:mount');
@@ -43,10 +43,15 @@
 
   async function handleReset() {
     isResetting = true;
+    resetFeedback = null;
     try {
-      await resetPrefs();
-      hydrateFromPrefs(DEFAULTS);
-      void logEvent('settings:reset');
+      const succeeded = await resetAndHydratePreferences();
+      if (succeeded) {
+        resetFeedback = 'Preferences reset to defaults.';
+        void logEvent('settings:reset');
+      } else {
+        resetFeedback = 'Preferences could not be reset.';
+      }
     } finally {
       isResetting = false;
     }
@@ -230,6 +235,11 @@
     >
       Reset to defaults
     </button>
+    {#if resetFeedback}
+      <p class="reset-feedback" role="status" aria-live="polite">
+        {resetFeedback}
+      </p>
+    {/if}
   </div>
 </section>
 
@@ -347,5 +357,10 @@
   .reset-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .reset-feedback {
+    margin: 10px 0 0;
+    font-size: 13px;
   }
 </style>

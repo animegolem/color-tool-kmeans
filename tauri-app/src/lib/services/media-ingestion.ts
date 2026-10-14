@@ -35,12 +35,12 @@ export function ingestFileAsEntry(
   const source: ImageEntry['source'] =
     nativeMode && sel.path
       ? { kind: 'path', path: sel.path }
-      : { kind: 'blob' };
+      : { kind: 'blob', blob: sel.blob };
 
   const entry: ImageEntry = {
     id: entryId,
     name: sel.name || sel.path || 'file',
-    path: sel.path,
+    ...(nativeMode && sel.path ? { path: sel.path } : {}),
     ...(isVideo && sel.path ? { videoPath: sel.path } : {}),
     size: sel.size,
     source,

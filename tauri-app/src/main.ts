@@ -4,8 +4,7 @@ import App from './App.svelte';
 import { isTauriEnv } from './lib/bridges/tauri';
 import { getComputeBridge } from './lib/bridges/compute';
 import { getFsBridge } from './lib/bridges/fs';
-import { loadPrefs } from './lib/stores/prefs';
-import { hydrateFromPrefs } from './lib/stores/ui';
+import { loadAndHydratePreferences } from './lib/stores/ui';
 import { registerIpcSink } from './lib/utils/devlog';
 import { logEvent } from './lib/bridges/log';
 
@@ -50,10 +49,8 @@ try {
   // ignore
 }
 
-// Hydrate preferences from persistent store (non-blocking)
-loadPrefs()
-  .then(hydrateFromPrefs)
-  .catch(() => {});
+// Hydrate preferences without hiding storage failures from the user.
+void loadAndHydratePreferences();
 
 // Suppress native WebKit context menus in production —
 // images/video expose Save/Copy/Download that bypass app export settings.

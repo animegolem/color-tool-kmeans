@@ -4,7 +4,11 @@ import type {
   SelectedImage,
 } from '../../stores/ui';
 import type { FileSelection } from '../../bridges/fs';
-import { getFsBridge, isVideoFile } from '../../bridges/fs';
+import {
+  getFsBridge,
+  isSupportedBrowserImage,
+  isVideoFile,
+} from '../../bridges/fs';
 import { isTauriEnv } from '../../bridges/tauri';
 import { loadImageDataset } from '../../compute/image-loader';
 import { logEvent } from '../../bridges/log';
@@ -56,14 +60,26 @@ export function createFileIngestion(deps: FileIngestionDeps) {
       deps.recordDevEvent({ fsBridge: bridge.id }, 'file');
       await processBatch(selections);
     } catch (error) {
-      console.error('[home] Failed to open native dialog', error);
+      console.error('[home] Failed to open file picker', error);
       deps.setBannerMessage(
-        'Could not open the native file dialog. Restart the app or verify Tauri is running.'
+        'Could not open the file picker. Please try again.'
       );
     }
   }
 
   async function processBatch(selections: FileSelection[]) {
+    if (!isTauriEnv() && selections.length > 1) {
+      deps.setBannerMessage(
+        'Multiple browser files are not supported yet. Choose one still image.'
+      );
+      return;
+    }
+    if (!isTauriEnv() && selections.some(isVideoFile)) {
+      deps.setBannerMessage(
+        'Browser video is not supported yet. Choose one still image.'
+      );
+      return;
+    }
     deps.clearVideoSelection();
     let videoProcessed = false;
     let firstActivated = false;
@@ -172,18 +188,36 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     }
     const files = event.dataTransfer?.files;
     if (!files || files.length === 0) return;
-    const fileHandle = files[0];
     if (files.length > 1) {
       deps.setBannerMessage(
-        'Multiple files dropped — using the first file; others skipped.'
+        'Multiple browser files are not supported yet. Drop one still image.'
       );
+      return;
+    }
+    const fileHandle = files[0];
+    if (
+      isVideoFile({
+        name: fileHandle.name,
+        blob: fileHandle,
+        size: fileHandle.size,
+        mimeType: fileHandle.type || undefined,
+      })
+    ) {
+      deps.setBannerMessage(
+        'Browser video is not supported yet. Drop one still image.'
+      );
+      return;
+    }
+    if (!isSupportedBrowserImage(fileHandle)) {
+      deps.setBannerMessage(
+        'That browser file type is not supported. Drop a PNG, JPEG, WebP, BMP, GIF, or TIFF image.'
+      );
+      return;
     }
     const selection: FileSelection = {
       name: fileHandle.name,
       blob: fileHandle,
       size: fileHandle.size,
-      path:
-        (fileHandle as unknown as { path?: string }).path ?? fileHandle.name,
       lastModified: fileHandle.lastModified,
       mimeType: fileHandle.type || undefined,
     };

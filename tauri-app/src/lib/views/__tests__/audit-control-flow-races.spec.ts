@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   probeVideo: vi.fn(),
   analyzeImage: vi.fn(),
   requestValueAnalysis: vi.fn(),
+  loadImageDataset: vi.fn(),
+  isTauriEnv: vi.fn(() => true),
 }));
 
 vi.mock('../../bridges/video', () => ({
@@ -23,14 +25,28 @@ vi.mock('../../bridges/fs', () => ({
   isVideoFile: (selection: { name?: string; mimeType?: string }) =>
     selection.mimeType?.startsWith('video/') ||
     /\.(mp4|mov|webm)$/i.test(selection.name ?? ''),
+  isSupportedBrowserImage: (file: { name: string; type: string }) =>
+    [
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'image/bmp',
+      'image/gif',
+      'image/tiff',
+    ].includes(file.type) ||
+    (!file.type && /\.(png|jpe?g|webp|bmp|gif|tiff?)$/i.test(file.name)),
   inferMimeType: (name: string) =>
     /\.(mp4|mov|webm)$/i.test(name) ? 'video/mp4' : 'image/png',
 }));
 
 vi.mock('../../bridges/tauri', () => ({
-  isTauriEnv: () => true,
+  isTauriEnv: mocks.isTauriEnv,
   tauriInvoke: vi.fn(),
   tauriDetectionInfo: () => ({}),
+}));
+
+vi.mock('../../compute/image-loader', () => ({
+  loadImageDataset: mocks.loadImageDataset,
 }));
 
 vi.mock('../../bridges/log', () => ({ logEvent: vi.fn() }));
@@ -52,6 +68,7 @@ import {
   subscribeToVideoStripMode,
 } from '../home/video-controller.svelte';
 import { createAnalysisRunner } from '../home/analysis-runner.svelte';
+import { createFileIngestion } from '../home/file-ingestion.svelte';
 import { createColorsExportRunner } from '../exports/colors-export-runner.svelte';
 import { createValuesFileIngestion } from '../values/file-ingestion-values.svelte';
 import { createValueAnalysisRunner } from '../values/value-analysis-runner.svelte';
@@ -246,6 +263,7 @@ describe('audit reproductions for async control-flow invariants', () => {
     });
     vi.useFakeTimers();
     vi.clearAllMocks();
+    mocks.isTauriEnv.mockReturnValue(true);
     clearFile();
     videoState.set(null);
     valueAnalysisByKey.set({});
@@ -571,7 +589,7 @@ describe('audit reproductions for async control-flow invariants', () => {
     imageStore.appendFile(
       imageEntry({
         id: 'duplicate',
-        source: { kind: 'blob' },
+        source: { kind: 'blob', blob: new Blob(['duplicate']) },
         previewUrl: 'blob:duplicate',
       }),
       emptyDataset
@@ -587,6 +605,153 @@ describe('audit reproductions for async control-flow invariants', () => {
     expect(get(images)).toHaveLength(1);
     expect(get(selectedFile)?.id).toBe('first');
     expect(imageStore.getResourceCounts().datasets).toBe(1);
+  });
+
+  it('AUD-010: preserves native path authority through Home ingestion', async () => {
+    const setFileForIngestion = vi.fn();
+    const scheduleAnalysisWith = vi.fn();
+    const ingestion = createFileIngestion({
+      setFile: setFileForIngestion,
+      appendFile: vi.fn(),
+      setAnalysisError: vi.fn(),
+      cancelPending: vi.fn(),
+      scheduleAnalysisWith,
+      recordDevEvent: vi.fn(),
+      setBannerMessage: vi.fn(),
+      getParams: () => get(params),
+      getStatus: () => 'idle',
+      clearVideoSelection: vi.fn(),
+      loadVideoSelection: vi.fn(),
+      openLibraryDrawer: vi.fn(),
+      updateEntryPreview: vi.fn(),
+    });
+
+    await ingestion.ingestSelection({
+      name: 'native.png',
+      path: '/tmp/native.png',
+      size: 0,
+      blob: new Blob(),
+      mimeType: 'image/png',
+    });
+
+    expect(setFileForIngestion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '/tmp/native.png',
+        source: { kind: 'path', path: '/tmp/native.png' },
+      }),
+      emptyDataset
+    );
+    expect(scheduleAnalysisWith).toHaveBeenCalledOnce();
+    expect(mocks.loadImageDataset).not.toHaveBeenCalled();
+  });
+
+  it('AUD-010: retains only the newest browser Blob after stale decode completion', async () => {
+    mocks.isTauriEnv.mockReturnValue(false);
+    const firstDecode = deferred<typeof emptyDataset>();
+    const secondDecode = deferred<typeof emptyDataset>();
+    mocks.loadImageDataset
+      .mockReturnValueOnce(firstDecode.promise)
+      .mockReturnValueOnce(secondDecode.promise);
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:newest-preview');
+    const setFileForIngestion = vi.fn();
+    const scheduleAnalysisWith = vi.fn();
+    const ingestion = createFileIngestion({
+      setFile: setFileForIngestion,
+      appendFile: vi.fn(),
+      setAnalysisError: vi.fn(),
+      cancelPending: vi.fn(),
+      scheduleAnalysisWith,
+      recordDevEvent: vi.fn(),
+      setBannerMessage: vi.fn(),
+      getParams: () => get(params),
+      getStatus: () => 'idle',
+      clearVideoSelection: vi.fn(),
+      loadVideoSelection: vi.fn(),
+      openLibraryDrawer: vi.fn(),
+      updateEntryPreview: vi.fn(),
+    });
+    const firstBlob = new Blob(['first'], { type: 'image/png' });
+    const secondBlob = new Blob(['second'], { type: 'image/png' });
+
+    const first = ingestion.ingestSelection({
+      name: 'first.png',
+      size: firstBlob.size,
+      blob: firstBlob,
+      mimeType: firstBlob.type,
+    });
+    const second = ingestion.ingestSelection({
+      name: 'second.png',
+      size: secondBlob.size,
+      blob: secondBlob,
+      mimeType: secondBlob.type,
+    });
+    secondDecode.resolve({ ...emptyDataset, width: 2 });
+    await second;
+    firstDecode.resolve({ ...emptyDataset, width: 1 });
+    await first;
+
+    expect(setFileForIngestion).toHaveBeenCalledTimes(1);
+    expect(setFileForIngestion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'second.png',
+        source: { kind: 'blob', blob: secondBlob },
+      }),
+      expect.objectContaining({ width: 2 })
+    );
+    expect(setFileForIngestion.mock.calls[0][0]).not.toHaveProperty('path');
+    expect(scheduleAnalysisWith).toHaveBeenCalledOnce();
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+  });
+
+  it('AUD-010: rejects multiple and video browser drops before decode', () => {
+    mocks.isTauriEnv.mockReturnValue(false);
+    const setBannerMessage = vi.fn();
+    const ingestion = createFileIngestion({
+      setFile: vi.fn(),
+      appendFile: vi.fn(),
+      setAnalysisError: vi.fn(),
+      cancelPending: vi.fn(),
+      scheduleAnalysisWith: vi.fn(),
+      recordDevEvent: vi.fn(),
+      setBannerMessage,
+      getParams: () => get(params),
+      getStatus: () => 'idle',
+      clearVideoSelection: vi.fn(),
+      loadVideoSelection: vi.fn(),
+      openLibraryDrawer: vi.fn(),
+      updateEntryPreview: vi.fn(),
+    });
+    const still = Object.assign(new Blob(['still'], { type: 'image/png' }), {
+      name: 'still.png',
+      lastModified: 1,
+    }) as File;
+    const video = Object.assign(new Blob(['video'], { type: 'video/mp4' }), {
+      name: 'clip.mp4',
+      lastModified: 2,
+    }) as File;
+    const vector = Object.assign(
+      new Blob(['<svg/>'], { type: 'image/svg+xml' }),
+      { name: 'vector.svg', lastModified: 3 }
+    ) as File;
+    const drop = (files: File[]) =>
+      ingestion.handleDrop({
+        preventDefault: vi.fn(),
+        dataTransfer: { files: files as unknown as FileList },
+      } as unknown as DragEvent);
+
+    drop([still, still]);
+    expect(setBannerMessage).toHaveBeenLastCalledWith(
+      'Multiple browser files are not supported yet. Drop one still image.'
+    );
+    drop([video]);
+    expect(setBannerMessage).toHaveBeenLastCalledWith(
+      'Browser video is not supported yet. Drop one still image.'
+    );
+    drop([vector]);
+    expect(setBannerMessage).toHaveBeenLastCalledWith(
+      'That browser file type is not supported. Drop a PNG, JPEG, WebP, BMP, GIF, or TIFF image.'
+    );
+    expect(mocks.loadImageDataset).not.toHaveBeenCalled();
   });
 
   it('AUD-006 does not promote a raw video after removing the active image', () => {

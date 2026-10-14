@@ -4,6 +4,17 @@ import { isTauriEnv, tauriInvoke } from './tauri';
 import { exportDir } from '../stores/ui';
 
 const TAURI_ID = 'tauri' as const;
+const BROWSER_ID = 'browser-file' as const;
+const BROWSER_IMAGE_ACCEPT =
+  'image/png,image/jpeg,image/webp,image/bmp,image/gif,image/tiff,.png,.jpg,.jpeg,.webp,.bmp,.gif,.tif,.tiff';
+const BROWSER_IMAGE_MIME_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/bmp',
+  'image/gif',
+  'image/tiff',
+]);
 
 export interface FileSelection {
   name: string;
@@ -20,12 +31,27 @@ export interface SaveResult {
 }
 
 export interface FsBridge {
-  readonly id: typeof TAURI_ID;
+  readonly id: typeof TAURI_ID | typeof BROWSER_ID;
   openMediaFiles(
     mode?: 'images' | 'videos' | 'all'
   ): Promise<FileSelection[] | null>;
   saveBlob(blob: Blob, defaultName: string): Promise<SaveResult>;
   saveTextFile(text: string, defaultName: string): Promise<SaveResult>;
+}
+
+export class FsBridgeUnavailableError extends Error {
+  readonly code = 'FS_OPERATION_UNAVAILABLE';
+
+  constructor(readonly operation: 'open-video' | 'unsupported-file' | 'save') {
+    super(
+      operation === 'save'
+        ? 'Saving files is not available in the browser yet.'
+        : operation === 'open-video'
+          ? 'Video selection is not available in the browser yet.'
+          : 'That file type is not supported for browser images.'
+    );
+    this.name = 'FsBridgeUnavailableError';
+  }
 }
 
 export function sourceImageExtension(name: string): string {
@@ -109,6 +135,50 @@ function buildFilters(mode: 'images' | 'videos' | 'all') {
   ];
 }
 
+export function isSupportedBrowserImage(file: Pick<File, 'name' | 'type'>) {
+  if (file.type && file.type !== 'application/octet-stream') {
+    return BROWSER_IMAGE_MIME_TYPES.has(file.type.toLowerCase());
+  }
+  return /\.(png|jpe?g|webp|bmp|gif|tiff?)$/i.test(file.name);
+}
+
+export function pickBrowserImage(
+  documentRef: Document = document,
+  windowRef: Window = window
+): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = documentRef.createElement('input');
+    input.type = 'file';
+    input.accept = BROWSER_IMAGE_ACCEPT;
+    input.multiple = false;
+    input.hidden = true;
+    let settled = false;
+
+    const finish = (file: File | null) => {
+      if (settled) return;
+      settled = true;
+      windowRef.removeEventListener('focus', handleFocus);
+      input.removeEventListener('change', handleChange);
+      input.removeEventListener('cancel', handleCancel);
+      input.remove();
+      resolve(file);
+    };
+    const handleChange = () => finish(input.files?.[0] ?? null);
+    const handleCancel = () => finish(null);
+    const handleFocus = () => {
+      windowRef.setTimeout(() => {
+        if (!input.files?.length) finish(null);
+      }, 0);
+    };
+
+    input.addEventListener('change', handleChange);
+    input.addEventListener('cancel', handleCancel);
+    windowRef.addEventListener('focus', handleFocus);
+    documentRef.body.append(input);
+    input.click();
+  });
+}
+
 export function isVideoFile(sel: FileSelection): boolean {
   if (sel.mimeType?.startsWith('video/')) return true;
   return /\.(mp4|mov|webm)$/i.test(sel.name ?? '');
@@ -145,6 +215,39 @@ function createTauriFsBridge(): FsBridge | null {
   } satisfies FsBridge;
 }
 
+export function createBrowserFsBridge(
+  pickImage: () => Promise<File | null> = () => pickBrowserImage()
+): FsBridge {
+  return {
+    id: BROWSER_ID,
+    async openMediaFiles(mode = 'all') {
+      if (mode === 'videos') throw new FsBridgeUnavailableError('open-video');
+      const file = await pickImage();
+      if (!file) return null;
+      if (!isSupportedBrowserImage(file)) {
+        throw new FsBridgeUnavailableError(
+          file.type.startsWith('video/') ? 'open-video' : 'unsupported-file'
+        );
+      }
+      return [
+        {
+          name: file.name,
+          blob: file,
+          size: file.size,
+          lastModified: file.lastModified,
+          mimeType: file.type || inferMimeType(file.name),
+        },
+      ];
+    },
+    async saveBlob() {
+      throw new FsBridgeUnavailableError('save');
+    },
+    async saveTextFile() {
+      throw new FsBridgeUnavailableError('save');
+    },
+  };
+}
+
 export function inferMimeType(name: string): string {
   const lower = name.toLowerCase();
   if (lower.endsWith('.png')) return 'image/png';
@@ -169,9 +272,9 @@ function selectFsBridge(): FsBridge {
     logSelection('fs', tauri.id);
     return tauri;
   }
-  throw new Error(
-    'Tauri environment not detected. Native FS requires Tauri runtime.'
-  );
+  const browser = createBrowserFsBridge();
+  logSelection('fs', browser.id);
+  return browser;
 }
 
 let cachedFsBridge: FsBridge | null = null;

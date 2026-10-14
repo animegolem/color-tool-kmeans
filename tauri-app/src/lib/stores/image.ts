@@ -27,7 +27,9 @@ import {
   cleanupMediaArtifacts,
 } from '../services/artifact-cleanup';
 
-export type ImageSource = { kind: 'path'; path: string } | { kind: 'blob' };
+export type ImageSource =
+  | { kind: 'path'; path: string }
+  | { kind: 'blob'; blob: Blob };
 
 export interface ImageEntry {
   id: string;
