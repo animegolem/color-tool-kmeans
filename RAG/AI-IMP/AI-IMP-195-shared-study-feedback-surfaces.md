@@ -5,13 +5,13 @@ tags:
   - Implementation
   - ui
   - design-review
-kanban_status: planned
+kanban_status: completed
 depends_on:
   - AI-IMP-169
 parent_epic: [[AI-EPIC-027-notebook-ui-redesign]]
 confidence_score: 0.8
 date_created: 2026-09-05
-date_completed:
+date_completed: 2026-10-14
 assignee: Code Lead (Sol)
 ---
 
@@ -51,11 +51,11 @@ Do NOT touch unrelated tickets, RAG/PROJECT-RECORD.md, prior review reports, nat
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Define exhaustive visible states and separate requestProvenance/visibleResultProvenance in a pure type; include differing source/settings and invalid/missing-provenance cases.
-- [ ] Render state/action examples with accessible busy/status/error announcements and no fake percentages.
-- [ ] Show previous-result labeling without implying it belongs to a new source or settings.
-- [ ] Test no action callback fires on render and no production view/store/runner is imported or modified.
-- [ ] Reproduce the applicable gates in PROJECT-RECORD §6; report exact counts, baseline failures, platform gaps and human acceptance still outstanding.
+- [x] Define exhaustive visible states and separate requestProvenance/visibleResultProvenance in a pure type; include differing source/settings and invalid/missing-provenance cases.
+- [x] Render state/action examples with accessible busy/status/error announcements and no fake percentages.
+- [x] Show previous-result labeling without implying it belongs to a new source or settings.
+- [x] Test no action callback fires on render and no production view/store/runner is imported or modified.
+- [x] Reproduce the applicable gates in PROJECT-RECORD §6; report exact counts, baseline failures, platform gaps and human acceptance still outstanding.
 
 ### Acceptance Criteria
 
@@ -69,3 +69,13 @@ This section is filled out post work as you fill out the checklists.
 -->
 
 Planning: source/visual reconciliation only. No implementation or new application tests have run. Unresolved policy and EPIC-029 prerequisites remain explicit gates.
+
+Implementation (2026-10-14): added the pure eight-discriminant feedback model, explicit request/visible-result provenance policies, validation for required/forbidden/malformed provenance, and presentation-only action descriptors. Added 11 pure tests and four SSR component tests. The full Vitest run passed 20 files / 198 tests; Svelte check passed with zero errors and the two accepted pre-existing accessibility warnings; lint and format passed.
+
+The isolated showcase renders idle, empty, pending, pending-with-previous, previous, error, cancelled, saving and saved examples without timers. Exact 720×600 browser proof found three busy surfaces (the two pending examples and saving), seven polite status announcements, one assertive error alert, four caller-supplied actions, no banned synthetic Retry/Cancel/Relink/Open Folder/Undo control and no percentage claim. Keyboard activation of each supplied action advanced the caller-owned event count exactly once, from zero through four, and recorded the matching action key. At asserted 360×800 and 720×600 CSS viewports there was no horizontal overflow or clipped element; coarse-pointer emulation measured each feedback action at 48 px.
+
+The first full-page screenshot attempt was rejected because the terminal-browser capture command reapplied the visible pane's 0.55 zoom after exact device metrics. The misleading temporary files were deleted; retained browser evidence comes from same-session CDP metrics plus in-page `innerWidth`/`innerHeight`, geometry, semantics and callback-count assertions.
+
+The pure model/component import no stores, runners, bridges, caches, native/job modules or timer APIs. Production imports, routes, current styles, test configuration, package/lock files and native code remain unchanged. Production build passed with 284 modules and zero feedback/showcase sentinels in `dist`. Rust format/Clippy passed; workspace tests passed 48/48, scalar snapshot 1/1, and the normal color-core tree contains no Tauri dependency.
+
+Local Node is 26.8.1. Node 20.19-or-newer, Windows, Linux and owner visual acceptance are unrun; no runtime/toolchain was installed or downloaded.

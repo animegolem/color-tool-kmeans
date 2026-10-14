@@ -1,14 +1,135 @@
 <script lang="ts">
+  import FeedbackState from '../components/study/FeedbackState.svelte';
   import FigureFrame from '../components/study/FigureFrame.svelte';
+  import type { FeedbackState as FeedbackStateModel } from '../components/study/feedback-state';
 
   interface Props {
-    onExampleAction?: (key: 'inspect-palette') => void;
+    onExampleAction?: (key: string) => void;
   }
 
   let { onExampleAction }: Props = $props();
+  let feedbackActionCount = $state(0);
+  let lastFeedbackAction = $state('none');
+
+  const feedbackExamples: readonly FeedbackStateModel[] = [
+    {
+      kind: 'idle',
+      title: 'Idle example',
+      message: 'No illustrative request has started.',
+    },
+    {
+      kind: 'empty',
+      title: 'Empty example',
+      message: 'No illustrative material is selected.',
+      actions: [
+        {
+          key: 'choose-example',
+          label: 'Choose illustrative material',
+          emphasis: 'primary',
+        },
+      ],
+    },
+    {
+      kind: 'pending',
+      title: 'Pending example',
+      message: 'An illustrative request is pending with no visible result.',
+      requestProvenance: {
+        sourceLabel: 'New study frame',
+        settingsLabel: '12 colors · hue order',
+      },
+    },
+    {
+      kind: 'pending',
+      title: 'Pending with previous result example',
+      message: 'The earlier illustrative result remains visible.',
+      requestProvenance: {
+        sourceLabel: 'New study frame',
+        settingsLabel: '12 colors · hue order',
+      },
+      visibleResultProvenance: {
+        sourceLabel: 'Earlier study frame',
+        settingsLabel: '8 colors · share order',
+      },
+      actions: [
+        {
+          key: 'inspect-visible-example',
+          label: 'Inspect visible illustrative result',
+        },
+      ],
+    },
+    {
+      kind: 'previous',
+      title: 'Previous result example',
+      message:
+        'The visible result belongs to earlier material and no job is active.',
+      visibleResultProvenance: {
+        sourceLabel: 'Earlier study frame',
+        settingsLabel: '8 colors · share order',
+      },
+    },
+    {
+      kind: 'error',
+      title: 'Error example',
+      message: 'The illustrative request did not finish.',
+      requestProvenance: {
+        sourceLabel: 'New study frame',
+        settingsLabel: '12 colors · hue order',
+      },
+      actions: [
+        {
+          key: 'dismiss-example-error',
+          label: 'Dismiss illustrative message',
+          emphasis: 'quiet',
+        },
+      ],
+    },
+    {
+      kind: 'cancelled',
+      title: 'Cancelled example',
+      message: 'The caller reported cancellation; this surface caused none.',
+      requestProvenance: {
+        sourceLabel: 'New study frame',
+        settingsLabel: '12 colors · hue order',
+      },
+    },
+    {
+      kind: 'saving',
+      title: 'Saving example',
+      message: 'The caller reported that an illustrative save is active.',
+      requestProvenance: {
+        sourceLabel: 'Current study document',
+        settingsLabel: 'PNG · 2× scale',
+      },
+      visibleResultProvenance: {
+        sourceLabel: 'Earlier study frame',
+        settingsLabel: '8 colors · share order',
+      },
+    },
+    {
+      kind: 'saved',
+      title: 'Saved example',
+      message: 'The caller reported that an illustrative save completed.',
+      visibleResultProvenance: {
+        sourceLabel: 'Current study document',
+        settingsLabel: 'PNG · 2× scale',
+      },
+      actions: [
+        {
+          key: 'view-example-receipt',
+          label: 'View illustrative receipt',
+        },
+      ],
+    },
+  ];
 
   function inspectPalette() {
     onExampleAction?.('inspect-palette');
+  }
+
+  function recordFeedbackAction(key: string) {
+    feedbackActionCount += 1;
+    lastFeedbackAction = key;
+    onExampleAction?.(key);
   }
 </script>
 
@@ -121,6 +242,16 @@
               Inspect illustrative palette
             </button>
           </details>
+
+          <section aria-label="Feedback state examples">
+            {#each feedbackExamples as example, index (`${example.kind}-${index}`)}
+              <FeedbackState state={example} onAction={recordFeedbackAction} />
+            {/each}
+            <p data-feedback-action-log aria-live="polite">
+              Feedback actions invoked: {feedbackActionCount}; last action:
+              {lastFeedbackAction}
+            </p>
+          </section>
         {/snippet}
       </FigureFrame>
     </section>

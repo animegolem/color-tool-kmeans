@@ -7,10 +7,10 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 2 | 11 |
-| Planned | 2 | 32 |
+| Planned | 2 | 31 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
-| Completed | 18 | 126 |
+| Completed | 18 | 127 |
 | **Total** | **24** | **174** |
 
 ## In Progress
@@ -30,7 +30,7 @@
 - [[AI-IMP-175-batch-spread|IMP-175]] Batch contact sheet and focused pin detail — backlog
 - [[AI-IMP-176-zoom-and-chart-ground|IMP-176]] Focused source and figure inspection with faithful return — planned
 - [[AI-IMP-177-reflow-motion-settings|IMP-177]] Complete Settings placement and cross-surface reflow acceptance — backlog
-- [[AI-IMP-195-shared-study-feedback-surfaces|IMP-195]] Shared pending stale empty and error presentation — planned
+- [[AI-IMP-195-shared-study-feedback-surfaces|IMP-195]] Shared pending stale empty and error presentation — completed
 - [[AI-IMP-196-study-presentation-layout-preference|IMP-196]] Three presentation layouts over one study — planned
 - [[AI-IMP-197-true-oklab-color-volume|IMP-197]] True sRGB gamut volume in OKLab — planned
 - [[AI-IMP-198-color-volume-export-capture|IMP-198]] Camera-bound 3D raster export tile — planned
@@ -151,7 +151,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>18 EPICs, 95 IMPs completed</summary>
+<summary>18 EPICs, 96 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed
