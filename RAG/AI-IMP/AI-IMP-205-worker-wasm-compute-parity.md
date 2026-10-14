@@ -100,6 +100,19 @@ unreasonable artifact size, or digest mismatch stops for a lead amendment.
   `default-features = false`, so `--no-default-features` stays an honest scalar/sequential path. No other change to
   this file. **Acceptance:** report `cargo tree -p tauri-app -e features -i color-core` showing `parallel` and `simd`
   enabled under the default build, and the same command with `--no-default-features` showing neither.
+- **Lead amendment 3, 2026-10-14 (randomness parity; ruling `reviews/EPIC-029/f1b-rng-portability-ruling.md`):**
+  - `color-core/Cargo.toml`: `rand = { version = "0.8", default-features = false }` (drops `getrandom`; no
+    `getrandom/js`, no `small_rng` feature once SmallRng is gone; add `alloc` only if compilation proves it needed).
+  - `color-core/src/rng.rs` (new): `PortableRng`, an in-tree Xoshiro256++ implementing `rand_core::RngCore` +
+    `SeedableRng`, seeded exactly like rand 0.8's 64-bit `SmallRng` (SplitMix64 `seed_from_u64`; `next_u32` = the high
+    32 bits of `next_u64`), identical on every target. No new crate.
+  - `color-core/src/kmeans.rs` and `color-core/src/image_pipeline.rs` (the latter added here): replace `SmallRng` with
+    `PortableRng`; every `gen_range` over `usize` becomes a `u64` draw (`rng.gen_range(0..n as u64) as usize`). No other
+    change.
+  - Tests: a native-only (64-bit) oracle test that `PortableRng` equals `rand::rngs::SmallRng` for seeds 0, 1, 42, the
+    default seed and `u64::MAX` over 10,000 `next_u64` AND 10,000 `next_u32` draws; and the existing k-means snapshot and
+    golden unchanged (the golden-stop rule still holds). Prove `getrandom` absent with `cargo tree --target
+    wasm32-unknown-unknown -p color-core-wasm -i getrandom` (expected: no match).
 - **Golden/snapshot fixtures are NOT authorized by this amendment.** If the A1 golden step (ruling step 4) shows any
   expected value changing, stop and report; the lead names the exact fixture paths in a further amendment.
 - `color-core/src/kmeans.rs`: parallel/sequential chunk collection with one
