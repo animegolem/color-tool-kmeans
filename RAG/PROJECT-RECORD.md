@@ -281,6 +281,8 @@ An issue is accepted only after current-base validation and integration evidence
 
 ## 5. Current slice and delivery rules
 
+(rev1.10, 2026-10-14) **F1 COMPLETE:** 204 (630fa1d: Blob source + PrefsV1), 205 (2f95d88: color-core in a Web Worker via wasm-bindgen; exact native/scalar/WASM digest parity after six real stops: transcendentals via libm + frozen sRGB8 table, feature forwarding, portable RNG with corrected seeding, a wasm-safe Stopwatch, atan2/sin/cos/powi), 206 (5facb09: target selection, honest unavailable surfaces, Playwright Chromium as a required CI leg; it caught and fixed a visible-predecessor race). **Next: F2**, the first usable shell + one-still Colors in browser AND Tauri: Sol drafts the F2 ticket (doc-only) naming the reviewed layout with its bundle reference.
+
 (rev1.09, 2026-10-14) **AI-IMP-205 A1 tripped and is ruled** (`reviews/EPIC-029/f1b-a1-transcendental-ruling.md`, lead-reproduced): native and wasm32 `powf` disagree (sRGB decode 23/256 at 1 ulp, encode 22/256 at up to 2 ulp); cbrt matched on 1,048,577 points. Ruling: the 8-bit decode reads a committed 256-entry table equal to today's native outputs (native unchanged); continuous transfer and cbrt use `libm =0.2.16` on both targets; any native golden change is reported before fixtures move; the A1 probe must then show 0 mismatches before adapter work.
 
 (rev1.08, 2026-10-14) **F1 design ACCEPTED with four lead amendments** (`reviews/EPIC-029/f1-shared-runtime-design-verdict.md`). Minted **AI-IMP-204** (browser file + prefs), **205** (worker/WASM compute + exact parity), **206** (target selection + Playwright harness). A1: before any adapter work, a bit-for-bit native-vs-wasm32 probe of `powf`/`cbrt` (not correctly rounded; one ulp can flip a cluster); if they differ, one pure-Rust libm on both targets. A2: wasm-bindgen =0.2.128 exact. A3: release .wasm at most 4 MiB. A4: Playwright gross-hang alarm, 60 s and no heartbeat gap over 1,000 ms. **AI-IMP-204 build fence ISSUED.**
@@ -914,6 +916,8 @@ Planning acceptance is narrower: complete mapping to the current baseline, expli
 - EPIC-026's old K<=128 success line conflicts with its GO text and later performance evidence. Reconcile supported limits and remeasure in that epic; this plan does not choose a new limit.
 
 ## 8. Decision summary
+
+(rev1.10, 2026-10-14) F1 is done; the browser computes the same palette as the desktop, bit for bit. F2 (the first usable app) is next.
 
 (rev1.08, 2026-10-14) F1 design accepted; 204-206 minted; 204 is building first; the maths parity probe gates 205.
 
