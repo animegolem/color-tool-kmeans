@@ -94,6 +94,12 @@ unreasonable artifact size, or digest mismatch stops for a lead amendment.
 - `color-core/tests/srgb_decode_table.rs` (new, **lead amendment**): the native-only provenance test (table == today's
   native `srgb_to_linear(i/255.0)` for all 256) and the shared table-read test. Unit tests inside `color.rs` are an
   acceptable alternative; use one, not both.
+- `tauri-app/src-tauri/Cargo.toml` (**added by lead amendment 2, 2026-10-14**; Sol found that optional Rayon would
+  silently make the shipped app sequential): `[features]` becomes exactly `default = ["simd", "parallel"]`,
+  `simd = ["color-core/simd"]`, `parallel = ["color-core/parallel"]`. The `color-core` dependency KEEPS
+  `default-features = false`, so `--no-default-features` stays an honest scalar/sequential path. No other change to
+  this file. **Acceptance:** report `cargo tree -p tauri-app -e features -i color-core` showing `parallel` and `simd`
+  enabled under the default build, and the same command with `--no-default-features` showing neither.
 - **Golden/snapshot fixtures are NOT authorized by this amendment.** If the A1 golden step (ruling step 4) shows any
   expected value changing, stop and report; the lead names the exact fixture paths in a further amendment.
 - `color-core/src/kmeans.rs`: parallel/sequential chunk collection with one

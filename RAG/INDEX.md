@@ -113,6 +113,7 @@ Generated from tracked files; binary assets excluded.
 
 - RAG/Colors Tool.fig (10051 LOC)
 - RAG/PROJECT-RECORD.md (1623 LOC)
+- color-core/src/color.rs (994 LOC)
 - tauri-app/src/lib/views/BatchView.svelte (912 LOC)
 - color-core/tests/fixtures/color_golden.json (850 LOC)
 - tauri-app/src/lib/views/home/video-controller.svelte.ts (847 LOC)
@@ -122,7 +123,6 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/views/ExportsView.svelte (743 LOC)
 - tauri-app/src-tauri/src/value_analysis.rs (741 LOC)
 - RAG/AI-LOG/2026-09-05-LOG-AI-ui-rescope-and-sol-handoff.md (741 LOC)
-- color-core/src/color.rs (706 LOC)
 
 ### > 300 LOC
 
