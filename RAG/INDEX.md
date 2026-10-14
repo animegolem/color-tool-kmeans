@@ -112,7 +112,7 @@ Generated from tracked files; binary assets excluded.
 ### > 600 LOC
 
 - RAG/Colors Tool.fig (10051 LOC)
-- RAG/PROJECT-RECORD.md (1621 LOC)
+- RAG/PROJECT-RECORD.md (1623 LOC)
 - tauri-app/src/lib/views/BatchView.svelte (912 LOC)
 - color-core/tests/fixtures/color_golden.json (850 LOC)
 - tauri-app/src/lib/views/home/video-controller.svelte.ts (847 LOC)

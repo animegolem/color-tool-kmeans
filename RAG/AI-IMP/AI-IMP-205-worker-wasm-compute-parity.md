@@ -87,7 +87,15 @@ unreasonable artifact size, or digest mismatch stops for a lead amendment.
 - `.gitignore`: ignore only generated `color-core-wasm/pkg*` and its target
   output.
 - `Cargo.toml`: add the thin WASM workspace member.
-- `color-core/Cargo.toml`: optional Rayon/parallel feature and digest dependency.
+- `color-core/Cargo.toml`: optional Rayon/parallel feature and digest dependency; **`libm = "=0.2.16"`** (A1 ruling).
+- `color-core/src/color.rs` (**added by lead amendment, 2026-10-14, A1 ruling 595ccf7**): the committed 256-entry `f32`
+  sRGB decode table (exact bit patterns, kept in this file) for the 8-bit path, and `libm::powf` / `libm::cbrtf` in the
+  continuous transfer and cbrt call sites. No other change to this file.
+- `color-core/tests/srgb_decode_table.rs` (new, **lead amendment**): the native-only provenance test (table == today's
+  native `srgb_to_linear(i/255.0)` for all 256) and the shared table-read test. Unit tests inside `color.rs` are an
+  acceptable alternative; use one, not both.
+- **Golden/snapshot fixtures are NOT authorized by this amendment.** If the A1 golden step (ruling step 4) shows any
+  expected value changing, stop and report; the lead names the exact fixture paths in a further amendment.
 - `color-core/src/kmeans.rs`: parallel/sequential chunk collection with one
   deterministic reduction.
 - `color-core/src/digest.rs` (new): versioned canonical-result encoder and
@@ -211,3 +219,5 @@ You MUST document any failed implementations, blockers or missing tests.
 
 None yet; implementation has not begun. The build fence must name the permitted
 `wasm-pack` version and release-size ceiling before this checklist can close.
+  **Lead amendment (2026-10-14):** superseded by A2/A3: there is no wasm-pack; read "the pinned `wasm-bindgen-cli`
+  0.2.128 (A2) and the 4 MiB release ceiling (A3)".
