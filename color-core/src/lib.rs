@@ -10,11 +10,15 @@
 //! L. Jégou (CC BY 3.0); see ATTRIBUTIONS.md in this crate.
 
 pub mod analyze;
+mod clock;
 pub mod color;
+pub mod digest;
 pub mod image_pipeline;
 pub mod kmeans;
 pub mod merge;
+mod rng;
 
 pub use analyze::{
     analyze, AnalyzeError, AnalyzeRequest, AnalyzeResponse, ClusterOut, ImageSource, RgbValue,
 };
+pub use digest::{canonical_result_bytes, result_digest, RESULT_DIGEST_VERSION};

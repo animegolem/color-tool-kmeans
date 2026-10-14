@@ -7,15 +7,26 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(() => ({
   plugins: [svelte()],
+  resolve: {
+    alias: {
+      '@color-core-wasm': resolve(
+        __dirname,
+        '../color-core-wasm/pkg-web/color_core_wasm.js'
+      ),
+    },
+  },
   server: {
     port: 5175,
     strictPort: true,
     fs: {
-      allow: [resolve(__dirname, '..'), resolve(__dirname, '../compute-wasm')],
+      allow: [
+        resolve(__dirname, '..'),
+        resolve(__dirname, '../color-core-wasm'),
+      ],
     },
   },
   optimizeDeps: {
-    exclude: [],
+    exclude: ['@color-core-wasm'],
   },
   build: {
     target: 'esnext',

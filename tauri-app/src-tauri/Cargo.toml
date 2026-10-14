@@ -6,8 +6,9 @@ authors = ["color-tool"]
 default-run = "tauri-app"
 
 [features]
-default = ["simd"]
+default = ["simd", "parallel"]
 simd = ["color-core/simd"]
+parallel = ["color-core/parallel"]
 
 [dependencies]
 color-core = { path = "../../color-core", default-features = false }

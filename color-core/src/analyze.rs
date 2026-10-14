@@ -7,12 +7,13 @@
 //! here.
 
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::clock::Stopwatch;
 use crate::color;
+use crate::digest;
 use crate::image_pipeline::{
     prepare_samples, prepare_samples_from_bytes, quality_preset, SampleParams, SamplingError,
 };
@@ -94,6 +95,7 @@ pub struct AnalyzeResponse {
     pub duration_ms: f64,
     pub total_samples: usize,
     pub variant: String,
+    pub result_digest: String,
 }
 
 /// Where [`analyze`] reads the image from.
@@ -189,9 +191,9 @@ pub fn analyze(
         warm_start: None,
         mini_batch: None,
     };
-    let start = Instant::now();
+    let start = Stopwatch::start();
     let result = run_kmeans(&dataset, &cfg);
-    let duration_ms = start.elapsed().as_secs_f64() * 1000.0;
+    let duration_ms = start.elapsed_ms().unwrap_or(0.0);
 
     // 4) Build clusters; apply merge threshold; convert centroid to RGB and HSV
     let mut raw_clusters: Vec<RawCluster> = result
@@ -259,6 +261,7 @@ pub fn analyze(
     } else {
         "inhouse"
     };
+    let result_digest = digest::result_digest(result.iterations, samples.sampled_pixels, &clusters);
 
     Ok(AnalyzeResponse {
         clusters,
@@ -266,5 +269,6 @@ pub fn analyze(
         duration_ms,
         total_samples: samples.sampled_pixels,
         variant: variant.into(),
+        result_digest,
     })
 }

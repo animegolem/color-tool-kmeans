@@ -76,6 +76,8 @@ import { createVideoScrubber } from '../values/video-scrubber.svelte';
 import {
   clearFile,
   appendFile,
+  analysisById,
+  analysisError,
   analysisState,
   cacheVideoState,
   images,
@@ -489,10 +491,14 @@ describe('audit reproductions for async control-flow invariants', () => {
     runner.scheduleAnalysisWith(file, get(params), 'idle');
     vi.advanceTimersByTime(400);
     expect(get(analysisState)).toBe('pending');
+    const firstSignal = mocks.analyzeImage.mock.calls[0]?.[2]?.signal;
 
     runner.cancelPending();
 
     expect(get(analysisState)).toBe('idle');
+    expect(get(analysisError)).toBeNull();
+    expect(firstSignal).toBeInstanceOf(AbortSignal);
+    expect(firstSignal.aborted).toBe(true);
     request.resolve(colorResult());
     await vi.runAllTimersAsync();
     expect(get(analysisState)).toBe('idle');
@@ -521,6 +527,46 @@ describe('audit reproductions for async control-flow invariants', () => {
     requestB.resolve(colorResult());
     await vi.runAllTimersAsync();
     expect(get(analysisState)).toBe('ready');
+  });
+
+  it('AUD-003: aborts a superseded Colors request and keeps successor success through stale error/finally', async () => {
+    const requestA = deferred<AnalysisResult>();
+    const requestB = deferred<AnalysisResult>();
+    mocks.analyzeImage
+      .mockReturnValueOnce(requestA.promise)
+      .mockReturnValueOnce(requestB.promise);
+    const runner = colorsRunner();
+    const file = {
+      ...imageEntry(),
+      dataset: emptyDataset,
+    } satisfies SelectedImage;
+    const firstParams = get(params);
+    runner.scheduleAnalysisWith(file, firstParams, 'idle');
+    vi.advanceTimersByTime(400);
+    const firstInvocation = mocks.analyzeImage.mock.calls[0]?.[2];
+
+    runner.scheduleAnalysisWith(
+      file,
+      { ...firstParams, clusters: firstParams.clusters + 1 },
+      'pending'
+    );
+    vi.advanceTimersByTime(400);
+    const secondInvocation = mocks.analyzeImage.mock.calls[1]?.[2];
+
+    expect(firstInvocation.requestId).not.toBe(secondInvocation.requestId);
+    expect(firstInvocation.signal.aborted).toBe(true);
+    expect(secondInvocation.signal.aborted).toBe(false);
+
+    requestB.resolve({ ...colorResult(), variant: 'newer-success' });
+    await vi.runAllTimersAsync();
+    expect(get(analysisState)).toBe('ready');
+    expect(get(analysisById)[file.id]?.variant).toBe('newer-success');
+
+    requestA.reject(new Error('stale failure'));
+    await vi.runAllTimersAsync();
+    expect(get(analysisState)).toBe('ready');
+    expect(get(analysisError)).toBeNull();
+    expect(get(analysisById)[file.id]?.variant).toBe('newer-success');
   });
 
   it('AUD-003 lets Colors Exports auto-analyze after Home cancellation', async () => {

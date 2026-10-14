@@ -1,8 +1,12 @@
 import { z } from 'zod';
 import { isTauriEnv, tauriInvoke, tauriDetectionInfo } from './tauri';
-import { getActivePath } from '../services/active-image';
-import type { ImageDataset } from '../compute/image-loader';
-import type { AnalysisParams, AnalysisResult } from '../stores/ui';
+import {
+  analyzeBlobInWorker,
+  WorkerClientError,
+  type AnalyzeInvocation,
+} from '../compute/worker-client';
+import type { ResolvedAnalyzeOptions } from '../compute/worker-protocol';
+import type { AnalysisParams, AnalysisResult, ImageSource } from '../stores/ui';
 
 const DEFAULT_TOLERANCE = 1e-3;
 const DEFAULT_MAX_ITER = 40;
@@ -20,17 +24,21 @@ export interface AnalyzeOptions extends AnalysisParams {
 }
 
 export interface ComputeBridge {
-  readonly id: 'tauri-native';
+  readonly id: 'tauri-native' | 'wasm-worker';
   analyze(
-    dataset: ImageDataset,
-    params: AnalyzeOptions
+    source: ImageSource,
+    params: AnalyzeOptions,
+    invocation: AnalyzeInvocation
   ): Promise<AnalysisResult>;
 }
 
 type TauriComputeErrorCode =
   | 'missing-path'
+  | 'source-mismatch'
   | 'invoke-failed'
-  | 'invalid-response';
+  | 'invalid-response'
+  | 'cancelled'
+  | 'worker-failed';
 
 export class TauriComputeError extends Error {
   readonly code: TauriComputeErrorCode;
@@ -57,8 +65,10 @@ const finiteNumberSchema = z
 
 const tauriClusterSchema = z
   .object({
-    count: finiteNumberSchema.min(0, { message: 'count must be >= 0' }),
-    share: finiteNumberSchema,
+    count: finiteNumberSchema
+      .int({ message: 'count must be an integer' })
+      .min(0, { message: 'count must be >= 0' }),
+    share: finiteNumberSchema.min(0).max(1),
     centroidSpace: z.any().optional(),
     centroid_space: z.any().optional(),
     oklab: z.any().optional(),
@@ -73,6 +83,9 @@ const tauriClusterSchema = z
       })
       .refine(
         (value) =>
+          Number.isInteger(value.r) &&
+          Number.isInteger(value.g) &&
+          Number.isInteger(value.b) &&
           value.r >= 0 &&
           value.r <= 255 &&
           value.g >= 0 &&
@@ -138,28 +151,38 @@ const tauriComputeResponseSchema = z
     clusters: z.array(tauriClusterSchema).min(1, {
       message: 'clusters missing or empty',
     }),
-    iterations: finiteNumberSchema.min(0, {
-      message: 'iterations must be >= 0',
-    }),
+    iterations: finiteNumberSchema
+      .min(0, {
+        message: 'iterations must be >= 0',
+      })
+      .int(),
     durationMs: finiteNumberSchema.min(0, {
       message: 'durationMs must be >= 0',
     }),
-    totalSamples: finiteNumberSchema.min(0, {
-      message: 'totalSamples must be >= 0',
-    }),
+    totalSamples: finiteNumberSchema
+      .min(0, {
+        message: 'totalSamples must be >= 0',
+      })
+      .int(),
     variant: z.string().min(1, { message: 'variant must be provided' }),
+    resultDigest: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/, { message: 'must be 64 lowercase hex digits' }),
   })
+  .strict()
   .readonly();
 
 type ParsedTauriCluster = z.infer<typeof tauriClusterSchema>;
 type ParsedTauriResponse = z.infer<typeof tauriComputeResponseSchema>;
 
 function coerceTriple(value: unknown): [number, number, number] | null {
-  if (value instanceof Float32Array || value instanceof ArrayBuffer) {
-    value = Array.from(value as ArrayLike<number>);
+  if (value instanceof ArrayBuffer) {
+    value = Array.from(new Float32Array(value));
+  } else if (value instanceof Float32Array) {
+    value = Array.from(value);
   }
-  if (Array.isArray(value) && value.length >= 3) {
-    const numbers = value.slice(0, 3).map((entry) => Number(entry));
+  if (Array.isArray(value) && value.length === 3) {
+    const numbers = value.map((entry) => Number(entry));
     if (numbers.every((n) => Number.isFinite(n))) {
       return [numbers[0], numbers[1], numbers[2]];
     }
@@ -212,10 +235,12 @@ export function normalizeTauriResponse(raw: unknown): Record<string, unknown> {
       (payload as any).totalSamples ?? (payload as any).total_samples
     ),
     variant: payload.variant,
+    resultDigest:
+      (payload as any).resultDigest ?? (payload as any).result_digest,
   };
 }
 
-export function parseTauriResponse(raw: unknown): ParsedTauriResponse {
+export function parseComputeResponse(raw: unknown): ParsedTauriResponse {
   const normalized = normalizeTauriResponse(raw);
   try {
     return tauriComputeResponseSchema.parse(normalized);
@@ -236,34 +261,92 @@ export function parseTauriResponse(raw: unknown): ParsedTauriResponse {
   }
 }
 
-function createTauriComputeBridge(): ComputeBridge | null {
-  if (!isTauriEnv()) return null;
+export const parseTauriResponse = parseComputeResponse;
+
+export function resolveAnalyzeOptions(
+  params: AnalyzeOptions,
+  path = ''
+): ResolvedAnalyzeOptions {
+  return {
+    path,
+    k: params.clusters,
+    quality: params.quality ?? DEFAULT_QUALITY,
+    ignoreTopN: params.ignoreTopN ?? DEFAULT_IGNORE_TOP_N,
+    mergeThreshold: params.mergeThreshold ?? DEFAULT_MERGE_THRESHOLD,
+    snapToReal: params.snapToReal ?? false,
+    minLum: 0,
+    tol: params.tol ?? DEFAULT_TOLERANCE,
+    maxIter: params.maxIter ?? DEFAULT_MAX_ITER,
+    seed: params.seed ?? DEFAULT_SEED,
+    maxSamples: params.maxSamples ?? DEFAULT_MAX_SAMPLES,
+  };
+}
+
+function cancelledError(requestId: string) {
+  return new TauriComputeError(
+    'cancelled',
+    `Analysis request ${requestId} was cancelled`
+  );
+}
+
+function assertLive(invocation: AnalyzeInvocation) {
+  if (invocation.signal.aborted) {
+    throw cancelledError(invocation.requestId);
+  }
+}
+
+function toAnalysisResult(parsed: ParsedTauriResponse): AnalysisResult {
+  const clusters = parsed.clusters.map((cluster: ParsedTauriCluster) => ({
+    count: cluster.count,
+    share: cluster.share,
+    centroidSpace: cluster.centroidSpace,
+    oklab: cluster.oklab,
+    oklch: cluster.oklch,
+    rgb: cluster.rgb,
+    hsv: cluster.hsv,
+  })) as AnalysisResult['clusters'];
+
+  return {
+    clusters,
+    iterations: parsed.iterations,
+    durationMs: parsed.durationMs,
+    totalSamples: parsed.totalSamples,
+    variant: parsed.variant,
+  };
+}
+
+type NativeInvoke = (
+  command: string,
+  args?: Record<string, unknown>
+) => Promise<unknown>;
+
+export function createTauriComputeBridge(
+  invoke: NativeInvoke = tauriInvoke
+): ComputeBridge {
   return {
     id: 'tauri-native',
-    async analyze(_dataset, params) {
-      const req = {
-        path: getActivePath() ?? '',
-        k: params.clusters,
-        quality: params.quality ?? DEFAULT_QUALITY,
-        ignoreTopN: params.ignoreTopN ?? DEFAULT_IGNORE_TOP_N,
-        mergeThreshold: params.mergeThreshold ?? DEFAULT_MERGE_THRESHOLD,
-        snapToReal: params.snapToReal ?? false,
-        minLum: 0,
-        tol: params.tol ?? DEFAULT_TOLERANCE,
-        maxIter: params.maxIter ?? DEFAULT_MAX_ITER,
-        seed: params.seed ?? DEFAULT_SEED,
-        maxSamples: params.maxSamples ?? DEFAULT_MAX_SAMPLES,
-      };
-      if (!req.path) {
+    async analyze(source, params, invocation) {
+      assertLive(invocation);
+      if (source.kind !== 'path') {
+        throw new TauriComputeError(
+          'source-mismatch',
+          'Native analysis requires a filesystem-path source'
+        );
+      }
+      if (!source.path) {
         throw new TauriComputeError(
           'missing-path',
           'No image path available for native analysis'
         );
       }
+      const req = resolveAnalyzeOptions(params, source.path);
       let rawResponse: unknown;
       try {
-        rawResponse = await tauriInvoke('analyze_image', { req });
+        rawResponse = await invoke('analyze_image', { req });
       } catch (err) {
+        if (invocation.signal.aborted) {
+          throw cancelledError(invocation.requestId);
+        }
         const message = err instanceof Error ? err.message : String(err);
         throw new TauriComputeError(
           'invoke-failed',
@@ -271,25 +354,48 @@ function createTauriComputeBridge(): ComputeBridge | null {
           { cause: err }
         );
       }
+      assertLive(invocation);
+      return toAnalysisResult(parseComputeResponse(rawResponse));
+    },
+  } satisfies ComputeBridge;
+}
 
-      const parsed = parseTauriResponse(rawResponse);
-      const clusters = parsed.clusters.map((cluster: ParsedTauriCluster) => ({
-        count: cluster.count,
-        share: cluster.share,
-        centroidSpace: cluster.centroidSpace,
-        oklab: cluster.oklab,
-        oklch: cluster.oklch,
-        rgb: cluster.rgb,
-        hsv: cluster.hsv,
-      })) as AnalysisResult['clusters'];
+type WorkerAnalyze = typeof analyzeBlobInWorker;
 
-      return {
-        clusters,
-        iterations: parsed.iterations,
-        durationMs: parsed.durationMs,
-        totalSamples: parsed.totalSamples,
-        variant: String(parsed.variant ?? 'tauri-native'),
-      } satisfies AnalysisResult;
+export function createBrowserComputeBridge(
+  analyzeInWorker: WorkerAnalyze = analyzeBlobInWorker
+): ComputeBridge {
+  return {
+    id: 'wasm-worker',
+    async analyze(source, params, invocation) {
+      assertLive(invocation);
+      if (source.kind !== 'blob') {
+        throw new TauriComputeError(
+          'source-mismatch',
+          'Browser analysis requires an encoded Blob source'
+        );
+      }
+      let rawResponse: unknown;
+      try {
+        rawResponse = await analyzeInWorker(
+          source.blob,
+          resolveAnalyzeOptions(params),
+          invocation
+        );
+      } catch (error) {
+        if (error instanceof WorkerClientError && error.code === 'cancelled') {
+          throw cancelledError(invocation.requestId);
+        }
+        throw new TauriComputeError(
+          'worker-failed',
+          error instanceof Error
+            ? error.message
+            : 'Browser analysis worker failed',
+          { cause: error }
+        );
+      }
+      assertLive(invocation);
+      return toAnalysisResult(parseComputeResponse(rawResponse));
     },
   } satisfies ComputeBridge;
 }
@@ -299,16 +405,16 @@ function logSelection(label: string, id: ComputeBridge['id']) {
 }
 
 function selectComputeBridge(): ComputeBridge {
-  const tauriBridge = createTauriComputeBridge();
-  if (tauriBridge) {
+  if (isTauriEnv()) {
     const info = tauriDetectionInfo();
     console.info('[bridges] tauri detection', info);
+    const tauriBridge = createTauriComputeBridge();
     logSelection('compute', tauriBridge.id);
     return tauriBridge;
   }
-  throw new Error(
-    'Tauri environment not detected. Native compute requires Tauri runtime.'
-  );
+  const browserBridge = createBrowserComputeBridge();
+  logSelection('compute', browserBridge.id);
+  return browserBridge;
 }
 
 let cachedComputeBridge: ComputeBridge | null = null;

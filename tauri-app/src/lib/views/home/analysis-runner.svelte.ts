@@ -28,7 +28,12 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let spinnerTimer: ReturnType<typeof setTimeout> | null = null;
   let currentToken = 0;
-  let pendingRequest: { token: number; storeToken: number } | null = null;
+  let pendingRequest: {
+    token: number;
+    storeToken: number;
+    requestId: string;
+    controller: AbortController;
+  } | null = null;
   let lastRequestKey: string | null = null;
   let spinnerVisible = $state(false);
   let analysisScrollLock: { top: number; token: number | null } | null = null;
@@ -38,10 +43,16 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
       switch (error.code) {
         case 'missing-path':
           return 'Native analysis could not find the original file. Please reselect the image.';
+        case 'source-mismatch':
+          return 'The selected image source is not available for this runtime.';
         case 'invalid-response':
-          return 'Native analysis returned unexpected data. Review the Tauri console for details.';
+          return 'Analysis returned unexpected data. Review the console for details.';
         case 'invoke-failed':
           return 'Native analysis failed to start. Restart the app or check the console output.';
+        case 'worker-failed':
+          return 'Browser analysis failed in its worker. Check the console output.';
+        case 'cancelled':
+          return 'Analysis was cancelled.';
         default:
           return 'Native analysis reported an unexpected error.';
       }
@@ -57,6 +68,7 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
   function cancelPending() {
     currentToken += 1;
     if (pendingRequest) {
+      pendingRequest.controller.abort();
       resetAnalysisPending(pendingRequest.storeToken);
       pendingRequest = null;
     }
@@ -133,11 +145,19 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
   ) {
     currentToken += 1;
     const token = currentToken;
+    if (pendingRequest) {
+      pendingRequest.controller.abort();
+      resetAnalysisPending(pendingRequest.storeToken);
+      pendingRequest = null;
+    }
     if (analysisScrollLock) {
       analysisScrollLock.token = token;
     }
+    const controller = new AbortController();
+    const requestId =
+      globalThis.crypto?.randomUUID?.() ?? `analysis-${Date.now()}-${token}`;
     const storeToken = deps.setAnalysisPending();
-    pendingRequest = { token, storeToken };
+    pendingRequest = { token, storeToken, requestId, controller };
     spinnerVisible = false;
     if (spinnerTimer) {
       clearTimeout(spinnerTimer);
@@ -149,13 +169,17 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
     }, SPINNER_THRESHOLD_MS);
 
     try {
-      const response = await analyzeImage(image.dataset, {
-        ...paramSnapshot,
-        tol: 1e-3,
-        maxIter: 40,
-        seed: 1,
-        maxSamples: 300_000,
-      });
+      const response = await analyzeImage(
+        image.source,
+        {
+          ...paramSnapshot,
+          tol: 1e-3,
+          maxIter: 40,
+          seed: 1,
+          maxSamples: 300_000,
+        },
+        { requestId, signal: controller.signal }
+      );
       if (token !== currentToken) {
         return;
       }
@@ -164,6 +188,10 @@ export function createAnalysisRunner(deps: AnalysisRunnerDeps) {
       restoreAnalysisScroll(token);
     } catch (err) {
       if (token !== currentToken) {
+        return;
+      }
+      if (err instanceof TauriComputeError && err.code === 'cancelled') {
+        resetAnalysisPending(storeToken);
         return;
       }
       deps.recordDevEvent({ computeVariant: 'error' }, 'analysis');

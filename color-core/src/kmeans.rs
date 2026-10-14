@@ -1,4 +1,6 @@
-use rand::{rngs::SmallRng, Rng, SeedableRng};
+use crate::rng::PortableRng;
+use rand::{Rng, SeedableRng};
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 #[cfg(feature = "simd")]
 use wide::f32x4;
@@ -134,10 +136,20 @@ pub fn run_kmeans(points: &[[f32; 3]], cfg: &KMeansConfig) -> KMeansResult {
 }
 
 pub fn run_kmeans_soa(dataset: &PointsSoa, cfg: &KMeansConfig) -> KMeansResult {
+    run_kmeans_soa_with_assignment(dataset, cfg, assignment_step)
+}
+
+type AssignmentStep = fn(&PointsSoa, &CentroidsSoa) -> (Vec<ClusterPartial>, f32);
+
+fn run_kmeans_soa_with_assignment(
+    dataset: &PointsSoa,
+    cfg: &KMeansConfig,
+    assignment: AssignmentStep,
+) -> KMeansResult {
     assert!(cfg.k > 0, "k must be > 0");
     assert!(dataset.len() >= cfg.k, "points must be >= k");
 
-    let mut rng = SmallRng::seed_from_u64(cfg.seed);
+    let mut rng = PortableRng::seed_from_u64(cfg.seed);
     let mut centroids = if let Some(warm) = &cfg.warm_start {
         assert_eq!(warm.len(), cfg.k, "warm_start length must equal k");
         CentroidsSoa::from_vec(warm)
@@ -160,13 +172,13 @@ pub fn run_kmeans_soa(dataset: &PointsSoa, cfg: &KMeansConfig) -> KMeansResult {
         };
         let working = mini_batch_storage.as_ref().unwrap_or(dataset);
 
-        let (partials, _step_inertia) = assignment_step(working, &centroids);
+        let (partials, _step_inertia) = assignment(working, &centroids);
 
         counts.fill(0);
         let mut shift = 0.0;
         for (idx, part) in partials.into_iter().enumerate() {
             if part.count == 0 {
-                let rand_idx = rng.gen_range(0..dataset.len());
+                let rand_idx = rng.gen_range(0..dataset.len() as u64) as usize;
                 centroids.set_from_soa(idx, dataset, rand_idx);
                 continue;
             }
@@ -188,7 +200,7 @@ pub fn run_kmeans_soa(dataset: &PointsSoa, cfg: &KMeansConfig) -> KMeansResult {
         }
     }
 
-    let (final_partials, final_inertia) = assignment_step(dataset, &centroids);
+    let (final_partials, final_inertia) = assignment(dataset, &centroids);
     counts.fill(0);
     for (idx, part) in final_partials.into_iter().enumerate() {
         counts[idx] = part.count;
@@ -212,32 +224,45 @@ struct ClusterPartial {
 }
 
 fn assignment_step(points: &PointsSoa, centroids: &CentroidsSoa) -> (Vec<ClusterPartial>, f32) {
+    #[cfg(feature = "parallel")]
+    {
+        assignment_step_parallel(points, centroids)
+    }
+    #[cfg(not(feature = "parallel"))]
+    {
+        assignment_step_sequential(points, centroids)
+    }
+}
+
+fn chunk_assignment(
+    points: &PointsSoa,
+    centroids: &CentroidsSoa,
+    chunk_idx: usize,
+    chunk_size: usize,
+) -> (Vec<ClusterPartial>, f32) {
     let k = centroids.len();
-    let chunk_size = 1024usize.max(k);
     let total_len = points.len();
-    let chunk_count = total_len.div_ceil(chunk_size);
+    let start = chunk_idx * chunk_size;
+    let end = ((chunk_idx + 1) * chunk_size).min(total_len);
+    let mut partials = vec![ClusterPartial::default(); k];
+    let mut inertia = 0.0f32;
+    for idx in start..end {
+        let (px, py, pz) = points.component_tuple(idx);
+        let (best_idx, best_dist) = best_centroid(px, py, pz, centroids);
+        let entry = &mut partials[best_idx];
+        entry.sum_x += px;
+        entry.sum_y += py;
+        entry.sum_z += pz;
+        entry.count += 1;
+        inertia += best_dist;
+    }
+    (partials, inertia)
+}
 
-    let chunk_partials: Vec<(Vec<ClusterPartial>, f32)> = (0..chunk_count)
-        .into_par_iter()
-        .map(|chunk_idx| {
-            let start = chunk_idx * chunk_size;
-            let end = ((chunk_idx + 1) * chunk_size).min(total_len);
-            let mut partials = vec![ClusterPartial::default(); k];
-            let mut inertia = 0.0f32;
-            for idx in start..end {
-                let (px, py, pz) = points.component_tuple(idx);
-                let (best_idx, best_dist) = best_centroid(px, py, pz, centroids);
-                let entry = &mut partials[best_idx];
-                entry.sum_x += px;
-                entry.sum_y += py;
-                entry.sum_z += pz;
-                entry.count += 1;
-                inertia += best_dist;
-            }
-            (partials, inertia)
-        })
-        .collect();
-
+fn merge_chunk_partials(
+    chunk_partials: Vec<(Vec<ClusterPartial>, f32)>,
+    k: usize,
+) -> (Vec<ClusterPartial>, f32) {
     // Deterministic, numerically steadier merge: accumulate in f64, fixed order
     let mut totals = vec![ClusterPartial::default(); k];
     let mut acc_x: Vec<f64> = vec![0.0; k];
@@ -262,6 +287,35 @@ fn assignment_step(points: &PointsSoa, centroids: &CentroidsSoa) -> (Vec<Cluster
     }
 
     (totals, total_inertia)
+}
+
+#[cfg(any(not(feature = "parallel"), test))]
+fn assignment_step_sequential(
+    points: &PointsSoa,
+    centroids: &CentroidsSoa,
+) -> (Vec<ClusterPartial>, f32) {
+    let k = centroids.len();
+    let chunk_size = 1024usize.max(k);
+    let chunk_count = points.len().div_ceil(chunk_size);
+    let chunks = (0..chunk_count)
+        .map(|chunk_idx| chunk_assignment(points, centroids, chunk_idx, chunk_size))
+        .collect();
+    merge_chunk_partials(chunks, k)
+}
+
+#[cfg(feature = "parallel")]
+fn assignment_step_parallel(
+    points: &PointsSoa,
+    centroids: &CentroidsSoa,
+) -> (Vec<ClusterPartial>, f32) {
+    let k = centroids.len();
+    let chunk_size = 1024usize.max(k);
+    let chunk_count = points.len().div_ceil(chunk_size);
+    let chunks = (0..chunk_count)
+        .into_par_iter()
+        .map(|chunk_idx| chunk_assignment(points, centroids, chunk_idx, chunk_size))
+        .collect();
+    merge_chunk_partials(chunks, k)
 }
 
 #[inline]
@@ -360,11 +414,11 @@ fn best_centroid_scalar(px: f32, py: f32, pz: f32, centroids: &CentroidsSoa) -> 
     (best_idx, best_dist)
 }
 
-fn kmeans_plus_plus(points: &PointsSoa, k: usize, rng: &mut SmallRng) -> CentroidsSoa {
+fn kmeans_plus_plus(points: &PointsSoa, k: usize, rng: &mut PortableRng) -> CentroidsSoa {
     let n = points.len();
     let mut centroids = CentroidsSoa::with_len(k);
     let mut chosen_flags = vec![false; n];
-    let first_idx = rng.gen_range(0..n);
+    let first_idx = rng.gen_range(0..n as u64) as usize;
     centroids.set_from_soa(0, points, first_idx);
     chosen_flags[first_idx] = true;
 
@@ -392,7 +446,7 @@ fn kmeans_plus_plus(points: &PointsSoa, k: usize, rng: &mut SmallRng) -> Centroi
             // Fallback: pick a random unchosen point
             let mut idx;
             loop {
-                idx = rng.gen_range(0..n);
+                idx = rng.gen_range(0..n as u64) as usize;
                 if !chosen_flags[idx] {
                     break;
                 }
@@ -439,7 +493,7 @@ fn kmeans_plus_plus(points: &PointsSoa, k: usize, rng: &mut SmallRng) -> Centroi
     centroids
 }
 
-fn sample_batch(points: &PointsSoa, size: usize, rng: &mut SmallRng) -> PointsSoa {
+fn sample_batch(points: &PointsSoa, size: usize, rng: &mut PortableRng) -> PointsSoa {
     if size == 0 {
         return PointsSoa {
             px: Vec::new(),
@@ -454,7 +508,7 @@ fn sample_batch(points: &PointsSoa, size: usize, rng: &mut SmallRng) -> PointsSo
     let mut py = Vec::with_capacity(size);
     let mut pz = Vec::with_capacity(size);
     for _ in 0..size {
-        let idx = rng.gen_range(0..points.len());
+        let idx = rng.gen_range(0..points.len() as u64) as usize;
         px.push(points.px[idx]);
         py.push(points.py[idx]);
         pz.push(points.pz[idx]);
@@ -473,6 +527,58 @@ fn squared_distance_components(px: f32, py: f32, pz: f32, cx: f32, cy: f32, cz: 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "parallel")]
+    use crate::image_pipeline::{prepare_samples, SampleParams};
+
+    #[cfg(feature = "parallel")]
+    #[test]
+    fn parity_fixture_parallel_and_sequential_are_bit_identical() {
+        let image = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../test-patterns/hsl_ligthness.png");
+        let samples = prepare_samples(&SampleParams {
+            path: image,
+            stride: 2,
+            min_lum: 0,
+            max_samples: 120_000,
+            max_dimension: None,
+            seed: 1,
+        })
+        .expect("prepare parity fixture");
+        let dataset = PointsSoa::from_points(
+            samples
+                .samples_oklab
+                .as_deref()
+                .expect("OKLab samples missing"),
+        );
+        let config = KMeansConfig {
+            k: 16,
+            max_iters: 40,
+            tol: 1e-3,
+            seed: 1,
+            warm_start: None,
+            mini_batch: None,
+        };
+
+        let parallel = run_kmeans_soa_with_assignment(&dataset, &config, assignment_step_parallel);
+        let sequential =
+            run_kmeans_soa_with_assignment(&dataset, &config, assignment_step_sequential);
+
+        assert_eq!(parallel.iterations, sequential.iterations);
+        assert_eq!(parallel.counts, sequential.counts);
+        assert_eq!(parallel.inertia.to_bits(), sequential.inertia.to_bits());
+        let parallel_bits: Vec<[u32; 3]> = parallel
+            .centroids
+            .iter()
+            .map(|centroid| centroid.map(f32::to_bits))
+            .collect();
+        let sequential_bits: Vec<[u32; 3]> = sequential
+            .centroids
+            .iter()
+            .map(|centroid| centroid.map(f32::to_bits))
+            .collect();
+        assert_eq!(parallel_bits, sequential_bits);
+    }
 
     #[test]
     fn two_cluster_data_parallel() {

@@ -12,6 +12,8 @@ build/
 out/
 *.asar
 compute-wasm/target/
+/color-core-wasm/pkg*/
+/color-core-wasm/target/
 
 # Logs & caches
 *.log

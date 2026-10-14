@@ -8,12 +8,12 @@ tags:
   - Worker
   - Compute
   - Epic-029
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-EPIC-029, AI-IMP-204]
 parent_epic: [[AI-EPIC-029-control-flow-remediation]]
 confidence_score: 0.84
 date_created: 2026-10-14
-date_completed:
+date_completed: 2026-10-14
 ---
 
 # AI-IMP-205 (F1b) — worker/WASM current-core compute and exact parity
@@ -196,36 +196,36 @@ Git.
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add `parallel = ["dep:rayon"]` and preserve native default features;
+- [x] Add `parallel = ["dep:rayon"]` and preserve native default features;
       prove `color-core-wasm` has neither Rayon nor Tauri in its normal wasm tree.
-- [ ] Implement sequential chunk collection with the same 1,024-point chunks
+- [x] Implement sequential chunk collection with the same 1,024-point chunks
       and fixed-order reduction as the parallel path.
-- [ ] Keep default and no-default k-means snapshots green; add a direct
+- [x] Keep default and no-default k-means snapshots green; add a direct
       parallel/non-parallel equality case for the parity fixture.
-- [ ] Implement the versioned canonical binary encoding and SHA-256 while
+- [x] Implement the versioned canonical binary encoding and SHA-256 while
       excluding `durationMs` and `variant`.
-- [ ] Record the fixed PNG source hash, fully resolved parameters, digest
+- [x] Record the fixed PNG source hash, fully resolved parameters, digest
       version, and native default-feature expected digest.
-- [ ] Add the thin wasm-bindgen adapter with no copied numeric/decode logic.
-- [ ] Build and execute encoded PNG and JPEG through WASM before renderer
+- [x] Add the thin wasm-bindgen adapter with no copied numeric/decode logic.
+- [x] Build and execute encoded PNG and JPEG through WASM before renderer
       integration; record release `.wasm` byte size and tool versions.
-- [ ] Stop and request a lead re-ruling if the decoder does not compile/run, the
+- [x] Stop and request a lead re-ruling if the decoder does not compile/run, the
       size breaches the lead's ceiling, or exact digest parity fails.
-- [ ] Add the closed worker protocol and transfer the encoded `ArrayBuffer`.
-- [ ] Make each request own a worker; on abort revoke ID, terminate, detach
+- [x] Add the closed worker protocol and transfer the encoded `ArrayBuffer`.
+- [x] Make each request own a worker; on abort revoke ID, terminate, detach
       listeners, and reject with a typed cancellation exactly once.
-- [ ] Reject wrong, duplicate, canceled, and late replies without publishing
+- [x] Reject wrong, duplicate, canceled, and late replies without publishing
       result/error state.
-- [ ] Make `ComputeBridge.analyze` source-aware and validate both native and
+- [x] Make `ComputeBridge.analyze` source-aware and validate both native and
       worker responses through the same strict schema, including digest.
-- [ ] Pass an opaque request UUID plus `AbortSignal` from the existing runner;
+- [x] Pass an opaque request UUID plus `AbortSignal` from the existing runner;
       retain its current/store token checks on success, error, and finally.
-- [ ] Prove browser cancellation is not rendered as compute failure and native
+- [x] Prove browser cancellation is not rendered as compute failure and native
       stale IPC completion cannot publish after revocation.
-- [ ] Run every AGENTS.md frontend/Rust gate, scalar snapshot, default/nonparallel
+- [x] Run every AGENTS.md frontend/Rust gate, scalar snapshot, default/nonparallel
       parity, Tauri-free/Rayon-free trees, encoded WASM harness, RAG generator
       review, and real staged hook; record counts, sizes, versions, and warnings.
-- [ ] Verify the npm lock, CI workflow, native command source, and all unlisted
+- [x] Verify the npm lock, CI workflow, native command source, and all unlisted
       files remain byte-identical.
 
 ### Acceptance Criteria
@@ -266,7 +266,31 @@ You SHOULD document any issues encountered and resolved during the sprint.
 You MUST document any failed implementations, blockers or missing tests.
 -->
 
-None yet; implementation has not begun. The build fence must name the permitted
-`wasm-pack` version and release-size ceiling before this checklist can close.
-  **Lead amendment (2026-10-14):** superseded by A2/A3: there is no wasm-pack; read "the pinned `wasm-bindgen-cli`
-  0.2.128 (A2) and the 4 MiB release ceiling (A3)".
+- The A1 native/WASM probe found no `powf`/`cbrtf` mismatch, but the first
+  encoded parity run later exposed four OKLch hue values differing by one ULP.
+  Work stopped without weakening the digest. Lead amendment 6 completed the
+  transcendental inventory (`atan2f`/`sinf`/`cosf` plus explicit cubes); the
+  extended 3,147,779-point native/WASM probe had zero mismatches, all existing
+  native goldens remained unchanged, and the ticket-owned PNG/JPEG parity
+  digests were regenerated and disclosed.
+- Amendment 3's stated SplitMix64 `seed_from_u64` behavior contradicted rand
+  0.8.8: the oracle failed at seed 0, draw 0. Work stopped. Lead amendment 4
+  corrected the contract to inherited rand_core PCG32 seed fill; the final
+  oracle matches 10,000 `next_u64` and 10,000 `next_u32` draws for each of five
+  ruled seeds.
+- The first wasm execution aborted because `std::time::Instant::now()` is not
+  implemented on `wasm32-unknown-unknown`. Work stopped. Lead amendment 5
+  authorized the target-aware private `Stopwatch`; core uses an excluded zero
+  placeholder on wasm and the worker replaces it with its own
+  `performance.now()` measurement.
+- wasm-bindgen's Node output is CommonJS inside this repository's ESM package
+  boundary. The ignored Node package now receives a generated local
+  `package.json` with `type: commonjs`; no dependency or lockfile changed.
+- The candidate clone had no installed renderer dependencies or ignored Tauri
+  sidecars. Existing canonical `node_modules` was linked and the already-built
+  ignored sidecars were copied into the isolated candidate; no install or
+  deliverable media change was made.
+- The first real staged-hook run rejected one trailing blank line at the end of
+  `color-core-wasm/Cargo.toml`. Removing it made the hook pass with four
+  advisory over-400-LOC warnings and no mutation of the generated index or
+  working copy.

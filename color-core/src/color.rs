@@ -402,7 +402,7 @@ pub fn oklab_to_oklch(lab: [f32; 3]) -> [f32; 3] {
     let h = if c < EPSILON {
         0.0
     } else {
-        normalize_degrees(b.atan2(a).to_degrees())
+        normalize_degrees(libm::atan2f(b, a).to_degrees())
     };
     [l, c, h]
 }
@@ -412,8 +412,8 @@ pub fn oklch_to_oklab(lch: [f32; 3]) -> [f32; 3] {
     let l = lch[0];
     let c = lch[1].max(0.0);
     let h = normalize_degrees(lch[2]).to_radians();
-    let a = c * h.cos();
-    let b = c * h.sin();
+    let a = c * libm::cosf(h);
+    let b = c * libm::sinf(h);
     [l, a, b]
 }
 
@@ -451,7 +451,8 @@ pub fn oklab_to_srgb8_gamut_mapped(lab: [f32; 3]) -> [u8; 3] {
 #[inline]
 fn f_lab(t: f32) -> f32 {
     const DELTA: f32 = 6.0 / 29.0;
-    if t > DELTA.powi(3) {
+    let delta_cubed = DELTA * DELTA * DELTA;
+    if t > delta_cubed {
         libm::cbrtf(t)
     } else {
         t / (3.0 * DELTA * DELTA) + 4.0 / 29.0
@@ -462,7 +463,7 @@ fn f_lab(t: f32) -> f32 {
 fn f_lab_inv(t: f32) -> f32 {
     const DELTA: f32 = 6.0 / 29.0;
     if t > DELTA {
-        t.powi(3)
+        t * t * t
     } else {
         3.0 * DELTA * DELTA * (t - 4.0 / 29.0)
     }
@@ -510,10 +511,14 @@ pub fn rgb8_to_luv(rgb: [u8; 3]) -> [f32; 3] {
     let v_ref = 9.0 * XYZ_WHITE[1] / denom_ref;
 
     let y_ratio = xyz[1] / XYZ_WHITE[1];
-    let l = if y_ratio > (6.0f32 / 29.0).powi(3) {
+    let delta = 6.0f32 / 29.0;
+    let delta_cubed = delta * delta * delta;
+    let luv_scale = 29.0f32 / 3.0;
+    let luv_scale_cubed = luv_scale * luv_scale * luv_scale;
+    let l = if y_ratio > delta_cubed {
         116.0 * libm::cbrtf(y_ratio) - 16.0
     } else {
-        (29.0f32 / 3.0).powi(3) * y_ratio
+        luv_scale_cubed * y_ratio
     };
 
     let u = 13.0 * l * (u_prime - u_ref);
@@ -532,10 +537,13 @@ pub fn luv_to_rgb8(luv: [f32; 3]) -> [u8; 3] {
     let u_prime = luv[1] / (13.0 * l) + u_ref;
     let v_prime = luv[2] / (13.0 * l) + v_ref;
 
+    let luv_scale = 29.0f32 / 3.0;
+    let luv_scale_cubed = luv_scale * luv_scale * luv_scale;
     let y = if l > 8.0 {
-        ((l + 16.0) / 116.0).powi(3)
+        let lightness = (l + 16.0) / 116.0;
+        lightness * lightness * lightness
     } else {
-        l / (29.0f32 / 3.0).powi(3)
+        l / luv_scale_cubed
     } * XYZ_WHITE[1];
 
     let denom = 4.0 * v_prime;

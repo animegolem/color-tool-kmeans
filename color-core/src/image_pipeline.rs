@@ -1,10 +1,10 @@
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 
+use crate::clock::Stopwatch;
+use crate::rng::PortableRng;
 use image::imageops::FilterType;
 use image::{DynamicImage, ImageReader, RgbaImage};
-use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use serde::Serialize;
 use thiserror::Error;
@@ -96,7 +96,7 @@ const LUMA_G: f32 = 0.7152;
 const LUMA_B: f32 = 0.0722;
 
 pub fn prepare_samples(params: &SampleParams) -> Result<SampleResult> {
-    let start = Instant::now();
+    let start = Stopwatch::start();
 
     // Use with_guessed_format() to handle files without extensions
     // This reads the file header to detect the format automatically
@@ -111,7 +111,7 @@ pub fn prepare_samples(params: &SampleParams) -> Result<SampleResult> {
 /// encoded buffer (PNG/JPEG/... — the format is guessed from the magic
 /// bytes). `params.path` is ignored.
 pub fn prepare_samples_from_bytes(bytes: &[u8], params: &SampleParams) -> Result<SampleResult> {
-    let start = Instant::now();
+    let start = Stopwatch::start();
 
     let img = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()?
@@ -123,7 +123,7 @@ pub fn prepare_samples_from_bytes(bytes: &[u8], params: &SampleParams) -> Result
 fn sample_decoded(
     img: DynamicImage,
     params: &SampleParams,
-    start: Instant,
+    start: Stopwatch,
 ) -> Result<SampleResult> {
     let rgba = to_rgba_with_downscale(img, params.max_dimension);
     let (width, height) = rgba.dimensions();
@@ -141,7 +141,7 @@ fn sample_decoded(
         height,
         total_pixels: width as u64 * height as u64,
         sampled_pixels,
-        duration_ms: start.elapsed().as_millis(),
+        duration_ms: start.elapsed_ms().unwrap_or(0.0) as u128,
     })
 }
 
@@ -173,7 +173,7 @@ fn sample_pixels(img: &RgbaImage, params: &SampleParams) -> Vec<[u8; 3]> {
     let mut samples: Vec<[u8; 3]> =
         Vec::with_capacity(max_samples.min((width as usize) * (height as usize)));
 
-    let mut rng = SmallRng::seed_from_u64(params.seed);
+    let mut rng = PortableRng::seed_from_u64(params.seed);
     let mut seen = 0_usize;
 
     for y in (0..height as usize).step_by(stride) {
@@ -194,7 +194,7 @@ fn sample_pixels(img: &RgbaImage, params: &SampleParams) -> Vec<[u8; 3]> {
             if samples.len() < max_samples {
                 samples.push([r, g, b]);
             } else {
-                let idx = rng.gen_range(0..seen);
+                let idx = rng.gen_range(0..seen as u64) as usize;
                 if idx < max_samples {
                     samples[idx] = [r, g, b];
                 }

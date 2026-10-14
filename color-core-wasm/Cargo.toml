@@ -1,0 +1,15 @@
+[package]
+name = "color-core-wasm"
+version = "0.1.0"
+edition = "2021"
+authors = ["color-tool"]
+description = "Thin wasm-bindgen adapter for color-core encoded-image analysis"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+color-core = { path = "../color-core", default-features = false, features = ["simd"] }
+serde-wasm-bindgen = "0.6"
+wasm-bindgen = "=0.2.128"

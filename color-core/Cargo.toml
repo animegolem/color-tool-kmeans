@@ -7,19 +7,22 @@ description = "Tauri-free color analysis engine: OKLab/OKLch conversions, k-mean
 license = "MIT"
 
 [features]
-default = ["simd"]
+default = ["simd", "parallel"]
 simd = ["dep:wide"]
+parallel = ["dep:rayon"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
-rand = { version = "0.8", features = ["small_rng"] }
-rayon = "1.8"
+rand = { version = "0.8", default-features = false }
+rayon = { version = "1.8", optional = true }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp", "tiff"] }
 libm = { version = "=0.2.16", default-features = false }
+sha2 = "0.10"
 wide = { version = "0.7", optional = true, default-features = false, features = ["std"] }
 
 [dev-dependencies]
 proptest = "1.4"
+rand = { version = "0.8", default-features = false, features = ["small_rng"] }
 serde_json = "1.0"
 tempfile = "3.10"

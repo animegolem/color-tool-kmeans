@@ -12,6 +12,8 @@
     "format:check": "prettier --check . \"!dist/**\" \"!coverage/**\" \"!.svelte-kit/**\" \"!.turbo/**\" \"!.ffmpeg-build/**\" \"!src-tauri/target/**\" \"!src-tauri/.fingerprint/**\" \"!src-tauri/gen/**\" \"!src-tauri/bin/**\"",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
+    "wasm:build": "node ../scripts/wasm/build.mjs",
+    "wasm:parity": "node ../scripts/wasm/parity.mjs",
     "tauri": "tauri"
   },
   "dependencies": {
