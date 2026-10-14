@@ -281,6 +281,8 @@ An issue is accepted only after current-base validation and integration evidence
 
 ## 5. Current slice and delivery rules
 
+(rev1.08, 2026-10-14) **F1 design ACCEPTED with four lead amendments** (`reviews/EPIC-029/f1-shared-runtime-design-verdict.md`). Minted **AI-IMP-204** (browser file + prefs), **205** (worker/WASM compute + exact parity), **206** (target selection + Playwright harness). A1: before any adapter work, a bit-for-bit native-vs-wasm32 probe of `powf`/`cbrt` (not correctly rounded; one ulp can flip a cluster); if they differ, one pure-Rust libm on both targets. A2: wasm-bindgen =0.2.128 exact. A3: release .wasm at most 4 MiB. A4: Playwright gross-hang alarm, 60 s and no heartbeat gap over 1,000 ms. **AI-IMP-204 build fence ISSUED.**
+
 (rev1.07, 2026-10-14) **F0 foundation COMPLETE:** 168 (d3a8f44: pinned September references, dormant study tokens, hook never formats the pinned carrier), lead prerequisite 0034aee (loc-enforce.js formatting), 169 (f9eb387: FigureFrame, scoped controls, isolated showcase, exact-suffix SSR test transform), 195 (27f40d8: honest feedback surfaces with a per-state provenance policy and no synthetic progress). Each lead-reproduced (tests, the real staged hook, production build with zero study sentinels). **Next: F1, doc-only design plus three ticket drafts**, as ruled at rev1.05.
 
 (rev1.05, 2026-10-14) **Sol's functional-path scope report is ACCEPTED** (`reviews/EPIC-029/functional-path-scope-report-verdict.md`). First usable milestone: one still-image Colors study in a locally served browser AND Tauri from the same renderer. **F1 ruled:** Web Worker + wasm-bindgen over current color-core with a non-Rayon browser feature; boundary = ENCODED BYTES decoded by color-core in both targets (decode parity by construction); digest parity on one fixed still; browser prefs = localStorage under the Tauri Store's versioned schema; Playwright proposed for the real-browser harness. **171 split:** one reviewed layout + current labels is the first Colors acceptance; 196/199 stay open as completion. **F0 build fence ISSUED** (168 → 169 → 195, one commit each, isolated candidate). **F1:** a doc-only source design plus three ticket drafts (F1a file/prefs, F1b worker compute/parity, F1c target selection/harness) next; then the lead mints numbers and fences F1. F2 only after F0+F1 are accepted.
@@ -910,6 +912,8 @@ Planning acceptance is narrower: complete mapping to the current baseline, expli
 - EPIC-026's old K<=128 success line conflicts with its GO text and later performance evidence. Reconcile supported limits and remeasure in that epic; this plan does not choose a new limit.
 
 ## 8. Decision summary
+
+(rev1.08, 2026-10-14) F1 design accepted; 204-206 minted; 204 is building first; the maths parity probe gates 205.
 
 (rev1.07, 2026-10-14) F0 is done (168, 169, 195 committed). F1 design is next.
 

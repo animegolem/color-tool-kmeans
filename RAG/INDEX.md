@@ -7,11 +7,11 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 2 | 11 |
-| Planned | 2 | 31 |
+| Planned | 2 | 34 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
 | Completed | 18 | 127 |
-| **Total** | **24** | **174** |
+| **Total** | **24** | **177** |
 
 ## In Progress
 
@@ -67,6 +67,9 @@
 - [[AI-IMP-201-reproducible-native-build|IMP-201]] Produce a reproducible current native candidate — in-progress
 - [[AI-IMP-202-real-app-profiling-system|IMP-202]] Reproducible real-app latency and attribution — in-progress
 - [[AI-IMP-203-svelte-event-guard-token-boundary|IMP-203]] Stop CSS selectors being mistaken for legacy Svelte events — in-progress
+- [[AI-IMP-204-browser-file-preferences|IMP-204]] Retain honest browser file authority and durable preferences — planned
+- [[AI-IMP-205-worker-wasm-compute-parity|IMP-205]] Lead amendments (binding; functional-path F1 verdict, 2026-10-14) — planned
+- [[AI-IMP-206-target-selection-browser-harness|IMP-206]] Lead amendments (binding; functional-path F1 verdict, 2026-10-14) — planned
 
 ---
 
@@ -109,7 +112,7 @@ Generated from tracked files; binary assets excluded.
 ### > 600 LOC
 
 - RAG/Colors Tool.fig (10051 LOC)
-- RAG/PROJECT-RECORD.md (1613 LOC)
+- RAG/PROJECT-RECORD.md (1621 LOC)
 - tauri-app/src/lib/views/BatchView.svelte (912 LOC)
 - color-core/tests/fixtures/color_golden.json (850 LOC)
 - tauri-app/src/lib/views/home/video-controller.svelte.ts (847 LOC)
