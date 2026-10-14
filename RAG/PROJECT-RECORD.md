@@ -701,6 +701,8 @@ Planning acceptance is narrower: complete mapping to the current baseline, expli
 
 ## 7. Open decisions
 
+(rev1.06, 2026-10-14) **Owner commission, low priority, never displacing F0/F1:** a `color-tool` CLI over color-core (analyze JSON + canonical digest, which doubles as F1b's parity tool), then values/notan once value analysis is Tauri-free (in F4/IMP-185 order, not lifted early), then an MCP server wrapping the same core ("slowly have them turn it into an MCP app"). Sol proposes where stage 1 sits; the lead mints numbers.
+
 (rev1.04, 2026-10-14) IMP-202 is answered for now: parked behind the first usable redesigned app. Open: the functional path's slices (after Sol's scope report) and IMP-193-5 (wanted at all?).
 
 (rev1.00, 2026-10-02) IMP-193-4 is closed by the owner's word. Still open and distinct: IMP-193-5 (wanted at all?) and IMP-202 (does profiling resume?). The redesign and Sol's assignments wait on the owner's conversation with Astra and Sol.
