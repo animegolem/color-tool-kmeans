@@ -16,6 +16,7 @@ thiserror = "1.0"
 rand = { version = "0.8", features = ["small_rng"] }
 rayon = "1.8"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp", "tiff"] }
+libm = { version = "=0.2.16", default-features = false }
 wide = { version = "0.7", optional = true, default-features = false, features = ["std"] }
 
 [dev-dependencies]

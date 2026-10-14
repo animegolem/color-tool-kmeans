@@ -9,6 +9,267 @@
 const EPSILON: f32 = 1e-6;
 const XYZ_WHITE: [f32; 3] = [0.95047, 1.0, 1.08883]; // D65
 
+// Frozen from the pre-libm arm64 macOS srgb_to_linear outputs. Keeping the
+// exact bits preserves native 8-bit decode while making every target identical.
+const SRGB8_TO_LINEAR_TABLE: [f32; 256] = [
+    f32::from_bits(0x00000000),
+    f32::from_bits(0x399f22b4),
+    f32::from_bits(0x3a1f22b4),
+    f32::from_bits(0x3a6eb40e),
+    f32::from_bits(0x3a9f22b4),
+    f32::from_bits(0x3ac6eb61),
+    f32::from_bits(0x3aeeb40e),
+    f32::from_bits(0x3b0b3e5d),
+    f32::from_bits(0x3b1f22b4),
+    f32::from_bits(0x3b33070b),
+    f32::from_bits(0x3b46eb61),
+    f32::from_bits(0x3b5b518d),
+    f32::from_bits(0x3b70f18d),
+    f32::from_bits(0x3b83e1c6),
+    f32::from_bits(0x3b8fe616),
+    f32::from_bits(0x3b9c87fd),
+    f32::from_bits(0x3ba9c9b7),
+    f32::from_bits(0x3bb7ad6f),
+    f32::from_bits(0x3bc63549),
+    f32::from_bits(0x3bd56361),
+    f32::from_bits(0x3be539c1),
+    f32::from_bits(0x3bf5ba70),
+    f32::from_bits(0x3c0373b5),
+    f32::from_bits(0x3c0c6152),
+    f32::from_bits(0x3c15a703),
+    f32::from_bits(0x3c1f45be),
+    f32::from_bits(0x3c293e6b),
+    f32::from_bits(0x3c3391f7),
+    f32::from_bits(0x3c3e4149),
+    f32::from_bits(0x3c494d43),
+    f32::from_bits(0x3c54b6c7),
+    f32::from_bits(0x3c607eb1),
+    f32::from_bits(0x3c6ca5df),
+    f32::from_bits(0x3c792d22),
+    f32::from_bits(0x3c830aa8),
+    f32::from_bits(0x3c89af9f),
+    f32::from_bits(0x3c9085db),
+    f32::from_bits(0x3c978dc5),
+    f32::from_bits(0x3c9ec7c2),
+    f32::from_bits(0x3ca63433),
+    f32::from_bits(0x3cadd37d),
+    f32::from_bits(0x3cb5a601),
+    f32::from_bits(0x3cbdac20),
+    f32::from_bits(0x3cc5e639),
+    f32::from_bits(0x3cce54ab),
+    f32::from_bits(0x3cd6f7d5),
+    f32::from_bits(0x3cdfd010),
+    f32::from_bits(0x3ce8ddb9),
+    f32::from_bits(0x3cf2212c),
+    f32::from_bits(0x3cfb9ac1),
+    f32::from_bits(0x3d02a569),
+    f32::from_bits(0x3d0798dc),
+    f32::from_bits(0x3d0ca7e6),
+    f32::from_bits(0x3d11d2af),
+    f32::from_bits(0x3d171963),
+    f32::from_bits(0x3d1c7c2e),
+    f32::from_bits(0x3d21fb3c),
+    f32::from_bits(0x3d2796b2),
+    f32::from_bits(0x3d2d4ebb),
+    f32::from_bits(0x3d332380),
+    f32::from_bits(0x3d39152b),
+    f32::from_bits(0x3d3f23e3),
+    f32::from_bits(0x3d454fd1),
+    f32::from_bits(0x3d4b991c),
+    f32::from_bits(0x3d51ffef),
+    f32::from_bits(0x3d58846a),
+    f32::from_bits(0x3d5f26b7),
+    f32::from_bits(0x3d65e6fe),
+    f32::from_bits(0x3d6cc564),
+    f32::from_bits(0x3d73c20f),
+    f32::from_bits(0x3d7add29),
+    f32::from_bits(0x3d810b68),
+    f32::from_bits(0x3d84b795),
+    f32::from_bits(0x3d887330),
+    f32::from_bits(0x3d8c3e4a),
+    f32::from_bits(0x3d9018f6),
+    f32::from_bits(0x3d940345),
+    f32::from_bits(0x3d97fd4a),
+    f32::from_bits(0x3d9c0716),
+    f32::from_bits(0x3da020bb),
+    f32::from_bits(0x3da44a4b),
+    f32::from_bits(0x3da883d7),
+    f32::from_bits(0x3daccd70),
+    f32::from_bits(0x3db12728),
+    f32::from_bits(0x3db59112),
+    f32::from_bits(0x3dba0b3b),
+    f32::from_bits(0x3dbe95b5),
+    f32::from_bits(0x3dc33092),
+    f32::from_bits(0x3dc7dbe2),
+    f32::from_bits(0x3dcc97b6),
+    f32::from_bits(0x3dd1641f),
+    f32::from_bits(0x3dd6412c),
+    f32::from_bits(0x3ddb2eef),
+    f32::from_bits(0x3de02d77),
+    f32::from_bits(0x3de53cd5),
+    f32::from_bits(0x3dea5d19),
+    f32::from_bits(0x3def8e52),
+    f32::from_bits(0x3df4d091),
+    f32::from_bits(0x3dfa23e8),
+    f32::from_bits(0x3dff8861),
+    f32::from_bits(0x3e027f07),
+    f32::from_bits(0x3e054280),
+    f32::from_bits(0x3e080ea3),
+    f32::from_bits(0x3e0ae378),
+    f32::from_bits(0x3e0dc105),
+    f32::from_bits(0x3e10a754),
+    f32::from_bits(0x3e13966b),
+    f32::from_bits(0x3e168e52),
+    f32::from_bits(0x3e198f10),
+    f32::from_bits(0x3e1c98ad),
+    f32::from_bits(0x3e1fab30),
+    f32::from_bits(0x3e22c6a3),
+    f32::from_bits(0x3e25eb09),
+    f32::from_bits(0x3e29186c),
+    f32::from_bits(0x3e2c4ed0),
+    f32::from_bits(0x3e2f8e41),
+    f32::from_bits(0x3e32d6c4),
+    f32::from_bits(0x3e362861),
+    f32::from_bits(0x3e39831e),
+    f32::from_bits(0x3e3ce703),
+    f32::from_bits(0x3e405416),
+    f32::from_bits(0x3e43ca5f),
+    f32::from_bits(0x3e4749e4),
+    f32::from_bits(0x3e4ad2ae),
+    f32::from_bits(0x3e4e64c2),
+    f32::from_bits(0x3e520027),
+    f32::from_bits(0x3e55a4e6),
+    f32::from_bits(0x3e595303),
+    f32::from_bits(0x3e5d0a8b),
+    f32::from_bits(0x3e60cb7c),
+    f32::from_bits(0x3e6495e0),
+    f32::from_bits(0x3e6869bf),
+    f32::from_bits(0x3e6c4720),
+    f32::from_bits(0x3e702e0c),
+    f32::from_bits(0x3e741e84),
+    f32::from_bits(0x3e781890),
+    f32::from_bits(0x3e7c1c38),
+    f32::from_bits(0x3e8014c2),
+    f32::from_bits(0x3e82203c),
+    f32::from_bits(0x3e84308d),
+    f32::from_bits(0x3e8645ba),
+    f32::from_bits(0x3e885fc5),
+    f32::from_bits(0x3e8a7eb2),
+    f32::from_bits(0x3e8ca283),
+    f32::from_bits(0x3e8ecb3d),
+    f32::from_bits(0x3e90f8e1),
+    f32::from_bits(0x3e932b74),
+    f32::from_bits(0x3e9562f8),
+    f32::from_bits(0x3e979f71),
+    f32::from_bits(0x3e99e0e2),
+    f32::from_bits(0x3e9c274e),
+    f32::from_bits(0x3e9e72b7),
+    f32::from_bits(0x3ea0c322),
+    f32::from_bits(0x3ea31892),
+    f32::from_bits(0x3ea57308),
+    f32::from_bits(0x3ea7d289),
+    f32::from_bits(0x3eaa3718),
+    f32::from_bits(0x3eaca0b7),
+    f32::from_bits(0x3eaf0f69),
+    f32::from_bits(0x3eb18333),
+    f32::from_bits(0x3eb3fc18),
+    f32::from_bits(0x3eb67a18),
+    f32::from_bits(0x3eb8fd37),
+    f32::from_bits(0x3ebb8579),
+    f32::from_bits(0x3ebe12e1),
+    f32::from_bits(0x3ec0a571),
+    f32::from_bits(0x3ec33d2d),
+    f32::from_bits(0x3ec5da17),
+    f32::from_bits(0x3ec87c33),
+    f32::from_bits(0x3ecb2383),
+    f32::from_bits(0x3ecdd00b),
+    f32::from_bits(0x3ed081cd),
+    f32::from_bits(0x3ed338cc),
+    f32::from_bits(0x3ed5f50b),
+    f32::from_bits(0x3ed8b68d),
+    f32::from_bits(0x3edb7d54),
+    f32::from_bits(0x3ede4965),
+    f32::from_bits(0x3ee11ac1),
+    f32::from_bits(0x3ee3f16b),
+    f32::from_bits(0x3ee6cd67),
+    f32::from_bits(0x3ee9aeb7),
+    f32::from_bits(0x3eec955d),
+    f32::from_bits(0x3eef815d),
+    f32::from_bits(0x3ef272ba),
+    f32::from_bits(0x3ef56976),
+    f32::from_bits(0x3ef86594),
+    f32::from_bits(0x3efb6717),
+    f32::from_bits(0x3efe6e02),
+    f32::from_bits(0x3f00bd2d),
+    f32::from_bits(0x3f02460e),
+    f32::from_bits(0x3f03d1a7),
+    f32::from_bits(0x3f055ff9),
+    f32::from_bits(0x3f06f106),
+    f32::from_bits(0x3f0884cf),
+    f32::from_bits(0x3f0a1b56),
+    f32::from_bits(0x3f0bb49b),
+    f32::from_bits(0x3f0d50a0),
+    f32::from_bits(0x3f0eef67),
+    f32::from_bits(0x3f1090f1),
+    f32::from_bits(0x3f12353e),
+    f32::from_bits(0x3f13dc51),
+    f32::from_bits(0x3f15862b),
+    f32::from_bits(0x3f1732cd),
+    f32::from_bits(0x3f18e239),
+    f32::from_bits(0x3f1a946f),
+    f32::from_bits(0x3f1c4971),
+    f32::from_bits(0x3f1e0141),
+    f32::from_bits(0x3f1fbbdf),
+    f32::from_bits(0x3f21794e),
+    f32::from_bits(0x3f23398e),
+    f32::from_bits(0x3f24fca0),
+    f32::from_bits(0x3f26c286),
+    f32::from_bits(0x3f288b41),
+    f32::from_bits(0x3f2a56d3),
+    f32::from_bits(0x3f2c253d),
+    f32::from_bits(0x3f2df680),
+    f32::from_bits(0x3f2fca9e),
+    f32::from_bits(0x3f31a197),
+    f32::from_bits(0x3f337b6c),
+    f32::from_bits(0x3f355820),
+    f32::from_bits(0x3f3737b3),
+    f32::from_bits(0x3f391a26),
+    f32::from_bits(0x3f3aff7c),
+    f32::from_bits(0x3f3ce7b5),
+    f32::from_bits(0x3f3ed2d2),
+    f32::from_bits(0x3f40c0d4),
+    f32::from_bits(0x3f42b1be),
+    f32::from_bits(0x3f44a590),
+    f32::from_bits(0x3f469c4b),
+    f32::from_bits(0x3f4895f1),
+    f32::from_bits(0x3f4a9282),
+    f32::from_bits(0x3f4c9201),
+    f32::from_bits(0x3f4e946e),
+    f32::from_bits(0x3f5099cb),
+    f32::from_bits(0x3f52a218),
+    f32::from_bits(0x3f54ad57),
+    f32::from_bits(0x3f56bb8a),
+    f32::from_bits(0x3f58ccb0),
+    f32::from_bits(0x3f5ae0cd),
+    f32::from_bits(0x3f5cf7e0),
+    f32::from_bits(0x3f5f11ec),
+    f32::from_bits(0x3f612eee),
+    f32::from_bits(0x3f634eef),
+    f32::from_bits(0x3f6571e9),
+    f32::from_bits(0x3f6797e3),
+    f32::from_bits(0x3f69c0d6),
+    f32::from_bits(0x3f6beccd),
+    f32::from_bits(0x3f6e1bbf),
+    f32::from_bits(0x3f704db8),
+    f32::from_bits(0x3f7282af),
+    f32::from_bits(0x3f74baae),
+    f32::from_bits(0x3f76f5ae),
+    f32::from_bits(0x3f7933b9),
+    f32::from_bits(0x3f7b74c6),
+    f32::from_bits(0x3f7db8e0),
+    f32::from_bits(0x3f800000),
+];
+
 #[inline]
 fn clamp01(v: f32) -> f32 {
     v.clamp(0.0, 1.0)
@@ -24,7 +285,7 @@ pub fn srgb_to_linear(c: f32) -> f32 {
     if c <= 0.04045 {
         c / 12.92
     } else {
-        ((c + 0.055) / 1.055).powf(2.4)
+        libm::powf((c + 0.055) / 1.055, 2.4)
     }
 }
 
@@ -33,12 +294,12 @@ pub fn linear_to_srgb(c: f32) -> f32 {
     if c <= 0.0031308 {
         c * 12.92
     } else {
-        1.055 * c.powf(1.0 / 2.4) - 0.055
+        1.055 * libm::powf(c, 1.0 / 2.4) - 0.055
     }
 }
 
 pub fn srgb8_to_linear(rgb: [u8; 3]) -> [f32; 3] {
-    rgb.map(|c| srgb_to_linear((c as f32) / 255.0))
+    rgb.map(|c| SRGB8_TO_LINEAR_TABLE[c as usize])
 }
 
 pub fn linear_to_srgb8(rgb: [f32; 3]) -> [u8; 3] {
@@ -88,9 +349,9 @@ fn linear_rgb_to_oklab(rgb: [f32; 3]) -> [f32; 3] {
     let l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
     let m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
     let s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
-    let l_ = l.cbrt();
-    let m_ = m.cbrt();
-    let s_ = s.cbrt();
+    let l_ = libm::cbrtf(l);
+    let m_ = libm::cbrtf(m);
+    let s_ = libm::cbrtf(s);
     [
         0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
         1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
@@ -191,7 +452,7 @@ pub fn oklab_to_srgb8_gamut_mapped(lab: [f32; 3]) -> [u8; 3] {
 fn f_lab(t: f32) -> f32 {
     const DELTA: f32 = 6.0 / 29.0;
     if t > DELTA.powi(3) {
-        t.cbrt()
+        libm::cbrtf(t)
     } else {
         t / (3.0 * DELTA * DELTA) + 4.0 / 29.0
     }
@@ -250,7 +511,7 @@ pub fn rgb8_to_luv(rgb: [u8; 3]) -> [f32; 3] {
 
     let y_ratio = xyz[1] / XYZ_WHITE[1];
     let l = if y_ratio > (6.0f32 / 29.0).powi(3) {
-        116.0 * y_ratio.cbrt() - 16.0
+        116.0 * libm::cbrtf(y_ratio) - 16.0
     } else {
         (29.0f32 / 3.0).powi(3) * y_ratio
     };
@@ -593,6 +854,33 @@ mod tests {
 
     fn srgb8_to_oklab_ref(rgb: [u8; 3]) -> [f64; 3] {
         linear_rgb_to_oklab_ref(srgb8_to_linear_ref(rgb))
+    }
+
+    #[test]
+    fn srgb8_decode_reads_committed_table() {
+        for value in 0..=u8::MAX {
+            let expected = SRGB8_TO_LINEAR_TABLE[value as usize].to_bits();
+            let actual = srgb8_to_linear([value; 3]).map(f32::to_bits);
+            assert_eq!(actual, [expected; 3], "table lookup mismatch at {value}");
+        }
+    }
+
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    #[test]
+    fn srgb8_table_matches_pre_libm_native_transfer_bits() {
+        for value in 0..=u8::MAX {
+            let c = (value as f32) / 255.0;
+            let native = if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            };
+            assert_eq!(
+                SRGB8_TO_LINEAR_TABLE[value as usize].to_bits(),
+                native.to_bits(),
+                "frozen native provenance mismatch at {value}"
+            );
+        }
     }
 
     #[test]
