@@ -9,7 +9,7 @@ import {
   isSupportedBrowserImage,
   isVideoFile,
 } from '../../bridges/fs';
-import { isTauriEnv } from '../../bridges/tauri';
+import { getRuntimeTarget, type RuntimeTarget } from '../../runtime/target';
 import { loadImageDataset } from '../../compute/image-loader';
 import { logEvent } from '../../bridges/log';
 import {
@@ -46,7 +46,10 @@ export interface FileIngestionDeps {
   updateEntryPreview: (id: string, previewUrl: string) => void;
 }
 
-export function createFileIngestion(deps: FileIngestionDeps) {
+export function createFileIngestion(
+  deps: FileIngestionDeps,
+  runtimeTarget: RuntimeTarget = getRuntimeTarget()
+) {
   let dragging = $state(false);
   let draggingWindow = $state(false);
   let loadToken = 0;
@@ -68,13 +71,13 @@ export function createFileIngestion(deps: FileIngestionDeps) {
   }
 
   async function processBatch(selections: FileSelection[]) {
-    if (!isTauriEnv() && selections.length > 1) {
+    if (runtimeTarget.kind === 'browser' && selections.length > 1) {
       deps.setBannerMessage(
         'Multiple browser files are not supported yet. Choose one still image.'
       );
       return;
     }
-    if (!isTauriEnv() && selections.some(isVideoFile)) {
+    if (!runtimeTarget.capabilities.video && selections.some(isVideoFile)) {
       deps.setBannerMessage(
         'Browser video is not supported yet. Choose one still image.'
       );
@@ -113,7 +116,7 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     const token = loadToken;
     deps.cancelPending();
     try {
-      const nativeMode = isTauriEnv() && !!fileSelection.path;
+      const nativeMode = runtimeTarget.kind === 'tauri' && !!fileSelection.path;
       let dataset;
       if (nativeMode) {
         dataset = { width: 0, height: 0, pixels: new Uint8Array(0) };
@@ -153,6 +156,7 @@ export function createFileIngestion(deps: FileIngestionDeps) {
   }
 
   function setupDragDrop(): Promise<(() => void) | null> {
+    if (runtimeTarget.kind !== 'tauri') return Promise.resolve(null);
     return setupTauriDragDrop((selections) => void processBatch(selections));
   }
 
@@ -183,7 +187,7 @@ export function createFileIngestion(deps: FileIngestionDeps) {
     event.preventDefault();
     dragging = false;
     draggingWindow = false;
-    if (isTauriEnv()) {
+    if (runtimeTarget.kind === 'tauri') {
       return;
     }
     const files = event.dataTransfer?.files;

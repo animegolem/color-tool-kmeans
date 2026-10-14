@@ -33,7 +33,7 @@
     libraryDrawerOpen,
   } from '../stores/ui';
   import { analysisById } from '../stores/analysis';
-  import { isTauriEnv, tauriDetectionInfo } from '../bridges/tauri';
+  import { tauriDetectionInfo } from '../bridges/tauri';
   import { getFfmpegVersion } from '../bridges/ffmpeg';
   import { logEvent } from '../bridges/log';
   import { devlog } from '../utils/devlog';
@@ -63,6 +63,13 @@
   import { saveChart, type ChartOutput } from '../exports/chart-save';
   import { exportScale } from '../stores/ui';
   import { inferMimeType } from '../bridges/fs';
+  import { getRuntimeTarget, type RuntimeTarget } from '../runtime/target';
+
+  interface Props {
+    runtimeTarget?: RuntimeTarget;
+  }
+
+  let { runtimeTarget = getRuntimeTarget() }: Props = $props();
 
   const devEnabled = import.meta.env.DEV ?? false;
 
@@ -111,6 +118,21 @@
   let result = $state<AnalysisResult | null>(null);
   let displayResult = $state<AnalysisResult | null>(null);
   let analysisErr = $state<string | null>(null);
+  let analysisIntentKey: string | null = null;
+
+  function getAnalysisIntentKey(
+    activeFile: SelectedImage,
+    paramSnapshot: AnalysisParams
+  ) {
+    return JSON.stringify({
+      id: activeFile.id,
+      clusters: paramSnapshot.clusters,
+      quality: paramSnapshot.quality,
+      ignoreTopN: paramSnapshot.ignoreTopN,
+      mergeThreshold: paramSnapshot.mergeThreshold,
+      snapToReal: paramSnapshot.snapToReal,
+    });
+  }
 
   interface DevBannerDetails {
     detection: ReturnType<typeof tauriDetectionInfo>;
@@ -119,7 +141,7 @@
   }
 
   function isNativeModeActive(): boolean {
-    return isTauriEnv();
+    return runtimeTarget.kind === 'tauri';
   }
 
   function ensureDevBannerDetails(): DevBannerDetails {
@@ -177,31 +199,35 @@
     const cachedFile = get(selectedFile);
     if (cachedResult && cachedFile) {
       runner.seedLastRequestKey(cachedFile, get(params));
+      analysisIntentKey = getAnalysisIntentKey(cachedFile, get(params));
     }
   }
 
   // --- File ingestion ---
-  const ingestion = createFileIngestion({
-    setFile,
-    appendFile,
-    setAnalysisError,
-    cancelPending: runner.cancelPending,
-    scheduleAnalysisWith: (f, p, s) => runner.scheduleAnalysisWith(f, p, s),
-    recordDevEvent,
-    setBannerMessage: (msg) => {
-      bannerMessage = msg;
+  const ingestion = createFileIngestion(
+    {
+      setFile,
+      appendFile,
+      setAnalysisError,
+      cancelPending: runner.cancelPending,
+      scheduleAnalysisWith: (f, p, s) => runner.scheduleAnalysisWith(f, p, s),
+      recordDevEvent,
+      setBannerMessage: (msg) => {
+        bannerMessage = msg;
+      },
+      getParams: () => currentParams,
+      getStatus: () => status,
+      clearVideoSelection: () => video.clearVideoSelection(),
+      loadVideoSelection: (sel) => {
+        clearActivePath();
+        runner.cancelPending();
+        video.loadVideoSelection(sel);
+      },
+      openLibraryDrawer: () => libraryDrawerOpen.set(true),
+      updateEntryPreview,
     },
-    getParams: () => currentParams,
-    getStatus: () => status,
-    clearVideoSelection: () => video.clearVideoSelection(),
-    loadVideoSelection: (sel) => {
-      clearActivePath();
-      runner.cancelPending();
-      video.loadVideoSelection(sel);
-    },
-    openLibraryDrawer: () => libraryDrawerOpen.set(true),
-    updateEntryPreview,
-  });
+    runtimeTarget
+  );
 
   // --- Video controller ---
   const video = createVideoController({
@@ -316,7 +342,7 @@
   // --- FFmpeg check ---
   let ffmpegChecked = false;
   async function checkFfmpegVersion() {
-    if (ffmpegChecked || !isTauriEnv()) return;
+    if (ffmpegChecked || !runtimeTarget.capabilities.video) return;
     ffmpegChecked = true;
     try {
       const version = await getFfmpegVersion();
@@ -364,6 +390,11 @@
       }),
       subscribeToVideoStripMode(videoStripMode, video.regenerateStrip),
       subscribePendingVideoSwitch(({ entry, videoPath, id, cid }) => {
+        if (!runtimeTarget.capabilities.video) {
+          bannerMessage =
+            'Browser video is not supported yet. Choose one still image.';
+          return;
+        }
         devlog('home:videoSwitch', 'Pending video switch', {
           id,
           cid,
@@ -472,6 +503,7 @@
     const activeFile = file;
     const paramSnapshot = currentParams;
     if (!activeFile) {
+      analysisIntentKey = null;
       runner.cancelPending();
       return;
     }
@@ -480,6 +512,12 @@
     }
     if (status === 'error') {
       return;
+    }
+    const nextIntentKey = getAnalysisIntentKey(activeFile, paramSnapshot);
+    if (analysisIntentKey !== nextIntentKey) {
+      analysisIntentKey = nextIntentKey;
+      runner.cancelPending();
+      runner.clearLastRequestKey();
     }
     devlog('home:analysis:effect', 'Analysis effect triggered', {
       imageId: activeFile.id,
@@ -490,7 +528,11 @@
   });
 </script>
 
-<section class="home">
+<section
+  class="home"
+  data-analysis-state={status}
+  data-result-cluster-count={chartResult?.clusters.length}
+>
   {#if devEnabled && devBannerVisible && devBannerData}
     <DevBanner data={devBannerData} onDismiss={dismissDevBanner} />
   {/if}
@@ -558,7 +600,9 @@
             hueLightnessChart={null}
             {histogramSortLabel}
             showHistogramFrame={currentParams.showHistogram}
-            onChartContext={openChartMenu}
+            onChartContext={runtimeTarget.capabilities.save
+              ? openChartMenu
+              : undefined}
           />
         {/if}
       </div>
@@ -574,7 +618,9 @@
             histogramSortLabel=""
             showPolarFrame={currentParams.showPolarChart}
             showHueLightnessFrame={currentParams.showHueLightness}
-            onChartContext={openChartMenu}
+            onChartContext={runtimeTarget.capabilities.save
+              ? openChartMenu
+              : undefined}
           />
         </div>
       {/if}
@@ -598,7 +644,11 @@
         <p>or</p>
         <button class="upload" onclick={ingestion.chooseMedia}>Add media</button
         >
-        <p class="formats">PNG, JPEG, WebP, BMP, GIF, TIFF, MP4</p>
+        <p class="formats">
+          {runtimeTarget.capabilities.video
+            ? 'PNG, JPEG, WebP, BMP, GIF, TIFF, MP4'
+            : 'PNG, JPEG, WebP, BMP, GIF, TIFF'}
+        </p>
       </div>
     </div>
   {/if}
@@ -611,7 +661,9 @@
           <div class="spinner" aria-hidden="true" style="display:none"></div>
           <div style="font-size:20px;font-weight:500">Drop Anywhere</div>
           <div style="font-size:12px;opacity:.8">
-            PNG · JPEG · WebP · BMP · GIF · TIFF · MP4
+            {runtimeTarget.capabilities.video
+              ? 'PNG · JPEG · WebP · BMP · GIF · TIFF · MP4'
+              : 'PNG · JPEG · WebP · BMP · GIF · TIFF'}
           </div>
         </div>
       </div>

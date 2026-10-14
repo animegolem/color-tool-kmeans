@@ -7,10 +7,10 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 2 | 11 |
-| Planned | 2 | 32 |
+| Planned | 2 | 31 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
-| Completed | 18 | 129 |
+| Completed | 18 | 130 |
 | **Total** | **24** | **177** |
 
 ## In Progress
@@ -69,7 +69,7 @@
 - [[AI-IMP-203-svelte-event-guard-token-boundary|IMP-203]] Stop CSS selectors being mistaken for legacy Svelte events — in-progress
 - [[AI-IMP-204-browser-file-preferences|IMP-204]] Retain honest browser file authority and durable preferences — completed
 - [[AI-IMP-205-worker-wasm-compute-parity|IMP-205]] Lead amendments (binding; functional-path F1 verdict, 2026-10-14) — completed
-- [[AI-IMP-206-target-selection-browser-harness|IMP-206]] Lead amendments (binding; functional-path F1 verdict, 2026-10-14) — planned
+- [[AI-IMP-206-target-selection-browser-harness|IMP-206]] Lead amendments (binding; functional-path F1 verdict, 2026-10-14) — completed
 
 ---
 
@@ -117,9 +117,9 @@ Generated from tracked files; binary assets excluded.
 - tauri-app/src/lib/views/BatchView.svelte (912 LOC)
 - color-core/tests/fixtures/color_golden.json (850 LOC)
 - tauri-app/src/lib/views/home/video-controller.svelte.ts (847 LOC)
+- tauri-app/src/lib/views/HomeView.svelte (845 LOC)
 - tauri-app/src/lib/views/__tests__/audit-control-flow-races.spec.ts (841 LOC)
 - tauri-app/src/lib/views/ValuesView.svelte (806 LOC)
-- tauri-app/src/lib/views/HomeView.svelte (793 LOC)
 - tauri-app/src/lib/views/ExportsView.svelte (743 LOC)
 - tauri-app/src-tauri/src/value_analysis.rs (741 LOC)
 - RAG/AI-LOG/2026-09-05-LOG-AI-ui-rescope-and-sol-handoff.md (741 LOC)
@@ -130,18 +130,18 @@ Generated from tracked files; binary assets excluded.
 - RAG/scripts/generate-index.sh (576 LOC)
 - tauri-app/src/lib/exports/value-analysis.ts (570 LOC)
 - RAG/reviews/EPIC-029/profiling-round-01-review.md (519 LOC)
+- tauri-app/src/App.svelte (457 LOC)
 - RAG/reviews/EPIC-029/profiling-rebase-scope-report.md (453 LOC)
 - tauri-app/src-tauri/src/ffmpeg.rs (446 LOC)
 - tauri-app/src/lib/views/exports/colors-export-runner.svelte.ts (442 LOC)
 - tauri-app/src/lib/bridges/compute.ts (427 LOC)
-- tauri-app/src/App.svelte (425 LOC)
 - tauri-app/src/lib/exports/polar-chart.ts (417 LOC)
 - tauri-app/src/app.css (403 LOC)
 - tauri-app/src/lib/views/exports/values-export-runner.svelte.ts (390 LOC)
 - tauri-app/src/lib/stores/image.ts (386 LOC)
+- tauri-app/src/lib/views/SettingsView.svelte (383 LOC)
 - tauri-app/src-tauri/src/bin/live_pipe_probe.rs (379 LOC)
 - tauri-app/src/lib/exports/color-study-compositor.ts (368 LOC)
-- tauri-app/src/lib/views/SettingsView.svelte (366 LOC)
 - tauri-app/src-tauri/src/bin/live_loop_probe.rs (347 LOC)
 - RAG/reviews/EPIC-029/profiling-b8-invalid-input-repair-review.md (336 LOC)
 - RAG/reviews/EPIC-029/functional-path-scope-report.md (336 LOC)
@@ -154,7 +154,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>18 EPICs, 98 IMPs completed</summary>
+<summary>18 EPICs, 99 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed

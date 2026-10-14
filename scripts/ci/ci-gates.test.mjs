@@ -44,6 +44,7 @@ const resultNames = [
   'HOOK_RESULT',
   'FRONTEND_RESULT',
   'RUST_RESULT',
+  'BROWSER_RESULT',
   'WINDOWS_RESULT',
 ];
 for (const state of ['success', 'failure', 'cancelled', 'skipped', '']) {
@@ -71,7 +72,24 @@ for (const state of ['success', 'failure', 'cancelled', 'skipped', '']) {
 test('CI retains all required jobs and never allows a failed or missing bundle', () => {
   assert.match(
     workflow,
-    /needs: \[hook-regressions, frontend-quality, rust-quality, build-windows\]/
+    /needs:\s+\[\s*hook-regressions,\s*frontend-quality,\s*rust-quality,\s*browser-e2e,\s*build-windows,?\s*\]/
+  );
+  assert.match(workflow, /browser-e2e:[\s\S]*node-version: 20/);
+  assert.match(
+    workflow,
+    /browser-e2e:[\s\S]*rustup target add wasm32-unknown-unknown/
+  );
+  assert.match(
+    workflow,
+    /browser-e2e:[\s\S]*cargo install --locked wasm-bindgen-cli --version 0\.2\.128/
+  );
+  assert.match(
+    workflow,
+    /browser-e2e:[\s\S]*playwright install --with-deps chromium/
+  );
+  assert.match(
+    workflow,
+    /browser-e2e:[\s\S]*npm run --prefix tauri-app test:browser/
   );
   assert.match(workflow, /if: \$\{\{ always\(\) \}\}/);
   assert.match(workflow, /if-no-files-found: error/);

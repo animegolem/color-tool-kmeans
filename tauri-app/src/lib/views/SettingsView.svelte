@@ -14,6 +14,13 @@
   import { open } from '@tauri-apps/plugin-dialog';
   import { logEvent } from '../bridges/log';
   import { onMount, onDestroy } from 'svelte';
+  import { getRuntimeTarget, type RuntimeTarget } from '../runtime/target';
+
+  interface Props {
+    runtimeTarget?: RuntimeTarget;
+  }
+
+  let { runtimeTarget = getRuntimeTarget() }: Props = $props();
 
   let isResetting = $state(false);
   let resetFeedback = $state<string | null>(null);
@@ -27,6 +34,7 @@
   });
 
   async function handleBrowseDir() {
+    if (!runtimeTarget.capabilities.exportDirectory) return;
     try {
       const selected = await open({
         directory: true,
@@ -213,17 +221,26 @@
         PNG (rasterized at scale)
       </label>
     </div>
-    <label>
-      <span>Save directory</span>
-      <div class="dir-row">
-        <span class="dir-path" title={$exportDir ?? 'Not set'}
-          >{truncatePath($exportDir, 40)}</span
-        >
-        <button type="button" class="browse-btn" onclick={handleBrowseDir}
-          >Browse</button
-        >
+    {#if runtimeTarget.capabilities.exportDirectory}
+      <label>
+        <span>Save directory</span>
+        <div class="dir-row">
+          <span class="dir-path" title={$exportDir ?? 'Not set'}
+            >{truncatePath($exportDir, 40)}</span
+          >
+          <button type="button" class="browse-btn" onclick={handleBrowseDir}
+            >Browse</button
+          >
+        </div>
+      </label>
+    {:else}
+      <div class="field" data-capability-unavailable="export-directory">
+        <span class="field-label">Save directory</span>
+        <p class="hint" role="status">
+          Choosing an export directory is available in the desktop app only.
+        </p>
       </div>
-    </label>
+    {/if}
   </div>
 
   <div class="group reset-group">

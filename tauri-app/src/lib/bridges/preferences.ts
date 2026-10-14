@@ -1,6 +1,6 @@
 import { LazyStore } from '@tauri-apps/plugin-store';
-import { isTauriEnv } from './tauri';
 import { clonePrefsV1, type PrefsV1 } from '../preferences/schema';
+import { getRuntimeTarget, type RuntimeTarget } from '../runtime/target';
 
 export const BROWSER_PREFS_KEY = 'color-tool.preferences.v1';
 const TAURI_PREFS_KEY = 'prefs';
@@ -95,14 +95,31 @@ export function normalizePrefsForAdapter(
   return normalized;
 }
 
-function selectPreferenceAdapter(): PreferenceAdapter {
-  return isTauriEnv()
+export function createPreferenceAdapterForTarget(
+  target: RuntimeTarget
+): PreferenceAdapter {
+  return target.kind === 'tauri'
     ? createTauriPreferenceAdapter()
     : createBrowserPreferenceAdapter();
 }
 
 let cachedPreferenceAdapter: PreferenceAdapter | null = null;
 
+export function initializePreferenceAdapter(
+  target: RuntimeTarget
+): PreferenceAdapter {
+  const expected = target.capabilities.preferenceAdapter;
+  if (cachedPreferenceAdapter && cachedPreferenceAdapter.id !== expected) {
+    throw new Error(
+      `Preference adapter already initialized as ${cachedPreferenceAdapter.id}; expected ${expected}`
+    );
+  }
+  cachedPreferenceAdapter ??= createPreferenceAdapterForTarget(target);
+  return cachedPreferenceAdapter;
+}
+
 export function getPreferenceAdapter(): PreferenceAdapter {
-  return (cachedPreferenceAdapter ??= selectPreferenceAdapter());
+  return (
+    cachedPreferenceAdapter ?? initializePreferenceAdapter(getRuntimeTarget())
+  );
 }

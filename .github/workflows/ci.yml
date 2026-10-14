@@ -79,6 +79,25 @@ jobs:
       - name: Full Rust workspace suite
         run: cargo test --workspace
 
+  browser-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install WASM target and pinned binding tool
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo install --locked wasm-bindgen-cli --version 0.2.128
+      - name: Install frontend dependencies
+        run: npm ci --prefix tauri-app --no-audit --no-fund
+      - name: Install Playwright Chromium
+        run: npx --prefix tauri-app playwright install --with-deps chromium
+      - name: Browser runtime suite
+        run: npm run --prefix tauri-app test:browser
+
   build-windows:
     runs-on: windows-latest
     steps:
@@ -106,7 +125,14 @@ jobs:
   # frontend-only green. No path skips, allowed failures, or skipped-leg success.
   build-test:
     if: ${{ always() }}
-    needs: [hook-regressions, frontend-quality, rust-quality, build-windows]
+    needs:
+      [
+        hook-regressions,
+        frontend-quality,
+        rust-quality,
+        browser-e2e,
+        build-windows,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Require every gate to pass
@@ -114,9 +140,10 @@ jobs:
           HOOK_RESULT: ${{ needs.hook-regressions.result }}
           FRONTEND_RESULT: ${{ needs.frontend-quality.result }}
           RUST_RESULT: ${{ needs.rust-quality.result }}
+          BROWSER_RESULT: ${{ needs.browser-e2e.result }}
           WINDOWS_RESULT: ${{ needs.build-windows.result }}
         run: |
-          for result in "$HOOK_RESULT" "$FRONTEND_RESULT" "$RUST_RESULT" "$WINDOWS_RESULT"; do
+          for result in "$HOOK_RESULT" "$FRONTEND_RESULT" "$RUST_RESULT" "$BROWSER_RESULT" "$WINDOWS_RESULT"; do
             if [[ "$result" != success ]]; then
               echo "A required CI gate did not pass: $result" >&2
               exit 1

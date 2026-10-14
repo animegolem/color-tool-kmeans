@@ -8,12 +8,12 @@ tags:
   - Playwright
   - CI
   - Epic-029
-kanban_status: planned
+kanban_status: completed
 depends_on: [AI-EPIC-029, AI-IMP-204, AI-IMP-205]
 parent_epic: [[AI-EPIC-029-control-flow-remediation]]
 confidence_score: 0.86
 date_created: 2026-10-14
-date_completed:
+date_completed: 2026-10-14
 ---
 
 # AI-IMP-206 (F1c) — runtime target selection and real-browser harness
@@ -124,39 +124,39 @@ generated/ignored artifacts and must not be committed.
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Add a pure detector that selects exactly `tauri` or `browser` once and
+- [x] Add a pure detector that selects exactly `tauri` or `browser` once and
       returns the complete ruled capability matrix.
-- [ ] Make file, compute, and preference bridge selection consume that record;
+- [x] Make file, compute, and preference bridge selection consume that record;
       remove normal-browser caught-failure logging.
-- [ ] Emit one structured startup target record and root data marker without
+- [x] Emit one structured startup target record and root data marker without
       exposing paths, files, preferences, or credentials.
-- [ ] Preserve all routes while rendering the shared unavailable surface for
+- [x] Preserve all routes while rendering the shared unavailable surface for
       browser Values, Batch, and Exports instead of mounting native consumers.
-- [ ] Replace browser export-directory interaction with an honest unavailable
+- [x] Replace browser export-directory interaction with an honest unavailable
       explanation, omit chart-save context actions, and reject browser video
       before ingestion.
-- [ ] Prove Tauri still selects all existing native adapters/routes/controls.
-- [ ] Add exactly `@playwright/test`; regenerate only the npm lock with npm 10
+- [x] Prove Tauri still selects all existing native adapters/routes/controls.
+- [x] Add exactly `@playwright/test`; regenerate only the npm lock with npm 10
       and inspect every changed package entry.
-- [ ] Configure Chromium against a loopback Vite server whose startup builds the
+- [x] Configure Chromium against a loopback Vite server whose startup builds the
       F1b WASM package with the lead-pinned toolchain.
-- [ ] Test browser target/adapter IDs and absence of a Tauri error/warning.
-- [ ] Test both file chooser and DataTransfer drop with the fixed parity PNG;
+- [x] Test browser target/adapter IDs and absence of a Tauri error/warning.
+- [x] Test both file chooser and DataTransfer drop with the fixed parity PNG;
       assert Blob authority, no path, ready result, and exact digest.
-- [ ] Start a successor parameter request while its predecessor is pending;
+- [x] Start a successor parameter request while its predecessor is pending;
       assert only the successor result/error/finally becomes visible.
-- [ ] Prove a RAF/timer heartbeat fires while worker compute is pending and the
+- [x] Prove a RAF/timer heartbeat fires while worker compute is pending and the
       fixed case terminates under a generous lead-recorded hang timeout; publish no
       percentile or performance claim.
-- [ ] Persist an approved preference across reload and inject localStorage write
+- [x] Persist an approved preference across reload and inject localStorage write
       denial to assert the accessible warning.
-- [ ] Visit every target-only browser route/control and assert honest unavailable
+- [x] Visit every target-only browser route/control and assert honest unavailable
       content plus zero Tauri invocation attempts.
-- [ ] Add a required `browser-e2e` CI job with Node 20, Rust/wasm target, pinned
+- [x] Add a required `browser-e2e` CI job with Node 20, Rust/wasm target, pinned
       WASM tool, npm ci, Chromium install, and the browser suite.
-- [ ] Add `browser-e2e` to aggregate `needs`, environment results, shell loop,
+- [x] Add `browser-e2e` to aggregate `needs`, environment results, shell loop,
       and executable CI regression tests; no continue-on-error/path skip.
-- [ ] Run every AGENTS.md frontend/Rust gate, F1b WASM/parity gates, Playwright,
+- [x] Run every AGENTS.md frontend/Rust gate, F1b WASM/parity gates, Playwright,
       npm-10 dry run, RAG generator review, and real staged hook; record exact
       counts/tool versions/warnings and retain failure traces outside Git.
 
@@ -202,5 +202,24 @@ You SHOULD document any issues encountered and resolved during the sprint.
 You MUST document any failed implementations, blockers or missing tests.
 -->
 
-None yet; implementation has not begun. The build fence must replace draft
-dependencies, pin the WASM tool version, and record the generous hang timeout.
+- The first real race control failed: the 45-cluster predecessor could publish
+  during the 400 ms successor debounce. Home now invalidates the in-flight
+  intent immediately when the file/parameter key changes, while retaining the
+  existing debounce for starting the replacement. The deterministic Chromium
+  control then passed with only the 46-cluster settlement visible.
+- The initial chooser assertion matched the same Blob preview in both the study
+  and library. The assertion was scoped to the first preview; product behavior
+  was unchanged.
+- The isolated clone omitted the ignored root `Cargo.lock`; validation restored
+  the exact accepted F1b lock artifact. The first local browser run also found
+  cached Chromium revision 1243 where Playwright 1.64.0 required 1248. The
+  package-matched browser was installed as a generated prerequisite; no browser
+  artifact entered Git.
+- A root-cwd Playwright list probe missed the package config and scanned Vitest
+  specs. All authoritative browser commands run from `tauri-app/` (as does the
+  package script/CI job), and output/traces now live under the system temporary
+  directory rather than the worktree.
+- Local gates used Node 26.8.1 plus an explicit Node 20.20.2 replay of all 252
+  Vitest tests and Svelte diagnostics. Svelte check retains the two accepted
+  AUD-020 accessibility warnings. The 470-line browser suite is cohesive but
+  exceeds the repository's advisory 400-line threshold.

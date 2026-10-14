@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isTauriEnv, tauriInvoke, tauriDetectionInfo } from './tauri';
+import { tauriInvoke } from './tauri';
 import {
   analyzeBlobInWorker,
   WorkerClientError,
@@ -7,6 +7,7 @@ import {
 } from '../compute/worker-client';
 import type { ResolvedAnalyzeOptions } from '../compute/worker-protocol';
 import type { AnalysisParams, AnalysisResult, ImageSource } from '../stores/ui';
+import { getRuntimeTarget, type RuntimeTarget } from '../runtime/target';
 
 const DEFAULT_TOLERANCE = 1e-3;
 const DEFAULT_MAX_ITER = 40;
@@ -24,7 +25,7 @@ export interface AnalyzeOptions extends AnalysisParams {
 }
 
 export interface ComputeBridge {
-  readonly id: 'tauri-native' | 'wasm-worker';
+  readonly id: 'tauri-native' | 'browser-worker-wasm';
   analyze(
     source: ImageSource,
     params: AnalyzeOptions,
@@ -366,7 +367,7 @@ export function createBrowserComputeBridge(
   analyzeInWorker: WorkerAnalyze = analyzeBlobInWorker
 ): ComputeBridge {
   return {
-    id: 'wasm-worker',
+    id: 'browser-worker-wasm',
     async analyze(source, params, invocation) {
       assertLive(invocation);
       if (source.kind !== 'blob') {
@@ -400,28 +401,27 @@ export function createBrowserComputeBridge(
   } satisfies ComputeBridge;
 }
 
-function logSelection(label: string, id: ComputeBridge['id']) {
-  console.info(`[bridges] ${label} bridge selected: ${id}`);
-}
-
-function selectComputeBridge(): ComputeBridge {
-  if (isTauriEnv()) {
-    const info = tauriDetectionInfo();
-    console.info('[bridges] tauri detection', info);
-    const tauriBridge = createTauriComputeBridge();
-    logSelection('compute', tauriBridge.id);
-    return tauriBridge;
-  }
-  const browserBridge = createBrowserComputeBridge();
-  logSelection('compute', browserBridge.id);
-  return browserBridge;
+export function createComputeBridgeForTarget(
+  target: RuntimeTarget
+): ComputeBridge {
+  return target.kind === 'tauri'
+    ? createTauriComputeBridge()
+    : createBrowserComputeBridge();
 }
 
 let cachedComputeBridge: ComputeBridge | null = null;
 
-export function getComputeBridge(): ComputeBridge {
-  if (!cachedComputeBridge) {
-    cachedComputeBridge = selectComputeBridge();
+export function initializeComputeBridge(target: RuntimeTarget): ComputeBridge {
+  const expected = target.capabilities.computeAdapter;
+  if (cachedComputeBridge && cachedComputeBridge.id !== expected) {
+    throw new Error(
+      `Compute bridge already initialized as ${cachedComputeBridge.id}; expected ${expected}`
+    );
   }
+  cachedComputeBridge ??= createComputeBridgeForTarget(target);
   return cachedComputeBridge;
+}
+
+export function getComputeBridge(): ComputeBridge {
+  return cachedComputeBridge ?? initializeComputeBridge(getRuntimeTarget());
 }

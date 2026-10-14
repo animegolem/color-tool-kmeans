@@ -1,7 +1,8 @@
 import { get } from 'svelte/store';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { isTauriEnv, tauriInvoke } from './tauri';
+import { tauriInvoke } from './tauri';
 import { exportDir } from '../stores/ui';
+import { getRuntimeTarget, type RuntimeTarget } from '../runtime/target';
 
 const TAURI_ID = 'tauri' as const;
 const BROWSER_ID = 'browser-file' as const;
@@ -184,8 +185,7 @@ export function isVideoFile(sel: FileSelection): boolean {
   return /\.(mp4|mov|webm)$/i.test(sel.name ?? '');
 }
 
-function createTauriFsBridge(): FsBridge | null {
-  if (!isTauriEnv()) return null;
+function createTauriFsBridge(): FsBridge {
   return {
     id: TAURI_ID,
     async openMediaFiles(mode?: 'images' | 'videos' | 'all') {
@@ -262,26 +262,25 @@ export function inferMimeType(name: string): string {
   return 'application/octet-stream';
 }
 
-function logSelection(label: string, id: FsBridge['id']) {
-  console.info(`[bridges] ${label} bridge selected: ${id}`);
-}
-
-function selectFsBridge(): FsBridge {
-  const tauri = createTauriFsBridge();
-  if (tauri) {
-    logSelection('fs', tauri.id);
-    return tauri;
-  }
-  const browser = createBrowserFsBridge();
-  logSelection('fs', browser.id);
-  return browser;
+export function createFsBridgeForTarget(target: RuntimeTarget): FsBridge {
+  return target.kind === 'tauri'
+    ? createTauriFsBridge()
+    : createBrowserFsBridge();
 }
 
 let cachedFsBridge: FsBridge | null = null;
 
-export function getFsBridge(): FsBridge {
-  if (!cachedFsBridge) {
-    cachedFsBridge = selectFsBridge();
+export function initializeFsBridge(target: RuntimeTarget): FsBridge {
+  const expected = target.capabilities.fileAdapter;
+  if (cachedFsBridge && cachedFsBridge.id !== expected) {
+    throw new Error(
+      `File bridge already initialized as ${cachedFsBridge.id}; expected ${expected}`
+    );
   }
+  cachedFsBridge ??= createFsBridgeForTarget(target);
   return cachedFsBridge;
+}
+
+export function getFsBridge(): FsBridge {
+  return cachedFsBridge ?? initializeFsBridge(getRuntimeTarget());
 }

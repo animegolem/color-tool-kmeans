@@ -15,7 +15,7 @@
     appendFile,
     updateEntryPreview,
   } from './lib/stores/ui';
-  import { isTauriEnv, tauriInvoke } from './lib/bridges/tauri';
+  import { tauriInvoke } from './lib/bridges/tauri';
   import { getFsBridge } from './lib/bridges/fs';
   import { ingestFileAsEntry } from './lib/services/media-ingestion';
   import { setActivePath } from './lib/services/active-image';
@@ -27,7 +27,15 @@
   import ZoomOverlay from './lib/components/ZoomOverlay.svelte';
   import MediaBucket from './lib/components/MediaBucket.svelte';
   import PreferenceStatus from './lib/components/PreferenceStatus.svelte';
+  import TargetUnavailable from './lib/components/TargetUnavailable.svelte';
   import { logEvent } from './lib/bridges/log';
+  import { getRuntimeTarget, type RuntimeTarget } from './lib/runtime/target';
+
+  interface Props {
+    runtimeTarget?: RuntimeTarget;
+  }
+
+  let { runtimeTarget = getRuntimeTarget() }: Props = $props();
 
   $effect(() => {
     const _view = $currentView;
@@ -60,6 +68,9 @@
 
   const activeViewDesc = $derived(viewDescriptions[$currentView] ?? '');
   const effectiveNarrow = $derived($narrowMode || $compactSidebars);
+  const headerMediaAvailable = $derived(
+    runtimeTarget.kind === 'tauri' || $currentView === 'home'
+  );
 
   $effect(() => {
     if ($compactSidebars && !$narrowMode) {
@@ -106,6 +117,7 @@
   }
 
   function handleMediaAdd() {
+    if (!headerMediaAvailable) return;
     if (
       $currentView === 'home' ||
       $currentView === 'values' ||
@@ -162,7 +174,7 @@
     const zoomStep = 0.1;
     const zoomMin = 0.2;
     const zoomMax = 5;
-    const zoomEnabled = isTauriEnv();
+    const zoomEnabled = runtimeTarget.capabilities.webviewZoom;
 
     const applyZoom = async (nextLevel: number) => {
       const clamped = Math.min(zoomMax, Math.max(zoomMin, nextLevel));
@@ -253,7 +265,7 @@
     };
 
     const handlePaste = (event: ClipboardEvent) => {
-      if (!isTauriEnv()) return;
+      if (runtimeTarget.kind !== 'tauri') return;
       if (isEditableTarget(event.target)) return;
       const items = event.clipboardData?.items;
       if (!items) return;
@@ -320,7 +332,7 @@
 
 <main
   class:nav-collapsed={$navCollapsed}
-  class:library-open={$libraryDrawerOpen}
+  class:library-open={$libraryDrawerOpen && headerMediaAvailable}
   class:narrow-mode={effectiveNarrow}
 >
   <nav class="nav" class:collapsed={$navCollapsed}>
@@ -358,58 +370,78 @@
       </div>
     </div>
 
-    <button
-      type="button"
-      class="header-toggle"
-      aria-label={$libraryDrawerOpen ? 'Close library' : 'Open library'}
-      onclick={() => {
-        if (effectiveNarrow && !$libraryDrawerOpen) navCollapsed.set(true);
-        libraryDrawerOpen.update((v) => !v);
-      }}
-    >
-      {#if $libraryDrawerOpen}
-        {@html `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M12.5 1C13.881 1 15 2.119 15 3.5V12.5C15 13.881 13.881 15 12.5 15H3.5C2.119 15 1 13.881 1 12.5V3.5C1 2.119 2.119 1 3.5 1H12.5ZM9 14V2H3.5C2.672 2 2 2.672 2 3.5V12.5C2 13.328 2.672 14 3.5 14H9Z"/></svg>`}
-      {:else}
-        {@html `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M12.5 1H3.5C2.122 1 1 2.122 1 3.5V12.5C1 13.879 2.122 15 3.5 15H12.5C13.878 15 15 13.879 15 12.5V3.5C15 2.122 13.878 1 12.5 1ZM2 12.5V3.5C2 2.673 2.673 2 3.5 2H9V14H3.5C2.673 14 2 13.327 2 12.5ZM14 12.5C14 13.327 13.327 14 12.5 14H10V2H12.5C13.327 2 14 2.673 14 3.5V12.5Z"/></svg>`}
-      {/if}
-    </button>
+    {#if headerMediaAvailable}
+      <button
+        type="button"
+        class="header-toggle"
+        aria-label={$libraryDrawerOpen ? 'Close library' : 'Open library'}
+        onclick={() => {
+          if (effectiveNarrow && !$libraryDrawerOpen) navCollapsed.set(true);
+          libraryDrawerOpen.update((v) => !v);
+        }}
+      >
+        {#if $libraryDrawerOpen}
+          {@html `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M12.5 1C13.881 1 15 2.119 15 3.5V12.5C15 13.881 13.881 15 12.5 15H3.5C2.119 15 1 13.881 1 12.5V3.5C1 2.119 2.119 1 3.5 1H12.5ZM9 14V2H3.5C2.672 2 2 2.672 2 3.5V12.5C2 13.328 2.672 14 3.5 14H9Z"/></svg>`}
+        {:else}
+          {@html `<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M12.5 1H3.5C2.122 1 1 2.122 1 3.5V12.5C1 13.879 2.122 15 3.5 15H12.5C13.878 15 15 13.879 15 12.5V3.5C15 2.122 13.878 1 12.5 1ZM2 12.5V3.5C2 2.673 2.673 2 3.5 2H9V14H3.5C2.673 14 2 13.327 2 12.5ZM14 12.5C14 13.327 13.327 14 12.5 14H10V2H12.5C13.327 2 14 2.673 14 3.5V12.5Z"/></svg>`}
+        {/if}
+      </button>
+    {:else}
+      <span aria-hidden="true"></span>
+    {/if}
   </header>
 
   <section class="view-container">
     {#if $currentView === 'home'}
-      <HomeView />
+      <HomeView {runtimeTarget} />
     {:else if $currentView === 'values'}
-      <ValuesView />
+      {#if runtimeTarget.capabilities.values}
+        <ValuesView />
+      {:else}
+        <TargetUnavailable capability="Values" />
+      {/if}
     {:else if $currentView === 'batch'}
-      <BatchView />
+      {#if runtimeTarget.capabilities.batch}
+        <BatchView />
+      {:else}
+        <TargetUnavailable capability="Batch" />
+      {/if}
     {:else if $currentView === 'settings'}
-      <SettingsView />
-    {:else}
+      <SettingsView {runtimeTarget} />
+    {:else if runtimeTarget.capabilities.exports}
       <ExportsView />
+    {:else}
+      <TargetUnavailable capability="Exports" />
     {/if}
   </section>
 
-  <aside
-    class="library-rail"
-    class:library-rail--hidden={!$libraryDrawerOpen}
-    aria-label="Library rail"
-  >
-    <div id="library-drawer" class="library-drawer" aria-label="Library drawer">
-      <div class="library-drawer__content">
-        <header class="library-drawer__header">
-          <h3>Media Bucket</h3>
-          <button
-            class="library-section__add"
-            onclick={handleMediaAdd}
-            aria-label="Add media">+</button
-          >
-        </header>
-        <MediaBucket />
+  {#if headerMediaAvailable}
+    <aside
+      class="library-rail"
+      class:library-rail--hidden={!$libraryDrawerOpen}
+      aria-label="Library rail"
+    >
+      <div
+        id="library-drawer"
+        class="library-drawer"
+        aria-label="Library drawer"
+      >
+        <div class="library-drawer__content">
+          <header class="library-drawer__header">
+            <h3>Media Bucket</h3>
+            <button
+              class="library-section__add"
+              onclick={handleMediaAdd}
+              aria-label="Add media">+</button
+            >
+          </header>
+          <MediaBucket />
+        </div>
       </div>
-    </div>
-  </aside>
+    </aside>
+  {/if}
 
-  {#if effectiveNarrow && (!$navCollapsed || $libraryDrawerOpen)}
+  {#if effectiveNarrow && (!$navCollapsed || ($libraryDrawerOpen && headerMediaAvailable))}
     <div
       class="sidebar-backdrop"
       role="presentation"

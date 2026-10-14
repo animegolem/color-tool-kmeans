@@ -1,52 +1,42 @@
 import './app.css';
 import { mount } from 'svelte';
 import App from './App.svelte';
-import { isTauriEnv } from './lib/bridges/tauri';
-import { getComputeBridge } from './lib/bridges/compute';
-import { getFsBridge } from './lib/bridges/fs';
+import { initializeComputeBridge } from './lib/bridges/compute';
+import { initializeFsBridge } from './lib/bridges/fs';
+import { initializePreferenceAdapter } from './lib/bridges/preferences';
 import { loadAndHydratePreferences } from './lib/stores/ui';
 import { registerIpcSink } from './lib/utils/devlog';
 import { logEvent } from './lib/bridges/log';
+import {
+  initializeRuntimeTarget,
+  runtimeTargetLogRecord,
+  type RuntimeTarget,
+} from './lib/runtime/target';
+
+const runtimeTarget = initializeRuntimeTarget();
+initializeFsBridge(runtimeTarget);
+initializeComputeBridge(runtimeTarget);
+initializePreferenceAdapter(runtimeTarget);
 
 // Wire devlog → logEvent IPC so all devlog lines reach the terminal via Rust stderr
 registerIpcSink((msg) => void logEvent(msg, 'devlog'));
 
-async function logRuntimeBanner() {
-  try {
-    const w = globalThis as any;
-    const ua =
-      typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
-    const tauriKeys = w?.__TAURI__ ? Object.keys(w.__TAURI__) : [];
-    const hasInternals = typeof w?.__TAURI_INTERNALS__ !== 'undefined';
-    console.info('[runtime] userAgent:', ua);
-    console.info('[runtime] isTauriEnv():', isTauriEnv());
-    console.info('[runtime] __TAURI__ keys:', tauriKeys);
-    console.info('[runtime] has __TAURI_INTERNALS__:', hasInternals);
-    const [computeBridge, fsBridge] = await Promise.all([
-      getComputeBridge(),
-      getFsBridge(),
-    ]);
-    console.info('[runtime] compute bridge:', computeBridge.id);
-    console.info('[runtime] fs bridge:', fsBridge.id);
-  } catch (error) {
-    console.warn('[runtime] banner failed:', error);
-  }
-}
-
-void logRuntimeBanner();
-setupDevHotkeys();
+console.info('[runtime] target', runtimeTargetLogRecord(runtimeTarget));
+setupDevHotkeys(runtimeTarget);
 
 // Preload Tauri API (best-effort) to help dev setups resolve the module
-try {
-  void import('@tauri-apps/api')
-    .then(() => console.info('[env] tauri api module resolved'))
-    .catch(() => {
-      console.info(
-        '[env] tauri api module not resolved (will use globals if present)'
-      );
-    });
-} catch {
-  // ignore
+if (runtimeTarget.kind === 'tauri') {
+  try {
+    void import('@tauri-apps/api')
+      .then(() => console.info('[env] tauri api module resolved'))
+      .catch(() => {
+        console.info(
+          '[env] tauri api module not resolved (will use globals if present)'
+        );
+      });
+  } catch {
+    // ignore
+  }
 }
 
 // Hydrate preferences without hiding storage failures from the user.
@@ -54,7 +44,7 @@ void loadAndHydratePreferences();
 
 // Suppress native WebKit context menus in production —
 // images/video expose Save/Copy/Download that bypass app export settings.
-if (!import.meta.env.DEV) {
+if (runtimeTarget.kind === 'tauri' && !import.meta.env.DEV) {
   document.addEventListener('contextmenu', (e) => e.preventDefault(), true);
 }
 
@@ -64,12 +54,14 @@ if (!target) {
   throw new Error('App root element missing');
 }
 
-const app = mount(App, { target });
+target.dataset.runtimeTarget = runtimeTarget.kind;
+
+const app = mount(App, { target, props: { runtimeTarget } });
 
 export default app;
 
-function setupDevHotkeys() {
-  if (!import.meta.env.DEV) return;
+function setupDevHotkeys(target: RuntimeTarget) {
+  if (!import.meta.env.DEV || !target.capabilities.webviewZoom) return;
   const handler = async (event: KeyboardEvent) => {
     const isF12 = event.key === 'F12';
     const isDevtoolsCombo =

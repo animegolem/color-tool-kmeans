@@ -12,6 +12,7 @@
     "format:check": "prettier --check . \"!dist/**\" \"!coverage/**\" \"!.svelte-kit/**\" \"!.turbo/**\" \"!.ffmpeg-build/**\" \"!src-tauri/target/**\" \"!src-tauri/.fingerprint/**\" \"!src-tauri/gen/**\" \"!src-tauri/bin/**\"",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
+    "test:browser": "playwright test",
     "wasm:build": "node ../scripts/wasm/build.mjs",
     "wasm:parity": "node ../scripts/wasm/parity.mjs",
     "tauri": "tauri"
@@ -24,6 +25,7 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.0",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
     "@tauri-apps/cli": "^2.9.6",
     "@types/node": "^22.13.1",
