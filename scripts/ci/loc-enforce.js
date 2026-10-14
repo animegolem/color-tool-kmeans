@@ -7,7 +7,9 @@ const THRESHOLD = parseInt(process.env.LOC_MAX || '350', 10);
 const BYPASS = process.env.LOC_BYPASS === '1';
 
 function sh(cmd) {
-  return execSync(cmd, { stdio: ['ignore', 'pipe', 'pipe'] }).toString().trim();
+  return execSync(cmd, { stdio: ['ignore', 'pipe', 'pipe'] })
+    .toString()
+    .trim();
 }
 
 function getChangedFiles() {
@@ -42,7 +44,7 @@ const IGNORE_PATHS = [
   'tauri-app/src-tauri/src/kmeans.rs',
   'tauri-app/src-tauri/src/color.rs',
   'svelte-llms-full.txt',
-  'svelte-llms-small.txt'
+  'svelte-llms-small.txt',
 ];
 
 const files = getChangedFiles().filter((f) => {
@@ -81,9 +83,13 @@ console.warn('[loc-enforce] Files over threshold:');
 for (const o of offenders) console.warn(` - ${o.file} (${o.loc} LOC)`);
 
 if (BYPASS || hasBypass) {
-  console.warn('[loc-enforce] Bypassed due to LOC_BYPASS=1 or [loc-bypass] in commit message.');
+  console.warn(
+    '[loc-enforce] Bypassed due to LOC_BYPASS=1 or [loc-bypass] in commit message.'
+  );
   process.exit(0);
 }
 
-console.error(`::error:: LOC check failed. Threshold=${THRESHOLD}. Add [loc-bypass] in commit message if intentional.`);
+console.error(
+  `::error:: LOC check failed. Threshold=${THRESHOLD}. Add [loc-bypass] in commit message if intentional.`
+);
 process.exit(1);
