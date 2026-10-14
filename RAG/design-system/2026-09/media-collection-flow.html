@@ -1,0 +1,125 @@
+<div id="media-collection-flow" aria-label="Media collection interaction sketch">
+  <header class="mc-chrome"><span>Color studies</span><span class="mc-current">Colors / Image first</span><small>interaction sketch · sample media</small></header>
+  <section class="mc-study">
+    <div class="mc-heading"><h2>Terracotta study</h2><span class="mc-position">Image 3 of 24</span></div>
+    <div class="mc-spread"><div class="mc-art" role="img" aria-label="Illustrative source image placeholder"><span class="mc-art-title">Terracotta study</span><small>source image placeholder</small></div><section class="mc-analysis"><h3>Same study, same settings</h3><div class="mc-figure">Hue & chroma · Hue & lightness</div><div class="mc-figure mc-volume">Color volume / OKLab</div><div class="mc-palette" aria-label="Illustrative palette"><i></i><i></i><i></i><i></i><i></i></div><label>Palette size <select aria-label="Palette size"><option>8 colors</option><option selected>12 colors</option><option>16 colors</option></select></label></section></div>
+    <section class="mc-collection" aria-label="Compact media collection"><div class="mc-collection-head"><h3>Collection <small class="mc-total">24 images</small></h3><span class="mc-window"></span></div><div class="mc-strip-line"><div class="mc-strip"></div><button type="button" class="mc-more" aria-expanded="false"><span class="mc-more-number">16 more</span><span>in collection →</span></button></div><div class="mc-empty" hidden>No media in this sample collection</div></section>
+  </section>
+  <section class="mc-browser" hidden aria-label="All media"><header class="mc-browser-head"><div><h2>All media</h2><span class="mc-browser-count">24 images</span></div><button type="button" class="mc-back">Back to study</button></header><div class="mc-batch-line"><span class="mc-pins" aria-live="polite">2 pinned for batch</span><small>Open image → return to study</small></div><div class="mc-grid"></div></section>
+  <footer><span class="mc-status" aria-live="polite">Studying image 3 · 2 pinned for batch</span><span>Collection order preserved</span></footer>
+</div>
+<style>
+#media-collection-flow{--mc-paper:#f7f4ee;--mc-ink:#393932;--mc-line:#b5b2a8;--mc-soft:#e8e5de;--mc-accent:#7e4c3d;--mc-thumb:80px;background:var(--mc-paper);color:var(--mc-ink);font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;border:1px solid var(--mc-line);container-type:inline-size;width:100%}
+#media-collection-flow *{box-sizing:border-box}
+#media-collection-flow [hidden]{display:none!important}
+#media-collection-flow h2,#media-collection-flow h3{font-weight:400;margin:0}
+#media-collection-flow h2{font:italic 27px/1.2 Georgia,serif}
+#media-collection-flow h3{font:italic 18px/1.2 Georgia,serif}
+#media-collection-flow small{font-size:11px}
+#media-collection-flow button,#media-collection-flow select{font:inherit;color:inherit;background:var(--mc-paper);border:1px solid var(--mc-line);border-radius:2px;padding:7px 10px;cursor:pointer}
+#media-collection-flow button:hover{background:var(--mc-soft)}
+#media-collection-flow .mc-chrome{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:13px 20px;border-bottom:1px solid var(--mc-line)}
+#media-collection-flow .mc-chrome>span:first-child{font:21px Georgia,serif}
+#media-collection-flow .mc-chrome>small{margin-left:auto}
+#media-collection-flow .mc-study,#media-collection-flow .mc-browser{padding:22px}
+#media-collection-flow .mc-heading,#media-collection-flow .mc-browser-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+#media-collection-flow .mc-spread{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:24px}
+#media-collection-flow .mc-art{width:100%;min-width:0;min-height:260px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;border:1px solid var(--mc-line);background:linear-gradient(to right top,transparent calc(50% - .5px),#cec5b7 50%,transparent calc(50% + .5px)),linear-gradient(to right bottom,transparent calc(50% - .5px),#cec5b7 50%,transparent calc(50% + .5px)),#ede6da;text-align:center;padding:12px}
+#media-collection-flow .mc-art-title{font:italic 25px Georgia,serif;background:#ede6da;padding:3px 8px}
+#media-collection-flow .mc-analysis{min-width:0}
+#media-collection-flow .mc-analysis h3{margin:0 0 12px}
+#media-collection-flow .mc-figure{display:grid;place-items:center;min-height:88px;border:1px dashed var(--mc-line);text-align:center;padding:12px;margin-bottom:12px}
+#media-collection-flow .mc-volume{min-height:70px;font-style:italic}
+#media-collection-flow .mc-palette{display:flex;height:27px;gap:4px;margin:12px 0}
+#media-collection-flow .mc-palette i{flex:1;background:#9b7660}
+#media-collection-flow .mc-palette i:nth-child(2){background:#bda78b;flex:2}
+#media-collection-flow .mc-palette i:nth-child(3){background:#6a786e}
+#media-collection-flow .mc-palette i:nth-child(4){background:#6b5350}
+#media-collection-flow .mc-palette i:nth-child(5){background:#d7c8b2}
+#media-collection-flow .mc-analysis label{display:flex;gap:10px;justify-content:space-between;align-items:center}
+#media-collection-flow .mc-collection{margin-top:24px;padding-top:15px;border-top:1px solid var(--mc-line)}
+#media-collection-flow .mc-collection-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+#media-collection-flow .mc-total{font:11px ui-monospace,monospace;margin-left:8px}
+#media-collection-flow .mc-window{font-size:11px}
+#media-collection-flow .mc-strip-line{display:flex;gap:10px;min-width:0}
+#media-collection-flow .mc-strip{display:flex;gap:8px;min-width:0;flex:1}
+#media-collection-flow .mc-thumb{width:var(--mc-thumb);min-width:var(--mc-thumb);padding:4px;border:1px solid transparent;text-align:left;font-size:11px;position:relative}
+#media-collection-flow .mc-thumb[aria-pressed=true],#media-collection-flow .mc-open[aria-pressed=true]{border:1px solid var(--mc-accent);background:#ede4da}
+#media-collection-flow .mc-thumbnail{display:flex;align-items:end;justify-content:space-between;height:53px;padding:5px;background:var(--sample);color:#fff;border:1px solid #b3aaa0;font-size:11px}
+#media-collection-flow .mc-thumb-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}
+#media-collection-flow .mc-pin-mark{width:5px;height:5px;background:#fff;border-radius:50%}
+#media-collection-flow .mc-more{width:134px;flex:0 0 134px;align-self:stretch;display:flex;flex-direction:column;align-items:start;justify-content:center;text-align:left;border-style:dashed;padding:9px}
+#media-collection-flow .mc-more-number{font:italic 22px Georgia,serif;margin-bottom:3px}
+#media-collection-flow .mc-browser-head{border-bottom:1px solid var(--mc-line);padding-bottom:17px}
+#media-collection-flow .mc-browser-count{display:block;margin-top:5px;font-size:11px}
+#media-collection-flow .mc-batch-line{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+#media-collection-flow .mc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:18px 12px}
+#media-collection-flow .mc-grid-item{min-width:0}
+#media-collection-flow .mc-open{width:100%;padding:5px;text-align:left;border:1px solid var(--mc-line);font-size:11px}
+#media-collection-flow .mc-open .mc-thumbnail{height:80px}
+#media-collection-flow .mc-pin{display:flex;align-items:center;gap:6px;font-size:11px;padding:8px 0;cursor:pointer}
+#media-collection-flow input{accent-color:var(--mc-accent);width:15px;height:15px}
+#media-collection-flow footer{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px;padding:10px 20px;border-top:1px solid var(--mc-line)}
+#media-collection-flow .mc-empty{padding:12px 0}
+@container(max-width:570px){#media-collection-flow .mc-spread{grid-template-columns:1fr;gap:18px}#media-collection-flow .mc-study,#media-collection-flow .mc-browser{padding:15px}#media-collection-flow .mc-art{min-height:190px}#media-collection-flow .mc-analysis{display:grid;grid-template-columns:1fr 1fr;gap:10px}#media-collection-flow .mc-analysis h3,#media-collection-flow .mc-analysis label,#media-collection-flow .mc-palette{grid-column:1/-1}#media-collection-flow .mc-analysis h3{margin:0}#media-collection-flow .mc-figure{margin:0;font-size:11px}#media-collection-flow .mc-more{width:118px;flex-basis:118px;padding:7px;font-size:11px}#media-collection-flow .mc-more-number{font-size:21px}#media-collection-flow .mc-chrome{padding:12px 15px;gap:6px 14px}#media-collection-flow .mc-chrome small{width:100%;margin:0}#media-collection-flow .mc-heading h2{font-size:24px}#media-collection-flow .mc-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}}
+@media(pointer:coarse){#media-collection-flow button,#media-collection-flow .mc-pin{min-height:44px}}
+</style>
+<script>
+(()=>{
+  const root=document.getElementById('media-collection-flow');
+  const study=root.querySelector('.mc-study'),browser=root.querySelector('.mc-browser'),strip=root.querySelector('.mc-strip'),line=root.querySelector('.mc-strip-line'),more=root.querySelector('.mc-more'),back=root.querySelector('.mc-back'),grid=root.querySelector('.mc-grid');
+  const state={total:24,active:2,start:0,capacity:1,expanded:false,thumbSize:80};
+  const pins=new Set([1,6]);
+  let stripKey='';
+  const names=['Ochre wall','Blue hour','Terracotta study','Garden shade','Still life','Linen & ink','Evening sky','Window light','Warm shadows','Quiet street','Red earth','Stone steps','Soft horizon','Studio corner','Winter green','Faded rose','Paper & clay','Coastal light','Night study','Autumn leaves','Sunlit room','Pale water','Copper tones','Morning mist'];
+  const tones=['#84735e','#5c6e7c','#94634e','#5c7464','#79685f','#757169','#6d677e','#9b876e'];
+  const name=i=>names[i%names.length]+(i>=24?' II':'');
+  function thumb(i,full=false){return '<button type="button" class="'+(full?'mc-open':'mc-thumb')+'" data-open="'+i+'" aria-label="Open '+name(i)+'" aria-pressed="'+(state.active===i)+'"><span class="mc-thumbnail" style="--sample:'+tones[i%tones.length]+'"><span>'+String(i+1).padStart(2,'0')+'</span>'+(pins.has(i)?'<span class="mc-pin-mark" aria-label="Pinned for batch"></span>':'')+'</span><span class="mc-thumb-name">'+name(i)+'</span></button>'}
+  function measure(){
+    if(state.expanded)return;
+    const width=line.clientWidth;
+    const buttonWidth=more.getBoundingClientRect().width||134;
+    const capacity=Math.min(12,Math.max(1,Math.floor((width-buttonWidth-10+8)/(state.thumbSize+8))));
+    state.capacity=Math.min(state.total,capacity);
+    const maxStart=Math.max(0,state.total-state.capacity);
+    state.start=Math.min(state.start,maxStart);
+    if(state.active<state.start||state.active>=state.start+state.capacity)state.start=Math.max(0,Math.min(maxStart,state.active-Math.floor(state.capacity/2)));
+    const key=[state.start,state.capacity,state.active,[...pins].join(',')].join('/');
+    if(key!==stripKey){strip.innerHTML=Array.from({length:state.capacity},(_,j)=>thumb(state.start+j)).join('');stripKey=key}
+    const remaining=state.total-state.capacity;
+    more.hidden=false;
+    more.querySelector('.mc-more-number').textContent=remaining?remaining+' more':'View all';
+    more.setAttribute('aria-label','Show all '+state.total+' images; '+remaining+' more in collection');
+    root.querySelector('.mc-window').textContent=state.total?'Showing '+(state.start+1)+'–'+(state.start+state.capacity)+' of '+state.total:'';
+    root.dataset.visible=String(state.capacity);root.dataset.remaining=String(remaining);
+  }
+  function render(){
+    state.active=Math.max(0,Math.min(state.active,state.total-1));
+    root.style.setProperty('--mc-thumb',state.thumbSize+'px');
+    study.hidden=state.expanded;browser.hidden=!state.expanded;
+    root.querySelector('.mc-heading h2').textContent=state.total?name(state.active):'No image selected';
+    root.querySelector('.mc-art-title').textContent=state.total?name(state.active):'Your next study';
+    root.querySelector('.mc-position').textContent=state.total?'Image '+(state.active+1)+' of '+state.total:'';
+    root.querySelector('.mc-total').textContent=state.total+' images';
+    root.querySelector('.mc-browser-count').textContent=state.total+' images';
+    root.querySelector('.mc-empty').hidden=state.total!==0;
+    line.hidden=state.total===0;
+    const count=[...pins].filter(i=>i<state.total).length;
+    root.querySelector('.mc-pins').textContent=count+' pinned for batch';
+    root.querySelector('.mc-status').textContent=(state.expanded?'Browsing collection':state.total?'Studying image '+(state.active+1):'No media')+' · '+count+' pinned for batch';
+    more.setAttribute('aria-expanded',String(state.expanded));
+    if(state.expanded)grid.innerHTML=Array.from({length:state.total},(_,i)=>'<div class="mc-grid-item">'+thumb(i,true)+'<label class="mc-pin"><input type="checkbox" data-pin="'+i+'" '+(pins.has(i)?'checked':'')+' aria-label="Pin '+name(i)+' for batch">Pin for batch</label></div>').join('');
+    else measure();
+  }
+  more.addEventListener('click',()=>{state.expanded=true;render();back.focus()});
+  function close(){state.expanded=false;render();const selected=strip.querySelector('[data-open="'+state.active+'"]');(selected||more).focus({preventScroll:true});root.scrollIntoView({block:'start',behavior:'instant'})}
+  back.addEventListener('click',close);
+  root.addEventListener('click',e=>{const item=e.target.closest('[data-open]');if(!item)return;state.active=Number(item.dataset.open);if(state.expanded)close();else{render();strip.querySelector('[data-open="'+state.active+'"]').focus({preventScroll:true})}});
+  root.addEventListener('change',e=>{if(e.target.dataset.pin===undefined)return;const i=Number(e.target.dataset.pin);if(e.target.checked)pins.add(i);else pins.delete(i);const count=[...pins].filter(n=>n<state.total).length;root.querySelector('.mc-pins').textContent=count+' pinned for batch';root.querySelector('.mc-status').textContent='Browsing collection · '+count+' pinned for batch';const mark=grid.querySelector('[data-open="'+i+'"] .mc-thumbnail');mark.innerHTML='<span>'+String(i+1).padStart(2,'0')+'</span>'+(pins.has(i)?'<span class="mc-pin-mark" aria-label="Pinned for batch"></span>':'')});
+  root.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.expanded){e.preventDefault();close()}});
+  render();
+  const observer=new ResizeObserver(()=>measure());observer.observe(line);
+  window.addEventListener('pagehide',()=>observer.disconnect(),{once:true});
+  if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:render});tweak.addSlider(state,'thumbSize',{label:'Strip thumbnail width',min:64,max:96,step:8,unit:'px'});tweak.addSlider(state,'total',{label:'Sample collection size',min:0,max:48,step:1})}
+})();
+</script>

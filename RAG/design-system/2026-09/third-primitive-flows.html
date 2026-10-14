@@ -1,0 +1,184 @@
+<div id="third-primitive-flows" aria-label="Third visualization interaction studies">
+  <nav class="tf-studies" aria-label="UI flow sketches">
+    <span>Flow study</span><button type="button" data-flow="peer" aria-pressed="true">A · Peer figure</button><button type="button" data-flow="focus" aria-pressed="false">B · Focus view</button><button type="button" data-flow="dock" aria-pressed="false">C · Docked inspector</button>
+  </nav>
+  <section class="tf-app" aria-label="Color Tool interaction mockup">
+    <header class="tf-bar"><span>Color Tool <span class="tf-sub">/ Colors / study-014</span></span><button type="button" class="tf-launch">Explore in 3D</button></header>
+    <main>
+      <div class="tf-heading"><div><div class="tf-overline">Color relationships</div><h1>Three views. One analysis.</h1></div><span class="tf-meta">12 clusters · sample proportions</span></div>
+      <div class="tf-layout">
+        <div class="tf-working">
+          <div class="tf-pair">
+            <section class="tf-plot"><div class="tf-plot-head"><h2><span>01.</span> Polar</h2><span class="tf-sub">2D · normalized</span></div><div class="tf-polar"></div><div class="tf-plot-foot">Hue · saturation <button type="button" class="tf-local-open">Locate in 3D ↗</button></div></section>
+            <section class="tf-plot"><div class="tf-plot-head"><h2><span>02.</span> Hue × lightness</h2><span class="tf-sub">2D · unwrapped</span></div><div class="tf-hl"></div><div class="tf-plot-foot">Hue · lightness <button type="button" class="tf-local-open">Locate in 3D ↗</button></div></section>
+          </div>
+          <div class="tf-peer-slot"></div>
+          <section class="tf-frequency"><div class="tf-plot-head"><h2>Relative frequency</h2><span class="tf-sub">area ∝ share</span></div><div class="tf-strip"></div></section>
+        </div>
+        <div class="tf-dock-slot"></div>
+        <aside class="tf-ledger" aria-label="Expanded palette index"><div class="tf-plot-head"><h2>Palette index</h2><span class="tf-sub">12</span></div><div class="tf-list"></div></aside>
+      </div>
+      <section class="tf-volume" aria-label="3D color volume">
+        <div class="tf-volume-head"><h2><span>03.</span> Color volume</h2><button type="button" class="tf-return">Close 3D</button></div>
+        <div class="tf-camera" aria-label="Camera presets"><span>View</span><button type="button" data-camera="oblique" aria-pressed="true">Oblique</button><button type="button" data-camera="top" aria-pressed="false">Top</button><button type="button" data-camera="side" aria-pressed="false">Side</button></div>
+        <div class="tf-space" aria-label="Drag to rotate the sample color volume"></div>
+        <div class="tf-volume-foot"><span>Drag to rotate · orthographic</span><span>OKLab · coordinate frame, not gamut shell</span></div>
+      </section>
+      <div class="tf-status" aria-live="polite"></div>
+      <footer>UI-flow sketch · simplified plots · reference palette with illustrative shares</footer>
+    </main>
+  </section>
+</div>
+<style>
+#third-primitive-flows { --tf-paper:#faf8f3; --tf-ink:#292724; --tf-sub:#6b665e; --tf-rule:#d6d0c5; --tf-accent:#954936; width:100%; color:var(--tf-ink); font:13px/1.45 Georgia,serif; container-type:inline-size; color-scheme:light; }
+#third-primitive-flows * { box-sizing:border-box; }
+#third-primitive-flows button { font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; background:none; border:0; border-radius:0; padding:7px 0; color:var(--tf-ink); cursor:pointer; }
+#third-primitive-flows button:focus-visible { outline:2px solid var(--tf-accent); outline-offset:3px; }
+#third-primitive-flows button[aria-pressed=true] { color:var(--tf-accent); text-decoration:underline; text-underline-offset:4px; }
+#third-primitive-flows .tf-studies { display:flex; flex-wrap:wrap; gap:5px 22px; align-items:center; padding:10px 18px; background:#e9e5dc; font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; border-bottom:1px solid var(--tf-rule); }
+#third-primitive-flows .tf-studies>span { color:var(--tf-sub); }
+#third-primitive-flows .tf-app { background:var(--tf-paper); }
+#third-primitive-flows .tf-bar { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; border-bottom:1px solid var(--tf-ink); padding:10px 24px; font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+#third-primitive-flows .tf-bar .tf-launch { color:var(--tf-accent); }
+#third-primitive-flows .tf-sub, #third-primitive-flows .tf-meta { color:var(--tf-sub); font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+#third-primitive-flows main { padding:22px 24px 14px; }
+#third-primitive-flows .tf-heading { display:flex; justify-content:space-between; align-items:end; gap:12px; flex-wrap:wrap; margin-bottom:24px; }
+#third-primitive-flows .tf-overline { text-transform:uppercase; letter-spacing:.07em; color:var(--tf-sub); font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+#third-primitive-flows h1 { font:400 clamp(26px,3.7cqw,42px)/1.15 Georgia,serif; letter-spacing:-.035em; margin:5px 0 0; }
+#third-primitive-flows h2 { font:italic 16px/1.4 Georgia,serif; margin:0; }
+#third-primitive-flows h2 span { font-style:normal; color:var(--tf-accent); margin-right:4px; }
+#third-primitive-flows .tf-layout { display:grid; grid-template-columns:minmax(0,1fr) 212px; gap:24px; align-items:start; }
+#third-primitive-flows .tf-working, #third-primitive-flows .tf-plot, #third-primitive-flows .tf-peer-slot, #third-primitive-flows .tf-dock-slot { min-width:0; }
+#third-primitive-flows .tf-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+#third-primitive-flows .tf-plot-head, #third-primitive-flows .tf-volume-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap; }
+#third-primitive-flows .tf-plot-head { border-top:1px solid var(--tf-rule); padding-top:11px; }
+#third-primitive-flows .tf-polar, #third-primitive-flows .tf-hl { height:230px; }
+#third-primitive-flows svg { display:block; width:100%; height:100%; }
+#third-primitive-flows svg text { font:11px ui-monospace,SFMono-Regular,Consolas,monospace; fill:var(--tf-sub); }
+#third-primitive-flows .tf-plot-foot { display:flex; justify-content:space-between; gap:5px 12px; flex-wrap:wrap; align-items:center; color:var(--tf-sub); font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+#third-primitive-flows .tf-local-open { color:var(--tf-accent); }
+#third-primitive-flows .tf-ledger { border-left:1px solid var(--tf-rule); padding-left:20px; min-width:0; }
+#third-primitive-flows .tf-ledger .tf-plot-head { border-top:0; padding-top:0; }
+#third-primitive-flows .tf-list { margin-top:9px; }
+#third-primitive-flows .tf-row { display:grid; grid-template-columns:25px minmax(0,1fr) 30px; gap:8px; align-items:center; width:100%; text-align:left; padding:7px 0; border-bottom:1px solid var(--tf-rule); }
+#third-primitive-flows .tf-chip { height:25px; }
+#third-primitive-flows .tf-row[aria-pressed=true] { color:var(--tf-ink); text-decoration:none; }
+#third-primitive-flows .tf-row[aria-pressed=true] .tf-chip { outline:1px solid var(--tf-ink); outline-offset:3px; }
+#third-primitive-flows .tf-row em { font:italic 12px/1.4 Georgia,serif; display:block; }
+#third-primitive-flows .tf-row small { color:var(--tf-sub); font:11px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace; }
+#third-primitive-flows .tf-row>span:last-child { text-align:right; }
+#third-primitive-flows .tf-volume { border-top:1px solid var(--tf-ink); margin-top:21px; padding-top:12px; min-width:0; }
+#third-primitive-flows .tf-camera { display:flex; flex-wrap:wrap; align-items:center; gap:18px; font:11px ui-monospace,SFMono-Regular,Consolas,monospace; color:var(--tf-sub); }
+#third-primitive-flows .tf-space { height:285px; cursor:grab; touch-action:none; user-select:none; }
+#third-primitive-flows .tf-space:active { cursor:grabbing; }
+#third-primitive-flows .tf-volume-foot { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; color:var(--tf-sub); font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+#third-primitive-flows .tf-frequency { margin-top:20px; }
+#third-primitive-flows .tf-strip { display:flex; gap:2px; margin-top:12px; }
+#third-primitive-flows .tf-strip button { min-width:0; height:29px; padding:0; }
+#third-primitive-flows .tf-strip button[aria-pressed=true] { outline:1px solid var(--tf-ink); outline-offset:2px; }
+#third-primitive-flows .tf-status { margin-top:18px; padding-top:12px; border-top:1px solid var(--tf-ink); font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; overflow-wrap:anywhere; }
+#third-primitive-flows footer { color:var(--tf-sub); margin-top:13px; font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+#third-primitive-flows .tf-dock-slot:empty { display:none; }
+#third-primitive-flows[data-open=false] .tf-dock-slot { display:none; }
+#third-primitive-flows[data-flow=dock][data-open=true] .tf-layout { grid-template-columns:minmax(0,1fr) minmax(270px,.7fr); }
+#third-primitive-flows[data-flow=dock][data-open=true] .tf-pair { grid-template-columns:1fr; }
+#third-primitive-flows[data-flow=dock][data-open=true] .tf-ledger { grid-column:1/-1; border-left:0; padding:0; }
+#third-primitive-flows[data-flow=dock][data-open=true] .tf-list { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0 18px; }
+#third-primitive-flows[data-flow=dock][data-open=true] .tf-volume { margin:0; }
+#third-primitive-flows[data-flow=dock][data-open=true] .tf-dock-slot { border-left:1px solid var(--tf-rule); padding-left:20px; }
+#third-primitive-flows[data-flow=dock] .tf-space { height:375px; }
+#third-primitive-flows[data-flow=focus][data-open=true] .tf-working { display:none; }
+#third-primitive-flows[data-flow=focus][data-open=true] .tf-dock-slot { grid-column:1; grid-row:1; }
+#third-primitive-flows[data-flow=focus][data-open=true] .tf-volume { margin:0; }
+#third-primitive-flows[data-flow=focus][data-open=true] .tf-space { height:410px; }
+#third-primitive-flows[data-flow=focus][data-open=true] .tf-ledger { grid-column:2; }
+#third-primitive-flows [hidden] { display:none!important; }
+#third-primitive-flows[data-voice=mono] h1, #third-primitive-flows[data-voice=mono] h2 { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-style:normal; }
+@container (max-width:760px) {
+ #third-primitive-flows .tf-layout { grid-template-columns:1fr; }
+ #third-primitive-flows .tf-ledger { border-left:0; padding:0; }
+ #third-primitive-flows .tf-list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0 18px; }
+ #third-primitive-flows[data-flow=focus][data-open=true] .tf-ledger { grid-column:1; }
+ #third-primitive-flows[data-flow=dock][data-open=true] .tf-layout { grid-template-columns:1fr; }
+ #third-primitive-flows[data-flow=dock][data-open=true] .tf-dock-slot { grid-row:1; border-left:0; padding:0; }
+ #third-primitive-flows[data-flow=dock][data-open=true] .tf-pair { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ #third-primitive-flows[data-flow=dock][data-open=true] .tf-list { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+@container (max-width:500px) {
+ #third-primitive-flows main { padding:19px 14px 14px; }
+ #third-primitive-flows .tf-bar { padding:10px 14px; }
+ #third-primitive-flows .tf-studies { padding:8px 14px; gap:4px 14px; }
+ #third-primitive-flows .tf-studies>span { width:100%; }
+ #third-primitive-flows .tf-pair, #third-primitive-flows[data-flow=dock][data-open=true] .tf-pair { grid-template-columns:1fr; }
+ #third-primitive-flows .tf-list, #third-primitive-flows[data-flow=dock][data-open=true] .tf-list { grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 13px; }
+ #third-primitive-flows .tf-row { grid-template-columns:20px minmax(0,1fr); gap:6px; }
+ #third-primitive-flows .tf-row>span:last-child { grid-column:2; text-align:left; }
+ #third-primitive-flows .tf-heading { margin-bottom:18px; }
+ #third-primitive-flows[data-flow=focus][data-open=true] .tf-space { height:320px; }
+ #third-primitive-flows[data-flow=dock] .tf-space { height:300px; }
+}
+@media (pointer:coarse) { #third-primitive-flows button { min-height:44px; } }
+</style>
+<script>
+(() => {
+const root=document.getElementById('third-primitive-flows');
+const data=[['#D06040','Orange',12],['#F09C6C','Geranium',10],['#FFC000','Yellow',9],['#205050','Blue-green',14],['#9C0030','Vivid rose',7],['#E09000','Amber',6],['#602020','Deep red',11],['#903048','Rose',5],['#906018','Umber',5],['#304890','Blue',7],['#FFD8A8','Pale amber',8],['#7878A8','Violet grey',6]].map(([hex,name,share],id)=>{
+ const rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255),linear=rgb.map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+ const [r,g,b]=linear,l=Math.cbrt(.4122214708*r+.5363325363*g+.0514459929*b),m=Math.cbrt(.2119034982*r+.6806995451*g+.1073969566*b),s=Math.cbrt(.0883024619*r+.2817188376*g+.6299787005*b);
+ const L=.2104542553*l+.793617785*m-.0040720468*s,a=1.9779984951*l-2.428592205*m+.4505937099*s,bb=.0259040371*l+.7827717662*m-.808675766*s;
+ const max=Math.max(...rgb),min=Math.min(...rgb),d=max-min;
+ let hue=d===0?0:max===rgb[0]?((rgb[1]-rgb[2])/d)%6:max===rgb[1]?(rgb[2]-rgb[0])/d+2:(rgb[0]-rgb[1])/d+4;
+ return {hex,name,share,id,L,a,b:bb,C:Math.hypot(a,bb),h:(Math.atan2(bb,a)*180/Math.PI+360)%360,hsvH:(hue*60+360)%360,S:max?d/max:0};
+});
+const state={flow:'peer',open:true,selected:0,yaw:.65,pitch:.35,camera:'oblique',voice:'serif'};
+const vol=root.querySelector('.tf-volume'),space=root.querySelector('.tf-space'),polar=root.querySelector('.tf-polar'),hl=root.querySelector('.tf-hl');
+const svgNS='http://www.w3.org/2000/svg';
+function el(tag,attrs={},label){const node=document.createElementNS(svgNS,tag);for(const [k,v] of Object.entries(attrs))node.setAttribute(k,String(v));if(label!==undefined)node.textContent=label;return node;}
+function txt(svg,x,y,label,attrs={}){svg.append(el('text',{x,y,...attrs},label));}
+function line(svg,p,q,attrs={}){svg.append(el('line',{x1:p[0],y1:p[1],x2:q[0],y2:q[1],stroke:'#d6d0c5','stroke-width':1,...attrs}));}
+function point(svg,c,x,y){const r=Math.sqrt(c.share)*4.3;if(c.id===state.selected)svg.append(el('circle',{cx:x,cy:y,r:r+4,fill:'none',stroke:'#292724','stroke-width':1.2}));svg.append(el('circle',{cx:x,cy:y,r,fill:c.hex}));const hit=el('circle',{cx:x,cy:y,r:Math.max(16,r),fill:'transparent',cursor:'pointer','data-pick':c.id});hit.append(el('title',{},`${c.name} ${c.hex}, ${c.share}% illustrative share`));svg.append(hit);}
+function draw2D(host,kind){if(!host.offsetWidth)return;const w=host.clientWidth,h=host.clientHeight;const svg=el('svg',{viewBox:`0 0 ${w} ${h}`,role:'img','aria-label':kind==='polar'?'Simplified normalized 2D polar plot':'Simplified hue by lightness plot'});
+ if(kind==='polar'){const cx=w/2,cy=h/2,r=Math.min((w-50)/2,(h-50)/2);[.5,1].forEach(f=>svg.append(el('circle',{cx,cy,r:r*f,fill:'none',stroke:'#d6d0c5'})));line(svg,[cx-r,cy],[cx+r,cy]);line(svg,[cx,cy-r],[cx,cy+r]);data.forEach(c=>{const a=(c.hsvH-90)*Math.PI/180;point(svg,c,cx+Math.cos(a)*r*c.S*.79,cy+Math.sin(a)*r*c.S*.79);});}
+ else {const p={left:38,right:25,top:27,bottom:36},pw=w-p.left-p.right,ph=h-p.top-p.bottom;svg.append(el('rect',{x:p.left,y:p.top,width:pw,height:ph,fill:'none',stroke:'#d6d0c5'}));for(const t of [0,.5,1]){txt(svg,p.left+t*pw,h-18,String(t*360),{'text-anchor':'middle'});txt(svg,p.left-8,p.top+(1-t)*ph+4,String(t),{'text-anchor':'end'});}txt(svg,7,p.top-10,'L');txt(svg,w-6,h-2,'h°',{'text-anchor':'end'});data.forEach(c=>point(svg,c,p.left+c.h/360*pw,p.top+(1-c.L)*ph));}
+ host.replaceChildren(svg);
+}
+function drawVolume(){if(!space.offsetWidth||vol.hidden)return;const w=space.clientWidth,h=space.clientHeight,scale=Math.min(w*.62,h*.72),cx=w/2,cy=h/2;
+ const project=(x,y,z)=>{const xx=x*Math.cos(state.yaw)+z*Math.sin(state.yaw),zz=-x*Math.sin(state.yaw)+z*Math.cos(state.yaw);return [cx+xx*scale,cy-(y*Math.cos(state.pitch)-zz*Math.sin(state.pitch))*scale, y*Math.sin(state.pitch)+zz*Math.cos(state.pitch)];};
+ const svg=el('svg',{viewBox:`0 0 ${w} ${h}`,role:'img','aria-label':'Rotatable orthographic OKLab sample volume, with proportion-sized marks'});
+ const verts=[];for(const y of [-.5,.5])for(const x of [-.3,.3])for(const z of [-.3,.3])verts.push([x,y,z]);
+ for(let i=0;i<verts.length;i++)for(let j=i+1;j<verts.length;j++){if(verts[i].filter((v,k)=>v!==verts[j][k]).length===1)line(svg,project(...verts[i]),project(...verts[j]));}
+ line(svg,project(0,-.5,0),project(0,.5,0),{stroke:'#918b80'});
+ const tops=project(0,.5,0),bottom=project(0,-.5,0);txt(svg,tops[0]+8,tops[1]-8,'L = 1');txt(svg,bottom[0]+8,bottom[1]+16,'L = 0');
+ data.map(c=>({c,p:project(c.a,c.L-.5,c.b)})).sort((a,b)=>a.p[2]-b.p[2]).forEach(({c,p})=>point(svg,c,p[0],p[1]));
+ space.replaceChildren(svg);
+}
+function draw(){draw2D(polar,'polar');draw2D(hl,'hl');drawVolume();}
+function selection(){root.querySelectorAll('[data-color]').forEach(n=>n.setAttribute('aria-pressed',String(Number(n.dataset.color)===state.selected)));const c=data[state.selected];root.querySelector('.tf-status').textContent=`${c.hex} · ${c.name} · ${c.share}% share · selected across all views`;draw();}
+function layout(){root.dataset.flow=state.flow;root.dataset.open=String(state.open);root.dataset.voice=state.voice;
+ root.querySelectorAll('[data-flow]').forEach(b=>{if(b.tagName==='BUTTON')b.setAttribute('aria-pressed',String(b.dataset.flow===state.flow));});
+ root.querySelector('.tf-launch').textContent=state.flow==='peer'?(state.open?'Hide 3D figure':'Show 3D figure'):(state.open?(state.flow==='focus'?'Return to analysis':'Close inspector'):'Explore in 3D');
+ root.querySelector('.tf-return').textContent=state.flow==='peer'?'Hide figure':state.flow==='focus'?'← Return to analysis':'Close inspector';
+ vol.hidden=!state.open;(state.flow==='peer'?root.querySelector('.tf-peer-slot'):root.querySelector('.tf-dock-slot')).append(vol);
+ root.querySelectorAll('[data-camera]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.camera===state.camera)));
+ selection();
+}
+const list=root.querySelector('.tf-list'),strip=root.querySelector('.tf-strip');
+data.forEach(c=>{const row=document.createElement('button');row.type='button';row.className='tf-row';row.dataset.color=c.id;row.setAttribute('aria-label',`${c.name}, ${c.hex}, ${c.share} percent`);row.innerHTML=`<span class="tf-chip" style="background:${c.hex}"></span><span><em>${c.name}</em><small>${c.hex}</small></span><span>${c.share}%</span>`;row.onclick=()=>{state.selected=c.id;selection();};list.append(row);
+ const s=document.createElement('button');s.type='button';s.style.flex=c.share;s.style.background=c.hex;s.dataset.color=c.id;s.setAttribute('aria-label',`${c.name}, ${c.share} percent`);s.onclick=row.onclick;strip.append(s);
+});
+root.querySelectorAll('button[data-flow]').forEach(b=>b.onclick=()=>{state.flow=b.dataset.flow;state.open=state.flow==='peer';layout();});
+root.querySelector('.tf-launch').onclick=()=>{state.open=!state.open;layout();};
+root.querySelector('.tf-return').onclick=()=>{state.open=false;layout();root.querySelector('.tf-launch').focus({preventScroll:true});};
+root.querySelectorAll('.tf-local-open').forEach(b=>b.onclick=()=>{state.open=true;layout();if(state.flow==='peer')vol.scrollIntoView({block:'nearest',behavior:'instant'});});
+root.querySelectorAll('[data-camera]').forEach(b=>b.onclick=()=>{state.camera=b.dataset.camera;state.yaw=state.camera==='oblique'?.65:0;state.pitch=state.camera==='top'?Math.PI/2:state.camera==='side'?0:.35;layout();});
+root.addEventListener('click',e=>{const t=e.target.closest('[data-pick]');if(t){state.selected=Number(t.dataset.pick);selection();}});
+let drag=null;
+space.addEventListener('pointerdown',e=>{if(e.button!==0)return;drag={x:e.clientX,y:e.clientY,yaw:state.yaw,pitch:state.pitch,moved:false,pick:e.target.closest('[data-pick]')?.getAttribute('data-pick')};space.setPointerCapture(e.pointerId);});
+space.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)<4&&!drag.moved)return;drag.moved=true;state.yaw=drag.yaw+dx*.012;state.pitch=Math.max(-Math.PI/2,Math.min(Math.PI/2,drag.pitch+dy*.009));state.camera='free';root.querySelectorAll('[data-camera]').forEach(b=>b.setAttribute('aria-pressed','false'));drawVolume();});
+space.addEventListener('pointerup',e=>{const click=drag&&!drag.moved&&drag.pick!=null?Number(drag.pick):null;if(space.hasPointerCapture(e.pointerId))space.releasePointerCapture(e.pointerId);drag=null;if(click!==null){state.selected=click;selection();}});
+space.addEventListener('pointercancel',()=>drag=null);
+root.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.open&&state.flow!=='peer'){state.open=false;layout();root.querySelector('.tf-launch').focus({preventScroll:true});}});
+const resize=new ResizeObserver(draw);[polar,hl,space].forEach(h=>resize.observe(h));layout();
+if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:layout});tweak.addSelect(state,'voice',{label:'Type voice',options:[{label:'Typeset',value:'serif'},{label:'Buffer',value:'mono'}]});}
+})();
+</script>

@@ -1,0 +1,29 @@
+/* Dormant EPIC-027 study tokens. A consumer must opt in explicitly. */
+[data-study-surface] {
+  --study-paper: #f7f4ee;
+  --study-paper-soft: #e8e5de;
+  --study-ink: #393932;
+  --study-ink-muted: #6b665f;
+  --study-rule: #b5b2a8;
+  --study-accent: #7e4c3d;
+  --study-focus: #2a5adf;
+
+  --study-font-ui:
+    'Fira Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --study-font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --study-text-xs: 0.75rem;
+  --study-text-sm: 0.875rem;
+  --study-text-md: 1rem;
+  --study-text-lg: 1.25rem;
+
+  --study-space-1: 0.25rem;
+  --study-space-2: 0.5rem;
+  --study-space-3: 0.75rem;
+  --study-space-4: 1rem;
+  --study-space-6: 1.5rem;
+  --study-space-8: 2rem;
+
+  --study-rule-width: 1px;
+  --study-radius: 0.25rem;
+  --study-control-min-size: 2.75rem;
+}

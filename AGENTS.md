@@ -61,5 +61,5 @@ CI runs all of the above plus golden/snapshot gates, hook regressions and a Wind
 ## Current state snapshot (2026-07-09)
 
 - v1.0.2 shipped; 2026-07 audit remediation (EPIC-028) landed: video-switch races, cancellation ownership, resource pruning, honest export extensions, and working repo gates.
-- Active: **EPIC-026** (live playback — architecture fixed in `RAG/ADR/ADR-003`: persistent rawvideo pipe → LUT+rayon OKLab → warm-start k-means with a fixed 4-iteration budget, single-stage, events per frame) and **EPIC-027** (notebook UI redesign — design bundle in `RAG/`, lifecycle coverage in `RAG/DESIGN-COVERAGE.md`; the shell/views will be rebuilt, so check ticket state before investing in current layout code).
+- Active: **EPIC-026** (live playback — architecture fixed in `RAG/ADR/ADR-003`: persistent rawvideo pipe → LUT+rayon OKLab → warm-start k-means with a fixed 4-iteration budget, single-stage, events per frame) and **EPIC-027** (notebook UI redesign — searchable September references in `RAG/design-system/2026-09/`, lifecycle coverage in `RAG/DESIGN-COVERAGE.md`; the shell/views will be rebuilt, so check ticket state before investing in current layout code).
 - Bench binaries under `src-tauri/src/bin/` (`kmeans_baseline`, `kmeans_framesim`, `live_pipe_probe`, `live_loop_probe`) are spike instrumentation — don't modify unless your ticket says so.

@@ -1,0 +1,225 @@
+<div id="color-studies" aria-label="Color Tool editorial interface study">
+  <header class="cs-chrome">
+    <span class="cs-brand">Color Tool <span>/ studies</span></span>
+    <nav aria-label="Presentation"><button type="button" data-mode="work" aria-pressed="true">Workspace</button><button type="button" data-mode="plate" aria-pressed="false">Plate</button></nav>
+  </header>
+  <main class="cs-paper">
+    <div class="cs-kicker"><span>Chromatic studies / No. 014</span><span>Design sketch · reference palette</span></div>
+    <div class="cs-title"><h1>On warmth &amp; shadow.</h1><p>Twelve colors, several ways of seeing.</p></div>
+    <div class="cs-contents"><span>01 <em>Color relationships</em></span><span>02 <em>Palette index</em></span><span>03 <em>Relative proportions</em></span></div>
+    <div class="cs-grid">
+      <section class="cs-figure" aria-label="Interactive palette figure">
+        <div class="cs-section-head"><h2><span>01.</span> Color relationships</h2><span class="cs-mono">sRGB → OKLCH</span></div>
+        <div class="cs-view-controls" aria-label="Figure representation">
+          <button type="button" data-chart="map" aria-pressed="true">Hue map</button><button type="button" data-chart="atlas" aria-pressed="false">Tint atlas</button><button type="button" data-chart="ribbon" aria-pressed="false">Proportions</button>
+        </div>
+        <div class="cs-chart"></div>
+        <div class="cs-caption"><span class="cs-chart-caption"></span><span class="cs-selected-short" aria-live="polite"></span></div>
+      </section>
+      <aside class="cs-index" aria-label="Palette index">
+        <div class="cs-section-head"><h2><span>02.</span> Palette index</h2><span class="cs-mono">12</span></div>
+        <label class="cs-sort">Order <select aria-label="Palette order"><option value="source">Reference</option><option value="hue">Hue</option><option value="lightness">Lightness</option><option value="share">Proportion</option></select></label>
+        <div class="cs-swatches"></div>
+        <div class="cs-detail" aria-live="polite"></div>
+      </aside>
+    </div>
+    <section class="cs-proportions" aria-label="Relative proportions">
+      <div class="cs-section-head"><h2><span>03.</span> Relative proportions</h2><span class="cs-mono">illustrative weights</span></div>
+      <div class="cs-band"></div>
+      <div class="cs-band-labels"><span>Area ∝ share</span><span>Same palette · no new analysis</span></div>
+    </section>
+    <footer><span>Reference colors supplied by the owner · names transcribed, not inferred</span><span>Interactive design study / not the analysis engine</span></footer>
+  </main>
+</div>
+<style>
+#color-studies { --cs-paper:#faf8f3; --cs-ink:#282725; --cs-sub:#68645e; --cs-line:#d6d1c7; --cs-accent:#974835; color-scheme:light; color:var(--cs-ink); background:var(--cs-paper); width:100%; margin:0 auto; container-type:inline-size; font:14px/1.5 Georgia,'Times New Roman',serif; }
+#color-studies * { box-sizing:border-box; }
+#color-studies button, #color-studies select { color:inherit; font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace; }
+#color-studies button { background:transparent; border:0; border-radius:0; cursor:pointer; padding:7px 0; }
+#color-studies button:focus-visible, #color-studies select:focus-visible { outline:2px solid var(--cs-accent); outline-offset:3px; }
+#color-studies button[aria-pressed=true] { color:var(--cs-accent); }
+#color-studies .cs-chrome { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:13px 26px; border-bottom:1px solid var(--cs-ink); font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+#color-studies .cs-brand { white-space:nowrap; }
+#color-studies .cs-brand span { color:var(--cs-sub); }
+#color-studies nav { display:flex; gap:18px; }
+#color-studies nav button[aria-pressed=true] { text-decoration:underline; text-underline-offset:6px; }
+#color-studies .cs-paper { padding:28px 34px 19px; }
+#color-studies .cs-kicker { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; color:var(--cs-sub); font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; text-transform:uppercase; letter-spacing:.06em; }
+#color-studies .cs-title { padding:23px 0 25px; }
+#color-studies h1 { font:400 clamp(32px,5.4cqw,62px)/1.08 Georgia,'Times New Roman',serif; letter-spacing:-.055em; margin:0 0 8px; }
+#color-studies .cs-title p { margin:0; color:var(--cs-sub); font:italic 16px/1.4 Georgia,serif; }
+#color-studies .cs-contents { display:flex; gap:28px; flex-wrap:wrap; border-top:1px solid var(--cs-ink); border-bottom:1px solid var(--cs-line); padding:10px 0; margin-bottom:25px; color:var(--cs-sub); font:11px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace; }
+#color-studies .cs-contents em { margin-left:6px; font:italic 13px/1.4 Georgia,serif; }
+#color-studies .cs-grid { display:grid; grid-template-columns:minmax(0,1fr) 246px; gap:30px; align-items:start; }
+#color-studies .cs-figure, #color-studies .cs-index { min-width:0; }
+#color-studies .cs-index { border-left:1px solid var(--cs-line); padding-left:23px; }
+#color-studies .cs-section-head { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:5px 12px; }
+#color-studies h2 { margin:0; font:italic 17px/1.35 Georgia,serif; }
+#color-studies h2 span { color:var(--cs-accent); margin-right:5px; font-style:normal; }
+#color-studies .cs-mono { font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; color:var(--cs-sub); }
+#color-studies .cs-view-controls { display:flex; flex-wrap:wrap; gap:19px; margin-top:11px; }
+#color-studies .cs-view-controls button[aria-pressed=true]::before { content:'['; }
+#color-studies .cs-view-controls button[aria-pressed=true]::after { content:']'; }
+#color-studies .cs-chart { width:100%; margin:4px 0 10px; min-height:300px; }
+#color-studies .cs-chart svg { display:block; width:100%; overflow:visible; }
+#color-studies .cs-chart svg text { fill:var(--cs-sub); font:11px ui-monospace,SFMono-Regular,Consolas,monospace; }
+#color-studies .cs-chart svg .cs-svg-serif { fill:var(--cs-ink); font:italic 19px Georgia,serif; }
+#color-studies .cs-caption { display:flex; justify-content:space-between; gap:8px 20px; flex-wrap:wrap; padding:10px 0; border-top:1px solid var(--cs-line); color:var(--cs-sub); font:12px/1.45 Georgia,serif; }
+#color-studies .cs-selected-short { color:var(--cs-accent); }
+#color-studies .cs-sort { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:14px 0 6px; color:var(--cs-sub); font:11px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace; }
+#color-studies select { background:transparent; border:0; border-bottom:1px solid var(--cs-line); padding:3px; max-width:100%; }
+#color-studies .cs-swatch { display:grid; grid-template-columns:31px minmax(0,1fr) 30px; gap:8px; align-items:center; width:100%; text-align:left; border-bottom:1px solid var(--cs-line); padding:6px 0; }
+#color-studies .cs-swatch[aria-pressed=true] { color:var(--cs-ink); }
+#color-studies .cs-swatch[aria-pressed=true] .cs-chip { outline:1px solid var(--cs-ink); outline-offset:3px; }
+#color-studies .cs-chip { display:block; height:24px; }
+#color-studies .cs-color-label { overflow-wrap:anywhere; }
+#color-studies .cs-color-label em { display:block; font:italic 12px/1.35 Georgia,serif; }
+#color-studies .cs-hex { display:block; color:var(--cs-sub); font-size:11px; }
+#color-studies .cs-share { text-align:right; color:var(--cs-sub); font-size:11px; }
+#color-studies .cs-detail { padding:13px 0 0; font:11px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace; color:var(--cs-sub); }
+#color-studies .cs-detail strong { font-weight:400; color:var(--cs-ink); }
+#color-studies .cs-proportions { border-top:1px solid var(--cs-ink); margin-top:24px; padding-top:14px; }
+#color-studies .cs-band { display:flex; width:100%; gap:2px; margin-top:15px; }
+#color-studies .cs-band button { min-width:0; height:51px; padding:0; }
+#color-studies .cs-band button[aria-pressed=true] { outline:1px solid var(--cs-ink); outline-offset:3px; }
+#color-studies .cs-band-labels, #color-studies footer { display:flex; justify-content:space-between; gap:8px 20px; flex-wrap:wrap; font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; color:var(--cs-sub); }
+#color-studies .cs-band-labels { margin-top:9px; }
+#color-studies footer { border-top:1px solid var(--cs-line); margin-top:25px; padding-top:12px; font-size:11px; }
+#color-studies[data-mode=plate] .cs-grid { grid-template-columns:1fr; }
+#color-studies[data-mode=plate] .cs-index { border-left:0; border-top:1px solid var(--cs-line); padding:18px 0 0; }
+#color-studies[data-mode=plate] .cs-swatches { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); column-gap:24px; }
+#color-studies[data-mode=plate] .cs-title { padding:32px 0; }
+#color-studies[data-mode=plate] .cs-contents { display:none; }
+#color-studies[data-mode=plate] .cs-figure { max-width:760px; width:100%; margin:0 auto; }
+#color-studies[data-voice=mono] h1, #color-studies[data-voice=mono] h2, #color-studies[data-voice=mono] .cs-title p { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-style:normal; letter-spacing:-.04em; }
+@container (max-width:740px) {
+  #color-studies .cs-grid { grid-template-columns:1fr; gap:22px; }
+  #color-studies .cs-index { border-left:0; border-top:1px solid var(--cs-line); padding:18px 0 0; }
+  #color-studies .cs-swatches { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 22px; }
+  #color-studies .cs-paper { padding:22px; }
+  #color-studies .cs-chart { min-height:280px; }
+}
+@container (max-width:430px) {
+  #color-studies .cs-chrome { padding:10px 14px; gap:8px; flex-wrap:wrap; }
+  #color-studies .cs-paper { padding:20px 14px 14px; }
+  #color-studies .cs-brand span { display:none; }
+  #color-studies .cs-contents { gap:7px 15px; }
+  #color-studies .cs-swatches { grid-template-columns:1fr; }
+  #color-studies .cs-title p { font-size:15px; }
+  #color-studies .cs-hex, #color-studies .cs-share, #color-studies footer { font-size:11px; }
+}
+@media (pointer:coarse) { #color-studies button, #color-studies select { min-height:44px; } }
+</style>
+<script>
+(() => {
+  const root = document.getElementById('color-studies');
+  const colors = [
+    ['#D06040','Dark cadmium orange',12], ['#F09C6C','Pale geranium lake',10],
+    ['#FFC000','Cadmium yellow',9], ['#205050','Indanthrene blue',14],
+    ['#9C0030','Deep vivid rose',7], ['#E09000','Amber',6],
+    ['#602020','Caput mortuum',11], ['#903048','Rose',5],
+    ['#906018','Raw umber',5], ['#304890','Indanthrene blue',7],
+    ['#FFD8A8','Pale muted amber',8], ['#7878A8','Cold grey V',6]
+  ].map(([hex,name,share],id) => {
+    const rgb = [1,3,5].map(i => parseInt(hex.slice(i,i+2),16));
+    const [r,g,b] = rgb.map(v => {v/=255; return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4);});
+    const l=Math.cbrt(.4122214708*r+.5363325363*g+.0514459929*b);
+    const m=Math.cbrt(.2119034982*r+.6806995451*g+.1073969566*b);
+    const s=Math.cbrt(.0883024619*r+.2817188376*g+.6299787005*b);
+    const L=.2104542553*l+.793617785*m-.0040720468*s;
+    const a=1.9779984951*l-2.428592205*m+.4505937099*s;
+    const bb=.0259040371*l+.7827717662*m-.808675766*s;
+    return {hex,name,share,id,rgb,L,C:Math.hypot(a,bb),H:(Math.atan2(bb,a)*180/Math.PI+360)%360};
+  });
+  const state={mode:'work',chart:'map',order:'source',selected:0,voice:'serif',width:'auto',ground:'#faf8f3'};
+  const chart=root.querySelector('.cs-chart');
+  const list=root.querySelector('.cs-swatches');
+  const band=root.querySelector('.cs-band');
+  const ns='http://www.w3.org/2000/svg';
+  const sorted=()=>[...colors].sort((a,b)=>state.order==='hue'?a.H-b.H:state.order==='lightness'?b.L-a.L:state.order==='share'?b.share-a.share:a.id-b.id);
+  function el(tag,attrs={},text) { const n=document.createElementNS(ns,tag); Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,String(v))); if(text!==undefined)n.textContent=text; return n; }
+  function text(svg,x,y,label,attrs={}) {svg.append(el('text',{x,y,...attrs},label));}
+  function choose(id) {state.selected=id;renderSelection();draw();}
+  function renderList() {
+    list.replaceChildren(); band.replaceChildren();
+    sorted().forEach(c=>{
+      const button=document.createElement('button'); button.type='button';button.className='cs-swatch';button.dataset.id=c.id;
+      button.setAttribute('aria-label',`${c.name}, ${c.hex}, illustrative share ${c.share} percent`);
+      button.innerHTML=`<span class="cs-chip" style="background:${c.hex}"></span><span class="cs-color-label"><em>${c.name}</em><span class="cs-hex">${c.hex}</span></span><span class="cs-share">${c.share}%</span>`;
+      button.addEventListener('click',()=>choose(c.id));list.append(button);
+      const stripe=document.createElement('button');stripe.type='button';stripe.dataset.id=c.id;stripe.style.flex=c.share;stripe.style.background=c.hex;
+      stripe.setAttribute('aria-label',`${c.name}, ${c.share} percent illustrative share`);stripe.addEventListener('click',()=>choose(c.id));band.append(stripe);
+    });
+  }
+  function renderSelection() {
+    root.querySelectorAll('[data-id]').forEach(n=>n.setAttribute('aria-pressed',String(Number(n.dataset.id)===state.selected)));
+    const c=colors[state.selected];
+    root.querySelector('.cs-detail').innerHTML=`<strong>${c.hex}</strong> · rgb ${c.rgb.join(' ')}<br>L ${(c.L*100).toFixed(1)}% · C ${c.C.toFixed(3)} · h ${c.H.toFixed(1)}°`;
+    root.querySelector('.cs-selected-short').textContent=`${String(c.id+1).padStart(2,'0')} / ${c.name}`;
+  }
+  function draw() {
+    const w=Math.max(200,Math.round(chart.getBoundingClientRect().width));
+    const h=state.chart==='ribbon'?320:Math.max(310,Math.min(440,w*.76));
+    const svg=el('svg',{viewBox:`0 0 ${w} ${h}`,width:w,height:h,role:'img','aria-label':state.chart==='map'?'OKLCH hue and chroma map of twelve reference colors':state.chart==='atlas'?'Derived sRGB tint atlas of twelve reference colors':'Palette stripe widths showing illustrative proportions'});
+    const selected=colors[state.selected];
+    if(state.chart==='map') {
+      const cx=w/2,cy=h/2,r=Math.min((w-82)/2,(h-70)/2),ceiling=.3;
+      [.1,.2,.3].forEach(c=>svg.append(el('circle',{cx,cy,r:r*c/ceiling,fill:'none',stroke:'#d6d1c7','stroke-width':1})));
+      for(const d of [0,90,180,270]) {const a=d*Math.PI/180;svg.append(el('line',{x1:cx,y1:cy,x2:cx+Math.cos(a)*r,y2:cy-Math.sin(a)*r,stroke:'#d6d1c7','stroke-width':1}));}
+      text(svg,cx+r+9,cy+4,'0°');text(svg,cx-r-9,cy+4,'180°',{'text-anchor':'end'});text(svg,cx,cy-r-12,'90°',{'text-anchor':'middle'});text(svg,cx,cy+r+21,'270°',{'text-anchor':'middle'});
+      colors.forEach(c=>{const a=c.H*Math.PI/180,x=cx+Math.cos(a)*r*c.C/ceiling,y=cy-Math.sin(a)*r*c.C/ceiling;
+        if(c.id===state.selected)svg.append(el('circle',{cx:x,cy:y,r:13,fill:'none',stroke:'#282725','stroke-width':1}));
+        const dot=el('circle',{cx:x,cy:y,r:8,fill:c.hex});svg.append(dot);
+        const hit=el('circle',{cx:x,cy:y,r:16,fill:'transparent',cursor:'pointer'});hit.append(el('title',{},`${c.name} ${c.hex}`));hit.addEventListener('click',()=>choose(c.id));svg.append(hit);
+      });
+      root.querySelector('.cs-chart-caption').textContent='Angle: hue · radius: chroma (0–0.30) · equal-size marks';
+    } else if(state.chart==='atlas') {
+      const cx=w/2,cy=h/2,r=Math.min((w-60)/2,(h-54)/2),inner=r*.20;
+      const polar=(rad,a)=>[cx+rad*Math.cos(a),cy+rad*Math.sin(a)];
+      [...colors].sort((a,b)=>a.H-b.H).forEach((c,i)=>{
+        const a0=i*Math.PI/6-Math.PI/2+.035,a1=(i+1)*Math.PI/6-Math.PI/2-.035;
+        for(let ring=0;ring<4;ring++) {
+          const r0=inner+(r-inner)*ring/4+1,r1=inner+(r-inner)*(ring+1)/4-1;
+          const p0=polar(r0,a0),p1=polar(r1,a0),p2=polar(r1,a1),p3=polar(r0,a1);
+          const mix=1-ring/3;const fill=`rgb(${c.rgb.map(v=>Math.round(v+(255-v)*mix*.78)).join(',')})`;
+          const path=el('path',{d:`M ${p0} L ${p1} A ${r1} ${r1} 0 0 1 ${p2} L ${p3} A ${r0} ${r0} 0 0 0 ${p0} Z`,fill,cursor:'pointer'});
+          path.addEventListener('click',()=>choose(c.id));path.append(el('title',{},`${c.name}, ${ring===3?'source color':'derived display tint'}`));svg.append(path);
+        }
+        if(c.id===state.selected) {const p0=polar(r+5,a0),p1=polar(r+5,a1);svg.append(el('path',{d:`M ${p0} A ${r+5} ${r+5} 0 0 1 ${p1}`,fill:'none',stroke:'#282725','stroke-width':2}));}
+      });
+      text(svg,cx,cy+4,'tints',{'text-anchor':'middle',class:'cs-svg-serif'});
+      root.querySelector('.cs-chart-caption').textContent='Hue-ordered sectors · outer ring: source · inward: sRGB blends toward white, not pigment mixtures';
+    } else {
+      let x=12; const total=w-24;
+      sorted().forEach(c=>{const width=total*c.share/100;
+        svg.append(el('rect',{x,y:54,width,height:148,fill:c.hex}));
+        const hit=el('rect',{x,y:54,width,height:148,fill:'transparent',cursor:'pointer'});hit.addEventListener('click',()=>choose(c.id));svg.append(hit);
+        if(c.id===state.selected)svg.append(el('rect',{x:x+1,y:50,width:Math.max(1,width-2),height:156,fill:'none',stroke:'#282725','stroke-width':1}));
+        x+=width;
+      });
+      text(svg,12,30,'Illustrative composition',{'class':'cs-svg-serif'});
+      text(svg,12,236,`${selected.hex} · ${selected.share}%`);
+      text(svg,12,261,'Width = share · constant height');
+      root.querySelector('.cs-chart-caption').textContent='Illustrative weights only · not measured from the supplied artwork';
+    }
+    chart.replaceChildren(svg);
+  }
+  function render() {
+    root.dataset.mode=state.mode;root.dataset.voice=state.voice;root.style.maxWidth=state.width==='auto'?'1280px':state.width;root.style.setProperty('--cs-paper',state.ground);
+    root.querySelectorAll('[data-mode]').forEach(b=>{if(b.tagName==='BUTTON')b.setAttribute('aria-pressed',String(b.dataset.mode===state.mode));});
+    root.querySelectorAll('[data-chart]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.chart===state.chart)));
+    renderList();renderSelection();draw();
+  }
+  root.querySelectorAll('button[data-mode]').forEach(b=>b.addEventListener('click',()=>{state.mode=b.dataset.mode;render();}));
+  root.querySelectorAll('[data-chart]').forEach(b=>b.addEventListener('click',()=>{state.chart=b.dataset.chart;render();}));
+  root.querySelector('select').addEventListener('change',e=>{state.order=e.target.value;render();});
+  new ResizeObserver(draw).observe(chart);
+  render();
+  if(globalThis.Tweak) {
+    const tweak=new Tweak({container:root,onChange:render});
+    tweak.addSelect(state,'voice',{label:'Typography',options:[{label:'Typeset / serif',value:'serif'},{label:'Buffer / mono',value:'mono'}]});
+    tweak.addSelect(state,'width',{label:'Reflow study',options:[{label:'Available width',value:'auto'},{label:'736 px',value:'736px'},{label:'360 px',value:'360px'}]});
+    tweak.addColorPicker(state,'ground',{label:'Paper ground'});
+  }
+})();
+</script>

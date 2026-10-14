@@ -6,19 +6,22 @@ Authority: [PROJECT-RECORD rev 0.5](../PROJECT-RECORD.md), especially §9. Ticke
 
 ## Walkthroughs
 
-The editable references remain in the durable task-owned visualization directory below; they are conversation fragments, not production app pages. AI-IMP-168 will preserve searchable design provenance after review. None belongs in App.svelte or a production network dependency.
+The reviewed references are preserved byte-for-byte in the durable repository
+carrier at [`../design-system/2026-09/`](../design-system/2026-09/). They are
+conversation fragments, not production app pages. The original task-owned
+source paths and hashes remain in `reference-sha256.txt`; the carrier has a
+separate relative-path checksum list. None belongs in `App.svelte` or a
+production network dependency.
 
-Reference directory: `/Users/golem/.codex/visualizations/2026/07/19/019f7c75-2b8b-7882-9df7-0cdc1e494671`
-
-| Reference | Use and limitations |
-| --- | --- |
-| ui-surface-walkthrough.html | New 20-state export/settings/management/batch close-up; illustrative data, simulated saving, proposed confirmation treatments. |
-| user-storyboard.html / user-storyboard-register.md | Earlier 34-frame lifecycle map, with explicit unresolved branch variants. New walkthrough extends it; does not retroactively approve its proposals. |
-| app-layout-studies.html | Three arrangements over the same study; named icon positions are placeholders. |
-| media-collection-flow.html | Compact strip, full collection, select-and-return interaction sketch. |
-| oklab-gamut-volume.html | Actual sRGB-in-OKLab shape and camera exploration reference. Prototype CDN use is not approved in the offline desktop app. |
-| third-primitive-flows.html | Historical inline/expanded interaction exploration. Its placeholder geometry is NOT the normative gamut shape. |
-| color-studies.html | Early editorial/palette aesthetic exploration, not a requirement to retain every decorative pattern. |
+| Reference                                                                                                                                                   | Use and limitations                                                                                                                                                                                                     |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [ui-surface-walkthrough.html](../design-system/2026-09/ui-surface-walkthrough.html)                                                                         | New 20-state export/settings/management/batch close-up; illustrative data, simulated saving, proposed confirmation treatments.                                                                                          |
+| [user-storyboard.html](../design-system/2026-09/user-storyboard.html) / [user-storyboard-register.md](../design-system/2026-09/user-storyboard-register.md) | Earlier 34-frame lifecycle map, with explicit unresolved branch variants. New walkthrough extends it; does not retroactively approve its proposals.                                                                     |
+| [app-layout-studies.html](../design-system/2026-09/app-layout-studies.html)                                                                                 | Three arrangements over the same study; named icon positions are placeholders.                                                                                                                                          |
+| [media-collection-flow.html](../design-system/2026-09/media-collection-flow.html)                                                                           | Compact strip, full collection, select-and-return interaction sketch.                                                                                                                                                   |
+| [oklab-gamut-volume.html](../design-system/2026-09/oklab-gamut-volume.html)                                                                                 | Actual sRGB-in-OKLab shape and camera exploration reference. The preserved prototype still needs its pinned CDN modules; this is not approval for a production network dependency or a claim of an offline 3D fallback. |
+| [third-primitive-flows.html](../design-system/2026-09/third-primitive-flows.html)                                                                           | Historical inline/expanded interaction exploration. Its placeholder geometry is NOT the normative gamut shape.                                                                                                          |
+| [color-studies.html](../design-system/2026-09/color-studies.html)                                                                                           | Early editorial/palette aesthetic exploration, not a requirement to retain every decorative pattern.                                                                                                                    |
 
 Original IMP-168–177 and epic text are preserved in `../reviews/EPIC-027/legacy-2026-07-09/`. Do not overwrite that archive. Source/configuration identity, retained export inputs, and native ownership follow accepted EPIC-029 rulings even where a drawing omits them.
 

@@ -1,0 +1,157 @@
+<div id="color-user-storyboard" aria-label="Color studies user story storyboard">
+  <header class="sb-title"><h2>From media to a study</h2><span>34 frames · exports next</span></header>
+  <nav class="sb-stories" aria-label="User story chapters"></nav>
+  <div class="sb-story-heading"><h3></h3><span class="sb-scope"></span></div>
+  <div class="sb-legend">Earlier sketch · New proposal · Decision needed</div>
+  <div class="sb-frames" aria-live="polite"></div>
+  <footer class="sb-footer"><button type="button" class="sb-prev">Previous story</button><span class="sb-page"></span><button type="button" class="sb-next">Next story</button></footer>
+</div>
+<style>
+#color-user-storyboard{--sb-paper:#f7f4ee;--sb-ink:#393932;--sb-line:#b5b2a8;--sb-soft:#e8e5de;--sb-accent:#7e4c3d;background:var(--sb-paper);color:var(--sb-ink);padding:20px;font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;container-type:inline-size;width:100%}
+#color-user-storyboard *{box-sizing:border-box}
+#color-user-storyboard h2,#color-user-storyboard h3,#color-user-storyboard h4{font-weight:400;margin:0}
+#color-user-storyboard h2{font:italic 28px Georgia,serif}
+#color-user-storyboard h3{font:italic 21px Georgia,serif}
+#color-user-storyboard h4{font:italic 18px Georgia,serif}
+#color-user-storyboard small{font-size:11px}
+#color-user-storyboard button{font:inherit;color:inherit;background:var(--sb-paper);border:1px solid var(--sb-line);border-radius:2px;padding:7px 10px;cursor:pointer}
+#color-user-storyboard button:hover{background:var(--sb-soft)}
+#color-user-storyboard button:disabled{opacity:.5;cursor:default}
+#color-user-storyboard .sb-title{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--sb-line);padding-bottom:15px}
+#color-user-storyboard .sb-title>span,#color-user-storyboard .sb-scope{font-size:11px}
+#color-user-storyboard .sb-stories{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0}
+#color-user-storyboard .sb-stories button{font-size:11px}
+#color-user-storyboard .sb-stories button[aria-pressed=true]{background:var(--sb-ink);color:var(--sb-paper);border-color:var(--sb-ink)}
+#color-user-storyboard .sb-story-heading{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap;margin-top:22px}
+#color-user-storyboard .sb-legend{font-size:11px;margin:8px 0 16px;color:#686459}
+#color-user-storyboard .sb-frames{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 18px}
+#color-user-storyboard .sb-frame{min-width:0}
+#color-user-storyboard .sb-frame-head{display:flex;gap:7px;align-items:center;justify-content:space-between;margin-bottom:8px}
+#color-user-storyboard .sb-id{font-size:11px}
+#color-user-storyboard .sb-status{font-size:11px;border-bottom:1px solid var(--sb-line)}
+#color-user-storyboard .sb-status[data-kind=decision]{color:var(--sb-accent);border-color:var(--sb-accent)}
+#color-user-storyboard .sb-frame h4{margin-bottom:10px;min-height:23px}
+#color-user-storyboard .sb-screen{border:1px solid var(--sb-line);min-height:240px;display:flex;flex-direction:column;background:#fcfaf6}
+#color-user-storyboard .sb-chrome{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--sb-line);padding:7px 9px;font-size:11px}
+#color-user-storyboard .sb-screen-body{padding:12px;display:flex;flex-direction:column;gap:10px;flex:1;min-width:0}
+#color-user-storyboard .sb-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px}
+#color-user-storyboard .sb-box{border:1px dashed var(--sb-line);padding:12px;min-height:73px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;font:italic 17px Georgia,serif}
+#color-user-storyboard .sb-box small{font:11px/1.4 ui-monospace,monospace}
+#color-user-storyboard .sb-wash{background:repeating-linear-gradient(135deg,#f1eee7,#f1eee7 6px,#e7e2d9 6px,#e7e2d9 7px)}
+#color-user-storyboard .sb-art{background:linear-gradient(30deg,#ddd0bb 45%,#d0b8a0 45%,#d0b8a0 65%,#8a8a77 65%);min-height:78px;color:#393932}
+#color-user-storyboard .sb-action{font:11px/1.4 ui-monospace,monospace;display:inline-block;padding:5px 8px;border:1px solid var(--sb-line);background:var(--sb-paper)}
+#color-user-storyboard .sb-note{border-left:2px solid var(--sb-accent);padding:6px 8px;background:#eee4d8;font-size:11px}
+#color-user-storyboard .sb-muted{color:#6a655b;font-size:11px}
+#color-user-storyboard .sb-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+#color-user-storyboard .sb-tile{min-height:48px;background:#ddd4c4;border:1px solid #c0b5a4;padding:5px;display:flex;align-items:end;justify-content:space-between;font-size:11px}
+#color-user-storyboard .sb-tile:nth-child(2n){background:#b6b9ac}
+#color-user-storyboard .sb-tile.sb-active{outline:2px solid var(--sb-accent);outline-offset:-2px}
+#color-user-storyboard .sb-strip{display:flex;gap:5px;margin-top:auto;align-items:stretch}
+#color-user-storyboard .sb-strip>span{background:#ddd4c4;min-height:32px;min-width:27px;display:grid;place-items:center;font-size:11px;padding:4px}
+#color-user-storyboard .sb-strip>span:last-child{background:var(--sb-paper);border:1px dashed var(--sb-line);flex:1;min-width:0;text-align:center}
+#color-user-storyboard .sb-swatch{display:flex;gap:4px;height:20px}
+#color-user-storyboard .sb-swatch i{flex:1;background:#9b7660}
+#color-user-storyboard .sb-swatch i:nth-child(2){background:#c6b192;flex:2}
+#color-user-storyboard .sb-swatch i:nth-child(3){background:#728173}
+#color-user-storyboard .sb-swatch i:nth-child(4){background:#746268}
+#color-user-storyboard .sb-trigger{font-size:11px;margin:9px 0 4px}
+#color-user-storyboard .sb-outcome{font-size:11px;color:#655f53;border-top:1px solid var(--sb-soft);padding-top:5px}
+#color-user-storyboard .sb-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;border-top:1px solid var(--sb-line);padding-top:16px;margin-top:24px}
+#color-user-storyboard .sb-footer>span{font-size:11px}
+#color-user-storyboard .sb-settings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;text-align:center;font-size:11px}
+#color-user-storyboard .sb-layout{border:1px solid var(--sb-line);padding:8px 3px;min-width:0}
+#color-user-storyboard .sb-layout.selected{outline:1px solid var(--sb-accent);background:#eee4d8}
+#color-user-storyboard .sb-layout i{display:block;font:20px Georgia,serif;margin-bottom:5px}
+#color-user-storyboard .sb-dialog{background:var(--sb-paper);border:1px solid var(--sb-ink);padding:12px;display:flex;flex-direction:column;gap:12px;margin:auto 0}
+#color-user-storyboard .sb-transport{border-top:1px solid var(--sb-line);padding-top:7px;display:flex;justify-content:space-between;gap:6px;font-size:11px}
+#color-user-storyboard .sb-neutral i{filter:grayscale(1)}
+@container(max-width:540px){#color-user-storyboard .sb-frames{grid-template-columns:1fr}#color-user-storyboard .sb-screen{min-height:220px}#color-user-storyboard .sb-stories{gap:6px}#color-user-storyboard .sb-title h2{font-size:25px}}
+@media(pointer:coarse){#color-user-storyboard button{min-height:44px}}
+</style>
+<script>
+(()=>{
+  const root=document.getElementById('color-user-storyboard');
+  const box=(label,detail='',style='')=>`<div class="sb-box ${style}">${label}${detail?`<small>${detail}</small>`:''}</div>`;
+  const action=label=>`<span class="sb-action">${label}</span>`;
+  const note=label=>`<div class="sb-note">${label}</div>`;
+  const row=(a,b)=>`<div class="sb-row"><span>${a}</span><span>${b}</span></div>`;
+  const palette=(neutral=false)=>`<div class="sb-swatch ${neutral?'sb-neutral':''}" aria-label="Schematic palette"><i></i><i></i><i></i><i></i></div>`;
+  const tiles=(selected=0,pins=false,count=6)=>`<div class="sb-grid">${Array.from({length:count},(_,i)=>`<div class="sb-tile ${selected===i?'sb-active':''}">${String(i+1).padStart(2,'0')}${pins?`<span>${(pins===true?[1,4].includes(i):i<Number(pins))?'☑':'☐'}</span>`:''}</div>`).join('')}</div>`;
+  const strip=(more='16 more',selected='03')=>{const n=Number(selected)||3;return `<div class="sb-strip"><span>${String(Math.max(1,n-2)).padStart(2,'0')}</span><span>${String(Math.max(2,n-1)).padStart(2,'0')}</span><span>${selected}</span><span>…</span><span>${more} in collection →</span></div>`};
+  const art=()=>box('Selected artwork','','sb-art');
+  const plots=(label='2D figures · 3D volume')=>box(label,'palette index below');
+  const dialog=(title,detail,buttons)=>`<div class="sb-dialog"><span>${title}</span><small>${detail}</small><div class="sb-row">${buttons.map(action).join('')}</div></div>`;
+  const f=(id,title,status,screen,trigger,outcome,chrome='Colors')=>({id,title,status,screen,trigger,outcome,chrome});
+  const stories=[
+    {name:'Bring media in',story:'I bring my references into a collection.',scope:'Images · web + desktop',frames:[
+      f('I1','Nothing loaded','new',box('Start a color study','Drop images here')+row(action('Choose images'),action('Paste image'))+row('Collection','0 items'),'First visit / last item removed','Choose, drop, or paste → I2 / I3'),
+      f('I2','Valid drop target','new',box('Add 4 images','Release to add to this collection','sb-wash')+note('Current study stays in place'),'Drag supported files over the app','Leave without dropping → previous view'),
+      f('I3','Reading files','new',row('Adding images','2 of 4 read')+box('Decoding preview…','Reading image dimensions','sb-wash')+row('2 ready · 2 pending',action('Cancel remaining')),'Drop / browse / paste accepted','Ready images stay usable; pending items are identified'),
+      f('I4','Partial import failure','new',row('3 added · 1 could not load','Collection')+tiles(1,false,3)+note('sketch.xyz · Unsupported file type')+row(action('Choose another file'),action('Dismiss')),'Some files succeed; one fails','Keep successes; report the failed filename'),
+      f('I5','No usable input','new',box('No image found','Clipboard contains text')+row(action('Choose images'),action('Try paste again'))+note('Existing collection unchanged'),'Empty clipboard / invalid input / picker cancelled','A cancelled picker returns silently; invalid input explains why')
+    ]},
+    {name:'Make a study',story:'I understand the colors without losing my place.',scope:'Shared pending/error idiom',frames:[
+      f('S1','First analysis','new',art()+box('Analyzing image…','Figures appear when ready','sb-wash')+row('12 colors · Balanced',action('Cancel')),'First valid image becomes active','No prior results are presented as this image’s results'),
+      f('S2','Ready to explore','earlier',art()+plots()+palette()+strip(),'Analysis completes','Image, figures, index, and collection share one study'),
+      f('S3','Settings changed','new',row('Palette size','12 → 16')+box('Previous result · 12 colors','Updating to 16 colors…','sb-wash')+palette()+note('Previous result remains explicitly labeled'),'Change an analysis parameter','Only the newest result replaces the visible result'),
+      f('S4','Analysis failed','new',art()+note('Could not analyze this image')+row(action('Retry'),action('Change settings'))+box('Results unavailable','Collection remains accessible'),'Analysis returns an error','Retry retains the source and parameter choices'),
+      f('S5','Cancelled / superseded','new',row('Garden shade','New active image')+box('Preparing this study…','Loading Garden shade','sb-wash')+strip('16 more','04'),'Cancel analysis or switch images mid-run','Cancellation is quiet; an old completion cannot overwrite the new study')
+    ]},
+    {name:'Browse collection',story:'I find another image, then return to my study.',scope:'Existing interaction sketch',frames:[
+      f('C1','Compact strip','earlier',art()+palette()+strip()+row('Showing 1–8 of 24','8 visible · 16 more'),'Study is open','Count reflects actual visible items; active item stays visible'),
+      f('C2','All media','earlier',row('24 items',action('Back to study'))+tiles(2)+row(action('Add media'),'Select image to return'),'Choose “16 more in collection”','Back / Escape keeps the current image unchanged','Collection'),
+      f('C3','Choose and return','earlier',row('Coastal light','Image 18 of 24')+art()+box('Preparing image 18…','Selected source is named immediately','sb-wash')+strip('16 more','18'),'Open image 18 in the collection','Return to the invoking study; distinguish loading from readiness'),
+      f('C4','Few items / narrow window','new',box('Same study','Panels stack; thumbnails do not shrink')+`<div class="sb-strip"><span>18</span><span>23 more in collection →</span></div>`+row('All items fit?',action('View all')),'Resize, or work with a small collection','Always retain a path to full collection management')
+    ]},
+    {name:'Manage media',story:'I organize references without accidentally opening them.',scope:'Removal behavior needs a ruling',frames:[
+      f('M1','Pin without navigating','earlier',row('2 pinned for batch','Active: image 03')+tiles(2,true)+row('☑ Pin for batch',action('Remove…')),'Toggle a pin / Shift-pin a range','Stay in collection; raw video is not batch-pinnable','Collection'),
+      f('M2','Remove one item','decision',dialog('Remove “Coastal light”?','Remove from this collection only; keep the source file.',['Keep item','Remove'])+row('Analysis cache may be discarded','No Undo promised'),'Choose Remove on a tile','Proposed confirmation; current removal cleans cached resources','Collection'),
+      f('M3','Active item was removed','decision',row('Collection · 23 items','Image 18 removed')+tiles(0)+note('Next active item: eligible image; otherwise no selection'),'Confirm removal of the active media','Proposed visible successor; exact successor policy still needs agreement','Collection'),
+      f('M4','Clear the collection','decision',dialog('Clear all 24 items?','Remove collection entries and pins; keep source files.',['Keep collection','Clear collection'])+row('After confirmation','Empty state → I1'),'Choose Clear collection','Separate destructive action from routine image switching','Collection')
+    ]},
+    {name:'Arrange & inspect',story:'I change the presentation, not the underlying study.',scope:'New settings / existing 3D direction',frames:[
+      f('P1','Layout preference','new',row('Presentation','Settings')+`<div class="sb-settings"><span class="sb-layout"><i>▥</i>Workbench</span><span class="sb-layout selected"><i>▧</i>Image first</span><span class="sb-layout"><i>▤</i>Study sheet</span></div>`+note('Same image · same parameters · same selection')+row(action('Back to study'),'Window width still controls reflow'),'Choose one of three named layout icons','Change arrangement without running analysis again','Settings'),
+      f('P2','Palette-linked inspection','new',box('Selected cluster 04','Corresponding marks emphasized')+palette()+row('04 · Blue-green',action('Expand color volume'))+note('Cross-highlighting; not a new analysis'),'Select a swatch / figure mark','Keep selection consistent across index and figures'),
+      f('P3','Focused 3D volume','earlier',row(action('Return to analysis'),'Esc')+box('Rotatable OKLab gamut','Drag to rotate · zoom','sb-wash')+row('Oblique · Top · Side','Selected cluster 04'),'Expand the inline third figure','Return preserves selection, camera, and study position'),
+      f('P4','3D unavailable','new',box('3D view unavailable','2D analysis is still available')+row(action('Retry 3D'),'Hue / lightness figures remain')+note('Do not substitute a cylinder for the gamut'),'WebGL unavailable / graphics context lost','Explain the limitation without blocking the study'),
+      f('P5','Image / figure zoom','new',row(action('Return to study'),'Fit · 100%')+box('Focused source or 2D figure','Zoom controls stay local')+row('Selection retained','Escape to return'),'Open a source or 2D figure for detail','Distinct from layout choice and 3D camera controls')
+    ]},
+    {name:'Values & batch',story:'I compare tonal structure and a set of references.',scope:'Shared collection; separate analysis controls',frames:[
+      f('B1','Values study','new',row('Levels: 5','Notan: off')+box('Source → tonal grouping','Value distribution + preview')+palette(true)+strip(),'Switch Colors → Values','Active media remains; pending/error uses S1 / S3 / S4','Values'),
+      f('B2','Not enough pinned','new',box('Pin at least two images','0 or 1 currently pinned')+row(action('Choose from collection'),action('Add images'))+note('Pins are not the active-image selection'),'Enter Batch with fewer than two pins','Do not silently use every image in the collection','Batch'),
+      f('B3','Batch selection','new',row('3 images pinned','Batch settings')+tiles(0,3,3)+row('Batch palette size','12 colors')+note('Batch controls do not change Colors settings'),'Review eligible pinned images','Raw video disabled; frame snapshots remain eligible','Batch'),
+      f('B4','Aggregate pending','new',row('3 pinned images','Preparing aggregate')+box('Compositing → analyzing','Previous aggregate labeled if shown','sb-wash')+row(action('Cancel'),'Collection remains intact'),'Start or update the batch analysis','Pin changes invalidate the old aggregate; error uses S4','Batch'),
+      f('B5','Batch result / inspect pin','new',box('Aggregate palette','Source contact sheet below')+palette()+tiles(1,false,3)+row('Open a pin for detail','Return to same batch'),'Aggregate completes / inspect an individual pin','Pin-detail close preserves the batch set and parameters','Batch')
+    ]},
+    {name:'Desktop video',story:'I study moving color, then keep a useful frame.',scope:'Desktop only · live mode still proposal',frames:[
+      f('D1','Opening a clip','new',box('Opening clip…','Reading duration and dimensions','sb-wash')+row('clip.mov',action('Cancel'))+note('Probe failure → retry / choose another clip'),'Select raw video from collection','Use the video selection path, not image selection','Colors · video'),
+      f('D2','Scrub / frame decode','new',art()+note('Showing 00:12.4 · loading 00:18.2')+`<div class="sb-transport"><span>Paused</span><span>00:18.2 requested</span></div>`,'Seek to another frame','Keep the last decoded frame, explicitly identified as old','Colors · video'),
+      f('D3','Filmstrip generating','new',art()+box('Building filmstrip…','Transport stays usable','sb-wash')+row('Filmstrip / barcode','Presentation preference'),'Generate / change strip presentation','Thumbnail failure is not a failure of the whole clip','Colors · video'),
+      f('D4','Live playback','decision',row('Playing · live analysis','00:18.2')+plots('Updating frame distribution')+palette()+note('Stable cluster identity; no jumping ledger order')+row('Effective rate / skipped frames',action('Pause')),'Press Play in live mode','Performance feedback stays quiet; scene changes must remain legible','Colors · video'),
+      f('D5','Pause and settle','new',row('Paused at 00:18.2','Refining palette…')+plots('Settling to a still-frame result')+palette()+note('Still-frame result replaces live estimate when ready'),'Pause playback / change parameters','Keep frame identity; label the estimate until refinement completes','Colors · video'),
+      f('D6','Keep a frame','new',art()+row(action('Save frame to collection'),'00:18.2')+note('Frame added · clip.mov at 00:18.2')+strip('17 more','frame'),'Extract a snapshot','Keep clip playback context; add a timestamped, batch-eligible image','Colors · video')
+    ]}
+  ];
+  let chapter=0;
+  const settings={showTransitions:true};
+  const nav=root.querySelector('.sb-stories');
+  nav.innerHTML=stories.map((s,i)=>`<button type="button" data-story="${i}" aria-pressed="${i===0}">${i+1} / ${s.name}</button>`).join('');
+  function render(){
+    const story=stories[chapter];
+    root.querySelector('.sb-story-heading h3').textContent=story.story;
+    root.querySelector('.sb-scope').textContent=story.scope;
+    root.querySelectorAll('[data-story]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.story)===chapter)));
+    root.querySelector('.sb-frames').innerHTML=story.frames.map(frame=>`<article class="sb-frame" aria-label="${frame.id}: ${frame.title}"><div class="sb-frame-head"><span class="sb-id">${frame.id}</span><span class="sb-status" data-kind="${frame.status}">${{earlier:'Earlier sketch',new:'New proposal',decision:'Decision needed'}[frame.status]}</span></div><h4>${frame.title}</h4><div class="sb-screen"><div class="sb-chrome"><span>Color studies</span><span>${frame.chrome}</span></div><div class="sb-screen-body">${frame.screen}</div></div>${settings.showTransitions?`<div class="sb-trigger">When: ${frame.trigger}</div><div class="sb-outcome">Then: ${frame.outcome}</div>`:''}</article>`).join('');
+    root.querySelector('.sb-page').textContent=`Story ${chapter+1} / ${stories.length} · ${story.frames.length} states`;
+    root.querySelector('.sb-prev').disabled=chapter===0;
+    root.querySelector('.sb-next').disabled=chapter===stories.length-1;
+    root.dataset.chapter=String(chapter+1);
+    root.dataset.frames=String(stories.reduce((sum,s)=>sum+s.frames.length,0));
+  }
+  nav.addEventListener('click',e=>{const button=e.target.closest('[data-story]');if(button){chapter=Number(button.dataset.story);render()}});
+  root.querySelector('.sb-prev').addEventListener('click',()=>{chapter=Math.max(0,chapter-1);render();nav.querySelector(`[data-story="${chapter}"]`).focus()});
+  root.querySelector('.sb-next').addEventListener('click',()=>{chapter=Math.min(stories.length-1,chapter+1);render();nav.querySelector(`[data-story="${chapter}"]`).focus()});
+  render();
+  if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:render});tweak.addToggle(settings,'showTransitions',{label:'Show trigger and outcome labels'})}
+})();
+</script>

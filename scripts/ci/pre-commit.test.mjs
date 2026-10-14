@@ -87,6 +87,15 @@ test('binary assets need no language toolchains', (t) => {
   passes(f.run({ path: f.restrictedPath() }), /no staged code/);
 });
 
+test('pinned design reference HTML needs no formatter toolchain', (t) => {
+  const f = fixture(t, { dependencies: false });
+  f.stage(
+    'RAG/design-system/2026-09/hook-test.html',
+    '<main><span>Pinned reference bytes</span></main>\n'
+  );
+  passes(f.run({ path: f.restrictedPath() }), /no staged code/);
+});
+
 test('frontend requires Node, not a silent skip', (t) => {
   const f = fixture(t);
   f.stage('tauri-app/src/hook-test.ts', 'export const value = 1;\n');
@@ -111,6 +120,17 @@ test('actual Prettier rejects staged bad code despite a good unstaged repair', (
   f.stage('tauri-app/src/hook-test.ts', 'export const value={a:1};\n');
   f.write('tauri-app/src/hook-test.ts', 'export const value = { a: 1 };\n');
   fails(f.run(), /formatting.*hook-test.ts/);
+});
+
+test('actual Prettier still rejects unformatted HTML outside the pinned carrier', (t) => {
+  const f = fixture(t);
+  f.stage(
+    'tauri-app/hook-test.html',
+    '<main><div><span>Ordinary source</span></div></main>\n'
+  );
+  const result = f.run();
+  fails(result, /formatting.*tauri-app\/hook-test\.html/);
+  assert.match(result.output, /Prettier: 1 staged paths, 1 failures/);
 });
 
 test('actual Prettier accepts staged good code despite unstaged damage', (t) => {

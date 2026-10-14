@@ -1,0 +1,151 @@
+<div id="oklab-gamut-volume" aria-label="Rotatable sRGB gamut in OKLab">
+  <header class="gv-header"><div><div class="gv-eyebrow">Color Tool / geometry study</div><h2>sRGB, unfolded into OKLab.</h2></div><span class="gv-meta">Equal axis scale · orthographic</span></header>
+  <div class="gv-controls" aria-label="Volume controls">
+    <div class="gv-cameras"><button type="button" data-view="oblique" aria-pressed="true">Oblique</button><button type="button" data-view="top" aria-pressed="false">Top</button><button type="button" data-view="side" aria-pressed="false">Side</button></div>
+    <label><input type="checkbox" class="gv-tint" checked> Tint surface</label><label><input type="checkbox" class="gv-palette-toggle" checked> Palette</label>
+  </div>
+  <div class="gv-layout">
+    <div class="gv-figure"><div class="gv-stage" aria-label="Drag the gamut to orbit; use camera buttons for preset views">
+      <div class="gv-message" role="status">Preparing the gamut…</div>
+      <div class="gv-labels" aria-hidden="true"></div>
+    </div><div class="gv-orbit"><label>Turn <input aria-label="Turn angle" class="gv-turn" type="range" min="-180" max="180" step="1" value="37"><output class="gv-turn-value">37°</output></label><label>Tilt <input aria-label="Tilt angle" class="gv-tilt" type="range" min="-90" max="90" step="1" value="17"><output class="gv-tilt-value">17°</output></label></div></div>
+    <aside class="gv-palette" aria-label="Reference palette"><h3>Palette index</h3><div class="gv-swatches"></div></aside>
+  </div>
+  <div class="gv-selection" aria-live="polite"></div>
+  <div class="gv-caption"><span>Drag to orbit · wheel to zoom</span><span>Boundary mesh: transformed sRGB cube faces</span></div>
+  <footer>Markers: reference colors with illustrative shares · area ∝ share<br>Mesh lines follow RGB coordinates, not equal hue or lightness.</footer>
+</div>
+<style>
+#oklab-gamut-volume { --gv-paper:#faf8f3; --gv-ink:#292724; --gv-muted:#6b665f; --gv-rule:#d8d2c7; --gv-accent:#984b36; color-scheme:light; background:var(--gv-paper); color:var(--gv-ink); width:100%; container-type:inline-size; padding:22px; font:13px/1.5 Georgia,'Times New Roman',serif; }
+#oklab-gamut-volume * { box-sizing:border-box; }
+#oklab-gamut-volume .gv-header { display:flex; gap:12px; justify-content:space-between; align-items:end; flex-wrap:wrap; padding-bottom:18px; border-bottom:1px solid var(--gv-ink); }
+#oklab-gamut-volume .gv-eyebrow { font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing:.04em; color:var(--gv-muted); text-transform:uppercase; }
+#oklab-gamut-volume h2 { font:400 29px/1.2 Georgia,'Times New Roman',serif; letter-spacing:-.035em; margin:5px 0 0; }
+#oklab-gamut-volume h3 { font:italic 16px/1.3 Georgia,serif; margin:0 0 12px; }
+#oklab-gamut-volume .gv-meta, #oklab-gamut-volume .gv-caption, #oklab-gamut-volume footer { font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; color:var(--gv-muted); }
+#oklab-gamut-volume .gv-controls { display:flex; gap:12px 24px; flex-wrap:wrap; align-items:center; padding:10px 0 12px; }
+#oklab-gamut-volume .gv-cameras { display:flex; gap:18px; }
+#oklab-gamut-volume button { font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; background:transparent; border:0; border-radius:0; color:var(--gv-ink); padding:6px 0; cursor:pointer; }
+#oklab-gamut-volume button:focus-visible, #oklab-gamut-volume input:focus-visible { outline:2px solid var(--gv-accent); outline-offset:3px; }
+#oklab-gamut-volume .gv-cameras button[aria-pressed=true] { color:var(--gv-accent); text-decoration:underline; text-underline-offset:5px; }
+#oklab-gamut-volume label { display:flex; gap:6px; align-items:center; font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+#oklab-gamut-volume input { accent-color:var(--gv-accent); }
+#oklab-gamut-volume .gv-layout { display:grid; grid-template-columns:minmax(0,1fr) 154px; gap:18px; align-items:start; }
+#oklab-gamut-volume .gv-figure { min-width:0; }
+#oklab-gamut-volume .gv-stage { height:510px; position:relative; min-width:0; touch-action:none; }
+#oklab-gamut-volume .gv-orbit { display:flex; gap:14px; flex-wrap:wrap; padding:9px 0; }
+#oklab-gamut-volume .gv-orbit label { flex:1 1 155px; min-width:0; font-size:11px; }
+#oklab-gamut-volume .gv-orbit input { min-width:40px; width:100%; flex:1; }
+#oklab-gamut-volume .gv-orbit output { min-width:33px; text-align:right; }
+#oklab-gamut-volume canvas { display:block; width:100%; height:100%; cursor:grab; touch-action:none; }
+#oklab-gamut-volume canvas:active { cursor:grabbing; }
+#oklab-gamut-volume .gv-labels { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+#oklab-gamut-volume .gv-label { position:absolute; color:var(--gv-muted); font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace; background:var(--gv-paper); padding:0 2px; white-space:nowrap; }
+#oklab-gamut-volume .gv-palette { border-left:1px solid var(--gv-rule); padding-left:16px; margin:9px 0; min-width:0; }
+#oklab-gamut-volume .gv-swatch { display:grid; grid-template-columns:26px minmax(0,1fr) 29px; gap:7px; align-items:center; width:100%; text-align:left; padding:6px 0; border-bottom:1px solid var(--gv-rule); font-size:11px; }
+#oklab-gamut-volume .gv-swatch .gv-chip { height:24px; display:block; }
+#oklab-gamut-volume .gv-swatch small { display:block; font:11px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace; color:var(--gv-muted); }
+#oklab-gamut-volume .gv-swatch em { font:italic 12px/1.4 Georgia,serif; display:block; }
+#oklab-gamut-volume .gv-swatch>span:last-child { text-align:right; }
+#oklab-gamut-volume .gv-swatch[aria-pressed=true] .gv-chip { outline:1px solid var(--gv-ink); outline-offset:3px; }
+#oklab-gamut-volume .gv-selection { border-top:1px solid var(--gv-ink); padding-top:12px; margin-top:10px; font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace; overflow-wrap:anywhere; min-height:32px; }
+#oklab-gamut-volume .gv-caption { display:flex; gap:7px 18px; justify-content:space-between; flex-wrap:wrap; margin-top:13px; }
+#oklab-gamut-volume footer { margin-top:8px; }
+#oklab-gamut-volume .gv-message { position:absolute; top:40%; width:100%; text-align:center; color:var(--gv-muted); }
+#oklab-gamut-volume [hidden] { display:none!important; }
+@container (max-width:560px) {
+ #oklab-gamut-volume .gv-layout { grid-template-columns:1fr; gap:10px; }
+ #oklab-gamut-volume .gv-stage { height:380px; }
+ #oklab-gamut-volume .gv-palette { border-left:0; border-top:1px solid var(--gv-rule); padding:13px 0 0; }
+ #oklab-gamut-volume .gv-swatches { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0 14px; }
+ #oklab-gamut-volume .gv-swatch { grid-template-columns:23px minmax(0,1fr); }
+ #oklab-gamut-volume .gv-swatch>span:last-child { grid-column:2; text-align:left; }
+}
+@container (max-width:360px) {
+ #oklab-gamut-volume .gv-swatches { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ #oklab-gamut-volume h2 { font-size:26px; }
+ #oklab-gamut-volume .gv-stage { height:350px; }
+}
+@media (pointer:coarse) { #oklab-gamut-volume button, #oklab-gamut-volume label { min-height:44px; } }
+</style>
+<script type="module">
+const root=document.getElementById('oklab-gamut-volume');
+const message=root.querySelector('.gv-message');
+// math-start
+// 2021 matrices: Björn Ottosson, https://bottosson.github.io/posts/oklab/
+function decode(v){return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;}
+function toLab(rgb){const [r,g,b]=rgb.map(decode);const l=Math.cbrt(.4122214708*r+.5363325363*g+.0514459929*b),m=Math.cbrt(.2119034982*r+.6806995451*g+.1073969566*b),s=Math.cbrt(.0883024619*r+.2817188376*g+.6299787005*b);return [.2104542553*l+.793617785*m-.0040720468*s,1.9779984951*l-2.428592205*m+.4505937099*s,.0259040371*l+.7827717662*m-.808675766*s];}
+function fromLab([L,a,b]){const l=(L+.3963377774*a+.2158037573*b)**3,m=(L-.1055613458*a-.0638541728*b)**3,s=(L-.0894841775*a-1.291485548*b)**3;return [4.0767416621*l-3.3077115913*m+.2309699292*s,-1.2684380046*l+2.6097574011*m-.3413193965*s,-.0041960863*l-.7034186147*m+1.707614701*s].map(v=>v<=.0031308?v*12.92:1.055*v**(1/2.4)-.055);}
+function world(rgb){const [L,a,b]=toLab(rgb);return [a,L-.5,b];}
+function faceRgb(axis,side,u,v){const rgb=[];rgb[axis]=side;rgb[(axis+1)%3]=u;rgb[(axis+2)%3]=v;return rgb;}
+// math-end
+try {
+const [THREE,{OrbitControls}]=await Promise.all([import('https://esm.sh/three@0.180.0'),import('https://esm.sh/three@0.180.0/examples/jsm/controls/OrbitControls.js')]);
+if(!root.isConnected) throw new Error('Visualization closed before initialization');
+const stage=root.querySelector('.gv-stage');
+const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.NoToneMapping;
+renderer.setClearColor(0,0);renderer.domElement.setAttribute('aria-label','Rotatable sRGB gamut boundary in OKLab');renderer.domElement.setAttribute('role','img');stage.prepend(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.OrthographicCamera(-.75,.75,.75,-.75,.01,20);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enablePan=false;controls.enableDamping=false;controls.minZoom=.65;controls.maxZoom=2.4;controls.target.set(0,0,0);
+const linePositions=[],meshPositions=[],meshColors=[];
+const sampledPoints=[],seenEdges=new Set();
+function colorLinear(rgb){return rgb.map(decode);}
+const divisions=48;
+for(let axis=0;axis<3;axis++)for(const side of [0,1]){
+  for(let i=0;i<divisions;i++)for(let j=0;j<divisions;j++){
+    const vertices=[[i/divisions,j/divisions],[(i+1)/divisions,j/divisions],[(i+1)/divisions,(j+1)/divisions],[i/divisions,(j+1)/divisions]].map(([u,v])=>{const rgb=faceRgb(axis,side,u**4,v**4);return {p:world(rgb),c:colorLinear(rgb)};});
+    for(const k of [0,1,2,0,2,3]){meshPositions.push(...vertices[k].p);meshColors.push(...vertices[k].c);}
+  }
+  for(let direction=0;direction<2;direction++)for(let i=0;i<=8;i++){
+    const fixed=i/8;
+    const edgeKey=(i===0||i===8)?[axis,side,(axis+(direction===0?1:2))%3,fixed].join(':'):null;
+    if(edgeKey){const varying=(axis+(direction===0?2:1))%3;const corners=[faceRgb(axis,side,direction===0?fixed:0,direction===0?0:fixed),faceRgb(axis,side,direction===0?fixed:1,direction===0?1:fixed)];const key=corners.map(v=>v.join(',')).sort().join('|')+varying;if(seenEdges.has(key))continue;seenEdges.add(key);}
+    let previous=null;
+    for(let step=0;step<=96;step++){const t=(step/96)**4;const point=world(faceRgb(axis,side,direction===0?fixed:t,direction===0?t:fixed));sampledPoints.push(point);if(previous)linePositions.push(...previous,...point);previous=point;}
+  }
+}
+const meshGeometry=new THREE.BufferGeometry();meshGeometry.setAttribute('position',new THREE.Float32BufferAttribute(meshPositions,3));meshGeometry.setAttribute('color',new THREE.Float32BufferAttribute(meshColors,3));
+const shellMaterial=new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.10,side:THREE.DoubleSide,depthWrite:false,toneMapped:false});
+const shell=new THREE.Mesh(meshGeometry,shellMaterial);shell.renderOrder=0;scene.add(shell);
+const wireGeometry=new THREE.BufferGeometry();wireGeometry.setAttribute('position',new THREE.Float32BufferAttribute(linePositions,3));
+const wireMaterial=new THREE.LineBasicMaterial({color:0x746d61,transparent:true,opacity:.29,depthWrite:false,toneMapped:false});
+const wire=new THREE.LineSegments(wireGeometry,wireMaterial);wire.renderOrder=1;scene.add(wire);
+const axisGeometry=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,-.5,0),new THREE.Vector3(0,.5,0)]);
+const axisMaterial=new THREE.LineBasicMaterial({color:0x8c8377,transparent:true,opacity:.6,depthWrite:false,toneMapped:false});scene.add(new THREE.Line(axisGeometry,axisMaterial));
+const palette=[['#D06040','Orange',12],['#F09C6C','Geranium',10],['#FFC000','Yellow',9],['#205050','Blue-green',14],['#9C0030','Vivid rose',7],['#E09000','Amber',6],['#602020','Deep red',11],['#903048','Rose',5],['#906018','Umber',5],['#304890','Blue',7],['#FFD8A8','Pale amber',8],['#7878A8','Violet grey',6]].map(([hex,name,share],id)=>{const rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255);return {hex,name,share,id,rgb,lab:toLab(rgb)};});
+const discGeometry=new THREE.CircleGeometry(1,48),ringGeometry=new THREE.RingGeometry(1.12,1.18,64);
+const ringMaterial=new THREE.MeshBasicMaterial({color:0x292724,transparent:true,depthTest:false,depthWrite:false,toneMapped:false});
+const discs=[],rings=[];
+palette.forEach(c=>{const size=.011*Math.sqrt(c.share);const material=new THREE.MeshBasicMaterial({color:c.hex,transparent:true,opacity:1,depthWrite:true,toneMapped:false});const disc=new THREE.Mesh(discGeometry,material);disc.position.set(c.lab[1],c.lab[0]-.5,c.lab[2]);disc.scale.setScalar(size);disc.renderOrder=10;disc.userData.id=c.id;scene.add(disc);discs.push(disc);const ring=new THREE.Mesh(ringGeometry,ringMaterial);ring.position.copy(disc.position);ring.scale.copy(disc.scale);ring.renderOrder=11;ring.visible=false;scene.add(ring);rings.push(ring);});
+const labels=[{text:'white · L 1',p:[0,.5,0],offset:[8,-24],neutral:true},{text:'black · L 0',p:[0,-.5,0],offset:[8,8],neutral:true},{text:'red',p:world([1,0,0]),offset:[9,0]},{text:'green',p:world([0,1,0]),offset:[9,0]},{text:'blue',p:world([0,0,1]),offset:[9,0]}].map(l=>{const node=document.createElement('span');node.className='gv-label';node.textContent=l.text;root.querySelector('.gv-labels').append(node);return {...l,node,position:new THREE.Vector3(...l.p)};});
+let selected=0,frame=null,disposed=false,view='oblique';
+const boundaryRadius=Math.max(...sampledPoints.map(p=>Math.hypot(...p)))+.07;
+function updateLabels(){const occupied=[];for(const l of labels){l.node.hidden=(view==='top'&&l.neutral);if(l.node.hidden)continue;const p=l.position.clone().project(camera),nw=l.node.offsetWidth,nh=l.node.offsetHeight;let x=(p.x+1)*stage.clientWidth/2+l.offset[0],y=(1-p.y)*stage.clientHeight/2+l.offset[1];x=Math.max(3,Math.min(stage.clientWidth-nw-3,x));y=Math.max(3,Math.min(stage.clientHeight-nh-3,y));for(let n=0;n<4;n++){if(!occupied.some(r=>x<r.x+r.w+4&&x+nw+4>r.x&&y<r.y+r.h+4&&y+nh+4>r.y))break;y=Math.max(3,Math.min(stage.clientHeight-nh-3,y+nh+5));}l.node.style.left=x+'px';l.node.style.top=y+'px';occupied.push({x,y,w:nw,h:nh});}}
+function draw(){frame=null;if(disposed)return;camera.updateMatrixWorld();discs.forEach(d=>d.quaternion.copy(camera.quaternion));rings.forEach(r=>r.quaternion.copy(camera.quaternion));renderer.render(scene,camera);updateLabels();root.dataset.camera=view;const turn=Math.round(controls.getAzimuthalAngle()*180/Math.PI),tilt=Math.round(90-controls.getPolarAngle()*180/Math.PI);root.querySelector('.gv-turn').value=turn;root.querySelector('.gv-tilt').value=tilt;root.querySelector('.gv-turn-value').textContent=turn+'°';root.querySelector('.gv-tilt-value').textContent=tilt+'°';}
+function requestDraw(){if(frame===null&&!disposed)frame=requestAnimationFrame(draw);}
+function resize(){const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight),aspect=w/h;const half=boundaryRadius*1.16;camera.left=-half*Math.max(1,aspect);camera.right=half*Math.max(1,aspect);camera.top=half*Math.max(1,1/aspect);camera.bottom=-half*Math.max(1,1/aspect);camera.updateProjectionMatrix();renderer.setSize(w,h,false);requestDraw();}
+function preset(name){view=name;controls.target.set(0,0,0);camera.zoom=1;if(name==='top'){camera.position.set(0,3,.0001);}else if(name==='side'){camera.position.set(0,0,3);}else{camera.position.set(1.35,.7,1.8);}camera.lookAt(controls.target);camera.updateProjectionMatrix();controls.update();root.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===name)));requestDraw();}
+controls.addEventListener('change',requestDraw);
+controls.addEventListener('start',()=>{view='free';root.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed','false'));});
+const swatches=root.querySelector('.gv-swatches');
+function select(id){selected=id;rings.forEach((r,i)=>r.visible=i===selected&&root.querySelector('.gv-palette-toggle').checked);root.querySelectorAll('[data-color]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.color)===id)));const c=palette[id],L=c.lab[0],C=Math.hypot(c.lab[1],c.lab[2]),h=(Math.atan2(c.lab[2],c.lab[1])*180/Math.PI+360)%360;root.querySelector('.gv-selection').textContent=`${c.hex} · ${c.share}% share · L ${(L*100).toFixed(1)}% · C ${C.toFixed(3)} · h ${h.toFixed(1)}°`;requestDraw();}
+palette.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='gv-swatch';b.dataset.color=c.id;b.setAttribute('aria-label',`${c.name}, ${c.hex}, ${c.share} percent illustrative share`);b.innerHTML=`<span class="gv-chip" style="background:${c.hex}"></span><span><em>${c.name}</em><small>${c.hex}</small></span><span>${c.share}%</span>`;b.addEventListener('click',()=>select(c.id));swatches.append(b);});
+root.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>preset(b.dataset.view)));
+function setAngles(){view='free';const turn=Number(root.querySelector('.gv-turn').value)*Math.PI/180,phi=(90-Number(root.querySelector('.gv-tilt').value))*Math.PI/180;camera.position.setFromSphericalCoords(camera.position.distanceTo(controls.target),Math.max(.00001,Math.min(Math.PI-.00001,phi)),turn).add(controls.target);controls.update();root.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed','false'));requestDraw();}
+root.querySelector('.gv-turn').addEventListener('input',setAngles);root.querySelector('.gv-tilt').addEventListener('input',setAngles);
+root.querySelector('.gv-tint').addEventListener('change',e=>{shell.visible=e.target.checked;requestDraw();});
+root.querySelector('.gv-palette-toggle').addEventListener('change',e=>{discs.forEach(d=>d.visible=e.target.checked);select(selected);});
+const raycaster=new THREE.Raycaster();let pointerDown=null;
+renderer.domElement.addEventListener('pointerdown',e=>{pointerDown={x:e.clientX,y:e.clientY};});
+renderer.domElement.addEventListener('pointerup',e=>{if(!pointerDown||Math.hypot(e.clientX-pointerDown.x,e.clientY-pointerDown.y)>5){pointerDown=null;return;}pointerDown=null;const rect=renderer.domElement.getBoundingClientRect();raycaster.setFromCamera(new THREE.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),camera);const hits=raycaster.intersectObjects(discs.filter(d=>d.visible));if(hits.length)select(hits[0].object.userData.id);});
+renderer.domElement.addEventListener('pointercancel',()=>pointerDown=null);
+const observer=new ResizeObserver(resize);observer.observe(stage);
+function cleanup(){if(disposed)return;disposed=true;if(frame!==null)cancelAnimationFrame(frame);observer.disconnect();removal.disconnect();controls.dispose();scene.traverse(o=>{if(o.material){const arr=Array.isArray(o.material)?o.material:[o.material];arr.forEach(m=>m.dispose());}});[meshGeometry,wireGeometry,axisGeometry,discGeometry,ringGeometry].forEach(g=>g.dispose());renderer.dispose();}
+const removal=new MutationObserver(()=>{if(!root.isConnected)cleanup();});removal.observe(document.body,{childList:true,subtree:true});window.addEventListener('pagehide',cleanup,{once:true});
+renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();message.hidden=false;message.textContent='3D context lost. Reopen this visualization.';});
+root.dataset.boundaryVertices=String(meshPositions.length/3);root.dataset.wireSegments=String(linePositions.length/6);root.dataset.engine='three-0.180.0';
+message.hidden=true;preset('oblique');select(0);resize();root.dataset.ready='true';
+} catch(error) {message.hidden=false;message.textContent='The 3D view could not start: '+error.message;root.dataset.ready='error';}
+</script>

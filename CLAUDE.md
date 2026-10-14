@@ -113,7 +113,7 @@ Enable once: `git config core.hooksPath .githooks`.
 - **`RAG/INDEX.md`** — generated kanban, single source of truth for epic/ticket status. Never edit by hand; explicitly run `RAG/scripts/generate-index.sh` before review/staging. The generator may normalize tickets, so review its entire diff; the hook never runs it or stages files.
 - Epics `RAG/AI-EPIC/`, tickets `RAG/AI-IMP/` (templates in `RAG/templates/` are mandatory), session logs `RAG/AI-LOG/`, decisions `RAG/ADR/`.
 - Check ticket checklist items only after implemented AND validated; fill Issues Encountered honestly.
-- `RAG/DATA-FLOW.md` — media/analysis data-flow map. `RAG/DESIGN-COVERAGE.md` — UI lifecycle vs design-bundle coverage (EPIC-027). Design bundle: `RAG/Color Tool Design System.zip` until IMP-168 vendors it to `RAG/design-system/`.
+- `RAG/DATA-FLOW.md` — media/analysis data-flow map. `RAG/DESIGN-COVERAGE.md` — UI lifecycle vs design-bundle coverage (EPIC-027). The searchable, hash-pinned September design references are in `RAG/design-system/2026-09/`; the original archives remain preserved in `RAG/`.
 
 ## Key Technical Notes
 

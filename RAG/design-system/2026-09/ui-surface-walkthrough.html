@@ -1,0 +1,146 @@
+<div id="study-surface-walkthrough" aria-label="Remaining UI surfaces walkthrough">
+  <div class="uw-director"><nav aria-label="Walkthrough surface"><button type="button" data-surface="exports" aria-pressed="true">Exports</button><button type="button" data-surface="settings" aria-pressed="false">Settings</button><button type="button" data-surface="collection" aria-pressed="false">Collection management</button><button type="button" data-surface="batch" aria-pressed="false">Batch detail</button></nav><label>Walkthrough state <select class="uw-state"></select></label></div>
+  <section class="uw-app"><header class="uw-chrome"><span>Color studies</span><span class="uw-route">Exports</span><small>Design walkthrough · no files are saved</small></header><div class="uw-body"></div><footer class="uw-footer" aria-live="polite"></footer></section>
+</div>
+<style>
+#study-surface-walkthrough{--uw-paper:#f7f4ee;--uw-ink:#393932;--uw-line:#b5b2a8;--uw-soft:#e8e5de;--uw-accent:#7e4c3d;color:var(--uw-ink);font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;width:100%;container-type:inline-size}
+#study-surface-walkthrough *{box-sizing:border-box}
+#study-surface-walkthrough button,#study-surface-walkthrough select,#study-surface-walkthrough input[type=number]{font:inherit;color:inherit;background:var(--uw-paper);border:1px solid var(--uw-line);border-radius:2px;padding:6px 9px;max-width:100%}
+#study-surface-walkthrough button,#study-surface-walkthrough select{cursor:pointer}
+#study-surface-walkthrough button:hover{background:var(--uw-soft)}
+#study-surface-walkthrough button:disabled{opacity:.5;cursor:default}
+#study-surface-walkthrough button[aria-pressed=true]{border-color:var(--uw-accent);background:#ece3d9}
+#study-surface-walkthrough input[type=checkbox],#study-surface-walkthrough input[type=radio]{accent-color:var(--uw-accent);width:15px;height:15px;flex-shrink:0}
+#study-surface-walkthrough h2,#study-surface-walkthrough h3{font-weight:400;margin:0}
+#study-surface-walkthrough h2{font:italic 28px/1.2 Georgia,serif}
+#study-surface-walkthrough h3{font:italic 19px/1.2 Georgia,serif}
+#study-surface-walkthrough small{font-size:11px}
+#study-surface-walkthrough .uw-director{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:var(--uw-paper)}
+#study-surface-walkthrough nav{display:flex;gap:7px;flex-wrap:wrap}
+#study-surface-walkthrough .uw-director>label{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px}
+#study-surface-walkthrough .uw-app{background:var(--uw-paper);border:1px solid var(--uw-line)}
+#study-surface-walkthrough .uw-chrome{display:flex;align-items:baseline;gap:20px;flex-wrap:wrap;border-bottom:1px solid var(--uw-line);padding:14px 20px}
+#study-surface-walkthrough .uw-chrome>span:first-child{font:22px Georgia,serif}
+#study-surface-walkthrough .uw-chrome small{margin-left:auto}
+#study-surface-walkthrough .uw-body{padding:22px}
+#study-surface-walkthrough .uw-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+#study-surface-walkthrough .uw-builder{display:grid;grid-template-columns:235px minmax(0,1fr);gap:24px}
+#study-surface-walkthrough .uw-options{min-width:0}
+#study-surface-walkthrough .uw-section{border-top:1px solid var(--uw-line);margin-top:17px;padding-top:12px}
+#study-surface-walkthrough .uw-section h3{margin-bottom:10px}
+#study-surface-walkthrough .uw-check{display:flex;align-items:center;gap:7px;padding:5px 0;font-size:11px;min-width:0}
+#study-surface-walkthrough .uw-sub{margin-left:23px}
+#study-surface-walkthrough .uw-check:has(input:disabled){color:#756f64}
+#study-surface-walkthrough .uw-row{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;margin:8px 0}
+#study-surface-walkthrough .uw-row label{display:flex;align-items:center;gap:7px}
+#study-surface-walkthrough .uw-preview{min-width:0;border:1px solid var(--uw-line);padding:18px;background:#fcfaf6;align-self:start}
+#study-surface-walkthrough .uw-preview-head{border-bottom:1px solid var(--uw-line);padding-bottom:12px;margin-bottom:14px}
+#study-surface-walkthrough .uw-preview-head h3{font:italic 25px Georgia,serif;margin-bottom:4px}
+#study-surface-walkthrough .uw-preview-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#study-surface-walkthrough .uw-tile{border:1px dashed var(--uw-line);min-height:116px;padding:11px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;text-align:center;min-width:0;font:italic 17px Georgia,serif}
+#study-surface-walkthrough .uw-tile small{font:11px/1.4 ui-monospace,monospace}
+#study-surface-walkthrough .uw-source{grid-column:1/-1;min-height:165px;background:linear-gradient(35deg,#dbc7aa 44%,#ac826a 44%,#ac826a 58%,#899489 58%);border:none}
+#study-surface-walkthrough .uw-source>span{background:var(--uw-paper);padding:5px 8px}
+#study-surface-walkthrough .uw-volume{background:repeating-linear-gradient(135deg,#f1eee7,#f1eee7 7px,#e4dfd5 7px,#e4dfd5 8px)}
+#study-surface-walkthrough .uw-polar{width:63px;aspect-ratio:1;border:1px solid var(--uw-line);border-radius:50%;background:radial-gradient(circle at 65% 32%,#9e826c 0 6px,transparent 7px),radial-gradient(circle at 34% 66%,#828c7e 0 9px,transparent 10px)}
+#study-surface-walkthrough .uw-bars{display:flex;align-items:end;gap:5px;height:43px;width:90px}
+#study-surface-walkthrough .uw-bars i{background:#aba18f;flex:1;height:75%}
+#study-surface-walkthrough .uw-bars i:nth-child(2){height:100%}#study-surface-walkthrough .uw-bars i:nth-child(3){height:40%}
+#study-surface-walkthrough .uw-index{grid-column:1/-1;margin-top:3px}
+#study-surface-walkthrough .uw-patch{display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--uw-soft);font-size:11px}
+#study-surface-walkthrough .uw-patch i{height:28px;background:var(--patch)}
+#study-surface-walkthrough .uw-patch small{display:block}
+#study-surface-walkthrough .uw-note{padding:10px 12px;border-left:2px solid var(--uw-accent);background:#eee5da;margin-bottom:16px;font-size:11px}
+#study-surface-walkthrough .uw-placeholder{min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;border:1px dashed var(--uw-line);padding:20px}
+#study-surface-walkthrough .uw-placeholder strong{font:italic 22px Georgia,serif;font-weight:400}
+#study-surface-walkthrough .uw-footer{padding:10px 20px;border-top:1px solid var(--uw-line);font-size:11px}
+#study-surface-walkthrough .uw-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+#study-surface-walkthrough .uw-settings>section{border-top:1px solid var(--uw-line);padding-top:12px;min-width:0}
+#study-surface-walkthrough .uw-settings h3{margin-bottom:10px}
+#study-surface-walkthrough .uw-layouts{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}
+#study-surface-walkthrough .uw-dialog{border:1px solid var(--uw-ink);padding:22px;max-width:480px;margin:24px auto;display:flex;flex-direction:column;gap:13px;background:#fcfaf6}
+#study-surface-walkthrough .uw-media-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin:18px 0}
+#study-surface-walkthrough .uw-media-tile{background:#d9cebc;min-height:100px;padding:12px;display:flex;justify-content:space-between;align-items:end;font-size:11px}
+#study-surface-walkthrough .uw-media-tile:nth-child(2n){background:#aab4a7}
+#study-surface-walkthrough .uw-split{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px}
+#study-surface-walkthrough .uw-caption{font-size:11px;margin-top:12px;color:#6b655a}
+#study-surface-walkthrough[data-options-side=right] .uw-builder{grid-template-columns:minmax(0,1fr) 235px}#study-surface-walkthrough[data-options-side=right] .uw-options{order:2}
+@container(max-width:700px){#study-surface-walkthrough .uw-builder,#study-surface-walkthrough[data-options-side=right] .uw-builder{grid-template-columns:1fr}#study-surface-walkthrough[data-options-side=right] .uw-options{order:0}#study-surface-walkthrough .uw-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 20px}#study-surface-walkthrough .uw-options>.uw-section{margin-top:0}#study-surface-walkthrough .uw-options>.uw-section:last-child{grid-column:1/-1}#study-surface-walkthrough .uw-preview{width:100%}}
+@container(max-width:470px){#study-surface-walkthrough .uw-body{padding:15px}#study-surface-walkthrough .uw-chrome{padding:12px 15px;gap:8px}#study-surface-walkthrough .uw-chrome small{width:100%;margin:0}#study-surface-walkthrough .uw-settings,#study-surface-walkthrough .uw-split{grid-template-columns:1fr}#study-surface-walkthrough .uw-options{grid-template-columns:1fr}#study-surface-walkthrough .uw-preview{padding:12px}#study-surface-walkthrough .uw-media-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#study-surface-walkthrough .uw-heading h2{font-size:25px}#study-surface-walkthrough .uw-tile{font-size:15px;padding:8px}#study-surface-walkthrough .uw-director nav button{font-size:11px;padding:6px}#study-surface-walkthrough .uw-row select{max-width:160px}}
+@media(pointer:coarse){#study-surface-walkthrough button,#study-surface-walkthrough .uw-check{min-height:44px}}
+</style>
+<script>
+(()=>{
+ const root=document.getElementById('study-surface-walkthrough');
+ const state={surface:'exports',scene:'ready',kind:'Colors',layout:'Image first',optionsSide:'left',scale:'2',format:'SVG',hex:true,share:true,rgb:false,allSorts:false,original:false,studies:false,volume:false,checks:{source:true,polar:true,histogram:true,hue:true,palette:true,barcode:false,neutral:true,range:true,valuesHistogram:true,simplified:true,grid:true}};
+ const sceneOptions={exports:[['ready','E1 · Configure & preview'],['empty','E2 · No source'],['pending','E3 · Analysis / preview pending'],['none','E4 · No components selected'],['stale','E5 · Study changed'],['saving','E6 · Saving captured document'],['saved','E7 · Saved receipt'],['error','E8 · Save failure'],['cancelled','E9 · Picker cancelled']],settings:[['ready','Q1 · Full settings inventory'],['reset','Q2 · Reset confirmation proposal'],['error','Q3 · Preference save failed']],collection:[['ready','M1 · Collection controls'],['remove','M2 · Remove confirmation proposal'],['clear','M4 · Clear confirmation proposal'],['missing','M5 · Missing source']],batch:[['ready','B5 · Aggregate and source set'],['empty','B2 · Fewer than two pins'],['detail','B6 · Focused pin'],['error','B7 · Partial input failure']]};
+ const colors=[['#D06040',28],['#205050',22],['#FFD8A8',18],['#903048',14],['#906018',10],['#7878A8',8]];
+ const b=(label,act='',disabled=false)=>`<button type="button" ${act?`data-act="${act}"`:''} ${disabled?'disabled':''}>${label}</button>`;
+ const note=t=>`<div class="uw-note">${t}</div>`;
+ const row=(a,c)=>`<div class="uw-row"><span>${a}</span><span>${c}</span></div>`;
+ const check=(key,label,checked,disabled=false,sub=false)=>`<label class="uw-check ${sub?'uw-sub':''}"><input type="checkbox" data-check="${key}" ${checked?'checked':''} ${disabled?'disabled':''}>${label}</label>`;
+ const sampleGrid=(count=4)=>`<div class="uw-media-grid">${Array.from({length:count},(_,i)=>`<div class="uw-media-tile"><span>Study 0${i+1}</span><span>${i<3?'Pinned':''}</span></div>`).join('')}</div>`;
+ const tile=(name,inner='',cls='')=>`<div class="uw-tile ${cls}"><span>${name}</span>${inner}</div>`;
+ const hasComponents=()=>state.kind==='Values'?['neutral','range','valuesHistogram','simplified'].some(k=>state.checks[k]):state.volume||[state.kind==='Batch'?'grid':'source','polar','histogram','hue','palette'].some(k=>state.checks[k]);
+ function controls(){
+  let choices='';
+  if(state.kind==='Values')choices=check('neutral','Neutral values',state.checks.neutral)+check('original','Include original',state.original,!state.checks.neutral,true)+check('range','Range finder',state.checks.range)+check('valuesHistogram','Values histogram',state.checks.valuesHistogram)+check('simplified','Simplified values',state.checks.simplified)+check('studies','All studies (2–5)',state.studies,!state.checks.simplified,true);
+  else choices=check(state.kind==='Batch'?'grid':'source',state.kind==='Batch'?'Composite grid':'Source image',state.kind==='Batch'?state.checks.grid:state.checks.source)+check('polar','Polar chart',state.checks.polar)+check('histogram','Cluster histogram',state.checks.histogram)+check('allSorts','All sorts',state.allSorts,!state.checks.histogram,true)+check('hue','Hue × lightness',state.checks.hue)+check('palette','Palette strip (top 20)',state.checks.palette)+check('volume','3D color volume · new',state.volume)+(state.kind==='Colors'?check('barcode','Video barcode · no strip',state.checks.barcode,true):'');
+  return `<aside class="uw-options"><section class="uw-section"><h3>Include</h3>${choices}</section>${state.kind!=='Values'?`<section class="uw-section"><h3>Patch labels · proposed</h3>${check('hex','HEX',state.hex)}${check('share','Proportion (%)',state.share)}${check('rgb','RGB detail',state.rgb)}<small>Patch identifier always visible</small></section>`:''}<section class="uw-section"><h3>Output</h3><label class="uw-row">PNG scale <select data-field="scale">${[1,2,3,4].map(n=>`<option ${state.scale===String(n)?'selected':''}>${n}</option>`).join('')}</select></label><label class="uw-row">Graph downloads <select data-field="format">${['SVG','PNG'].map(x=>`<option ${state.format===x?'selected':''}>${x}</option>`).join('')}</select></label>${row('Composite','PNG')}${state.volume?'<small>3D: PNG capture, including inside a composite</small>':''}<div class="uw-row">${b('Export composite · demo','save',!hasComponents()||['empty','pending','none','stale','saving'].includes(state.scene))}</div><small>Individual figure downloads remain available.</small>${state.kind!=='Values'?row('Palette data','CSV · ASE · JSON'):''}</section></aside>`;
+ }
+ function preview(){
+  if(state.scene==='empty')return `<div class="uw-placeholder"><strong>No study to export</strong><small>Select an image or complete a batch analysis.</small>${b('Show sample study','return')}</div>`;
+  if(state.scene==='none')return `<div class="uw-placeholder"><strong>Select something to include</strong><small>Your source and analysis are unchanged.</small>${b('Restore sample choices','restore')}</div>`;
+  const tiles=[];const c=state.checks;
+  if(state.kind==='Values'){
+   if(c.neutral){if(state.original)tiles.push(tile('Original image','', 'uw-source'));tiles.push(tile('Neutral values','<small>Source-aligned neutral rendering</small>'))}
+   if(c.range)tiles.push(tile('Range finder'));
+   if(c.valuesHistogram)tiles.push(tile('Values histogram','<div class="uw-bars"><i></i><i></i><i></i></div>'));
+   if(c.simplified)tiles.push(tile(state.studies?'Notan studies · 2 / 3 / 4 / 5':'Simplified values'));
+  }else{
+   if(state.kind==='Batch'?c.grid:c.source)tiles.push(tile(state.kind==='Batch'?'Pinned source grid':'Source image · sample', '', 'uw-source'));
+   if(c.polar)tiles.push(tile('Polar chart','<div class="uw-polar" aria-label="Schematic polar chart"></div>'));
+   if(c.histogram){tiles.push(tile('Cluster histogram','<div class="uw-bars"><i></i><i></i><i></i></div>'));if(state.allSorts)tiles.push(tile('Additional histogram sorts','<small>Hue · Lightness</small>'))}
+   if(c.hue)tiles.push(tile('Hue × lightness','<small>Existing 2D normalization</small>'));
+   if(state.volume)tiles.push(tile('3D color volume','<small>Camera: chosen view<br>Raster capture placeholder</small>','uw-volume'));
+   if(c.palette)tiles.push(`<section class="uw-index"><h3>Palette index</h3>${colors.map(([hex,p],i)=>`<div class="uw-patch"><i style="--patch:${hex}" aria-hidden="true"></i><span>0${i+1}${state.hex?' / '+hex:''}${state.rgb?'<small>RGB '+[1,3,5].map(k=>parseInt(hex.slice(k,k+2),16)).join(' · ')+'</small>':''}</span><span>${state.share?p.toFixed(1)+'%':''}</span></div>`).join('')}</section>`);
+  }
+  if(!tiles.length)return `<div class="uw-placeholder"><strong>No components selected</strong><small>Enable an Include option.</small></div>`;
+  return `<div class="uw-preview-head"><h3>A study in warmth</h3><small>${state.kind==='Batch'?'3 pinned images':'study-03.jpg'} · captured analysis configuration</small></div><div class="uw-preview-tiles">${tiles.join('')}</div><div class="uw-caption">Schematic composition · illustrative data · ${state.scale}× PNG</div>`;
+ }
+ function exportsView(){
+  const notices={pending:'Preparing the current preview… Save becomes available when source, analysis and composition agree.',stale:'The current study changed. This preview is from the previous study. Refresh before saving.',saving:'Saving the captured document… Later study changes do not alter this job.',saved:'Saved: study-03-colors.png · sample receipt only',error:'Could not save study-03-colors.png. Your composition is preserved.',cancelled:'Save cancelled. Nothing written; your composition is unchanged.'};
+  const notice=notices[state.scene]?note(notices[state.scene]+(state.scene==='stale'?' '+b('Refresh preview','refresh'):'')+(state.scene==='error'?' '+b('Retry save · demo','save'):'')):'';
+  return `<div class="uw-heading"><h2>Compose your export</h2><label>Study <select data-field="kind">${['Colors','Values','Batch'].map(x=>`<option ${state.kind===x?'selected':''}>${x}</option>`).join('')}</select></label></div>${notice}<div class="uw-builder">${controls()}<section class="uw-preview" aria-label="Schematic export composition">${preview()}</section></div>`;
+ }
+ function settingsView(){
+  if(state.scene==='reset')return `<h2>Settings</h2><div class="uw-dialog"><h3>Reset preferences?</h3><span>Restore saved preferences to their defaults. Collection files are not deleted.</span><small>Confirmation treatment proposed; exact reset scope needs review.</small><div class="uw-row">${b('Keep preferences','return')}${b('Reset sample preferences','reset')}</div></div>`;
+  return `<div class="uw-heading"><h2>Settings</h2><small>Current inventory + presentation choice</small></div>${state.scene==='error'?note('Could not save preferences. Keep the visible selection and offer an explicit retry. '+b('Retry · demo','refresh')):''}<div class="uw-settings"><section><h3>Presentation</h3><div class="uw-layouts">${['Workbench','Image first','Study sheet'].map(x=>`<button type="button" data-layout="${x}" aria-pressed="${state.layout===x}">${x}</button>`).join('')}</div><small>Named icon positions · final icons pending</small>${check('compact','Compact sidebars · legacy compatibility',false)}<small>Retirement/migration needs a shell ruling.</small></section><section><h3>Colors</h3>${row('Max clusters','200 · range 10–5000')}${row('Max excludable clusters','10 · range 10–500')}${check('displayHist','Display histogram',true)}${check('displayPolar','Display polar chart',true)}${check('displayHue','Display hue × lightness',true)}</section><section><h3>Values</h3>${check('tones','Show simplified-tones panel',true)}</section><section><h3>Video · desktop</h3>${row('Strip style','Filmstrip / Barcode')}${row('Frame export label','Timestamp / Frame number')}</section><section><h3>Export defaults</h3>${row('Graph format','SVG / PNG')}${row('Save directory','Not set · Browse')}<small>The builder uses these same preferences.</small></section><section><h3>Preferences</h3>${b('Reset to defaults…','resetPrompt')}<small class="uw-caption">Proposed confirmation and save-error feedback</small></section></div>`;
+ }
+ function collectionView(){
+  if(['remove','clear'].includes(state.scene))return `<h2>Collection</h2><div class="uw-dialog"><h3>${state.scene==='clear'?'Clear 24 collection items?':'Remove “Coastal light”?'}</h3><span>Remove collection entries, not original source files.</span><small>Decision still needed: confirmation vs genuine undo. Active-item successor remains unchanged until ruled.</small><div class="uw-row">${b('Keep collection','return')}${b('Confirm · preview only','return')}</div></div>`;
+  return `<div class="uw-heading"><h2>All media</h2><small>24 items · 3 pinned for batch</small></div>${state.scene==='missing'?note('Coastal light · source is unavailable. Preserve the entry and identify the failed source; retry/relink policy needs a ruling.'):''}${sampleGrid()}<div class="uw-row">${b('Remove selected…','remove')}${b('Clear collection…','clear')}</div><small>Open tile → study · Pin / Remove → stay in collection</small>`;
+ }
+ function batchView(){
+  if(state.scene==='empty')return `<h2>Batch</h2><div class="uw-placeholder"><strong>Pin at least two images</strong><small>Active image selection does not define the batch.</small>${b('Choose from collection · demo','browse')}</div>`;
+  if(state.scene==='detail')return `<div class="uw-heading"><h2>Study 02 / pin detail</h2>${b('Return to batch','return')}</div><div class="uw-split"><div class="uw-tile uw-source">Pinned source image</div><div>${tile('Individual color distribution')}<div class="uw-caption">Batch set, ordering and controls stay unchanged.</div></div></div>`;
+  return `<div class="uw-heading"><h2>Batch study</h2><small>3 pinned images</small></div>${state.scene==='error'?note('Could not read one pinned source. No partial aggregate is presented as a complete three-image result. '+b('Retry · demo','refresh')):''}<div class="uw-split"><section>${sampleGrid(3)}${b('Inspect pin 02','detail')}</section>${tile(state.scene==='error'?'Aggregate unavailable':'Aggregate palette','<small>Batch settings · separate from Colors</small>')}</div>${row('Batch palette size','12 colors')}<small>Contact-sheet geometry is a review candidate, not new pin semantics.</small>`;
+ }
+ function render(){
+  root.querySelectorAll('[data-surface]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.surface===state.surface)));
+  const selector=root.querySelector('.uw-state');selector.innerHTML=sceneOptions[state.surface].map(([v,l])=>`<option value="${v}" ${state.scene===v?'selected':''}>${l}</option>`).join('');
+  root.querySelector('.uw-route').textContent=state.surface[0].toUpperCase()+state.surface.slice(1);
+  root.querySelector('.uw-body').innerHTML=({exports:exportsView,settings:settingsView,collection:collectionView,batch:batchView})[state.surface]();
+  root.querySelector('.uw-footer').textContent=state.surface==='exports'?'Study data stays separate from export presentation · original formats preserved':'New surface proposal · existing lifecycle and source ownership preserved';
+  root.dataset.optionsSide=state.optionsSide;root.dataset.surface=state.surface;root.dataset.scene=state.scene;
+ }
+ root.addEventListener('click',e=>{const el=e.target.closest('button');if(!el)return;
+  if(el.dataset.surface){state.surface=el.dataset.surface;state.scene='ready';render()}
+  else if(el.dataset.layout){state.layout=el.dataset.layout;render()}
+  else if(el.dataset.act){const act=el.dataset.act;if(act==='save')state.scene='saving';else if(act==='resetPrompt')state.scene='reset';else if(['remove','clear','detail'].includes(act))state.scene=act;else if(act==='browse'){state.surface='collection';state.scene='ready'}else{state.scene='ready';if(act==='reset'){state.layout='Image first';state.format='SVG';state.scale='2'}if(act==='restore')Object.keys(state.checks).forEach(k=>state.checks[k]=k!=='barcode')}render()}
+ });
+ root.addEventListener('change',e=>{const el=e.target;if(el.classList.contains('uw-state')){state.scene=el.value;if(state.scene==='none'){Object.keys(state.checks).forEach(k=>state.checks[k]=false);state.volume=false}else if(!hasComponents())Object.keys(state.checks).forEach(k=>state.checks[k]=k!=='barcode');}else if(el.dataset.field)state[el.dataset.field]=el.value;else if(el.dataset.check){const key=el.dataset.check;if(key in state.checks)state.checks[key]=el.checked;else if(key in state)state[key]=el.checked;else return;if(state.scene==='none'&&hasComponents())state.scene='ready';}render()});
+ render();
+ if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:render});tweak.addSelect(state,'optionsSide',{label:'Builder controls placement',options:['left','right']})}
+})();
+</script>

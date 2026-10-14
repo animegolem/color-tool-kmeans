@@ -26,7 +26,7 @@ svelte_files=()
 
 generated() {
   case "$1" in
-    node_modules/*|*/node_modules/*|target/*|*/target/*|dist/*|*/dist/*|build/*|figma/*|pkgs/*|tauri-app/coverage/*|tauri-app/.svelte-kit/*|tauri-app/.turbo/*|tauri-app/.ffmpeg-build/*|tauri-app/src-tauri/gen/*|tauri-app/src-tauri/bin/*) return 0 ;;
+    node_modules/*|*/node_modules/*|target/*|*/target/*|dist/*|*/dist/*|build/*|figma/*|RAG/design-system/*|pkgs/*|tauri-app/coverage/*|tauri-app/.svelte-kit/*|tauri-app/.turbo/*|tauri-app/.ffmpeg-build/*|tauri-app/src-tauri/gen/*|tauri-app/src-tauri/bin/*) return 0 ;;
     *) return 1 ;;
   esac
 }

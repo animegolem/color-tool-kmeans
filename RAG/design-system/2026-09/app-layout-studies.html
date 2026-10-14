@@ -1,0 +1,162 @@
+<div id="app-layout-studies" aria-label="Color study application layout sketches">
+  <div class="ls-choices" aria-label="Layout alternatives">
+    <button type="button" data-layout="desk" aria-pressed="true"><span class="ls-mini ls-mini-desk" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>A / Workbench</span><small>Compare side by side</small></button>
+    <button type="button" data-layout="image" aria-pressed="false"><span class="ls-mini ls-mini-image" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>B / Image first</span><small>Keep the artwork dominant</small></button>
+    <button type="button" data-layout="sheet" aria-pressed="false"><span class="ls-mini ls-mini-sheet" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>C / Study sheet</span><small>Read down the page</small></button>
+  </div>
+  <section class="ls-app" data-layout="desk" aria-label="Application wireframe">
+    <header class="ls-chrome"><span class="ls-brand">Color studies</span><nav aria-label="App navigation"><button type="button" data-page="Colors" aria-current="page">Colors</button><button type="button" data-page="Values">Values</button><button type="button" data-page="Batch">Batch</button><button type="button" data-page="Exports">Exports</button></nav><button type="button" class="ls-settings">Settings</button></header>
+    <div class="ls-heading"><div><small class="ls-kicker">Untitled collection / Study 01</small><h2>A study in warmth</h2></div><span class="ls-draft">layout sketch · not live analysis</span></div>
+    <div class="ls-workspace">
+      <section class="ls-source ls-zone"><div class="ls-section-head"><h3>Source image</h3><span>01 / 03</span></div><div class="ls-image-placeholder" role="img" aria-label="Source artwork placeholder"><span>your artwork</span></div><div class="ls-source-meta"><span>study-01.jpg</span><span>Fit · 100%</span></div><details class="ls-parameters" open><summary>Analysis settings</summary><div class="ls-setting-row"><span>Palette size</span><span>12 colors</span></div><div class="ls-setting-row"><span>Sampling</span><span>Balanced</span></div><div class="ls-setting-row"><span>Region</span><span>Whole image</span></div><span class="ls-wire-action">Analyze image</span></details></section>
+      <section class="ls-analysis ls-zone"><div class="ls-section-head"><h3>Distribution</h3><span>2D + 3D</span></div><div class="ls-figures"><section class="ls-figure"><div class="ls-figure-head"><span class="ls-polar-title">01 / Hue & chroma</span></div><div class="ls-polar" role="img" aria-label="Schematic polar distribution placeholder"><span></span><i style="--x:28%;--y:39%;--r:18px"></i><i style="--x:64%;--y:27%;--r:12px"></i><i style="--x:63%;--y:67%;--r:24px"></i><i style="--x:39%;--y:65%;--r:10px"></i></div></section><section class="ls-figure"><div class="ls-figure-head"><span class="ls-cylinder-title">02 / Hue & lightness</span></div><div class="ls-cylinder" role="img" aria-label="Schematic hue and lightness distribution placeholder"><i style="--x:19%;--y:30%;--r:17px"></i><i style="--x:41%;--y:57%;--r:25px"></i><i style="--x:71%;--y:68%;--r:11px"></i><i style="--x:80%;--y:24%;--r:15px"></i></div></section><section class="ls-figure ls-volume"><div class="ls-figure-head"><span>03 / Color volume</span><button type="button" class="ls-expand">Expand</button></div><div class="ls-volume-placeholder" role="img" aria-label="Reserved space for the rotatable OKLab gamut view"><span>rotatable OKLab gamut</span><small>spatial view</small></div></section></div><div class="ls-proportions" aria-label="Schematic palette proportions"><i style="flex:14"></i><i style="flex:23"></i><i style="flex:11"></i><i style="flex:8"></i><i style="flex:17"></i><i style="flex:12"></i><i style="flex:15"></i></div><small class="ls-caption">Palette proportions</small></section>
+      <section class="ls-palette ls-zone"><div class="ls-section-head"><h3>Palette index</h3><span>12</span></div><div class="ls-palette-rows"></div><div class="ls-selection" aria-live="polite">01 / Orange selected</div></section>
+      <section class="ls-media ls-zone"><div class="ls-section-head"><h3>Collection</h3><span>3 images</span></div><div class="ls-media-items"><span class="ls-thumb ls-thumb-active">01</span><span class="ls-thumb">02</span><span class="ls-thumb">03</span><span class="ls-wire-action">Add images</span></div></section>
+    </div>
+    <section class="ls-other-page" hidden></section>
+    <footer class="ls-foot"><span class="ls-page-status">Colors / Study 01</span><span class="ls-layout-status">Image · figures · index</span></footer>
+  </section>
+</div>
+<style>
+#app-layout-studies{--ls-paper:#f7f4ee;--ls-ink:#393932;--ls-line:#b5b2a8;--ls-soft:#e8e5de;--ls-accent:#7e4c3d;color:var(--ls-ink);font:13px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;width:100%;container-type:inline-size}
+#app-layout-studies *{box-sizing:border-box}
+#app-layout-studies button{font:inherit;color:inherit;cursor:pointer;border:1px solid var(--ls-line);background:var(--ls-paper);padding:6px 10px;border-radius:2px}
+#app-layout-studies button:hover{background:var(--ls-soft)}
+#app-layout-studies small{font-size:11px}
+#app-layout-studies h2,#app-layout-studies h3{margin:0;font-weight:400}
+#app-layout-studies h2{font:italic 28px/1.2 Georgia,serif}
+#app-layout-studies h3{font:italic 16px/1.2 Georgia,serif}
+#app-layout-studies .ls-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 22px}
+#app-layout-studies .ls-choices button{text-align:left;padding:12px;display:grid;gap:5px;background:var(--ls-paper);border-style:dashed}
+#app-layout-studies .ls-choices button[aria-pressed=true]{border:2px solid var(--ls-accent);padding:11px}
+#app-layout-studies .ls-mini{height:64px;display:grid;gap:4px;margin-bottom:5px}
+#app-layout-studies .ls-mini i{background:var(--ls-soft);border:1px solid var(--ls-line)}
+#app-layout-studies .ls-mini-desk{grid-template-columns:1fr 1.4fr .65fr;grid-template-rows:1fr 12px}
+#app-layout-studies .ls-mini-desk i:last-child{grid-column:1/-1}
+#app-layout-studies .ls-mini-image{grid-template-columns:1.7fr 1fr;grid-template-rows:1fr 1fr 12px}
+#app-layout-studies .ls-mini-image i:first-child{grid-row:1/3}
+#app-layout-studies .ls-mini-image i:last-child{grid-column:1/-1}
+#app-layout-studies .ls-mini-sheet{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr 12px}
+#app-layout-studies .ls-mini-sheet i:first-child,#app-layout-studies .ls-mini-sheet i:last-child{grid-column:1/-1}
+#app-layout-studies .ls-app{border:1px solid var(--ls-line);background:var(--ls-paper)}
+#app-layout-studies .ls-chrome{display:flex;align-items:center;gap:20px;flex-wrap:wrap;border-bottom:1px solid var(--ls-line);padding:12px 18px}
+#app-layout-studies .ls-brand{font:20px Georgia,serif;white-space:nowrap}
+#app-layout-studies nav{display:flex;gap:3px;flex-wrap:wrap;flex:1}
+#app-layout-studies nav button,#app-layout-studies .ls-settings{border:0;background:none;padding:7px}
+#app-layout-studies nav button[aria-current=page]{text-decoration:underline;text-underline-offset:7px;color:var(--ls-accent)}
+#app-layout-studies .ls-heading{padding:23px 20px 18px;display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#app-layout-studies .ls-kicker{display:block;margin-bottom:5px}
+#app-layout-studies .ls-draft{font-size:11px;max-width:170px;text-align:right;font-style:italic}
+#app-layout-studies .ls-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) minmax(0,.85fr);grid-template-areas:'source analysis palette' 'media media media';gap:18px;padding:0 20px 20px}
+#app-layout-studies .ls-zone{min-width:0}
+#app-layout-studies .ls-source{grid-area:source}
+#app-layout-studies .ls-analysis{grid-area:analysis}
+#app-layout-studies .ls-palette{grid-area:palette}
+#app-layout-studies .ls-media{grid-area:media;border-top:1px solid var(--ls-line);padding-top:12px}
+#app-layout-studies .ls-section-head{display:flex;justify-content:space-between;align-items:baseline;gap:6px;border-bottom:1px solid var(--ls-line);padding:0 0 8px;margin:0 0 12px}
+#app-layout-studies .ls-section-head>span{font-size:11px}
+#app-layout-studies .ls-image-placeholder{width:100%;min-width:0;min-height:210px;aspect-ratio:4/3;background:linear-gradient(to top right,transparent calc(50% - .5px),var(--ls-line) 50%,transparent calc(50% + .5px)),linear-gradient(to bottom right,transparent calc(50% - .5px),var(--ls-line) 50%,transparent calc(50% + .5px));border:1px solid var(--ls-line);display:flex;align-items:center;justify-content:center}
+#app-layout-studies .ls-image-placeholder span{background:var(--ls-paper);padding:6px 12px;font:italic 19px Georgia,serif}
+#app-layout-studies .ls-source-meta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:11px;margin:7px 0 18px}
+#app-layout-studies .ls-parameters{border-top:1px solid var(--ls-line);padding-top:10px}
+#app-layout-studies summary{cursor:pointer;margin-bottom:10px}
+#app-layout-studies .ls-setting-row{display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:6px 0}
+#app-layout-studies .ls-wire-action{display:inline-block;padding:5px 9px;border:1px dashed var(--ls-line);font-size:11px}
+#app-layout-studies .ls-parameters .ls-wire-action{margin-top:10px}
+#app-layout-studies .ls-figures{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#app-layout-studies .ls-figure{border:1px dashed var(--ls-line);padding:10px;min-width:0}
+#app-layout-studies .ls-figure-head{display:flex;align-items:center;justify-content:space-between;gap:5px;font-size:11px;min-height:28px}
+#app-layout-studies .ls-figure-head button{font-size:11px;padding:3px 6px}
+#app-layout-studies .ls-polar{border:1px solid var(--ls-line);border-radius:50%;width:min(100%,122px);aspect-ratio:1;margin:16px auto;position:relative;background:linear-gradient(90deg,transparent 49.5%,var(--ls-soft) 49.5%,var(--ls-soft) 50.5%,transparent 50.5%),linear-gradient(transparent 49.5%,var(--ls-soft) 49.5%,var(--ls-soft) 50.5%,transparent 50.5%)}
+#app-layout-studies .ls-polar span{position:absolute;inset:24%;border:1px solid var(--ls-soft);border-radius:50%}
+#app-layout-studies .ls-figure i{position:absolute;left:var(--x);top:var(--y);width:var(--r);height:var(--r);background:#aaa69b;border-radius:50%;transform:translate(-50%,-50%)}
+#app-layout-studies .ls-cylinder{position:relative;height:122px;border-left:1px solid var(--ls-line);border-bottom:1px solid var(--ls-line);margin:16px 3px;background:repeating-linear-gradient(0deg,transparent,transparent 29px,var(--ls-soft) 30px,var(--ls-soft) 31px)}
+#app-layout-studies .ls-volume{grid-column:1/-1}
+#app-layout-studies .ls-volume-placeholder{height:109px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:repeating-linear-gradient(135deg,transparent,transparent 8px,#eeebe5 8px,#eeebe5 9px);margin-top:8px;border:1px solid var(--ls-soft);text-align:center;padding:12px}
+#app-layout-studies .ls-volume-placeholder span{font:italic 19px Georgia,serif;background:var(--ls-paper)}
+#app-layout-studies .ls-proportions{display:flex;height:22px;margin:15px 0 4px;gap:2px}
+#app-layout-studies .ls-proportions i{background:#aba79d}
+#app-layout-studies .ls-proportions i:nth-child(2n){background:#d1cdc3}
+#app-layout-studies .ls-proportions i:nth-child(3n){background:#77776c}
+#app-layout-studies .ls-caption{display:block}
+#app-layout-studies .ls-palette-rows{display:grid;gap:0}
+#app-layout-studies .ls-palette-row{display:grid;grid-template-columns:24px 1fr;gap:8px;align-items:center;text-align:left;border:0;border-bottom:1px solid var(--ls-soft);border-radius:0;padding:7px 3px;width:100%;font-size:11px}
+#app-layout-studies .ls-palette-row[aria-pressed=true]{outline:1px solid var(--ls-accent);outline-offset:-1px;background:#ece4db}
+#app-layout-studies .ls-swatch{width:24px;height:28px;background:var(--swatch);opacity:.65;filter:saturate(.45)}
+#app-layout-studies .ls-palette-row small{display:block;font-size:11px;color:#646359}
+#app-layout-studies .ls-selection{font-size:11px;margin-top:10px}
+#app-layout-studies .ls-media-items{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+#app-layout-studies .ls-thumb{display:grid;place-items:center;width:57px;height:42px;border:1px dashed var(--ls-line);font-size:11px;background:var(--ls-soft)}
+#app-layout-studies .ls-thumb-active{border:1px solid var(--ls-accent)}
+#app-layout-studies .ls-foot{border-top:1px solid var(--ls-line);padding:9px 18px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px}
+#app-layout-studies .ls-app[data-layout=image] .ls-workspace{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);grid-template-areas:'source analysis' 'palette palette' 'media media'}
+#app-layout-studies .ls-app[data-layout=image] .ls-image-placeholder{min-height:330px}
+#app-layout-studies .ls-app[data-layout=image] .ls-palette-rows{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+#app-layout-studies .ls-app[data-layout=image] .ls-palette-row{grid-template-columns:1fr;padding:6px}
+#app-layout-studies .ls-app[data-layout=image] .ls-swatch{width:100%;height:26px}
+#app-layout-studies .ls-app[data-layout=sheet] .ls-workspace{grid-template-columns:minmax(0,1fr);grid-template-areas:'source' 'analysis' 'palette' 'media';gap:24px;max-width:790px;margin:auto}
+#app-layout-studies .ls-app[data-layout=sheet] .ls-source{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);gap:0 22px}
+#app-layout-studies .ls-app[data-layout=sheet] .ls-source>.ls-section-head{grid-column:1/-1}
+#app-layout-studies .ls-app[data-layout=sheet] .ls-image-placeholder{min-height:200px}
+#app-layout-studies .ls-app[data-layout=sheet] .ls-parameters{grid-column:2;grid-row:2/4}
+#app-layout-studies .ls-app[data-layout=sheet] .ls-figures{grid-template-columns:repeat(3,minmax(0,1fr))}
+#app-layout-studies .ls-app[data-layout=sheet] .ls-volume{grid-column:auto}
+#app-layout-studies .ls-app[data-layout=sheet] .ls-volume-placeholder{height:145px}
+#app-layout-studies .ls-app[data-layout=sheet] .ls-palette-rows{grid-template-columns:repeat(4,minmax(0,1fr));column-gap:20px}
+#app-layout-studies .ls-analysis.ls-focused{grid-column:1/-1;grid-row:1}
+#app-layout-studies .ls-analysis.ls-focused .ls-figures{grid-template-columns:1fr}
+#app-layout-studies .ls-analysis.ls-focused .ls-figure:not(.ls-volume){display:none}
+#app-layout-studies .ls-analysis.ls-focused .ls-volume-placeholder{height:370px}
+#app-layout-studies .ls-workspace.ls-focus .ls-source,#app-layout-studies .ls-workspace.ls-focus .ls-media,#app-layout-studies .ls-workspace.ls-focus .ls-palette{display:none}
+#app-layout-studies .ls-other-page{padding:0 20px 25px;min-height:450px}
+#app-layout-studies .ls-other-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px;margin:15px 0}
+#app-layout-studies .ls-other-box{border:1px dashed var(--ls-line);min-height:180px;display:grid;place-items:center;padding:20px;text-align:center}
+#app-layout-studies .ls-other-head{font:italic 22px Georgia,serif;margin-bottom:18px}
+#app-layout-studies [hidden]{display:none!important}
+@container(max-width:780px){#app-layout-studies .ls-workspace{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);grid-template-areas:'source analysis' 'palette palette' 'media media'}#app-layout-studies .ls-palette-rows{grid-template-columns:repeat(4,minmax(0,1fr));column-gap:12px}#app-layout-studies .ls-app[data-layout=image] .ls-palette-rows{grid-template-columns:repeat(4,minmax(0,1fr))}#app-layout-studies .ls-brand{width:100%}#app-layout-studies .ls-chrome{gap:3px 10px}#app-layout-studies .ls-app[data-layout=image] .ls-workspace{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}#app-layout-studies .ls-app[data-layout=image] .ls-image-placeholder{min-height:270px}}
+@container(max-width:560px){#app-layout-studies .ls-choices{gap:6px;margin-bottom:14px}#app-layout-studies .ls-choices button{font-size:11px;padding:7px}#app-layout-studies .ls-choices button[aria-pressed=true]{padding:6px}#app-layout-studies .ls-choices small{display:none}#app-layout-studies .ls-mini{height:45px;gap:2px}#app-layout-studies .ls-workspace,#app-layout-studies .ls-app[data-layout=image] .ls-workspace{grid-template-columns:minmax(0,1fr);grid-template-areas:'source' 'analysis' 'palette' 'media';padding:0 14px 18px}#app-layout-studies .ls-app[data-layout=image] .ls-image-placeholder{min-height:210px}#app-layout-studies .ls-palette-rows,#app-layout-studies .ls-app[data-layout=image] .ls-palette-rows,#app-layout-studies .ls-app[data-layout=sheet] .ls-palette-rows{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}#app-layout-studies .ls-app[data-layout=sheet] .ls-source{display:block}#app-layout-studies .ls-app[data-layout=sheet] .ls-figures{grid-template-columns:repeat(2,minmax(0,1fr))}#app-layout-studies .ls-app[data-layout=sheet] .ls-volume{grid-column:1/-1}#app-layout-studies .ls-heading{padding:18px 14px}#app-layout-studies .ls-heading .ls-draft{text-align:left;max-width:none}#app-layout-studies .ls-chrome{padding:10px 12px}#app-layout-studies .ls-chrome nav{gap:0}#app-layout-studies .ls-chrome button{padding:7px 5px;font-size:11px}#app-layout-studies .ls-settings{margin-left:auto}#app-layout-studies .ls-figure{padding:7px}}
+@media(pointer:coarse){#app-layout-studies button{min-height:44px}#app-layout-studies summary{min-height:44px}}
+</style>
+<script>
+(()=>{
+  const root=document.getElementById('app-layout-studies');
+  const app=root.querySelector('.ls-app');
+  const workspace=root.querySelector('.ls-workspace');
+  const analysis=root.querySelector('.ls-analysis');
+  const other=root.querySelector('.ls-other-page');
+  const expand=root.querySelector('.ls-expand');
+  const state={layout:'desk',page:'Colors',selected:0,focused:false,compactSettings:false};
+  const colors=[['Orange','#D06040'],['Geranium','#F09C6C'],['Yellow','#FFC000'],['Blue-green','#205050'],['Vivid rose','#9C0030'],['Amber','#E09000'],['Deep red','#602020'],['Rose','#903048'],['Umber','#906018'],['Blue','#304890'],['Pale amber','#FFD8A8'],['Violet grey','#7878A8']];
+  root.querySelector('.ls-palette-rows').innerHTML=colors.map(([name,hex],i)=>`<button type="button" class="ls-palette-row" data-color="${i}" aria-pressed="${i===0}"><span class="ls-swatch" style="--swatch:${hex}" aria-hidden="true"></span><span>${name}<small>${hex}</small></span></button>`).join('');
+  function render(){
+    app.dataset.layout=state.layout;
+    root.querySelectorAll('[data-layout]').forEach(el=>{if(el.tagName==='BUTTON')el.setAttribute('aria-pressed',String(el.dataset.layout===state.layout))});
+    root.querySelectorAll('[data-page]').forEach(el=>{if(el.dataset.page===state.page)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current')});
+    const study=['Colors','Values'].includes(state.page);
+    workspace.hidden=!study;other.hidden=study;
+    root.querySelector('.ls-page-status').textContent=state.page+' / Study 01';
+    root.querySelector('.ls-layout-status').textContent=({desk:'Image · figures · index',image:'Artwork first · palette below',sheet:'Source → figures → palette'})[state.layout];
+    root.querySelector('.ls-polar-title').textContent=state.page==='Values'?'01 / Value distribution':'01 / Hue & chroma';
+    root.querySelector('.ls-cylinder-title').textContent=state.page==='Values'?'02 / Tonal grouping':'02 / Hue & lightness';
+    root.querySelector('.ls-source').style.filter=state.page==='Values'?'grayscale(1)':'';
+    analysis.classList.toggle('ls-focused',state.focused);workspace.classList.toggle('ls-focus',state.focused);
+    expand.textContent=state.focused?'Return to analysis':'Expand';
+    root.querySelector('.ls-parameters').open=!state.compactSettings;
+    if(!study){
+      const blocks=state.page==='Batch'?['Image collection / contact sheet','Per-image results','Shared analysis settings','Aggregate palette']:state.page==='Exports'?['Selected study / export preview','Palette formats','Figure exports','Destination & export action']:['Appearance','Analysis defaults','Files & storage'];
+      other.innerHTML='<div class="ls-other-head">'+state.page+'</div><div class="ls-other-grid">'+blocks.map(label=>'<div class="ls-other-box">'+label+'</div>').join('')+'</div><small>Navigation placement only · this screen is not yet designed</small>';
+    }
+  }
+  root.addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.layout){state.layout=b.dataset.layout;render()}
+    if(b.dataset.page){state.page=b.dataset.page;state.focused=false;render()}
+    if(b.classList.contains('ls-settings')){state.page='Settings';state.focused=false;render()}
+    if(b===expand){state.focused=!state.focused;render();expand.focus()}
+    if(b.dataset.color!==undefined){state.selected=Number(b.dataset.color);root.querySelectorAll('[data-color]').forEach(el=>el.setAttribute('aria-pressed',String(Number(el.dataset.color)===state.selected)));root.querySelector('.ls-selection').textContent=String(state.selected+1).padStart(2,'0')+' / '+colors[state.selected][0]+' selected'}
+  });
+  root.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.focused){state.focused=false;render();expand.focus()}});
+  render();
+  if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:render});tweak.addToggle(state,'compactSettings',{label:'Collapse analysis settings'})}
+})();
+</script>
