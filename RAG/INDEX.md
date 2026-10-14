@@ -7,10 +7,10 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 2 | 11 |
-| Planned | 2 | 33 |
+| Planned | 2 | 32 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
-| Completed | 18 | 125 |
+| Completed | 18 | 126 |
 | **Total** | **24** | **174** |
 
 ## In Progress
@@ -21,7 +21,7 @@
 **IMPs:**
 - [[AI-IMP-167-design-coverage-manifest|IMP-167]] Design coverage manifest — completed
 - [[AI-IMP-168-vendor-design-bundle|IMP-168]] Preserve design provenance and add dormant study tokens — completed
-- [[AI-IMP-169-paper-primitives-library|IMP-169]] Minimal flat study surface primitives — planned
+- [[AI-IMP-169-paper-primitives-library|IMP-169]] Minimal flat study surface primitives — completed
 - [[AI-IMP-170-notebook-shell|IMP-170]] Flat study shell with preserved navigation — planned
 - [[AI-IMP-171-colors-spread|IMP-171]] Colors study composition and expanded palette index — planned
 - [[AI-IMP-172-bucket-page|IMP-172]] Responsive media strip and full collection browser — backlog
@@ -151,7 +151,7 @@ Generated from tracked files; binary assets excluded.
 
 ## Completed
 <details>
-<summary>18 EPICs, 94 IMPs completed</summary>
+<summary>18 EPICs, 95 IMPs completed</summary>
 
 - [[AI-EPIC-006-tauri-bridge-reliability-and-native-mode-fixes|EPIC-006]] Tauri bridge reliability and native mode fixes — 2026-01-21
   - [[AI-IMP-058-fix-tauri-fs-bridge-env-detection|IMP-058]] Fix Tauri FS Bridge Environment Detection — completed

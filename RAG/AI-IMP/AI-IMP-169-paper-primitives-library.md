@@ -5,13 +5,13 @@ tags:
   - Implementation
   - ui
   - design-review
-kanban_status: planned
+kanban_status: completed
 depends_on:
   - AI-IMP-168
 parent_epic: [[AI-EPIC-027-notebook-ui-redesign]]
 confidence_score: 0.8
 date_created: 2026-07-09
-date_completed:
+date_completed: 2026-10-14
 assignee: Code Lead (Sol)
 ---
 
@@ -55,13 +55,13 @@ Do NOT touch unrelated tickets, RAG/PROJECT-RECORD.md, prior review reports, nat
 Before marking an item complete on the checklist MUST **stop** and **think**. Have you validated all aspects are **implemented** and **tested**?
 </CRITICAL_RULE>
 
-- [ ] Render figure headers, local controls, content and captions in the isolated showcase.
-- [ ] Use native focus/tab behavior and readable labels with no nested interactive elements.
-- [ ] Prove compatible real SSR component tests without changing existing audit/rune-factory expectations, using the separately approved test seam.
-- [ ] Demonstrate stacking at 360/736/1024/1440 CSS-pixel widths and 720×600; check long labels, clipping, overflow and minimum-window vertical reachability without scaling an artboard.
-- [ ] Exercise Tab/Shift+Tab, native control operation, visible focus, coarse-pointer targets and applicable reduced-motion behavior in the isolated browser page.
-- [ ] Verify no production imports/routes or normal-build inclusion of the showcase/study CSS, and no new dependencies or current global-style changes.
-- [ ] Reproduce the applicable gates in PROJECT-RECORD §6; report exact counts, baseline failures, platform gaps and human acceptance still outstanding.
+- [x] Render figure headers, local controls, content and captions in the isolated showcase.
+- [x] Use native focus/tab behavior and readable labels with no nested interactive elements.
+- [x] Prove compatible real SSR component tests without changing existing audit/rune-factory expectations, using the separately approved test seam.
+- [x] Demonstrate stacking at 360/736/1024/1440 CSS-pixel widths and 720×600; check long labels, clipping, overflow and minimum-window vertical reachability without scaling an artboard.
+- [x] Exercise Tab/Shift+Tab, native control operation, visible focus, coarse-pointer targets and applicable reduced-motion behavior in the isolated browser page.
+- [x] Verify no production imports/routes or normal-build inclusion of the showcase/study CSS, and no new dependencies or current global-style changes.
+- [x] Reproduce the applicable gates in PROJECT-RECORD §6; report exact counts, baseline failures, platform gaps and human acceptance still outstanding.
 
 ### Acceptance Criteria
 
@@ -75,3 +75,11 @@ This section is filled out post work as you fill out the checklists.
 -->
 
 Planning: source/visual reconciliation only. No implementation or new application tests have run. Unresolved policy and EPIC-029 prerequisites remain explicit gates.
+
+Implementation (2026-10-14): added the exact-.svelte SSR transform and four real component tests. The full Vitest run passed 18 files / 183 tests, including all 15 existing rune-shim race tests. Svelte check passed with zero errors and the two accepted pre-existing accessibility warnings; lint, format, production build, Rust format/Clippy, 48 workspace tests, the scalar snapshot, the Tauri-free normal color-core tree, and 69 CI/hook regressions passed.
+
+Browser proof used asserted CSS viewports at 360×800, 736×900, 1024×900, 1440×900 and 720×600. The grid stacked at 360/736/720 and used two columns at 1024/1440; long labels wrapped, no horizontal or figure overflow was observed, and the minimum-height footer remained reachable. Real keyboard input exercised select, range, checkbox, details and button controls; Tab/Shift+Tab order, visible focus and escape past the final control passed. Coarse-pointer emulation produced 48 px effective targets. Reduced-motion emulation matched and found no running animations or motion styles.
+
+The first terminal-browser resize attempt inherited its display zoom and was rejected as viewport evidence; direct CDP metrics plus `innerWidth`/`innerHeight` assertions produced the retained exact screenshots under the isolated candidate's temporary evidence directory. Production build output contained only `index.html` and shipping assets, with no showcase or study-control sentinel; App, main, global CSS, package and lock files remain unchanged.
+
+Local Node is 26.8.1. Node 20.19-or-newer CI-runtime reproduction is unrun: no local Node 20 exists, Docker and Podman daemons were unavailable, and no runtime/image was installed or downloaded. Windows, Linux and owner visual acceptance are also unrun. Two historical EPIC-029-only Node commands were probed after the active gates and exited 1 because their referenced scripts no longer exist on current main; they are not named by the current AGENTS/F0 gate set and made no repository change.
