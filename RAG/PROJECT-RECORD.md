@@ -281,6 +281,8 @@ An issue is accepted only after current-base validation and integration evidence
 
 ## 5. Current slice and delivery rules
 
+(rev1.07, 2026-10-14) **F0 foundation COMPLETE:** 168 (d3a8f44: pinned September references, dormant study tokens, hook never formats the pinned carrier), lead prerequisite 0034aee (loc-enforce.js formatting), 169 (f9eb387: FigureFrame, scoped controls, isolated showcase, exact-suffix SSR test transform), 195 (27f40d8: honest feedback surfaces with a per-state provenance policy and no synthetic progress). Each lead-reproduced (tests, the real staged hook, production build with zero study sentinels). **Next: F1, doc-only design plus three ticket drafts**, as ruled at rev1.05.
+
 (rev1.05, 2026-10-14) **Sol's functional-path scope report is ACCEPTED** (`reviews/EPIC-029/functional-path-scope-report-verdict.md`). First usable milestone: one still-image Colors study in a locally served browser AND Tauri from the same renderer. **F1 ruled:** Web Worker + wasm-bindgen over current color-core with a non-Rayon browser feature; boundary = ENCODED BYTES decoded by color-core in both targets (decode parity by construction); digest parity on one fixed still; browser prefs = localStorage under the Tauri Store's versioned schema; Playwright proposed for the real-browser harness. **171 split:** one reviewed layout + current labels is the first Colors acceptance; 196/199 stay open as completion. **F0 build fence ISSUED** (168 → 169 → 195, one commit each, isolated candidate). **F1:** a doc-only source design plus three ticket drafts (F1a file/prefs, F1b worker compute/parity, F1c target selection/harness) next; then the lead mints numbers and fences F1. F2 only after F0+F1 are accepted.
 
 (rev1.04, 2026-10-14) **The owner's priority: functional first, then faster** ("we can just make the app work, then we can make it faster", recorded by Sol after the O1 discussion). Sol's four-point reading is ADOPTED (`reviews/EPIC-029/functional-first-priority-verdict.md`): IMP-202 Stage A does not gate the first usable redesigned app; the O1 corpus and method are preserved as a future profiling package (prior release = published v1.0.2; landmarks kept); delivery returns to the functional shared-web/Tauri path; correctness and cheap gross-performance guardrails stay, and the full campaign waits. IMP-202 is PARKED, not cancelled. **Next: Sol's read-only functional-path scope report** (no source, build, launch, capture or Git); then the lead cuts slices and issues the first build fence.
@@ -908,6 +910,8 @@ Planning acceptance is narrower: complete mapping to the current baseline, expli
 - EPIC-026's old K<=128 success line conflicts with its GO text and later performance evidence. Reconcile supported limits and remeasure in that epic; this plan does not choose a new limit.
 
 ## 8. Decision summary
+
+(rev1.07, 2026-10-14) F0 is done (168, 169, 195 committed). F1 design is next.
 
 (rev1.05, 2026-10-14) The functional path is mapped and accepted; F0 is building; F1 (worker WASM over color-core, encoded bytes) is being designed.
 
