@@ -131,6 +131,18 @@ unreasonable artifact size, or digest mismatch stops for a lead amendment.
   - The WASM adapter / worker (already fenced) OVERWRITES `durationMs` with the worker's own `performance.now()` delta
     measured around the synchronous call, so the browser never surfaces core's placeholder 0 as a measurement. A test asserts
     the worker-reported duration is the JS-measured one (nonzero for the fixed still).
+- **Lead amendment 6, 2026-10-14 (A1 COMPLETED; Sol's digest stop: 4 OKLch-hue values 1 ulp apart from `f32::atan2`):**
+  A1 named only `powf`/`cbrt`; the lead's full inventory of production `color.rs` (tests start at line 711) adds:
+  - `atan2` (405) → `libm::atan2f`; `cos`/`sin` (415/416) → `libm::cosf`/`libm::sinf` (not correctly rounded; same rule).
+  - `powi(3)` ×6 (454, 465, 513, 516, 536, 538) → explicit `x * x * x` (left-to-right). `powi` lowers to an intrinsic whose
+    multiplication order isn't promised across targets; three plain multiplies are exact IEEE ops everywhere.
+  - `to_degrees`/`to_radians` stay (multiplication by a constant: deterministic). `sqrt` stays (correctly rounded).
+  - Only those lines of `color-core/src/color.rs` change. Test-module (`#[cfg(test)]`) oracles stay native.
+  - **Golden step:** run every existing native golden/round-trip/snapshot. If any EXISTING expected value changes: STOP and
+    report (fixture, field, before/after bits) before editing it. `color-core/tests/fixtures/f1-parity.json` (205's own new
+    file) may be regenerated from the native default build after this change; disclose the old and new digest.
+  - Acceptance: the A1 probe extended to `atan2f`/`sinf`/`cosf` over a dense grid (0 mismatches), and the encoded PNG/JPEG
+    digests equal across native default, native scalar and wasm32.
 - **Golden/snapshot fixtures are NOT authorized by this amendment.** If the A1 golden step (ruling step 4) shows any
   expected value changing, stop and report; the lead names the exact fixture paths in a further amendment.
 - `color-core/src/kmeans.rs`: parallel/sequential chunk collection with one

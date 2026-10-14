@@ -34,3 +34,6 @@ So the A1 stop condition is real: native and wasm32 `powf` disagree.
 ## Why not a tolerance
 "Looks similar is not parity" (rev1.05). One ulp in the transfer can move a sample across a k-means boundary, so a tolerance
 on the transfer doesn't bound the digest. One implementation does.
+
+## Completion (2026-10-14, after Sol's PNG digest stop)
+The original ruling audited only `powf` and `cbrt`. `f32::atan2` (OKLch hue) then produced four 1-ulp digest differences. The lead has now inventoried EVERY production float function in color.rs; the rule extends to atan2/sin/cos (libm) and powi(3) (explicit multiplication). See ticket amendment 6. The lesson: audit the whole surface the first time.
