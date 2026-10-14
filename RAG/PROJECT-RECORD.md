@@ -281,6 +281,8 @@ An issue is accepted only after current-base validation and integration evidence
 
 ## 5. Current slice and delivery rules
 
+(rev1.04, 2026-10-14) **The owner's priority: functional first, then faster** ("we can just make the app work, then we can make it faster", recorded by Sol after the O1 discussion). Sol's four-point reading is ADOPTED (`reviews/EPIC-029/functional-first-priority-verdict.md`): IMP-202 Stage A does not gate the first usable redesigned app; the O1 corpus and method are preserved as a future profiling package (prior release = published v1.0.2; landmarks kept); delivery returns to the functional shared-web/Tauri path; correctness and cheap gross-performance guardrails stay, and the full campaign waits. IMP-202 is PARKED, not cancelled. **Next: Sol's read-only functional-path scope report** (no source, build, launch, capture or Git); then the lead cuts slices and issues the first build fence.
+
 (rev1.03, 2026-10-09) Sol's scope report is ACCEPTED (`profiling-rebase-scope-report-verdict.md`). **Correction:** `main` does not descend from Wave 03's `8bf3187` (merge-base `5baa20e`). Arm A supersedes Wave 03 by ruling, not by ancestry, and the rev1.02 wording was the lead's error. The Arm A build pins are adopted. **Next: the owner's O1 session (15 min)** confirms Arm B and the corpus. Only then the Stage A fence. Nothing is built before it.
 
 (rev1.02, 2026-10-09) **IMP-202's scope is ruled** (`RAG/reviews/EPIC-029/profiling-rebase-scope-verdict.md`), at Sol's request after the owner's word to him that the paused objective may start. §10's method binds whole. The matrix rebases to two arms: **A, current `main`** (it replaces "Wave 03 without IMP-178", which it descends from), and **B, the identified known-good prior release** as an immutable end-to-end baseline. IMP-178 stays out of scope. B11–B20 stay preserved, and B20 stays diagnostic-only. Spans go where they survive the held redesign, and every build arm pins its toolchain. **Sol's next assignment** is one read-only scope report (`profiling-rebase-scope-report.md`): no source, build, capture or Git. The lead then issues Stage A (§10.1's matched quiet optimized-build sanity comparison) as its own fence.
@@ -697,6 +699,8 @@ Planning acceptance is narrower: complete mapping to the current baseline, expli
 
 ## 7. Open decisions
 
+(rev1.04, 2026-10-14) IMP-202 is answered for now: parked behind the first usable redesigned app. Open: the functional path's slices (after Sol's scope report) and IMP-193-5 (wanted at all?).
+
 (rev1.00, 2026-10-02) IMP-193-4 is closed by the owner's word. Still open and distinct: IMP-193-5 (wanted at all?) and IMP-202 (does profiling resume?). The redesign and Sol's assignments wait on the owner's conversation with Astra and Sol.
 
 (rev0.99, 2026-09-28) Unchanged: IMP-193-5 and IMP-202 remain distinct open owner decisions, and IMP-193-4 gates nothing. Session 03's outcome is owner-reported.
@@ -900,6 +904,8 @@ Planning acceptance is narrower: complete mapping to the current baseline, expli
 - EPIC-026's old K<=128 success line conflicts with its GO text and later performance evidence. Reconcile supported limits and remeasure in that epic; this plan does not choose a new limit.
 
 ## 8. Decision summary
+
+(rev1.04, 2026-10-14) Functional first, then faster. Profiling is parked with its corpus kept; Sol scopes the functional path read-only next.
 
 (rev1.00, 2026-10-02) The owner: move ahead. The hook regression and IMP-179 are fixed and pushed; CI's one red is a new Clippy lint in a probe binary. Assignments are still held for the owner's conversation with Astra and Sol.
 
