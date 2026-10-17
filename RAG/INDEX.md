@@ -7,11 +7,11 @@
 | Status | EPICs | IMPs |
 |--------|-------|------|
 | In Progress | 2 | 11 |
-| Planned | 2 | 31 |
+| Planned | 2 | 32 |
 | Deferred | 2 | 5 |
 | Cancelled | 0 | 0 |
 | Completed | 18 | 131 |
-| **Total** | **24** | **178** |
+| **Total** | **24** | **179** |
 
 ## In Progress
 
@@ -71,6 +71,7 @@
 - [[AI-IMP-205-worker-wasm-compute-parity|IMP-205]] Lead amendments (binding; functional-path F1 verdict, 2026-10-14) — completed
 - [[AI-IMP-206-target-selection-browser-harness|IMP-206]] Lead amendments (binding; functional-path F1 verdict, 2026-10-14) — completed
 - [[AI-IMP-207-clean-checkout-build-gates|IMP-207]] Make the accepted F1 inputs reproducible from a checkout — completed
+- [[AI-IMP-208-first-usable-shell-colors|IMP-208]] Make one Colors study usable in both browser and Tauri — planned
 
 ---
 
