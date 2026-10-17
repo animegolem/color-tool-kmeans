@@ -18,10 +18,8 @@ impl SeedableRng for PortableRng {
         }
 
         let mut state = [0_u64; 4];
-        for (word, bytes) in state.iter_mut().zip(seed.chunks_exact(8)) {
-            let mut chunk = [0_u8; 8];
-            chunk.copy_from_slice(bytes);
-            *word = u64::from_le_bytes(chunk);
+        for (word, bytes) in state.iter_mut().zip(seed.as_chunks::<8>().0) {
+            *word = u64::from_le_bytes(*bytes);
         }
         Self { state }
     }
