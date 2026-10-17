@@ -95,6 +95,8 @@ jobs:
         run: npm ci --prefix tauri-app --no-audit --no-fund
       - name: Install Playwright Chromium
         run: npx --prefix tauri-app playwright install --with-deps chromium
+      - name: Clean checkout WASM build regressions
+        run: COLOR_TOOL_REAL_BUILD_TESTS=1 node --test scripts/ci/wasm-build.test.mjs
       - name: Browser runtime suite
         run: npm run --prefix tauri-app test:browser
 
@@ -106,6 +108,10 @@ jobs:
         with:
           node-version: 20
       - uses: dtolnay/rust-toolchain@stable
+      - name: Install WASM target and pinned binding tool
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo install --locked wasm-bindgen-cli --version 0.2.128
       - name: Install FFmpeg sidecars (Windows)
         working-directory: tauri-app
         run: ./scripts/fetch-ffmpeg-btbn-lgpl.sh x86_64-pc-windows-msvc https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl.zip
