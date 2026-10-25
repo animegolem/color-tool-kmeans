@@ -6,8 +6,8 @@
 //! merge near-duplicate clusters ([`merge`]), and convert centroids across
 //! color spaces ([`color`]). [`analyze`] orchestrates the full pipeline.
 //!
-//! Color space algorithms in [`color`] are based in part on Color-tool by
-//! L. Jégou (CC BY 3.0); see ATTRIBUTIONS.md in this crate.
+//! The conversions in [`color`] follow the published standards; see
+//! ATTRIBUTIONS.md in this crate.
 
 pub mod analyze;
 mod clock;

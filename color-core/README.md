@@ -65,7 +65,6 @@ repository's `test-patterns/` directory.
 
 ## License and attribution
 
-MIT, like the rest of the repository. The color space conversions are based
-on Color-tool by Laurent Jégou (CC BY 3.0); see
-[ATTRIBUTIONS.md](ATTRIBUTIONS.md), which must travel with any distribution
-that embeds this crate.
+MIT, like the rest of the repository. The color conversions follow the
+published standards (sRGB, CIELAB, CIELUV, BT.601, OKLab); see
+[ATTRIBUTIONS.md](ATTRIBUTIONS.md).
