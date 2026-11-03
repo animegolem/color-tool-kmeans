@@ -78,9 +78,12 @@ Before marking an item complete on the checklist MUST **stop** and **think**. Ha
       SmallRng oracle and native/scalar/WASM parity controls.
 - [x] Run frontend tests/types/lint/format/build and real Chromium coverage.
 - [x] Receive independent lead review, ticket mint/index generation and commit.
-- [ ] Observe hosted aggregate success after the separately fenced B2 repair.
-      → Owned by AI-IMP-201 amendment B2. The hosted run also waits on Golem's word to push,
-      because the repo is public.
+- [x] Observe hosted aggregate success after the separately fenced B2 repair.
+      Observed 2026-10-17 on GitHub at b4046ff, which carries this ticket's dc9b253 and
+      B2's f61c81e (the head of the EPIC-029 pull request #5). Push run 39021031601 and
+      pull_request run 39021045416 both succeeded with all six jobs green: build-windows
+      on windows-latest; hook-regressions, frontend-quality, rust-quality, browser-e2e and
+      the build-test aggregate on ubuntu-latest. ci.yml has no macOS job, so no macOS claim.
 
 ### Acceptance Criteria
 
@@ -143,3 +146,6 @@ You MUST document any failed implementations, blockers or missing tests.
   packaging STOP reproduced. Chromium was not re-run. Integration: main's untracked, ignored root lock (fc69255a) blocked
   `git apply`, so it was moved aside with a copy kept, never deleted. The applied index is byte-identical to the patch
   (432f5ec0).
+- Hosted run (Genga, 2026-10-17): the box left open at the mint is checked. Both runs at b4046ff passed every job
+  (push 39021031601, pull_request 39021045416). The implementer's line above, "Hosted Linux/Windows and owner
+  acceptance remain unrun", is history for the hosted part; owner acceptance is still separate.
