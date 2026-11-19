@@ -48,3 +48,6 @@ tauri-app/src-tauri/bin/
 tauri-app/src-tauri/bin/ffmpeg-*
 tauri-app/src-tauri/bin/ffprobe-*
 .claude/
+
+# Worktrees live inside the repo (house rule, 2026-11-18)
+.worktrees/
