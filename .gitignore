@@ -51,3 +51,4 @@ tauri-app/src-tauri/bin/ffprobe-*
 
 # Worktrees live inside the repo (house rule, 2026-11-18)
 .worktrees/
+.scratch/
