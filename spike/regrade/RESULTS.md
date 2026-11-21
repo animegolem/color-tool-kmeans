@@ -126,6 +126,42 @@ separate the two. It does not matter yet: everything fits in a frame with room t
   through a scene cut was not measured.
 - **Wide gamut and HDR video.** Everything here is sRGB and 8 bits.
 
+## Moving many colours at once (added 2026-11-21, after Golem tried it)
+
+`moves.js` (checked by `node moves.test.mjs`), on the a·b plane's **Move** control:
+
+- **one colour.** The original behaviour.
+- **as a net.** Every centre follows the dragged one by exp(−d²/reach²), d its OKLab distance. Reach
+  "all" moves the whole set rigidly. Tested with a real drag: at reach 0.12 the dragged centre moved
+  0.123 and its neighbours 0 to 0.07; at "all", every centre moved 0.123.
+- **along a curve.** Poline's idea in OKLab. The centres are threaded into a path, dark to light
+  (open) or by hue (a closed loop). Up to four anchors are picked by Douglas–Peucker (the points that
+  bend the path most); grabbing any point makes it an anchor, and double-clicking releases it. Every
+  other centre takes the blend of the two anchors around it, by arc length, through an easing
+  (linear, smooth, sine). Tested: one anchor dragged gives a rising ramp along the path to it
+  (0.015 to 0.11) and nothing beyond the next anchor.
+
+Known roughness: the dark-to-light path zigzags on the a·b plane, because lightness is not shown
+there. The hue loop reads cleanly. Entering curve mode keeps free edits until the next anchor drag,
+which recomputes every non-anchor centre.
+
+## Toward VapourSynth (Video Workbench)
+
+The regrade is a pure function of (centres, offsets, softness): any colour in, a colour out. Three
+ways it could enter a VapourSynth script, where the workbench's SPEC makes the script the source of
+truth:
+
+1. **A 3D LUT.** Sample the function on a 33³ or 65³ grid and write a `.cube` file. Resolve, ffmpeg
+   (`lut3d`) and VapourSynth's timecube plugin read it. The script line names the parameters, and the
+   LUT is derived. timecube is GPL-2 by Arch's packaging metadata (not yet confirmed upstream), and the
+   workbench reads copyleft code but does not depend on it, so it may need its own LUT apply.
+2. **An expression.** The formula as a per-pixel expression (OKLab in, K soft-weighted offsets, OKLab
+   out). Exact, and no file, but heavy at large K.
+3. **Tracked grades.** For a grade that follows the film, an analysis pass saves per-frame centres
+   (the workbench's "reader over saved per-frame data"), and the apply step reads them per frame.
+
+Grading is after the workbench's first version (its SPEC, 2.2). Nothing here was built in it.
+
 ## Next, if this merges
 
 1. Asynchronous readback for tracking.

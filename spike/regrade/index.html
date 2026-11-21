@@ -85,6 +85,21 @@
       .muted {
         color: var(--muted);
       }
+      .moves {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        margin-bottom: 8px;
+      }
+      .moves label {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      body:not([data-move='net']) .net-only,
+      body:not([data-move='curve']) .curve-only {
+        display: none;
+      }
       @media (max-width: 800px) {
         main {
           grid-template-columns: 1fr;
@@ -134,6 +149,38 @@
     <main>
       <canvas id="view"></canvas>
       <aside>
+        <div class="moves">
+          <label
+            >Move
+            <select id="move">
+              <option value="one">one colour</option>
+              <option value="net">as a net</option>
+              <option value="curve">along a curve</option>
+            </select></label
+          >
+          <label class="net-only"
+            >Reach
+            <input id="reach" type="range" min="1" max="41" value="12" /><b
+              id="rv"
+              >0.12</b
+            ></label
+          >
+          <label class="curve-only"
+            >Path
+            <select id="order">
+              <option value="light">dark to light</option>
+              <option value="hue">loop by hue</option>
+            </select></label
+          >
+          <label class="curve-only"
+            >Ease
+            <select id="ease">
+              <option value="linear">linear</option>
+              <option value="smooth">smooth</option>
+              <option value="sine">sine</option>
+            </select></label
+          >
+        </div>
         <canvas id="ab" width="320" height="320"></canvas>
         <label
           >Lightness of the selected colour
@@ -160,6 +207,13 @@
         K_MAX,
       } from './kmeans.js';
       import { createRegrade, regradeRef } from './regrade-gl.js';
+      import {
+        netWeights,
+        buildPath,
+        defaultAnchors,
+        curveBlend,
+        applyCurve,
+      } from './moves.js';
 
       const $ = (id) => document.getElementById(id);
       const params = new URLSearchParams(location.search);
@@ -245,6 +299,7 @@
         order.forEach((j, r) => S.C.set(C.subarray(j * 3, j * 3 + 3), r * 3));
         S.share = order.map((j) => cnt[j] / n);
         S.OFF = new Float32Array(S.K * 3);
+        rethread();
         S.stream = createStream(S.C, S.K, { alpha: 0.2 });
         S.sel = 0;
         let cmax = 0;
@@ -368,6 +423,32 @@
       const changed = () =>
         S.kind === 'image' ? redraw() : S.el?.paused && paint();
 
+      // ---- moving centres: one, as a net, or along a curve ------------------------------------
+      Object.assign(S, {
+        move: 'one',
+        reach: 0.12,
+        order: 'light',
+        ease: 'linear',
+        path: null,
+        anchors: [],
+        blend: null,
+      });
+      // Thread the centres into a path and pick default anchors (on each analysis or path change).
+      function rethread() {
+        S.path = buildPath(S.C, S.K, S.order);
+        S.anchors = defaultAnchors(S.C, S.path, Math.min(4, S.K));
+        S.blend = curveBlend(S.path, S.anchors, S.ease);
+      }
+      const isAnchor = (j) => S.anchors.some((p) => S.path.chain[p] === j);
+      function setAnchor(j, on) {
+        const p = S.path.chain.indexOf(j);
+        if (on && !isAnchor(j))
+          S.anchors = [...S.anchors, p].sort((a, b) => a - b);
+        if (!on && isAnchor(j) && S.anchors.length > 1)
+          S.anchors = S.anchors.filter((a) => a !== p);
+        S.blend = curveBlend(S.path, S.anchors, S.ease);
+      }
+
       // ---- the a·b plane ------------------------------------------------------------------
       const AB = $('ab'),
         abx = AB.getContext('2d'),
@@ -391,6 +472,22 @@
             }
         }
         abx.putImageData(bg, 0, 0);
+        const at = (j) => [
+          toPx(S.C[j * 3 + 1] + S.OFF[j * 3 + 1]),
+          toPx(-(S.C[j * 3 + 2] + S.OFF[j * 3 + 2])),
+        ];
+        if (S.move === 'curve') {
+          const ch = S.path.chain;
+          abx.strokeStyle = '#000a';
+          abx.lineWidth = 1.5;
+          abx.beginPath();
+          ch.forEach((j, k) =>
+            k ? abx.lineTo(...at(j)) : abx.moveTo(...at(j))
+          );
+          if (S.path.closed) abx.closePath();
+          abx.stroke();
+          abx.lineWidth = 1;
+        }
         for (let j = 0; j < S.K; j++) {
           const a0 = S.C[j * 3 + 1],
             b0 = S.C[j * 3 + 2];
@@ -415,12 +512,19 @@
           abx.lineWidth = j === S.sel ? 2.5 : 1;
           abx.strokeStyle = j === S.sel ? '#000' : '#fff';
           abx.stroke();
+          if (S.move === 'curve' && isAnchor(j)) {
+            abx.strokeStyle = '#000';
+            abx.lineWidth = 1.5;
+            abx.beginPath();
+            abx.arc(x1, y1, 8 + 10 * Math.sqrt(S.share[j]), 0, 7);
+            abx.stroke();
+          }
           abx.lineWidth = 1;
         }
       }
-      let drag = -1;
-      AB.addEventListener('pointerdown', (e) => {
-        if (!S.C) return;
+      let drag = -1,
+        drag0 = null;
+      const nearestDot = (e) => {
         let best = -1,
           bd = 20 * 20;
         for (let j = 0; j < S.K; j++) {
@@ -432,19 +536,53 @@
             best = j;
           }
         }
+        return best;
+      };
+      AB.addEventListener('pointerdown', (e) => {
+        if (!S.C) return;
+        const best = nearestDot(e);
         if (best < 0) return;
         drag = S.sel = best;
+        // Grabbing a point on the curve makes it an anchor; its current offset carries over.
+        if (S.move === 'curve') setAnchor(best, true);
+        drag0 = {
+          OFF: S.OFF.slice(),
+          a: fromPx(e.offsetX),
+          b: -fromPx(e.offsetY),
+          w: netWeights(S.C, S.K, best, S.reach),
+        };
         $('L').value = Math.round(S.OFF[best * 3] * 100);
         AB.setPointerCapture(e.pointerId);
         changed();
       });
       AB.addEventListener('pointermove', (e) => {
         if (drag < 0) return;
-        S.OFF[drag * 3 + 1] = fromPx(e.offsetX) - S.C[drag * 3 + 1];
-        S.OFF[drag * 3 + 2] = -fromPx(e.offsetY) - S.C[drag * 3 + 2];
+        const a = fromPx(e.offsetX),
+          b = -fromPx(e.offsetY);
+        if (S.move === 'net') {
+          const da = a - drag0.a,
+            db = b - drag0.b;
+          for (let i = 0; i < S.K; i++) {
+            S.OFF[i * 3 + 1] = drag0.OFF[i * 3 + 1] + drag0.w[i] * da;
+            S.OFF[i * 3 + 2] = drag0.OFF[i * 3 + 2] + drag0.w[i] * db;
+          }
+        } else {
+          S.OFF[drag * 3 + 1] = a - S.C[drag * 3 + 1];
+          S.OFF[drag * 3 + 2] = b - S.C[drag * 3 + 2];
+          if (S.move === 'curve') applyCurve(S.OFF, S.blend, S.K);
+        }
         changed();
       });
       AB.addEventListener('pointerup', () => (drag = -1));
+      // On a curve, double-click a point to make it an anchor or release it back to the curve.
+      AB.addEventListener('dblclick', (e) => {
+        if (S.move !== 'curve' || !S.C) return;
+        const j = nearestDot(e);
+        if (j < 0) return;
+        setAnchor(j, !isAnchor(j));
+        applyCurve(S.OFF, S.blend, S.K);
+        changed();
+      });
 
       // ---- swatches -----------------------------------------------------------------------
       function drawSwatches() {
@@ -480,8 +618,43 @@
 
       // ---- controls -----------------------------------------------------------------------
       $('L').oninput = (e) => {
-        if (S.OFF) {
-          S.OFF[S.sel * 3] = e.target.value / 100;
+        if (!S.OFF) return;
+        const v = e.target.value / 100;
+        if (S.move === 'net') {
+          const dL = v - S.OFF[S.sel * 3],
+            w = netWeights(S.C, S.K, S.sel, S.reach);
+          for (let i = 0; i < S.K; i++) S.OFF[i * 3] += w[i] * dL;
+        } else {
+          if (S.move === 'curve') setAnchor(S.sel, true);
+          S.OFF[S.sel * 3] = v;
+          if (S.move === 'curve') applyCurve(S.OFF, S.blend, S.K);
+        }
+        changed();
+      };
+      $('move').onchange = (e) => {
+        S.move = e.target.value;
+        document.body.dataset.move = S.move;
+        changed();
+      };
+      // Reach 1..40 maps to 0.01..0.40 OKLab; the top of the slider is a rigid move of the whole set.
+      $('reach').oninput = (e) => {
+        const v = Number(e.target.value);
+        S.reach = v > 40 ? Infinity : v / 100;
+        $('rv').textContent = v > 40 ? 'all' : S.reach.toFixed(2);
+      };
+      $('order').onchange = (e) => {
+        S.order = e.target.value;
+        if (S.C) {
+          rethread();
+          applyCurve(S.OFF, S.blend, S.K);
+          changed();
+        }
+      };
+      $('ease').onchange = (e) => {
+        S.ease = e.target.value;
+        if (S.C) {
+          S.blend = curveBlend(S.path, S.anchors, S.ease);
+          applyCurve(S.OFF, S.blend, S.K);
           changed();
         }
       };
