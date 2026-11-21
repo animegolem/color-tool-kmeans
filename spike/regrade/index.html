@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Regrade spike</title>
+    <style>
+      :root {
+        --ink: #222;
+        --muted: #777;
+        --rule: #ddd;
+        --paper: #fbfaf7;
+      }
+      body {
+        margin: 0;
+        font:
+          13px/1.4 system-ui,
+          sans-serif;
+        color: var(--ink);
+        background: var(--paper);
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        align-items: center;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--rule);
+      }
+      header label {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 16px;
+        padding: 16px;
+      }
+      #view {
+        width: 100%;
+        max-height: calc(100vh - 160px);
+        object-fit: contain;
+        background: #111;
+        display: block;
+      }
+      #ab {
+        width: 320px;
+        height: 320px;
+        cursor: crosshair;
+        touch-action: none;
+        border: 1px solid var(--rule);
+      }
+      #swatches {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .sw {
+        display: grid;
+        grid-template-rows: 18px 18px auto;
+        border: 1px solid var(--rule);
+        cursor: pointer;
+        font:
+          11px ui-monospace,
+          monospace;
+      }
+      .sw.sel {
+        outline: 2px solid var(--ink);
+      }
+      .sw span {
+        padding: 1px 3px;
+        color: var(--muted);
+      }
+      #stats {
+        font:
+          12px ui-monospace,
+          monospace;
+        color: var(--muted);
+        padding: 0 16px 12px;
+        white-space: pre;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .moves {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        margin-bottom: 8px;
+      }
+      .moves label {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      body:not([data-move='net']) .net-only,
+      body:not([data-move='curve']) .curve-only {
+        display: none;
+      }
+      @media (max-width: 800px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <input id="file" type="file" accept="image/*,video/*" />
+      <label
+        >Colours <input id="k" type="range" min="2" max="32" value="12" /><b
+          id="kv"
+          >12</b
+        ></label
+      >
+      <label
+        >Algorithm
+        <select id="algo">
+          <option value="em2">e-means, 2 epochs</option>
+          <option value="em5">e-means, 5 epochs</option>
+          <option value="lloyd">Lloyd, 40 iterations</option>
+        </select>
+      </label>
+      <label
+        >Softness
+        <input id="sigma" type="range" min="5" max="200" value="40" /><b id="sv"
+          >0.040</b
+        ></label
+      >
+      <label
+        >View
+        <select id="mode">
+          <option value="0">regrade</option>
+          <option value="1">flat clusters</option>
+          <option value="2">original</option>
+        </select>
+      </label>
+      <label title="Re-cluster every video frame with streaming e-means"
+        ><input id="track" type="checkbox" /> track colours in video</label
+      >
+      <button id="reset">Reset all</button>
+      <span class="muted"
+        >Drag a dot on the a·b plane. Hold O for the original.</span
+      >
+    </header>
+    <main>
+      <canvas id="view"></canvas>
+      <aside>
+        <div class="moves">
+          <label
+            >Move
+            <select id="move">
+              <option value="one">one colour</option>
+              <option value="net">as a net</option>
+              <option value="curve">along a curve</option>
+            </select></label
+          >
+          <label class="net-only"
+            >Reach
+            <input id="reach" type="range" min="1" max="41" value="12" /><b
+              id="rv"
+              >0.12</b
+            ></label
+          >
+          <label class="curve-only"
+            >Path
+            <select id="order">
+              <option value="light">dark to light</option>
+              <option value="hue">loop by hue</option>
+            </select></label
+          >
+          <label class="curve-only"
+            >Ease
+            <select id="ease">
+              <option value="linear">linear</option>
+              <option value="smooth">smooth</option>
+              <option value="sine">sine</option>
+            </select></label
+          >
+        </div>
+        <canvas id="ab" width="320" height="320"></canvas>
+        <label
+          >Lightness of the selected colour
+          <input
+            id="L"
+            type="range"
+            min="-30"
+            max="30"
+            value="0"
+            style="width: 100%"
+        /></label>
+        <div id="swatches"></div>
+      </aside>
+    </main>
+    <div id="stats"></div>
+    <script type="module">
+      import { rgbToOklab, oklabToRgb, hex, sampleRGBA } from './oklab.js';
+      import {
+        kmeansPP,
+        lloyd,
+        emeans,
+        createStream,
+        mse,
+        K_MAX,
+      } from './kmeans.js';
+      import { createRegrade, regradeRef } from './regrade-gl.js';
+      import {
+        netWeights,
+        buildPath,
+        defaultAnchors,
+        curveBlend,
+        applyCurve,
+      } from './moves.js';
+
+      const $ = (id) => document.getElementById(id);
+      const params = new URLSearchParams(location.search);
+      const gl = createRegrade($('view'));
+      const S = {
+        kind: null,
+        el: null,
+        K: Number(params.get('k') || 12),
+        C: null,
+        OFF: null,
+        share: null,
+        sigma: 0.04,
+        mode: 0,
+        sel: 0,
+        track: params.get('track') === '1',
+        stream: null,
+        X: null,
+        sync: params.get('sync') === '1',
+      };
+      $('k').value = S.K;
+      $('kv').textContent = S.K;
+      $('track').checked = S.track;
+      const RING = 240;
+      const T = {
+        upload: [],
+        cluster: [],
+        draw: [],
+        frames: 0,
+        t0: performance.now(),
+        analyse: 0,
+        still: [],
+        presented: 0,
+        skipped: 0,
+      };
+      // Stop whatever was open: end the old video's frame loop (its callbacks check the generation),
+      // pause it, and drop its source so the decoder is released.
+      let gen = 0;
+      function release() {
+        gen++;
+        if (S.kind === 'video') {
+          S.el.pause();
+          S.el.removeAttribute('src');
+          S.el.load();
+        }
+        S.kind = null;
+        T.presented = T.skipped = 0;
+        for (const a of [T.upload, T.cluster, T.draw, T.still]) a.length = 0;
+      }
+      const push = (a, v) => {
+        a.push(v);
+        if (a.length > RING) a.shift();
+      };
+
+      // ---- clustering ---------------------------------------------------------------------
+      function cluster(X) {
+        const t0 = performance.now();
+        const C0 = kmeansPP(X, S.K, 1);
+        const algo = $('algo').value;
+        const C =
+          algo === 'lloyd'
+            ? lloyd(X, C0, S.K).C
+            : emeans(X, C0, S.K, { nepochs: algo === 'em5' ? 5 : 2 }).C;
+        // Order by share, largest first, so the swatches read like a palette.
+        const n = X.length / 3,
+          cnt = new Float64Array(S.K);
+        for (let i = 0; i < n; i++) {
+          let b = 0,
+            bd = Infinity;
+          for (let j = 0; j < S.K; j++) {
+            const d =
+              (X[i * 3] - C[j * 3]) ** 2 +
+              (X[i * 3 + 1] - C[j * 3 + 1]) ** 2 +
+              (X[i * 3 + 2] - C[j * 3 + 2]) ** 2;
+            if (d < bd) {
+              bd = d;
+              b = j;
+            }
+          }
+          cnt[b]++;
+        }
+        const order = [...cnt.keys()].sort((p, q) => cnt[q] - cnt[p]);
+        S.C = new Float32Array(S.K * 3);
+        order.forEach((j, r) => S.C.set(C.subarray(j * 3, j * 3 + 3), r * 3));
+        S.share = order.map((j) => cnt[j] / n);
+        S.OFF = new Float32Array(S.K * 3);
+        rethread();
+        S.stream = createStream(S.C, S.K, { alpha: 0.2 });
+        S.sel = 0;
+        let cmax = 0;
+        for (let j = 0; j < S.K; j++)
+          cmax = Math.max(cmax, Math.hypot(S.C[j * 3 + 1], S.C[j * 3 + 2]));
+        R = Math.min(0.32, Math.max(0.06, cmax * 2));
+        bgL = -1;
+        T.analyse = performance.now() - t0;
+      }
+
+      // ---- media --------------------------------------------------------------------------
+      async function openStill(url) {
+        release();
+        const img = new Image();
+        img.src = url;
+        await img.decode();
+        const c = new OffscreenCanvas(img.naturalWidth, img.naturalHeight);
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const full = ctx.getImageData(0, 0, c.width, c.height);
+        S.kind = 'image';
+        S.el = img;
+        S.full = full;
+        S.X = sampleRGBA(full.data, c.width * c.height, 25000);
+        cluster(S.X);
+        gl.upload(img, img.naturalWidth, img.naturalHeight);
+        redraw();
+      }
+
+      async function openVideo(url) {
+        release();
+        const mine = gen;
+        const v = document.createElement('video');
+        Object.assign(v, {
+          src: url,
+          muted: true,
+          loop: true,
+          playsInline: true,
+          preload: 'auto',
+        });
+        await new Promise((ok, no) => {
+          v.onloadeddata = ok;
+          v.onerror = () => no(new Error('video failed to load'));
+        });
+        // A starting palette from 8 frames spread across the clip.
+        const parts = [];
+        for (let i = 0; i < 8; i++) {
+          v.currentTime = ((i + 0.5) / 8) * v.duration;
+          await new Promise((ok) => (v.onseeked = ok));
+          gl.upload(v, v.videoWidth, v.videoHeight);
+          const { data, pixels } = gl.readSmall();
+          parts.push(sampleRGBA(data, pixels, 3000));
+        }
+        S.X = new Float32Array(parts.reduce((n, p) => n + p.length, 0));
+        parts.reduce((o, p) => (S.X.set(p, o), o + p.length), 0);
+        if (mine !== gen) return; // something else was opened meanwhile
+        cluster(S.X);
+        v.currentTime = 0;
+        await new Promise((ok) => (v.onseeked = ok));
+        if (mine !== gen) return;
+        S.kind = 'video';
+        S.el = v;
+        // presentedFrames counts frames the compositor presented; a gap means our loop missed some.
+        let last = -1;
+        const onFrame = (_now, meta) => {
+          if (mine !== gen) return;
+          if (last >= 0)
+            T.skipped += Math.max(0, meta.presentedFrames - last - 1);
+          last = meta.presentedFrames;
+          T.presented++;
+          frame();
+          v.requestVideoFrameCallback(onFrame);
+        };
+        v.requestVideoFrameCallback(onFrame);
+        await v.play();
+      }
+
+      // One video frame: upload, optionally re-cluster on a small copy, regrade, draw.
+      function frame() {
+        const v = S.el;
+        let t = performance.now();
+        gl.upload(v, v.videoWidth, v.videoHeight);
+        let t1 = performance.now();
+        push(T.upload, t1 - t);
+        t = t1;
+        if (S.track) {
+          const { data, pixels } = gl.readSmall();
+          S.stream.step(sampleRGBA(data, pixels, 4096));
+          S.C.set(S.stream.C);
+          t1 = performance.now();
+          push(T.cluster, t1 - t);
+          t = t1;
+        }
+        paint();
+        if (S.sync) gl.readCanvas(0, 0); // wait for the GPU, so the time below includes it
+        push(T.draw, performance.now() - t);
+        T.frames++;
+      }
+
+      function paint() {
+        gl.setCentres(S.C, S.OFF, S.K, S.sigma);
+        gl.setMode(S.held ? 2 : S.mode);
+        gl.draw();
+        drawAB();
+        drawSwatches();
+      }
+
+      // Stills redraw at most once per display frame, however fast the pointer moves.
+      let dirty = false;
+      function redraw() {
+        if (S.kind !== 'image' || dirty) return;
+        dirty = true;
+        requestAnimationFrame(() => {
+          dirty = false;
+          const t = performance.now();
+          paint();
+          gl.readCanvas(0, 0);
+          push(T.still, performance.now() - t);
+        });
+      }
+      const changed = () =>
+        S.kind === 'image' ? redraw() : S.el?.paused && paint();
+
+      // ---- moving centres: one, as a net, or along a curve ------------------------------------
+      Object.assign(S, {
+        move: 'one',
+        reach: 0.12,
+        order: 'light',
+        ease: 'linear',
+        path: null,
+        anchors: [],
+        blend: null,
+      });
+      // Thread the centres into a path and pick default anchors (on each analysis or path change).
+      function rethread() {
+        S.path = buildPath(S.C, S.K, S.order);
+        S.anchors = defaultAnchors(S.C, S.path, Math.min(4, S.K));
+        S.blend = curveBlend(S.path, S.anchors, S.ease);
+      }
+      const isAnchor = (j) => S.anchors.some((p) => S.path.chain[p] === j);
+      function setAnchor(j, on) {
+        const p = S.path.chain.indexOf(j);
+        if (on && !isAnchor(j))
+          S.anchors = [...S.anchors, p].sort((a, b) => a - b);
+        if (!on && isAnchor(j) && S.anchors.length > 1)
+          S.anchors = S.anchors.filter((a) => a !== p);
+        S.blend = curveBlend(S.path, S.anchors, S.ease);
+      }
+
+      // ---- the a·b plane ------------------------------------------------------------------
+      const AB = $('ab'),
+        abx = AB.getContext('2d'),
+        PX = 320;
+      let R = 0.32; // the plane's half-width in a and b; fitted to the palette on each analysis
+      const toPx = (a) => ((a + R) / (2 * R)) * PX;
+      const fromPx = (p) => (p / PX) * 2 * R - R;
+      let bgL = -1,
+        bg = null;
+      function drawAB() {
+        if (!S.C) return;
+        const L = S.C[S.sel * 3] + S.OFF[S.sel * 3];
+        if (Math.abs(L - bgL) > 0.01) {
+          bgL = L;
+          bg = abx.createImageData(PX, PX);
+          for (let y = 0; y < PX; y++)
+            for (let x = 0; x < PX; x++) {
+              const [r, g, b] = oklabToRgb(L, fromPx(x), -fromPx(y));
+              const o = (y * PX + x) * 4;
+              bg.data.set([r, g, b, 90], o);
+            }
+        }
+        abx.putImageData(bg, 0, 0);
+        const at = (j) => [
+          toPx(S.C[j * 3 + 1] + S.OFF[j * 3 + 1]),
+          toPx(-(S.C[j * 3 + 2] + S.OFF[j * 3 + 2])),
+        ];
+        if (S.move === 'curve') {
+          const ch = S.path.chain;
+          abx.strokeStyle = '#000a';
+          abx.lineWidth = 1.5;
+          abx.beginPath();
+          ch.forEach((j, k) =>
+            k ? abx.lineTo(...at(j)) : abx.moveTo(...at(j))
+          );
+          if (S.path.closed) abx.closePath();
+          abx.stroke();
+          abx.lineWidth = 1;
+        }
+        for (let j = 0; j < S.K; j++) {
+          const a0 = S.C[j * 3 + 1],
+            b0 = S.C[j * 3 + 2];
+          const a1 = a0 + S.OFF[j * 3 + 1],
+            b1 = b0 + S.OFF[j * 3 + 2];
+          const x0 = toPx(a0),
+            y0 = toPx(-b0),
+            x1 = toPx(a1),
+            y1 = toPx(-b1);
+          abx.strokeStyle = '#0008';
+          abx.beginPath();
+          abx.moveTo(x0, y0);
+          abx.lineTo(x1, y1);
+          abx.stroke();
+          abx.beginPath();
+          abx.arc(x0, y0, 3, 0, 7);
+          abx.stroke();
+          abx.fillStyle = hex(oklabToRgb(S.C[j * 3] + S.OFF[j * 3], a1, b1));
+          abx.beginPath();
+          abx.arc(x1, y1, 4 + 10 * Math.sqrt(S.share[j]), 0, 7);
+          abx.fill();
+          abx.lineWidth = j === S.sel ? 2.5 : 1;
+          abx.strokeStyle = j === S.sel ? '#000' : '#fff';
+          abx.stroke();
+          if (S.move === 'curve' && isAnchor(j)) {
+            abx.strokeStyle = '#000';
+            abx.lineWidth = 1.5;
+            abx.beginPath();
+            abx.arc(x1, y1, 8 + 10 * Math.sqrt(S.share[j]), 0, 7);
+            abx.stroke();
+          }
+          abx.lineWidth = 1;
+        }
+      }
+      let drag = -1,
+        drag0 = null;
+      const nearestDot = (e) => {
+        let best = -1,
+          bd = 20 * 20;
+        for (let j = 0; j < S.K; j++) {
+          const x = toPx(S.C[j * 3 + 1] + S.OFF[j * 3 + 1]),
+            y = toPx(-(S.C[j * 3 + 2] + S.OFF[j * 3 + 2]));
+          const d = (x - e.offsetX) ** 2 + (y - e.offsetY) ** 2;
+          if (d < bd) {
+            bd = d;
+            best = j;
+          }
+        }
+        return best;
+      };
+      AB.addEventListener('pointerdown', (e) => {
+        if (!S.C) return;
+        const best = nearestDot(e);
+        if (best < 0) return;
+        drag = S.sel = best;
+        // Grabbing a point on the curve makes it an anchor; its current offset carries over.
+        if (S.move === 'curve') setAnchor(best, true);
+        drag0 = {
+          OFF: S.OFF.slice(),
+          a: fromPx(e.offsetX),
+          b: -fromPx(e.offsetY),
+          w: netWeights(S.C, S.K, best, S.reach),
+        };
+        $('L').value = Math.round(S.OFF[best * 3] * 100);
+        AB.setPointerCapture(e.pointerId);
+        changed();
+      });
+      AB.addEventListener('pointermove', (e) => {
+        if (drag < 0) return;
+        const a = fromPx(e.offsetX),
+          b = -fromPx(e.offsetY);
+        if (S.move === 'net') {
+          const da = a - drag0.a,
+            db = b - drag0.b;
+          for (let i = 0; i < S.K; i++) {
+            S.OFF[i * 3 + 1] = drag0.OFF[i * 3 + 1] + drag0.w[i] * da;
+            S.OFF[i * 3 + 2] = drag0.OFF[i * 3 + 2] + drag0.w[i] * db;
+          }
+        } else {
+          S.OFF[drag * 3 + 1] = a - S.C[drag * 3 + 1];
+          S.OFF[drag * 3 + 2] = b - S.C[drag * 3 + 2];
+          if (S.move === 'curve') applyCurve(S.OFF, S.blend, S.K);
+        }
+        changed();
+      });
+      AB.addEventListener('pointerup', () => (drag = -1));
+      // On a curve, double-click a point to make it an anchor or release it back to the curve.
+      AB.addEventListener('dblclick', (e) => {
+        if (S.move !== 'curve' || !S.C) return;
+        const j = nearestDot(e);
+        if (j < 0) return;
+        setAnchor(j, !isAnchor(j));
+        applyCurve(S.OFF, S.blend, S.K);
+        changed();
+      });
+
+      // ---- swatches -----------------------------------------------------------------------
+      function drawSwatches() {
+        const box = $('swatches');
+        if (box.childElementCount !== S.K) {
+          box.replaceChildren(
+            ...Array.from({ length: S.K }, (_, j) => {
+              const d = document.createElement('div');
+              d.className = 'sw';
+              d.innerHTML = '<div></div><div></div><span></span>';
+              d.onclick = () => {
+                S.sel = j;
+                $('L').value = Math.round(S.OFF[j * 3] * 100);
+                changed();
+              };
+              return d;
+            })
+          );
+        }
+        [...box.children].forEach((d, j) => {
+          const o = oklabToRgb(S.C[j * 3], S.C[j * 3 + 1], S.C[j * 3 + 2]);
+          const m = oklabToRgb(
+            S.C[j * 3] + S.OFF[j * 3],
+            S.C[j * 3 + 1] + S.OFF[j * 3 + 1],
+            S.C[j * 3 + 2] + S.OFF[j * 3 + 2]
+          );
+          d.children[0].style.background = hex(o);
+          d.children[1].style.background = hex(m);
+          d.children[2].textContent = (100 * S.share[j]).toFixed(1) + '%';
+          d.classList.toggle('sel', j === S.sel);
+        });
+      }
+
+      // ---- controls -----------------------------------------------------------------------
+      $('L').oninput = (e) => {
+        if (!S.OFF) return;
+        const v = e.target.value / 100;
+        if (S.move === 'net') {
+          const dL = v - S.OFF[S.sel * 3],
+            w = netWeights(S.C, S.K, S.sel, S.reach);
+          for (let i = 0; i < S.K; i++) S.OFF[i * 3] += w[i] * dL;
+        } else {
+          if (S.move === 'curve') setAnchor(S.sel, true);
+          S.OFF[S.sel * 3] = v;
+          if (S.move === 'curve') applyCurve(S.OFF, S.blend, S.K);
+        }
+        changed();
+      };
+      $('move').onchange = (e) => {
+        S.move = e.target.value;
+        document.body.dataset.move = S.move;
+        changed();
+      };
+      // Reach 1..40 maps to 0.01..0.40 OKLab; the top of the slider is a rigid move of the whole set.
+      $('reach').oninput = (e) => {
+        const v = Number(e.target.value);
+        S.reach = v > 40 ? Infinity : v / 100;
+        $('rv').textContent = v > 40 ? 'all' : S.reach.toFixed(2);
+      };
+      $('order').onchange = (e) => {
+        S.order = e.target.value;
+        if (S.C) {
+          rethread();
+          applyCurve(S.OFF, S.blend, S.K);
+          changed();
+        }
+      };
+      $('ease').onchange = (e) => {
+        S.ease = e.target.value;
+        if (S.C) {
+          S.blend = curveBlend(S.path, S.anchors, S.ease);
+          applyCurve(S.OFF, S.blend, S.K);
+          changed();
+        }
+      };
+      $('sigma').oninput = (e) => {
+        S.sigma = e.target.value / 1000;
+        $('sv').textContent = S.sigma.toFixed(3);
+        changed();
+      };
+      $('mode').onchange = (e) => {
+        S.mode = Number(e.target.value);
+        changed();
+      };
+      $('track').onchange = (e) => (S.track = e.target.checked);
+      $('reset').onclick = () => {
+        S.OFF?.fill(0);
+        $('L').value = 0;
+        changed();
+      };
+      $('k').onchange = (e) => {
+        S.K = Number(e.target.value);
+        $('kv').textContent = S.K;
+        if (S.X) {
+          cluster(S.X);
+          changed();
+        }
+      };
+      $('algo').onchange = () => {
+        if (S.X) {
+          cluster(S.X);
+          changed();
+        }
+      };
+      addEventListener('keydown', (e) => {
+        if (e.key === 'o' && !S.held) {
+          S.held = true;
+          changed();
+        }
+      });
+      addEventListener('keyup', (e) => {
+        if (e.key === 'o') {
+          S.held = false;
+          changed();
+        }
+      });
+      const open = (f) =>
+        (f.type.startsWith('video') ? openVideo : openStill)(
+          URL.createObjectURL(f)
+        );
+      $('file').onchange = (e) => {
+        const f = e.target.files[0];
+        e.target.value = ''; // so choosing the same file again still opens it
+        if (f) open(f);
+      };
+      addEventListener('dragover', (e) => e.preventDefault());
+      addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.dataTransfer.files[0] && open(e.dataTransfer.files[0]);
+      });
+
+      // ---- stats --------------------------------------------------------------------------
+      const avg = (a) =>
+        a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
+      const p95 = (a) =>
+        a.length
+          ? a.slice().sort((p, q) => p - q)[Math.floor(a.length * 0.95)]
+          : 0;
+      const fmt = (a) =>
+        `${avg(a).toFixed(2)} avg / ${p95(a).toFixed(2)} p95 ms`;
+      function stats() {
+        const now = performance.now(),
+          secs = (now - T.t0) / 1000;
+        const q = S.kind === 'video' ? S.el.getVideoPlaybackQuality() : null;
+        const out = {
+          kind: S.kind,
+          K: S.K,
+          analyseMs: +T.analyse.toFixed(1),
+          fps: S.kind === 'video' ? +(T.frames / secs).toFixed(1) : null,
+          // Call-return times, except where a GPU wait is forced (sync, and stills).
+          uploadCall: fmt(T.upload),
+          track: S.track ? fmt(T.cluster) : 'off',
+          [S.sync ? 'drawWithGpuWait' : 'drawCall']: fmt(T.draw),
+          stillWithGpuWait: fmt(T.still),
+          // The decoder's count, and frames our loop never saw (gaps in presentedFrames).
+          decoderDropped: q
+            ? `${q.droppedVideoFrames} of ${q.totalVideoFrames}`
+            : null,
+          loopSkipped:
+            S.kind === 'video'
+              ? `${T.skipped} of ${T.presented + T.skipped}`
+              : null,
+          size: gl.size.join('×'),
+        };
+        T.frames = 0;
+        T.t0 = now;
+        $('stats').textContent = Object.entries(out)
+          .filter(([, v]) => v !== null)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join('\n');
+        window.__stats = out;
+      }
+      setInterval(stats, 1000);
+
+      // ---- the shader check ---------------------------------------------------------------
+      // Draws the still with a nontrivial regrade and compares 256 pixels with the JS formula.
+      window.__check = () => {
+        if (S.kind !== 'image') throw new Error('check runs on a still');
+        for (let j = 0; j < S.K; j++) {
+          S.OFF[j * 3] = 0.05 * Math.sin(j);
+          S.OFF[j * 3 + 1] = 0.04 * Math.cos(j);
+          S.OFF[j * 3 + 2] = -0.03;
+        }
+        // The input is read from the texture itself (a passthrough draw): browsers decode some JPEGs
+        // a byte differently for WebGL than for a 2D canvas, and that is not the shader's error.
+        const [w, h] = gl.size,
+          lab = new Float32Array(3),
+          at = [];
+        for (let i = 0; i < 256; i++)
+          at.push([
+            Math.floor((((i * 7919) % 997) / 997) * w),
+            Math.floor((((i * 104729) % 991) / 991) * h),
+          ]);
+        gl.setMode(2);
+        gl.draw();
+        const input = at.map(([x, y]) => gl.readCanvas(x, y));
+        S.mode = 0;
+        paint();
+        let worst = 0;
+        at.forEach(([x, y], i) => {
+          rgbToOklab(input[i][0], input[i][1], input[i][2], lab, 0);
+          const want = oklabToRgb(
+            ...regradeRef(lab, S.C, S.OFF, S.K, 1 / (S.sigma * S.sigma))
+          );
+          const got = gl.readCanvas(x, y);
+          worst = Math.max(worst, ...want.map((v, t) => Math.abs(v - got[t])));
+        });
+        return { worst, pass: worst <= 1 };
+      };
+      // Still regrade cost: n draws with a moving offset. gpu = upload-free draw + wait; paint adds the a·b plane and swatches.
+      window.__benchStill = (n = 120) => {
+        const gpu = [],
+          all = [];
+        for (let i = 0; i < n; i++) {
+          S.OFF[1] = 0.05 * Math.sin(i / 10);
+          let t = performance.now();
+          gl.setCentres(S.C, S.OFF, S.K, S.sigma);
+          gl.draw();
+          gl.readCanvas(0, 0);
+          gpu.push(performance.now() - t);
+          t = performance.now();
+          paint();
+          gl.readCanvas(0, 0);
+          all.push(performance.now() - t);
+        }
+        return {
+          gpu: fmt(gpu),
+          paint: fmt(all),
+          size: gl.size.join('×'),
+          K: S.K,
+        };
+      };
+      // Page coordinates of centre j's dot on the a·b plane, for driving a real drag in tests.
+      window.__abDot = (j) => {
+        const r = AB.getBoundingClientRect();
+        return [
+          r.left + toPx(S.C[j * 3 + 1] + S.OFF[j * 3 + 1]),
+          r.top + toPx(-(S.C[j * 3 + 2] + S.OFF[j * 3 + 2])),
+        ];
+      };
+      window.__spike = S;
+
+      const src = params.get('src');
+      if (src)
+        (/\.(mp4|webm|mov)$/.test(src) ? openVideo : openStill)(src).catch(
+          (e) => ($('stats').textContent = String(e))
+        );
+    </script>
+  </body>
+</html>
