@@ -1,0 +1,144 @@
+#+TITLE: Color Tool 2.0
+#+OPTIONS: num:t
+
+* Objective Function
+A gift between artists. An instrument for seeing the colour and value structure of a picture or a film frame:
+open something, and its palette and its lights and darks are just there, quick enough to play with. Scrub a film
+and watch the palette breathe with it. Nothing waits on a server and nothing leaves your machine.
+
+It started as a present to a friend who paints, and it should still feel like one: calm, honest about what it
+is doing, and never in the way of looking.
+
+* Problem and Outcome
+** Problem
+Color Tool 1.x has not worked properly since the refactor that began in September 2026:
+- It is slow in ways the math does not explain. On 2026-11-19 a palette that takes 0.2 s on its own arrived
+  3.9 s and then 17 s after it was asked for, because nothing cancels superseded work or limits how much runs at
+  once (see [[*What We've Proven]]).
+- A review of its implicit state machines found 36 ordering bugs across 9 models. They come from a few habits:
+  state kept in two places, asynchronous results with no owner, and no cancellation or bounds.
+- It does not look like the September 2026 design, which was never built.
+
+** Outcome
+A 2.0 that runs as a website and as the same app on the desktop. One job runner owns all the work, and the app's
+behaviour is a small set of state machines written down in TLA+ before they are written in code. Colors and
+Values come first, then Batch and Exports.
+
+* Explicit Non-Goals
+- Repairing 1.x forward. 2.0 rebuilds the app layer (ADR-0001).
+- A system-webview shell: Tauri, or a webview mode of any other framework (ADR-0002).
+- Computing on a server, or uploading anything the user opens.
+- A third-party state-machine library. The machines are our own code.
+- Batch and Exports in the first cut. They are the second cut, not dropped.
+
+* Domain Model Glossary
+** Studies
+- Source :: The thing being studied: a still image, or one frame of a video at a given time.
+  /Avoid/: file, media, input
+- Job :: One piece of work the app does for a Source, such as a palette, a value study, a frame grab or a strip.
+  /Avoid/: task, request, run
+- Job Runner :: The one owner of every Job: it decides what runs, in what order, how many at once, and which
+  results are still wanted.
+  /Avoid/: scheduler, queue, worker pool
+
+* UI Goals and Aesthetic Concept
+The September 2026 study design is the reference: =RAG/design-system/2026-09/= and the design bundles under
+=RAG/=. It is redrawn in Paper and reviewed in rounds with Golem before the state machines are written, because
+the screens decide which UI states the machines must model.
+
+Rules found so far:
+- In a 3D view, a label never covers the solid, at any angle. Each frame, project the solid's vertices, take
+  their convex hull, and place each label just outside it along the label's own direction; fade a label whose
+  direction points at or away from the viewer. Tested 2026-11-21 in a local prototype (not in the repo).
+
+* Verification Policy
+** Verification and Acceptance
+- A check never seen to fail counts for nothing. Every test and every TLA+ rule fails on a planted fault before
+  it passes.
+- The 1.x state-machine gate's 36 findings are 2.0's checklist. Each finding's rule must hold in 2.0, as a check
+  that was first seen to fail.
+- Results are stated in the house tiers: proved, classically verified, tested, sampled, asserted.
+
+* Architectural Decision Record
+** ADR-0001 2.0 rebuilds the app layer instead of repairing 1.x
+:PROPERTIES:
+:CUSTOM_ID: adr-0001
+:STATUS: accepted
+:END:
+Golem, 2026-11-19: the app "has never really worked post the start of this refactor". The September correctness
+branch, 22 careful commits, still left 17 of the 36 findings reproducing, including every high-severity one the
+gate could reach. So 2.0 keeps what is measured to be sound: =color-core= (the math), the export fixtures, and
+the state-machine gate. It rebuilds the state, the views and the shell. The 1.x app stays in the repo as a
+reference until 2.0 replaces it, and =RAG/PROJECT-RECORD.md= is frozen as history.
+
+** ADR-0002 Electron and Svelte 5, not a system webview or a GPU-drawn UI
+:PROPERTIES:
+:CUSTOM_ID: adr-0002
+:STATUS: accepted
+:END:
+The website and the desktop app are one Svelte 5 codebase. The desktop app runs it in Electron's own Chromium,
+so the engine is the same on every machine. =color-core= runs as WebAssembly in both. Golem ruled out system
+webviews (Tauri, MyGo's web mode) as the worst of both: a browser engine we do not control. The cost is size
+(installers of about 100 to 150 MB) and memory.
+
+Considered: GPUIX (React drawn on the GPU, with Rust linked natively) and MyGo native UI (Go drawn on the GPU,
+with a WebAssembly browser build). Both give small native apps, but both make the website a canvas-drawn build
+that is newer and riskier than an ordinary page, and MyGo cannot link the Rust math directly. Electron does
+everything 2.0 needs without either risk.
+
+** ADR-0003 One Job Runner owns all work
+:PROPERTIES:
+:CUSTOM_ID: adr-0003
+:STATUS: proposed
+:END:
+Pages never start work. They send events to the app's state machines, and the machines ask the Job Runner for
+Jobs. The Runner runs on-screen work first, cancels superseded Jobs, bounds how many run at once, and delivers
+a result only where it is still wanted. This is the fix for the pile-up measured on 2026-11-19. It stays
+proposed until the first proof shows it.
+
+* Live Work
+** TODO Redraw the September design in Paper, and review it with Golem
+Colors and Values first, from =RAG/design-system/2026-09/= and the running 1.x app.
+** TODO Write the 2.0 TLA+ specification
+After the design rounds. Candidate machines: media and selection, the Job Runner, the video playhead,
+preferences, and the screen states the design defines.
+** TODO First proof: scrub a two-minute MP4 and keep up
+In Chrome and in the Electron app: the palette follows within half a second of the scrub stopping, and
+superseded Jobs never pile up.
+** TODO Commit the palette timing bench
+The 2026-11-19 measurement below was run from a throwaway program. Bring it into the repo so it can be rerun.
+** TODO Bring the state-machine gate into the repo
+** TODO Set up the T3 Code orchestrator so Argon can take delegated work
+
+* Open Questions
+- Where the website is hosted. Decides: Golem.
+- Whether the value study (notan) and Batch's grid composition move into =color-core= or into the page.
+  Today both are native-only, in =tauri-app/src-tauri=. Decides: the build.
+- Which video formats 2.0 must open beyond what Chromium plays (MP4/H.264, WebM), and whether the desktop app
+  adds an ffmpeg helper for the rest. Decides: Golem, after the first cut.
+
+- Whether 2.0 moves colour as well as showing it: drag a cluster and the picture (or a playing film) regrades
+  live. The spike says it is cheap enough (PR #7). Golem, 2026-11-21: "My conception of what this tool is, I
+  think, just expanded." If yes, the Objective Function changes. Decides: Golem.
+- Whether a palette is exported as a function: a Poline-style curve (anchor colours and an easing per axis, in
+  OKLCh) fitted through the clusters, with its fit error. Golem: "at minimum that should be something on the
+  export page." Decides: Golem, after a prototype.
+
+* What We've Proven
+** 2026-11-19 The palette math is not what made 1.x slow
+- Tried: =color_core::analyze= on the 1280x720 frame from that morning's session, with the logged parameters
+  (82 clusters, quality 2, 40 iterations at most, seed 1), on an M-series Mac under heavy load (load average 16
+  to 32 on 16 cores).
+- Showed: 0.16 to 0.2 s per palette, always reaching the 40-iteration cap. 16 clusters took 0.04 s and settled
+  in 10 iterations.
+- In the app that morning, the same work arrived 3.9 s and 17.4 s after it was asked for, while a barcode strip of
+  3,608 frames ran for 27 s alongside it. So most of the wait was contention and queueing.
+- Rerun: owed. The bench was a throwaway program; see Live Work.
+** 2026-11-21 Live regrade fits in a frame, and e-means beats Lloyd per pass
+- Tried: the regrade spike (=spike/regrade/=, PR #7): a WebGL2 regrade by cluster, with streaming e-means
+  re-clustering a 1080p film every frame; and a JS port of e-means (faiss, MIT) against Lloyd on two paintings.
+- Showed: a 4.6 MP still regrades in 1.3 to 3.4 ms; 1080p at 60 frames a second with per-frame re-clustering
+  missed 6 of 1,145 frames. At equal passes e-means' error is far below Lloyd's; five epochs match 40 Lloyd
+  iterations in about a sixth of the time. Real color-core (180,000 samples) runs 27 iterations at 8 colours and
+  reaches its 40 cap at 16 or more on the Van Gogh, but only at 64 on the Sorolla.
+- Not shown: Electron, hand feel, HDR. Rerun: =spike/regrade/RESULTS.md=.

@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Project steering and review authority are recorded in `RAG/PROJECT-RECORD.md` (2026-09-04). Read it before assigning or integrating work. EPIC-029 is the proposed current remediation slice; its review brief is not implementation authorization. Historical architecture descriptions below are being reconciled with the newer `color-core` extraction.
+**Color Tool 2.0 is steered by `SPEC.org`. Read it first.** 2.0 rebuilds the app layer as Electron and Svelte 5 over `color-core` (SPEC.org, ADR-0001 and ADR-0002). Everything below describes the 1.x app, which stays in the repo as a reference until 2.0 replaces it. `RAG/PROJECT-RECORD.md` is frozen as 1.x history and no longer steers work.
 
 ## Project Overview
 
