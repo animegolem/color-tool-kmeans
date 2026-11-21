@@ -191,7 +191,23 @@
         t0: performance.now(),
         analyse: 0,
         still: [],
+        presented: 0,
+        skipped: 0,
       };
+      // Stop whatever was open: end the old video's frame loop (its callbacks check the generation),
+      // pause it, and drop its source so the decoder is released.
+      let gen = 0;
+      function release() {
+        gen++;
+        if (S.kind === 'video') {
+          S.el.pause();
+          S.el.removeAttribute('src');
+          S.el.load();
+        }
+        S.kind = null;
+        T.presented = T.skipped = 0;
+        for (const a of [T.upload, T.cluster, T.draw, T.still]) a.length = 0;
+      }
       const push = (a, v) => {
         a.push(v);
         if (a.length > RING) a.shift();
@@ -241,6 +257,7 @@
 
       // ---- media --------------------------------------------------------------------------
       async function openStill(url) {
+        release();
         const img = new Image();
         img.src = url;
         await img.decode();
@@ -258,6 +275,8 @@
       }
 
       async function openVideo(url) {
+        release();
+        const mine = gen;
         const v = document.createElement('video');
         Object.assign(v, {
           src: url,
@@ -270,8 +289,6 @@
           v.onloadeddata = ok;
           v.onerror = () => no(new Error('video failed to load'));
         });
-        S.kind = 'video';
-        S.el = v;
         // A starting palette from 8 frames spread across the clip.
         const parts = [];
         for (let i = 0; i < 8; i++) {
@@ -283,10 +300,21 @@
         }
         S.X = new Float32Array(parts.reduce((n, p) => n + p.length, 0));
         parts.reduce((o, p) => (S.X.set(p, o), o + p.length), 0);
+        if (mine !== gen) return; // something else was opened meanwhile
         cluster(S.X);
         v.currentTime = 0;
         await new Promise((ok) => (v.onseeked = ok));
-        const onFrame = () => {
+        if (mine !== gen) return;
+        S.kind = 'video';
+        S.el = v;
+        // presentedFrames counts frames the compositor presented; a gap means our loop missed some.
+        let last = -1;
+        const onFrame = (_now, meta) => {
+          if (mine !== gen) return;
+          if (last >= 0)
+            T.skipped += Math.max(0, meta.presentedFrames - last - 1);
+          last = meta.presentedFrames;
+          T.presented++;
           frame();
           v.requestVideoFrameCallback(onFrame);
         };
@@ -502,7 +530,11 @@
         (f.type.startsWith('video') ? openVideo : openStill)(
           URL.createObjectURL(f)
         );
-      $('file').onchange = (e) => e.target.files[0] && open(e.target.files[0]);
+      $('file').onchange = (e) => {
+        const f = e.target.files[0];
+        e.target.value = ''; // so choosing the same file again still opens it
+        if (f) open(f);
+      };
       addEventListener('dragover', (e) => e.preventDefault());
       addEventListener('drop', (e) => {
         e.preventDefault();
@@ -527,13 +559,19 @@
           K: S.K,
           analyseMs: +T.analyse.toFixed(1),
           fps: S.kind === 'video' ? +(T.frames / secs).toFixed(1) : null,
-          upload: fmt(T.upload),
-          cluster: S.track ? fmt(T.cluster) : 'off',
-          draw: fmt(T.draw),
-          still: fmt(T.still),
-          dropped: q
+          // Call-return times, except where a GPU wait is forced (sync, and stills).
+          uploadCall: fmt(T.upload),
+          track: S.track ? fmt(T.cluster) : 'off',
+          [S.sync ? 'drawWithGpuWait' : 'drawCall']: fmt(T.draw),
+          stillWithGpuWait: fmt(T.still),
+          // The decoder's count, and frames our loop never saw (gaps in presentedFrames).
+          decoderDropped: q
             ? `${q.droppedVideoFrames} of ${q.totalVideoFrames}`
             : null,
+          loopSkipped:
+            S.kind === 'video'
+              ? `${T.skipped} of ${T.presented + T.skipped}`
+              : null,
           size: gl.size.join('×'),
         };
         T.frames = 0;
@@ -603,6 +641,14 @@
           size: gl.size.join('×'),
           K: S.K,
         };
+      };
+      // Page coordinates of centre j's dot on the a·b plane, for driving a real drag in tests.
+      window.__abDot = (j) => {
+        const r = AB.getBoundingClientRect();
+        return [
+          r.left + toPx(S.C[j * 3 + 1] + S.OFF[j * 3 + 1]),
+          r.top + toPx(-(S.C[j * 3 + 2] + S.OFF[j * 3 + 2])),
+        ];
       };
       window.__spike = S;
 

@@ -99,8 +99,15 @@ export function randomInit(X, K, seed) {
   return C;
 }
 
-// Lloyd's algorithm. Bounded by maxIter; stops when no centre moves more than tol.
-export function lloyd(X, C0, K, { maxIter = 40, tol = 1e-4 } = {}) {
+// Lloyd's algorithm. Bounded by maxIter. rule 'max': stop when no centre coordinate moves more
+// than tol. rule 'norm': color-core's rule (kmeans.rs), stop when sqrt(sum of squared centre
+// shifts) < tol, with tol 1e-3 there.
+export function lloyd(
+  X,
+  C0,
+  K,
+  { maxIter = 40, tol = 1e-4, rule = 'max' } = {}
+) {
   const n = X.length / 3,
     C = C0.slice(),
     S = new Float64Array(K * 3),
@@ -116,16 +123,18 @@ export function lloyd(X, C0, K, { maxIter = 40, tol = 1e-4 } = {}) {
       S[j * 3 + 2] += X[i * 3 + 2];
       N[j]++;
     }
-    let moved = 0;
+    let moved = 0,
+      sq = 0;
     for (let j = 0; j < K; j++) {
       if (!N[j]) continue;
       for (let d = 0; d < 3; d++) {
         const v = S[j * 3 + d] / N[j];
         moved = Math.max(moved, Math.abs(v - C[j * 3 + d]));
+        sq += (v - C[j * 3 + d]) ** 2;
         C[j * 3 + d] = v;
       }
     }
-    if (moved < tol) {
+    if ((rule === 'norm' ? Math.sqrt(sq) : moved) < tol) {
       iters++;
       break;
     }

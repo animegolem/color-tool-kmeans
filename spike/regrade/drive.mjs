@@ -49,6 +49,7 @@ let id = 0;
 const pending = new Map();
 ws.onmessage = (m) => {
   const msg = JSON.parse(m.data);
+  if (msg.method) onEvent(msg);
   if (msg.id && pending.has(msg.id)) {
     pending.get(msg.id)(msg);
     pending.delete(msg.id);
@@ -61,6 +62,17 @@ const send = (method, params = {}) =>
     ws.send(JSON.stringify({ id: i, method, params }));
   });
 
+const errors = [];
+const onEvent = (msg) => {
+  if (msg.method === 'Runtime.exceptionThrown')
+    errors.push(
+      msg.params.exceptionDetails.exception?.description ||
+        msg.params.exceptionDetails.text
+    );
+  if (msg.method === 'Runtime.consoleAPICalled' && msg.params.type === 'error')
+    errors.push(msg.params.args.map((a) => a.value ?? a.description).join(' '));
+};
+await send('Runtime.enable');
 await send('Page.enable');
 await send('Page.navigate', { url });
 const log = [];
@@ -79,6 +91,48 @@ for (const s of steps) {
       : r.result?.result?.value;
     log.push({ eval: arg.slice(0, 60), value: v });
     console.log(JSON.stringify({ eval: arg.slice(0, 60), value: v }));
+  } else if (kind === 'file') {
+    // file:<css selector>|<absolute path>  — what a user does with the file picker
+    const [sel, path] = arg.split('|');
+    const doc = await send('DOM.getDocument');
+    const q = await send('DOM.querySelector', {
+      nodeId: doc.result.root.nodeId,
+      selector: sel,
+    });
+    await send('DOM.setFileInputFiles', {
+      nodeId: q.result.nodeId,
+      files: [path],
+    });
+  } else if (kind === 'drag') {
+    // drag:<js expression returning [x1, y1, x2, y2] in page pixels>  — a real mouse drag
+    const r = await send('Runtime.evaluate', {
+      expression: arg,
+      returnByValue: true,
+    });
+    const [x1, y1, x2, y2] = r.result.result.value;
+    const mouse = (type, x, y, buttons) =>
+      send('Input.dispatchMouseEvent', {
+        type,
+        x,
+        y,
+        button: 'left',
+        buttons,
+        clickCount: 1,
+      });
+    await mouse('mouseMoved', x1, y1, 0);
+    await mouse('mousePressed', x1, y1, 1);
+    for (let i = 1; i <= 20; i++) {
+      await mouse(
+        'mouseMoved',
+        x1 + ((x2 - x1) * i) / 20,
+        y1 + ((y2 - y1) * i) / 20,
+        1
+      );
+      await new Promise((ok) => setTimeout(ok, 16));
+    }
+    await mouse('mouseReleased', x2, y2, 0);
+  } else if (kind === 'errors') {
+    console.log(JSON.stringify({ errors }));
   } else if (kind === 'shot') {
     const r = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(

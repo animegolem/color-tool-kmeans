@@ -44,13 +44,13 @@ export function oklabToRgb(L, a, b) {
 export const hex = ([r, g, b]) =>
   '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
 
-// Every `stride`-th pixel of an RGBA buffer, as packed OKLab triples. Bounded by maxSamples.
+// Up to maxSamples pixels spread evenly over an RGBA buffer (a fractional step, so the whole
+// buffer is covered), as packed OKLab triples.
 export function sampleRGBA(data, pixels, maxSamples) {
-  const stride = Math.max(1, Math.floor(pixels / maxSamples));
-  const n = Math.min(maxSamples, Math.floor(pixels / stride));
+  const n = Math.min(maxSamples, pixels);
   const X = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
-    const p = i * stride * 4;
+    const p = Math.floor((i * pixels) / n) * 4;
     rgbToOklab(data[p], data[p + 1], data[p + 2], X, i * 3);
   }
   return X;

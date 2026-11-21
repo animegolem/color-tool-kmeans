@@ -27,6 +27,13 @@ License: MIT
 Source: https://github.com/stanleyfok/kmeans-engine
 Note: This library is used only for benchmarking; our production implementation is original.
 
+## Algorithms
+
+- e-means (spike/regrade/kmeans.js), ported from faiss `contrib/e_means`
+  Copyright (c) Meta Platforms, Inc. and affiliates. License: MIT
+  Source: https://github.com/facebookresearch/faiss/tree/main/contrib/e_means
+  Paper: Bessa et al., "e-means: outperforming k-means (in one-tenth the epochs)", 2026, arXiv 2611.09501
+
 ## UI Assets
 
 This project vendors UI assets locally for offline use:

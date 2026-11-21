@@ -40,6 +40,15 @@ for (const n of [6000, 25000, 100000]) {
       t0 = now();
       const L = lloyd(X, Cpp, K);
       add('lloyd', tpp + now() - t0, mse(X, L.C, K));
+      for (const it of [2, 5, 10]) {
+        t0 = now();
+        const Lc = lloyd(X, Cpp, K, { maxIter: it });
+        add(`ll${it}`, tpp + now() - t0, mse(X, Lc.C, K));
+      }
+      t0 = now();
+      const Lcc = lloyd(X, Cpp, K, { tol: 1e-3, rule: 'norm' });
+      add('llcc', tpp + now() - t0, mse(X, Lcc.C, K));
+      (r.ccIters ??= []).push(Lcc.iters);
       for (const T of [1, 2, 5]) {
         t0 = now();
         const E = emeans(X, Cpp, K, { nepochs: T, seed });
@@ -56,7 +65,17 @@ for (const n of [6000, 25000, 100000]) {
   }
 }
 
-const keys = ['lloyd', 'em1', 'em2', 'em5', 'em5rand'];
+const keys = [
+  'lloyd',
+  'll2',
+  'll5',
+  'll10',
+  'llcc',
+  'em1',
+  'em2',
+  'em5',
+  'em5rand',
+];
 console.log(
   `image ${img}: ${pixels} px; median of ${SEEDS.length} seeds; error relative to Lloyd's (lower is better)\n`
 );
@@ -66,9 +85,9 @@ console.log(
       .slice(1)
       .map((k) => `${k} ms / err`)
       .join(' | ') +
-    ' | B, α0 (5 ep) |'
+    ' | color-core rule iters | B, α0 (5 ep) |'
 );
-console.log('|' + ' --- |'.repeat(keys.length + 3));
+console.log('|' + ' --- |'.repeat(keys.length + 4));
 for (const r of rows) {
   const base = median(r.e.lloyd);
   const cells = keys
@@ -78,6 +97,6 @@ for (const r of rows) {
         `${median(r.t[k]).toFixed(1)} / ${(median(r.e[k]) / base).toFixed(3)}`
     );
   console.log(
-    `| ${r.n} | ${r.K} | ${median(r.t.lloyd).toFixed(1)} (${median(r.iters)}) | ${cells.join(' | ')} | ${r.recipe.B}, ${r.recipe.alpha0.toFixed(3)} |`
+    `| ${r.n} | ${r.K} | ${median(r.t.lloyd).toFixed(1)} (${median(r.iters)}) | ${cells.join(' | ')} | ${median(r.ccIters)} | ${r.recipe.B}, ${r.recipe.alpha0.toFixed(3)} |`
   );
 }
