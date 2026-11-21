@@ -11,14 +11,16 @@ domain), and two minutes of "Spring" (Blender Foundation, CC BY 4.0) at 1920×80
    the wait for the GPU, takes 1.3 ms at 12 colours, 2.0 ms at 32 and 3.4 ms at 64 (120 draws each).
    Dragging a centre redraws once per display frame. A real mouse drag on the a·b plane was tested.
 2. **Video regrade: yes, live, with the palette re-clustered on every frame.** 1080p at 60 new
-   frames a second (the 24 fps clip at 2.5× speed), 32 colours, tracking on: our loop missed 6 of
-   1,145 frames over the run; the decoder dropped 2 of 901 in a 15-second window.
-3. **e-means: yes, it gets more out of each pass than Lloyd.** Given the same number of passes,
-   Lloyd is 5% to 18% worse after 2 iterations and 4% to 10% worse after 5, where e-means is within
-   about 4% after 2 epochs and within about 1% (often better) after 5. Five-epoch e-means matches
-   full Lloyd (40 iterations) in about a sixth of the time. Its weakest case is small samples with
-   many colours (6,000 samples, 64 colours: 1% to 4% worse), below the 100k-to-10M rows its scaling
-   laws were fitted on.
+   frames a second (the 24 fps clip at 2.5× speed), 32 colours, tracking on: the decoder dropped
+   2 of 901 frames in the 15 seconds at 60 fps, and our loop missed 6 of 1,145 over the whole run
+   (which includes 10 seconds at 24 fps before the speed change).
+3. **e-means: yes, it gets more out of each pass than Lloyd.** Over all 24 cells (two paintings,
+   3 sample sizes, 8 to 64 colours), relative to full Lloyd (40 iterations): Lloyd stopped at 2
+   iterations is 5% to 21% worse and at 5 iterations 1% to 10% worse, where e-means is 1% better
+   to 6% worse after 2 epochs and 2% better to 2% worse after 5. Five-epoch e-means matches full
+   Lloyd in about a sixth of the time. Its weakest cells are all on the Sorolla at 32 colours (2
+   epochs: 4% to 6% worse; 5 epochs: 1% to 2% worse), at every sample size, so the fitted range of
+   its scaling laws does not explain them. Lloyd stopped at 10 iterations is 0.3% to 4% worse.
 
 ## e-means against Lloyd
 
@@ -33,10 +35,13 @@ Van Gogh:
 | n | K | Lloyd-40 ms | Lloyd-2 | Lloyd-5 | Lloyd-10 | color-core rule (iters) | e-means 2 | e-means 5 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 6000 | 16 | 10.8 | 0.9 ms / 1.151 | 1.8 ms / 1.076 | 3.1 ms / 1.012 | 6.9 ms / 1.002 (24) | 1.2 ms / 0.991 | 2.4 ms / 0.980 |
+| 6000 | 32 | 19.1 | 1.5 ms / 1.144 | 2.9 ms / 1.061 | 5.2 ms / 1.019 | 16.0 ms / 1.000 (35) | 1.9 ms / 1.012 | 3.6 ms / 0.988 |
 | 6000 | 64 | 32.7 | 2.7 ms / 1.140 | 5.1 ms / 1.054 | 9.2 ms / 1.023 | 31.6 ms / 1.000 (38) | 3.3 ms / 1.038 | 6.2 ms / 1.010 |
 | 25000 | 16 | 47.3 | 3.6 ms / 1.167 | 7.1 ms / 1.064 | 12.7 ms / 1.033 | 45.3 ms / 1.000 (39) | 4.8 ms / 1.016 | 9.2 ms / 0.997 |
+| 25000 | 32 | 77.8 | 6.1 ms / 1.139 | 11.9 ms / 1.058 | 21.1 ms / 1.026 | 77.0 ms / 1.000 (40) | 7.5 ms / 0.991 | 14.2 ms / 0.985 |
 | 25000 | 64 | 140.3 | 11.0 ms / 1.128 | 21.3 ms / 1.055 | 38.2 ms / 1.029 | 138.9 ms / 1.000 (40) | 12.6 ms / 1.004 | 23.7 ms / 0.994 |
 | 100000 | 16 | 187.8 | 14.5 ms / 1.178 | 28.5 ms / 1.098 | 51.0 ms / 1.035 | 187.7 ms / 1.000 (40) | 19.7 ms / 1.001 | 39.8 ms / 1.001 |
+| 100000 | 32 | 315.6 | 24.9 ms / 1.142 | 47.6 ms / 1.070 | 85.4 ms / 1.032 | 315.3 ms / 1.000 (40) | 29.8 ms / 0.989 | 58.9 ms / 0.987 |
 | 100000 | 64 | 562.4 | 44.6 ms / 1.115 | 84.3 ms / 1.055 | 151.6 ms / 1.026 | 561.5 ms / 1.000 (40) | 50.3 ms / 0.994 | 96.3 ms / 0.990 |
 
 Sorolla:
@@ -44,10 +49,13 @@ Sorolla:
 | n | K | Lloyd-40 ms | Lloyd-2 | Lloyd-5 | Lloyd-10 | color-core rule (iters) | e-means 2 | e-means 5 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 6000 | 16 | 10.6 | 0.9 ms / 1.109 | 1.7 ms / 1.038 | 3.0 ms / 1.012 | 6.4 ms / 1.001 (23) | 1.2 ms / 1.018 | 2.4 ms / 1.011 |
+| 6000 | 32 | 17.9 | 1.5 ms / 1.093 | 2.8 ms / 1.035 | 5.3 ms / 1.017 | 13.2 ms / 1.001 (28) | 1.9 ms / 1.039 | 3.7 ms / 1.013 |
 | 6000 | 64 | 26.6 | 2.6 ms / 1.111 | 5.1 ms / 1.040 | 9.0 ms / 1.011 | 22.3 ms / 1.002 (27) | 3.2 ms / 1.032 | 6.1 ms / 1.011 |
 | 25000 | 16 | 45.3 | 3.6 ms / 1.103 | 6.8 ms / 1.053 | 12.5 ms / 1.020 | 44.2 ms / 1.000 (40) | 4.7 ms / 0.989 | 9.2 ms / 0.995 |
+| 25000 | 32 | 77.5 | 5.9 ms / 1.156 | 11.5 ms / 1.086 | 20.9 ms / 1.029 | 75.1 ms / 1.000 (40) | 7.4 ms / 1.056 | 14.0 ms / 1.019 |
 | 25000 | 64 | 137.0 | 10.7 ms / 1.114 | 20.7 ms / 1.051 | 37.4 ms / 1.027 | 137.0 ms / 1.000 (40) | 12.2 ms / 1.020 | 23.1 ms / 1.002 |
 | 100000 | 16 | 175.7 | 13.9 ms / 1.116 | 26.7 ms / 1.046 | 48.4 ms / 1.024 | 172.5 ms / 1.000 (40) | 19.1 ms / 0.987 | 38.8 ms / 0.990 |
+| 100000 | 32 | 300.3 | 23.9 ms / 1.173 | 45.5 ms / 1.088 | 81.3 ms / 1.040 | 297.5 ms / 1.000 (40) | 29.5 ms / 1.022 | 58.9 ms / 1.012 |
 | 100000 | 64 | 558.9 | 43.3 ms / 1.119 | 83.1 ms / 1.060 | 149.9 ms / 1.026 | 557.6 ms / 1.000 (40) | 50.3 ms / 1.007 | 97.8 ms / 0.995 |
 
 **Why the times come out this way.** Each method's cost is its number of passes over the data.
@@ -56,8 +64,11 @@ Full Lloyd makes about 41 (one for the k-means++ start); five-epoch e-means make
 rest: at 2 or 5 passes, e-means' error is far lower than Lloyd's, so the gain is not only that 40
 iterations were too many.
 
-**1.x paid the full 40 iterations.** Under color-core's own stopping rule, Lloyd reaches the
-40-iteration cap at 25,000 or more samples, and needs 23 to 38 iterations at 6,000.
+**How many iterations 1.x pays depends on the picture.** Real color-core (`analyze`, 180,000 samples,
+tol 1e-3, at most 40) runs 27 iterations at 8 colours on both paintings. On the Van Gogh it reaches the
+40 cap at 16, 32 and 64 colours; on the Sorolla it runs 24 at 16 colours, 30 at 32, and 40 at 64.
+(SPEC.org's 2026-11-19 frame settled in 10 at 16 colours.) The JS copy of the rule in the table above
+agrees in kind: it reaches the cap at 25,000 samples and 16 colours or more.
 
 ## Live video, per frame (1920×804)
 
@@ -66,9 +77,9 @@ iterations were too many.
 | 12 | on | 24 fps | 0.15 ms | 2.81 ms | 0.76 ms (call) | 2 of 570 | 1 of 360 |
 | 32 | off | 24 fps | 0.19 ms | — | 0.39 ms (call) | 0 of 571 | 0 of 360 |
 | 32 | on | 24 fps | 0.18 ms | 2.87 ms | 0.72 ms (call) | 1 of 570 | 0 of 360 |
-| 32 | on | 60 fps | 0.15 ms | 2.27 ms | 0.37 ms (call) | 6 of 1,145 | 2 of 901 |
+| 32 | on | 60 fps | 0.15 ms | 2.27 ms | 0.37 ms (call) | 6 of 1,145 (incl. the 24 fps lead-in) | 2 of 901 |
 | 32 | on | 24 fps | 0.17 ms | 2.16 ms | 3.46 ms (with GPU wait) | 2 of 571 | 0 of 359 |
-| 32 | on | 60 fps | 0.12 ms | 2.92 ms | 2.96 ms (with GPU wait) | 19 of 1,145 | 13 of 899 |
+| 32 | on | 60 fps | 0.12 ms | 2.92 ms | 2.96 ms (with GPU wait) | 19 of 1,145 (incl. lead-in) | 13 of 899 |
 
 Averages. "(call)" is the time for the call to return, not the GPU's work; only the "with GPU wait"
 rows bound the work, and forcing that wait itself costs frames at 60 fps. "Loop missed" counts gaps
