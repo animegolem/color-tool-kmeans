@@ -46,6 +46,12 @@ The September 2026 study design is the reference: =RAG/design-system/2026-09/= a
 =RAG/=. It is redrawn in Paper and reviewed in rounds with Golem before the state machines are written, because
 the screens decide which UI states the machines must model.
 
+Rules found so far:
+- In a 3D view, a label never covers the solid, at any angle. Each frame, project the solid's vertices, take
+  their convex hull, and place each label just outside it along the label's own direction; fade a label whose
+  direction points at or away from the viewer. Prototype: =.scratch/prototype/volume.html= (2026-11-21, zero
+  overlaps over 2,100 angles).
+
 * Verification Policy
 ** Verification and Acceptance
 - A check never seen to fail counts for nothing. Every test and every TLA+ rule fails on a planted fault before
@@ -112,6 +118,13 @@ The 2026-11-19 measurement below was run from a throwaway program. Bring it into
 - Which video formats 2.0 must open beyond what Chromium plays (MP4/H.264, WebM), and whether the desktop app
   adds an ffmpeg helper for the rest. Decides: Golem, after the first cut.
 
+- Whether 2.0 moves colour as well as showing it: drag a cluster and the picture (or a playing film) regrades
+  live. The spike says it is cheap enough (PR #7). Golem, 2026-11-21: "My conception of what this tool is, I
+  think, just expanded." If yes, the Objective Function changes. Decides: Golem.
+- Whether a palette is exported as a function: a Poline-style curve (anchor colours and an easing per axis, in
+  OKLCh) fitted through the clusters, with its fit error. Golem: "at minimum that should be something on the
+  export page." Decides: Golem, after a prototype.
+
 * What We've Proven
 ** 2026-11-19 The palette math is not what made 1.x slow
 - Tried: =color_core::analyze= on the 1280x720 frame from that morning's session, with the logged parameters
@@ -122,3 +135,10 @@ The 2026-11-19 measurement below was run from a throwaway program. Bring it into
 - In the app that morning, the same work arrived 3.9 s and 17.4 s after it was asked for, while a barcode strip of
   3,608 frames ran for 27 s alongside it. So most of the wait was contention and queueing.
 - Rerun: owed. The bench was a throwaway program; see Live Work.
+** 2026-11-21 Live regrade fits in a frame, and e-means beats Lloyd per pass
+- Tried: the regrade spike (=spike/regrade/=, PR #7): a WebGL2 regrade by cluster, with streaming e-means
+  re-clustering a 1080p film every frame; and a JS port of e-means (faiss, MIT) against Lloyd on two paintings.
+- Showed: a 4.6 MP still regrades in 1.3 to 3.4 ms; 1080p at 60 frames a second with per-frame re-clustering
+  missed 6 of 1,145 frames. At equal passes e-means' error is far below Lloyd's; five epochs match 40 Lloyd
+  iterations in about a sixth of the time. color-core's own Lloyd reaches its 40-iteration cap at 25,000 samples.
+- Not shown: Electron, hand feel, HDR. Rerun: =spike/regrade/RESULTS.md=.
